@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import PlatformAdmin from './pages/PlatformAdmin';
 import ForgotPassword from './pages/ForgotPassword';
 import UpdatePassword from './pages/UpdatePassword';
+import SmartRedirect from './components/SmartRedirect';
 
 export default function App() {
   return (
@@ -85,8 +86,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          {/* Default redirect */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Smart redirect based on role */}
+          <Route path="*" element={<SmartRedirect />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

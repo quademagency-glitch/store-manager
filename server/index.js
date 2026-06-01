@@ -101,8 +101,9 @@ app.use((err, req, res, next) => {
 // Start server
 // ============================================
 
-// Start server if not running in a serverless environment
-if (process.env.NODE_ENV !== 'production' || process.env.RENDER === 'true' || process.env.RENDER === '1' || process.env.PORT) {
+// Start server if this file is run directly (e.g. via `node index.js`)
+// This ensures it starts on Render/Heroku but skips when imported as a module (e.g. Vercel)
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`\n🚀 Store Manager API running on port ${PORT}`);
     console.log(`   Health check: port ${PORT}/api/health`);

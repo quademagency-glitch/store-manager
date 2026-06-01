@@ -20,10 +20,15 @@ async function fetchWithAuth(endpoint, options = {}) {
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (networkErr) {
+    throw new Error(`Network Error: Could not reach the server. Is the backend running? (Details: ${networkErr.message})`);
+  }
 
   // Handle standard HTTP errors
   if (!response.ok) {

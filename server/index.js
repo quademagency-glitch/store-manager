@@ -101,11 +101,12 @@ app.use((err, req, res, next) => {
 // Start server
 // ============================================
 
-if (process.env.NODE_ENV !== 'production') {
+// Start server if not running in a serverless environment
+if (process.env.NODE_ENV !== 'production' || process.env.RENDER === 'true' || process.env.RENDER === '1' || process.env.PORT) {
   app.listen(PORT, () => {
-    console.log(`\n🚀 Store Manager API running on http://localhost:${PORT}`);
-    console.log(`   Health check: http://localhost:${PORT}/api/health`);
-    console.log(`   Auth routes:  http://localhost:${PORT}/api/auth\n`);
+    console.log(`\n🚀 Store Manager API running on port ${PORT}`);
+    console.log(`   Health check: port ${PORT}/api/health`);
+    console.log(`   Auth routes:  port ${PORT}/api/auth\n`);
   });
 }
 

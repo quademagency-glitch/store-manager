@@ -247,7 +247,13 @@ export default function PlatformAdmin() {
       const { error } = await supabase.from('businesses').delete().eq('id', id);
       if (error) throw error;
       fetchData();
-    } catch (err) { alert(`Error deleting business: ${err.message}`); }
+    } catch (err) { 
+      if (err.message && err.message.includes('users_business_id_fkey')) {
+        alert(`Cannot delete business "${name}" because there are users associated with it. Please "Ban" the business instead, or delete its users first.`);
+      } else {
+        alert(`Error deleting business: ${err.message}`); 
+      }
+    }
   };
 
   /* ============================

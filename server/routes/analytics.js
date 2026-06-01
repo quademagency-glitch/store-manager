@@ -114,7 +114,7 @@ router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (re
 
     const formattedData = data.map(movement => ({
       ...movement,
-      value_lost: Math.abs(movement.quantity_changed || movement.quantity_change) * (movement.product?.price || 0)
+      value_lost: Math.abs(movement.quantity_change) * (movement.product?.price || 0)
     }));
 
     res.json(formattedData);
@@ -173,7 +173,7 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     // 3. Fetch shrinkage
     let shrinkageQuery = supabaseAdmin
       .from('stock_movements')
-      .select('id, user_id, created_by, quantity_changed, quantity_change, product:products!product_id(price)')
+      .select('id, user_id, quantity_change, product:products!product_id(price)')
       .eq('movement_type', 'SHRINKAGE')
       .gte('created_at', startOfDay.toISOString())
       .lte('created_at', endOfDay.toISOString());
@@ -196,8 +196,8 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
       const totalDiscounts = completedSales.reduce((sum, s) => sum + Number(s.discount_amount || 0), 0);
       const totalVoidValue = voidedSales.reduce((sum, s) => sum + Number(s.total_amount) + Number(s.discount_amount || 0), 0);
 
-      const userShrinkage = shrinkage.filter(s => s.user_id === user.id || s.created_by === user.id);
-      const totalShrinkageValue = userShrinkage.reduce((sum, s) => sum + (Math.abs(s.quantity_changed || s.quantity_change) * (s.product?.price || 0)), 0);
+      const userShrinkage = shrinkage.filter(s => s.user_id === user.id);
+      const totalShrinkageValue = userShrinkage.reduce((sum, s) => sum + (Math.abs(s.quantity_change) * (s.product?.price || 0)), 0);
 
       return {
         id: user.id,

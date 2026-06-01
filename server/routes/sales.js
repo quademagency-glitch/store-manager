@@ -224,10 +224,10 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
         business_id: req.user.business_id,
         location_id: location_id,
         product_id: item.product_id,
-        quantity_changed: -item.quantity,
-        movement_type: 'sale',
+        quantity_change: -item.quantity,
+        movement_type: 'SALE',
+        user_id: req.user.id,
         reference_id: saleData.id,
-        created_by: req.user.id,
         notes: `Sale #${saleData.id}`
       }]);
     }

@@ -42,5 +42,48 @@ INSERT INTO public.user_locations (user_id, location_id)
 SELECT id, location_id FROM public.users WHERE location_id IS NOT NULL
 ON CONFLICT DO NOTHING;
 
+-- Drop old policies that depend on users.location_id
+DROP POLICY IF EXISTS "Users can insert sales in their business or platform anywhere" ON public.sales;
+DROP POLICY IF EXISTS "Staff can insert stock movements in their business or platform anywhere" ON public.stock_movements;
+DROP POLICY IF EXISTS "Staff can insert stock movements in their business or platform " ON public.stock_movements;
+
 -- Drop location_id from users since it's now many-to-many
 ALTER TABLE public.users DROP COLUMN IF EXISTS location_id;
+
+-- Recreate sales insert policy
+CREATE POLICY "Users can insert sales in their business or platform anywhere"
+  ON public.sales
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.has_permission('manage_platform') OR 
+    (
+      business_id = public.get_user_business_id() AND 
+      auth.uid() = salesperson_id AND 
+      public.has_permission('create_sales') AND
+      (
+        EXISTS (SELECT 1 FROM public.user_locations WHERE user_id = auth.uid() AND public.user_locations.location_id = sales.location_id)
+        OR
+        NOT EXISTS (SELECT 1 FROM public.user_locations WHERE user_id = auth.uid())
+      )
+    )
+  );
+
+-- Recreate stock movements insert policy
+CREATE POLICY "Staff can insert stock movements in their business or platform "
+  ON public.stock_movements
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.has_permission('manage_platform') OR 
+    (
+      business_id = public.get_user_business_id() AND 
+      user_id = auth.uid() AND 
+      public.has_permission('manage_inventory') AND
+      (
+        EXISTS (SELECT 1 FROM public.user_locations WHERE user_id = auth.uid() AND public.user_locations.location_id = stock_movements.location_id)
+        OR
+        NOT EXISTS (SELECT 1 FROM public.user_locations WHERE user_id = auth.uid())
+      )
+    )
+  );

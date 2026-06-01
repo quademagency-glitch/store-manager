@@ -187,8 +187,8 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     // Reassign stock_movements
     await supabaseAdmin
       .from('stock_movements')
-      .update({ created_by: null })
-      .eq('created_by', req.params.id);
+      .update({ user_id: null })
+      .eq('user_id', req.params.id);
 
     // 4. Delete from auth.users (Admin API) - this cascades to public.users and user_locations
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);

@@ -96,10 +96,9 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       .insert({
         product_id,
         user_id: req.user.id,
-        created_by: req.user.id, // Support the schema name change
         business_id: req.user.business_id,
         location_id,
-        quantity_changed: quantity_change, // Support the schema name change
+        quantity_change,
         movement_type,
         notes
       })

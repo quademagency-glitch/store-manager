@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { api } from '../lib/api';
 
 const Icons = {
   dashboard: (
@@ -95,9 +96,28 @@ const Icons = {
 };
 
 export default function MainLayout() {
-  const { user, role, signOut, hasPermission } = useAuthContext();
+  const { user, role, signOut, hasPermission, locationIds, activeLocationId, switchLocation } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [availableLocations, setAvailableLocations] = useState([]);
+
+  useEffect(() => {
+    // Only fetch locations if they have assigned locationIds OR if they are an admin
+    if (locationIds.length > 0 || role === 'Platform Admin' || role === 'Business Admin') {
+      api.get('/locations').then(res => {
+        if (Array.isArray(res)) {
+          setAvailableLocations(res);
+          // If no active location set and we are an admin, default to first available
+          if (!activeLocationId && res.length > 0 && (role === 'Platform Admin' || role === 'Business Admin')) {
+            switchLocation(res[0].id);
+          }
+        }
+      }).catch(err => {
+        console.error("Failed to load locations for switcher", err);
+      });
+    }
+  }, [locationIds, role, activeLocationId, switchLocation]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -130,8 +150,6 @@ export default function MainLayout() {
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_business') },
         { path: '/business-admin/team', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_business') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_business') },
-        // Legacy setting
-        { path: '/settings', label: 'Legacy Settings', icon: Icons.settings, visible: hasPermission('manage_users') && !hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);
@@ -151,7 +169,7 @@ export default function MainLayout() {
   return (
     <div className="app-layout">
       {/* ── Topbar (Mobile & Actions) ── */}
-      <header className="app-topbar">
+      <header className="app-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="topbar-logo">
           <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
             <rect width="40" height="40" rx="10" fill="var(--color-primary)" />
@@ -160,6 +178,22 @@ export default function MainLayout() {
           </svg>
           <span className="brand-name">QERP</span>
         </div>
+
+        {/* Location Switcher */}
+        {availableLocations.length > 1 && (
+          <div style={{ marginLeft: 'auto', marginRight: '24px' }}>
+            <select 
+              value={activeLocationId || ''} 
+              onChange={(e) => switchLocation(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', outline: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              {availableLocations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="topbar-actions">
            <div className="user-profile">
             <div className="avatar">

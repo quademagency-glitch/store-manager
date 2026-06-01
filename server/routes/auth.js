@@ -116,7 +116,8 @@ router.post('/login', async (req, res) => {
         name, 
         email, 
         role_id,
-        roles:role_id (id, name, permissions)
+        roles:role_id (id, name, permissions),
+        user_locations(location_id)
       `)
       .eq('id', data.user.id)
       .single();
@@ -141,6 +142,7 @@ router.post('/login', async (req, res) => {
         role_id: userData.role_id,
         role: userData.roles ? userData.roles.name : 'Unknown',
         permissions: userData.roles ? userData.roles.permissions : [],
+        location_ids: userData.user_locations ? userData.user_locations.map(ul => ul.location_id) : [],
       },
     });
   } catch (err) {

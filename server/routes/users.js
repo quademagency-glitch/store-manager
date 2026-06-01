@@ -21,8 +21,8 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
         status,
         created_at,
         role_id,
-        location_id,
-        roles:role_id (id, name, permissions)
+        roles:role_id (id, name, permissions),
+        user_locations (location_id)
       `)
       .order('created_at', { ascending: false });
 
@@ -33,7 +33,14 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
     const { data, error } = await query;
 
     if (error) throw error;
-    res.json(data);
+    
+    // Map user_locations to a clean location_ids array
+    const usersWithLocations = data.map(user => ({
+      ...user,
+      location_ids: user.user_locations.map(ul => ul.location_id)
+    }));
+
+    res.json(usersWithLocations);
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -47,7 +54,7 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
  */
 router.post('/create', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { email, password, name, business_id, role_name, location_id } = req.body;
+    const { email, password, name, business_id, role_name, location_ids } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -63,12 +70,22 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
       user_metadata: {
         name: name || '',
         business_id: assigned_business_id,
-        location_id: location_id || null,
         role: role_name || 'Salesperson'
       }
     });
 
     if (error) throw error;
+    
+    const userId = data.user.id;
+
+    // Insert user_locations if provided
+    if (Array.isArray(location_ids) && location_ids.length > 0) {
+      const locationInserts = location_ids.map(locId => ({
+        user_id: userId,
+        location_id: locId
+      }));
+      await supabaseAdmin.from('user_locations').insert(locationInserts);
+    }
 
     res.json({ message: 'User created successfully', user: data.user });
   } catch (err) {
@@ -84,7 +101,7 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
  */
 router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { name, role_id, status, location_id, business_id } = req.body;
+    const { name, role_id, status, location_ids, business_id } = req.body;
 
     if (!role_id) {
       return res.status(400).json({ error: 'role_id is required' });
@@ -92,52 +109,35 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
     const updates = { name, role_id };
     if (status) updates.status = status;
-    if (location_id !== undefined) updates.location_id = location_id || null;
     
     if (req.user.role === 'Platform Admin' && business_id !== undefined) {
       updates.business_id = business_id || null;
-    }
-
-    if (req.user.role !== 'Platform Admin') {
-      const { data: targetUser } = await supabaseAdmin.from('users').select('business_id').eq('id', req.params.id).single();
-      if (!targetUser || targetUser.business_id !== req.user.business_id) {
-        return res.status(403).json({ error: 'Cannot update user from another business' });
-      }
-    }
-
-    // Keep auth.users metadata in sync
-    try {
-      const userMetaUpdates = { name };
-      if (req.user.role === 'Platform Admin' && business_id !== undefined) {
-        userMetaUpdates.business_id = business_id || null;
-      }
-      await supabaseAdmin.auth.admin.updateUserById(req.params.id, {
-        user_metadata: userMetaUpdates
-      });
-    } catch (metaErr) {
-      console.warn('Could not update user metadata:', metaErr);
     }
 
     const { data, error } = await supabaseAdmin
       .from('users')
       .update(updates)
       .eq('id', req.params.id)
-      .select(`
-        id, 
-        name, 
-        email, 
-        status,
-        created_at,
-        role_id,
-        business_id,
-        location_id,
-        roles:role_id (id, name, permissions)
-      `)
+      .select()
       .single();
 
     if (error) throw error;
-    
     if (!data) return res.status(404).json({ error: 'User not found' });
+    
+    // Manage user_locations
+    if (Array.isArray(location_ids)) {
+      // 1. Delete existing
+      await supabaseAdmin.from('user_locations').delete().eq('user_id', req.params.id);
+      
+      // 2. Insert new
+      if (location_ids.length > 0) {
+        const locationInserts = location_ids.map(locId => ({
+          user_id: req.params.id,
+          location_id: locId
+        }));
+        await supabaseAdmin.from('user_locations').insert(locationInserts);
+      }
+    }
 
     res.json(data);
   } catch (err) {
@@ -148,41 +148,57 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
 /**
  * DELETE /api/users/:id
- * Delete a user from Auth and public.users
+ * Permanently delete a user (using Admin API)
  * Access: Must have manage_users permission
  */
 router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    if (req.user.role !== 'Platform Admin') {
-      const { data: targetUser } = await supabaseAdmin.from('users').select('business_id').eq('id', req.params.id).single();
-      if (!targetUser || targetUser.business_id !== req.user.business_id) {
-        return res.status(403).json({ error: 'Cannot delete user from another business' });
-      }
+    // 1. Check if user is trying to delete themselves
+    if (req.user.id === req.params.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account.' });
     }
 
-    // Check if the user has dependent records (sales or stock movements)
-    // ERP systems should not hard-delete users with historical transactions.
-    const [salesCheck, stockCheck] = await Promise.all([
-      supabaseAdmin.from('sales').select('id').eq('salesperson_id', req.params.id).limit(1),
-      supabaseAdmin.from('stock_movements').select('id').eq('user_id', req.params.id).limit(1)
-    ]);
+    // 2. Ensure the admin is authorized to delete THIS user
+    const { data: userToDelete, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('business_id, role_id, roles(name)')
+      .eq('id', req.params.id)
+      .single();
 
-    if ((salesCheck.data && salesCheck.data.length > 0) || (stockCheck.data && stockCheck.data.length > 0)) {
-      return res.status(400).json({ 
-        error: 'Cannot delete user: They have historical sales or stock records. Please use the "Ban" action instead to revoke access while preserving financial data.' 
-      });
+    if (fetchError || !userToDelete) {
+      return res.status(404).json({ error: 'User not found.' });
     }
 
-    // Supabase admin API deletes the user from auth.users, 
-    // which cascades to public.users because of the foreign key ON DELETE CASCADE.
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
+    if (req.user.role !== 'Platform Admin' && userToDelete.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'You can only delete users in your own business.' });
+    }
 
-    if (error) throw error;
+    if (req.user.role !== 'Platform Admin' && userToDelete.roles.name === 'Business Admin') {
+      return res.status(403).json({ error: 'Only Platform Admins can delete Business Admins.' });
+    }
+
+    // 3. Reassign references before deletion
+    // Reassign sales
+    await supabaseAdmin
+      .from('sales')
+      .update({ salesperson_id: null })
+      .eq('salesperson_id', req.params.id);
+
+    // Reassign stock_movements
+    await supabaseAdmin
+      .from('stock_movements')
+      .update({ created_by: null })
+      .eq('created_by', req.params.id);
+
+    // 4. Delete from auth.users (Admin API) - this cascades to public.users and user_locations
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
+
+    if (deleteError) throw deleteError;
 
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error('Error deleting user:', err);
-    res.status(500).json({ error: err.message || 'Failed to delete user' });
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

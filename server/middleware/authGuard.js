@@ -40,7 +40,8 @@ async function authGuard(req, res, next) {
         roles:role_id (
           name,
           permissions
-        )
+        ),
+        user_locations(location_id)
       `)
       .eq('id', user.id)
       .single();
@@ -61,7 +62,20 @@ async function authGuard(req, res, next) {
       role: userData.roles ? userData.roles.name : 'Unknown',
       role_id: userData.role_id,
       permissions: userData.roles ? userData.roles.permissions : [],
+      location_ids: userData.user_locations ? userData.user_locations.map(ul => ul.location_id) : [],
     };
+
+    // Attach active location if provided in headers and valid
+    const requestedLocationId = req.headers['x-location-id'];
+    if (requestedLocationId && req.user.location_ids.includes(requestedLocationId)) {
+      req.user.active_location_id = requestedLocationId;
+    } else if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+      req.user.active_location_id = requestedLocationId; // Admins can view any
+    } else if (req.user.location_ids.length > 0) {
+      req.user.active_location_id = req.user.location_ids[0]; // Default to first
+    } else {
+      req.user.active_location_id = null;
+    }
 
     next();
   } catch (err) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
 
 export default function Locations() {
@@ -8,7 +8,6 @@ export default function Locations() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [businessId, setBusinessId] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', address: '', tax_rate: 0, receipt_header: '' });
@@ -20,22 +19,11 @@ export default function Locations() {
   const fetchLocations = async () => {
     setLoading(true);
     try {
-      const { data: userData } = await supabase.from('users').select('business_id').eq('id', user.id).single();
-      if (!userData?.business_id) return;
-      setBusinessId(userData.business_id);
-
-      const { data, error } = await supabase.from('locations').select('*').eq('business_id', userData.business_id).order('created_at');
-      if (error) throw error;
-      
-      // If error occurs with relation it means the migration hasn't been run yet
+      const data = await api.get('/locations');
       setLocations(data || []);
     } catch (err) {
       console.error(err);
-      if (err.message.includes('relation "public.locations" does not exist')) {
-        setError("The multi-location database migration has not been run yet. Please ask the platform admin to run Migration 010.");
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -54,22 +42,19 @@ export default function Locations() {
     e.preventDefault();
     try {
       if (formData.id) {
-        const { error } = await supabase.from('locations').update({
+        await api.put(`/locations/${formData.id}`, {
           name: formData.name,
           address: formData.address,
           tax_rate: formData.tax_rate,
           receipt_header: formData.receipt_header
-        }).eq('id', formData.id);
-        if (error) throw error;
+        });
       } else {
-        const { error } = await supabase.from('locations').insert([{
-          business_id: businessId,
+        await api.post('/locations', {
           name: formData.name,
           address: formData.address,
           tax_rate: formData.tax_rate,
           receipt_header: formData.receipt_header
-        }]);
-        if (error) throw error;
+        });
       }
       setIsModalOpen(false);
       fetchLocations();
@@ -81,8 +66,7 @@ export default function Locations() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this location? Ensure no sales or users are actively tied to it.")) {
       try {
-        const { error } = await supabase.from('locations').delete().eq('id', id);
-        if (error) throw error;
+        await api.delete(`/locations/${id}`);
         fetchLocations();
       } catch (err) {
         alert("Error deleting location: " + err.message);
@@ -106,7 +90,7 @@ export default function Locations() {
 
       {error ? (
         <div className="alert alert-error">
-          <strong>Database Error:</strong> {error}
+          <strong>Error:</strong> {error}
         </div>
       ) : (
         <div className="content-card">

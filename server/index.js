@@ -10,6 +10,7 @@ const analyticsRoutes = require('./routes/analytics');
 const rolesRoutes = require('./routes/roles');
 const usersRoutes = require('./routes/users');
 const businessesRoutes = require('./routes/businesses');
+const locationsRoutes = require('./routes/locations');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -79,6 +80,9 @@ app.use('/api/users', usersRoutes);
 
 // Businesses routes
 app.use('/api/businesses', businessesRoutes);
+
+// Locations routes
+app.use('/api/locations', locationsRoutes);
 
 // ============================================
 // Error handling

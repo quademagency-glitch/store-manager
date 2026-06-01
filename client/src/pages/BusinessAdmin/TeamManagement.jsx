@@ -16,7 +16,7 @@ export default function TeamManagement() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   
   // Forms
-  const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '', location_id: '' });
+  const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '', location_ids: [] });
 
   useEffect(() => {
     fetchData();
@@ -28,7 +28,7 @@ export default function TeamManagement() {
       const [usersRes, rolesRes, locationsRes] = await Promise.all([
         api.get('/users'),
         api.get('/roles'),
-        api.get('/locations').catch(() => []) // Catch if locations API is missing or error
+        api.get('/locations').catch(() => []) 
       ]);
       setUsers(usersRes);
       setRoles(rolesRes);
@@ -41,21 +41,49 @@ export default function TeamManagement() {
     }
   };
 
-  // --- Users Handlers ---
   const openUserModal = (user = null) => {
     if (user) {
-      setUserForm({ id: user.id, name: user.name, email: user.email, password: '', role_id: user.role_id, location_id: user.location_id || '' });
+      setUserForm({ 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        password: '', 
+        role_id: user.role_id, 
+        location_ids: user.location_ids || [] 
+      });
     } else {
-      setUserForm({ id: null, name: '', email: '', password: '', role_id: roles[0]?.id || '', location_id: '' });
+      setUserForm({ 
+        id: null, 
+        name: '', 
+        email: '', 
+        password: '', 
+        role_id: roles[0]?.id || '', 
+        location_ids: [] 
+      });
     }
     setIsUserModalOpen(true);
+  };
+
+  const handleLocationToggle = (locId) => {
+    setUserForm(prev => {
+      const isSelected = prev.location_ids.includes(locId);
+      if (isSelected) {
+        return { ...prev, location_ids: prev.location_ids.filter(id => id !== locId) };
+      } else {
+        return { ...prev, location_ids: [...prev.location_ids, locId] };
+      }
+    });
   };
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     try {
       if (userForm.id) {
-        await api.put(`/users/${userForm.id}`, { name: userForm.name, role_id: userForm.role_id, location_id: userForm.location_id || null });
+        await api.put(`/users/${userForm.id}`, { 
+          name: userForm.name, 
+          role_id: userForm.role_id, 
+          location_ids: userForm.location_ids 
+        });
       } else {
         await api.post('/users/create', { 
           name: userForm.name, 
@@ -63,7 +91,7 @@ export default function TeamManagement() {
           password: userForm.password, 
           role_id: userForm.role_id,
           role_name: roles.find(r => r.id === userForm.role_id)?.name || 'Salesperson',
-          location_id: userForm.location_id || null
+          location_ids: userForm.location_ids
         });
       }
       setIsUserModalOpen(false);
@@ -124,7 +152,7 @@ export default function TeamManagement() {
                   <tr>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Role & Location</th>
+                    <th>Role & Assigned Branches</th>
                     <th>Status</th>
                     <th className="text-right">Actions</th>
                   </tr>
@@ -137,11 +165,16 @@ export default function TeamManagement() {
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                           <span className="badge badge-neutral">{u.roles?.name || 'Unknown'}</span>
-                          {u.location_id && (
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              Loc: {locations.find(l => l.id === u.location_id)?.name || 'Unknown'}
-                            </span>
-                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                            {u.location_ids?.length > 0 ? (
+                              u.location_ids.map(locId => {
+                                const loc = locations.find(l => l.id === locId);
+                                return <span key={locId} style={{ fontSize: '0.7rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{loc?.name || 'Unknown'}</span>
+                              })
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>All Branches (Global)</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td>
@@ -167,7 +200,6 @@ export default function TeamManagement() {
         )}
       </div>
 
-      {/* User Modal */}
       <Modal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} title={userForm.id ? 'Edit User' : 'Add New User'}>
         <form onSubmit={handleUserSubmit} className="form-layout">
           <div className="form-group">
@@ -193,12 +225,24 @@ export default function TeamManagement() {
             </select>
           </div>
           <div className="form-group">
-            <label>Location (Optional)</label>
-            <select className="form-input" value={userForm.location_id} onChange={e => setUserForm({...userForm, location_id: e.target.value})}>
-              <option value="">Global / All Locations</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>Assign to restrict access to a specific branch.</p>
+            <label>Assigned Branches</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #e2e8f0', padding: '12px', borderRadius: '6px', maxHeight: '150px', overflowY: 'auto' }}>
+              {locations.length === 0 ? (
+                <span className="text-muted" style={{ fontSize: '0.875rem' }}>No branches available.</span>
+              ) : (
+                locations.map(l => (
+                  <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={userForm.location_ids.includes(l.id)} 
+                      onChange={() => handleLocationToggle(l.id)} 
+                    />
+                    {l.name}
+                  </label>
+                ))
+              )}
+            </div>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>Assign branches to restrict access. Leave all unchecked for Global access (Admins only).</p>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setIsUserModalOpen(false)}>Cancel</button>

@@ -6,6 +6,8 @@ export function useAuth() {
   const [session, setSession] = useState(null);
   const [role, setRole] = useState(null);
   const [permissions, setPermissions] = useState([]);
+  const [locationIds, setLocationIds] = useState([]);
+  const [activeLocationId, setActiveLocationId] = useState(localStorage.getItem('active_location_id') || null);
   const [loading, setLoading] = useState(true);
 
   // Fetch the user's role from the users table
@@ -15,7 +17,8 @@ export function useAuth() {
         .from('users')
         .select(`
           role_id,
-          roles:role_id (name, permissions)
+          roles:role_id (name, permissions),
+          user_locations (location_id)
         `)
         .eq('id', userId)
         .single();
@@ -24,19 +27,38 @@ export function useAuth() {
         console.error('Error fetching user role:', error.message);
         setRole(null);
         setPermissions([]);
+        setLocationIds([]);
         return null;
       }
 
       const roleName = data.roles?.name || null;
       const userPermissions = data.roles?.permissions || [];
+      const userLocations = data.user_locations ? data.user_locations.map(ul => ul.location_id) : [];
       
       setRole(roleName);
       setPermissions(userPermissions);
-      return { role: roleName, permissions: userPermissions };
+      setLocationIds(userLocations);
+
+      // Initialize active location if none set or if invalid
+      const currentActive = localStorage.getItem('active_location_id');
+      if (roleName !== 'Platform Admin' && roleName !== 'Business Admin') {
+        if (!currentActive || !userLocations.includes(currentActive)) {
+          if (userLocations.length > 0) {
+            setActiveLocationId(userLocations[0]);
+            localStorage.setItem('active_location_id', userLocations[0]);
+          } else {
+            setActiveLocationId(null);
+            localStorage.removeItem('active_location_id');
+          }
+        }
+      }
+
+      return { role: roleName, permissions: userPermissions, locationIds: userLocations };
     } catch (err) {
       console.error('Unexpected error fetching role:', err);
       setRole(null);
       setPermissions([]);
+      setLocationIds([]);
       return null;
     }
   }, []);
@@ -51,6 +73,9 @@ export function useAuth() {
         if (!newSession?.user) {
           setRole(null);
           setPermissions([]);
+          setLocationIds([]);
+          setActiveLocationId(null);
+          localStorage.removeItem('active_location_id');
           setLoading(false);
         }
       }
@@ -119,6 +144,9 @@ export function useAuth() {
       setSession(null);
       setRole(null);
       setPermissions([]);
+      setLocationIds([]);
+      setActiveLocationId(null);
+      localStorage.removeItem('active_location_id');
     } catch (err) {
       console.error('Unexpected error signing out:', err);
     } finally {
@@ -130,15 +158,25 @@ export function useAuth() {
     return permissions.includes(perm);
   }, [permissions]);
 
+  const switchLocation = useCallback((locationId) => {
+    setActiveLocationId(locationId);
+    localStorage.setItem('active_location_id', locationId);
+    // You might want to trigger a full app reload or emit an event to refetch data
+    window.location.reload(); 
+  }, []);
+
   return {
     user,
     session,
     role,
     permissions,
+    locationIds,
+    activeLocationId,
     loading,
     signIn,
     signOut,
     hasPermission,
+    switchLocation,
     isAuthenticated: !!session && !!user,
   };
 }

@@ -24,6 +24,16 @@ router.get('/', authGuard, async (req, res) => {
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
     }
+    
+    if (req.user.active_location_id) {
+      query = query.eq('location_id', req.user.active_location_id);
+    } else if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
+      if (req.user.location_ids && req.user.location_ids.length > 0) {
+        query = query.in('location_id', req.user.location_ids);
+      } else {
+        query = query.eq('location_id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
 
     const { data, error } = await query;
 
@@ -38,14 +48,6 @@ router.get('/', authGuard, async (req, res) => {
 /**
  * POST /api/stock/adjust
  * Create a manual stock adjustment (RECEIPT, ADJUSTMENT, SHRINKAGE, RETURN).
- *
- * Body: {
- *   product_id: uuid,
- *   quantity_change: number,
- *   movement_type: string,
- *   notes: string
- * }
- *
  * Access: Managers only (for manual adjustments)
  */
 router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
@@ -55,6 +57,13 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
     // Validate inputs
     if (!product_id || typeof quantity_change !== 'number' || quantity_change === 0 || !location_id) {
       return res.status(400).json({ error: 'Bad request', message: 'product_id, location_id, and non-zero quantity_change are required' });
+    }
+
+    // Verify location ownership
+    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
+      if (!req.user.location_ids.includes(location_id)) {
+        return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to adjust stock at this location.' });
+      }
     }
 
     const validTypes = ['RECEIPT', 'ADJUSTMENT', 'SHRINKAGE', 'RETURN'];
@@ -70,7 +79,6 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       .eq('location_id', location_id)
       .single();
 
-    // If no inventory record exists yet for this location, assume 0
     let currentStock = 0;
     if (inventoryItem) {
       currentStock = inventoryItem.quantity;
@@ -78,7 +86,6 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
 
     const newStockQuantity = currentStock + quantity_change;
 
-    // Prevent negative stock
     if (newStockQuantity < 0) {
        return res.status(400).json({ error: 'Bad request', message: `Adjustment would result in negative stock for this location.` });
     }
@@ -89,9 +96,10 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       .insert({
         product_id,
         user_id: req.user.id,
+        created_by: req.user.id, // Support the schema name change
         business_id: req.user.business_id,
         location_id,
-        quantity_change,
+        quantity_changed: quantity_change, // Support the schema name change
         movement_type,
         notes
       })

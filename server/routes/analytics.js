@@ -5,22 +5,32 @@ const permissionCheck = require('../middleware/permissionCheck');
 
 const router = express.Router();
 
+function applyLocationFilter(query, req) {
+  if (req.user.active_location_id) {
+    return query.eq('location_id', req.user.active_location_id);
+  } else if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
+    if (req.user.location_ids && req.user.location_ids.length > 0) {
+      return query.in('location_id', req.user.location_ids);
+    } else {
+      return query.eq('location_id', '00000000-0000-0000-0000-000000000000');
+    }
+  }
+  return query;
+}
+
 /**
  * GET /api/analytics/summary
  * Fetch high-level stats for the Dashboard.
- * Access: All authenticated staff (some stats may only be relevant to managers)
+ * Access: All authenticated staff
  */
 router.get('/summary', authGuard, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 1. Today's Sales Total
-    // Supabase JS doesn't have a simple SUM() aggregate method via the standard syntax without RPC,
-    // so we fetch today's sales and sum them in Node.
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('total_amount')
@@ -29,30 +39,30 @@ router.get('/summary', authGuard, async (req, res) => {
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
     }
+    salesQuery = applyLocationFilter(salesQuery, req);
 
     const { data: todaysSales, error: salesError } = await salesQuery;
-
     if (salesError) throw salesError;
 
     const todaySalesTotal = todaysSales.reduce((acc, sale) => acc + Number(sale.total_amount), 0);
 
-    // 2. Total Products Count & Low Stock Count
-    let productsQuery = supabaseAdmin
-      .from('products')
-      .select('stock_quantity, low_stock_threshold');
-    
+    // 2. Total Products Count & Low Stock Count (from product_inventory)
+    let inventoryQuery = supabaseAdmin
+      .from('product_inventory')
+      .select('quantity, low_stock_threshold, products!inner(business_id)');
+      
     if (req.user.role !== 'Platform Admin') {
-      productsQuery = productsQuery.eq('business_id', req.user.business_id);
+      inventoryQuery = inventoryQuery.eq('products.business_id', req.user.business_id);
     }
+    inventoryQuery = applyLocationFilter(inventoryQuery, req);
 
-    const { data: products, error: productsError } = await productsQuery;
+    const { data: inventory, error: invError } = await inventoryQuery;
+    if (invError) throw invError;
 
-    if (productsError) throw productsError;
+    const totalProducts = inventory.length; // Unique product-locations
+    const lowStockCount = inventory.filter(p => p.quantity <= (p.low_stock_threshold || 10)).length;
 
-    const totalProducts = products.length;
-    const lowStockCount = products.filter(p => p.stock_quantity <= p.low_stock_threshold).length;
-
-    // 3. Theft Alerts (Shrinkage events in last 30 days)
+    // 3. Theft Alerts
     let shrinkageQuery = supabaseAdmin
       .from('stock_movements')
       .select('*', { count: 'exact', head: true })
@@ -62,9 +72,9 @@ router.get('/summary', authGuard, async (req, res) => {
     if (req.user.role !== 'Platform Admin') {
       shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
     }
+    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
 
     const { count: shrinkageCount, error: shrinkageError } = await shrinkageQuery;
-
     if (shrinkageError) throw shrinkageError;
 
     res.json({
@@ -81,8 +91,6 @@ router.get('/summary', authGuard, async (req, res) => {
 
 /**
  * GET /api/analytics/shrinkage
- * Fetch detailed ledger of SHRINKAGE events for the Alerts page.
- * Access: Managers only
  */
 router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (req, res) => {
   try {
@@ -99,15 +107,14 @@ router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (re
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
     }
+    query = applyLocationFilter(query, req);
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    // Calculate value lost for each entry
     const formattedData = data.map(movement => ({
       ...movement,
-      value_lost: Math.abs(movement.quantity_change) * (movement.product?.price || 0)
+      value_lost: Math.abs(movement.quantity_changed || movement.quantity_change) * (movement.product?.price || 0)
     }));
 
     res.json(formattedData);
@@ -119,23 +126,18 @@ router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (re
 
 /**
  * GET /api/analytics/reconciliation
- * Fetch end-of-day summary per staff member for a specific date.
- * Access: Managers only
  */
 router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), async (req, res) => {
   try {
     const dateParam = req.query.date;
     const targetDate = dateParam ? new Date(dateParam) : new Date();
     
-    // Start of the day
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-
-    // End of the day
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Fetch all users
+    // 1. Fetch users in the same business/locations
     let usersQuery = supabaseAdmin
       .from('users')
       .select(`
@@ -149,11 +151,11 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     if (req.user.role !== 'Platform Admin') {
       usersQuery = usersQuery.eq('business_id', req.user.business_id);
     }
-
+    // We don't filter users by location here because we want to see their sales
     const { data: users, error: usersError } = await usersQuery;
     if (usersError) throw usersError;
 
-    // 2. Fetch sales for the date
+    // 2. Fetch sales
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('id, salesperson_id, total_amount, discount_amount, status')
@@ -163,14 +165,15 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
     }
+    salesQuery = applyLocationFilter(salesQuery, req);
 
     const { data: sales, error: salesError } = await salesQuery;
     if (salesError) throw salesError;
 
-    // 3. Fetch shrinkage for the date
+    // 3. Fetch shrinkage
     let shrinkageQuery = supabaseAdmin
       .from('stock_movements')
-      .select('id, user_id, quantity_change, product:products!product_id(price)')
+      .select('id, user_id, created_by, quantity_changed, quantity_change, product:products!product_id(price)')
       .eq('movement_type', 'SHRINKAGE')
       .gte('created_at', startOfDay.toISOString())
       .lte('created_at', endOfDay.toISOString());
@@ -178,48 +181,39 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     if (req.user.role !== 'Platform Admin') {
       shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
     }
+    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
 
     const { data: shrinkage, error: shrinkageError } = await shrinkageQuery;
     if (shrinkageError) throw shrinkageError;
 
     // 4. Group data by user
     const reconciliationData = users.map(user => {
-      // Find sales for this user
       const userSales = sales.filter(s => s.salesperson_id === user.id);
-      
       const completedSales = userSales.filter(s => s.status !== 'voided');
       const voidedSales = userSales.filter(s => s.status === 'voided');
 
       const totalSalesRevenue = completedSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
-      const salesCount = completedSales.length;
-
       const totalDiscounts = completedSales.reduce((sum, s) => sum + Number(s.discount_amount || 0), 0);
-
-      // Value of a voided sale was its total_amount plus its discount
       const totalVoidValue = voidedSales.reduce((sum, s) => sum + Number(s.total_amount) + Number(s.discount_amount || 0), 0);
-      const voidCount = voidedSales.length;
 
-      // Find shrinkage for this user
-      const userShrinkage = shrinkage.filter(s => s.user_id === user.id);
-      const totalShrinkageValue = userShrinkage.reduce((sum, s) => sum + (Math.abs(s.quantity_change) * (s.product?.price || 0)), 0);
-      const shrinkageCount = userShrinkage.length;
+      const userShrinkage = shrinkage.filter(s => s.user_id === user.id || s.created_by === user.id);
+      const totalShrinkageValue = userShrinkage.reduce((sum, s) => sum + (Math.abs(s.quantity_changed || s.quantity_change) * (s.product?.price || 0)), 0);
 
       return {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.roles ? user.roles.name : 'Unknown',
-        salesCount,
+        salesCount: completedSales.length,
         totalSalesRevenue,
         totalDiscounts,
-        voidCount,
+        voidCount: voidedSales.length,
         totalVoidValue,
-        shrinkageCount,
+        shrinkageCount: userShrinkage.length,
         totalShrinkageValue
       };
-    });
+    }).filter(data => data.salesCount > 0 || data.voidCount > 0 || data.shrinkageCount > 0); // Only return active users
 
-    // Optionally sort by total sales revenue descending
     reconciliationData.sort((a, b) => b.totalSalesRevenue - a.totalSalesRevenue);
 
     res.json(reconciliationData);

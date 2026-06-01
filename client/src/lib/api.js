@@ -14,9 +14,12 @@ async function fetchWithAuth(endpoint, options = {}) {
     throw new Error('No authentication token found. Please sign in again.');
   }
 
+  const activeLocationId = localStorage.getItem('active_location_id');
+
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
+    ...(activeLocationId ? { 'X-Location-Id': activeLocationId } : {}),
     ...(options.headers || {}),
   };
 

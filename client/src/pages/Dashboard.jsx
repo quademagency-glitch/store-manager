@@ -24,46 +24,50 @@ export default function Dashboard() {
   return (
     <>
       {/* Dynamic Welcome Banner */}
-      <div className="dashboard-welcome-banner">
-        <div className="banner-content">
-          <h1 className="banner-title">
+      <header className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">
             Good morning, <span className="highlight-text">{user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
           </h1>
-          <p className="banner-subtitle">
+          <p className="dashboard-subtitle">
             Here's what's happening in your store today.
           </p>
         </div>
-        <div className="banner-role">
+        <div className="dashboard-role-badge">
           <span className={`role-badge role-badge-${role?.toLowerCase().replace(/\s+/g, '-')}`}>
             {role || 'Unknown'}
           </span>
         </div>
-        <div className="banner-glow-1"></div>
-        <div className="banner-glow-2"></div>
-      </div>
+      </header>
 
       <div className="dashboard-content">
         
         {/* Quick Actions Panel */}
         <div className="dashboard-quick-actions">
-          <Link to="/sales" className="action-btn">
-            <div className="action-icon action-icon-primary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M17 7H9.5C7.57 7 6 8.57 6 10.5C6 12.43 7.57 14 9.5 14H14.5C16.43 14 18 15.57 18 17.5C18 19.43 16.43 21 14.5 21H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-            </div>
-            <span>New Sale</span>
-          </Link>
-          <Link to="/products" className="action-btn">
-            <div className="action-icon action-icon-secondary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4v16m8-8H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-            </div>
-            <span>Add Product</span>
-          </Link>
-          <Link to="/inventory" className="action-btn">
-            <div className="action-icon action-icon-warning">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M12 12V20" stroke="currentColor" strokeWidth="2" /><path d="M4 8L12 12L20 8" stroke="currentColor" strokeWidth="2" /></svg>
-            </div>
-            <span>Check Stock</span>
-          </Link>
+          {hasPermission('create_sales') && (
+            <Link to="/sales" className="action-btn">
+              <div className="action-icon action-icon-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M17 7H9.5C7.57 7 6 8.57 6 10.5C6 12.43 7.57 14 9.5 14H14.5C16.43 14 18 15.57 18 17.5C18 19.43 16.43 21 14.5 21H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              </div>
+              <span>New Sale</span>
+            </Link>
+          )}
+          {hasPermission('manage_products') && (
+            <Link to="/products" className="action-btn">
+              <div className="action-icon action-icon-secondary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4v16m8-8H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <span>Add Product</span>
+            </Link>
+          )}
+          {hasPermission('manage_inventory') && (
+            <Link to="/inventory" className="action-btn">
+              <div className="action-icon action-icon-warning">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M12 12V20" stroke="currentColor" strokeWidth="2" /><path d="M4 8L12 12L20 8" stroke="currentColor" strokeWidth="2" /></svg>
+              </div>
+              <span>Check Stock</span>
+            </Link>
+          )}
           {hasPermission('view_analytics') && (
             <Link to="/reconciliation" className="action-btn">
               <div className="action-icon action-icon-info">
@@ -75,64 +79,71 @@ export default function Dashboard() {
         </div>
 
         {/* Enhanced Stats Grid */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon stat-icon-sales">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M17 7H9.5C7.57 7 6 8.57 6 10.5C6 12.43 7.57 14 9.5 14H14.5C16.43 14 18 15.57 18 17.5C18 19.43 16.43 21 14.5 21H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Today's Sales</span>
-              <div className="stat-value-row">
-                <span className="stat-value">{loading ? '...' : fmt(summary?.todaySalesTotal)}</span>
-                <span className="stat-trend trend-up">↑ 12%</span>
+        {/* Enhanced Stats Grid */}
+        <div className="stats-grid pa-stats-grid">
+          {hasPermission('view_sales') && (
+            <div className="stat-card pa-stat-card">
+              <div className="stat-icon stat-icon-sales">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M17 7H9.5C7.57 7 6 8.57 6 10.5C6 12.43 7.57 14 9.5 14H14.5C16.43 14 18 15.57 18 17.5C18 19.43 16.43 21 14.5 21H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </div>
-              <span className="stat-hint">vs yesterday</span>
+              <div className="stat-details">
+                <span className="stat-label">Today's Sales</span>
+                <div className="stat-value-row">
+                  <span className="stat-value">{loading ? '...' : fmt(summary?.todaySalesTotal)}</span>
+                  <span className="stat-trend trend-up">↑ 12%</span>
+                </div>
+                <span className="stat-hint">vs yesterday</span>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="stat-card">
-            <div className="stat-icon stat-icon-products">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-                <path d="M12 12V20" stroke="currentColor" strokeWidth="2" />
-                <path d="M4 8L12 12L20 8" stroke="currentColor" strokeWidth="2" />
-              </svg>
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Products</span>
-              <div className="stat-value-row">
-                <span className="stat-value">{loading ? '...' : summary?.totalProducts || 0}</span>
-                <span className="stat-trend trend-neutral">- 0%</span>
+          {hasPermission('manage_products') && (
+            <div className="stat-card pa-stat-card">
+              <div className="stat-icon stat-icon-products">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                  <path d="M12 12V20" stroke="currentColor" strokeWidth="2" />
+                  <path d="M4 8L12 12L20 8" stroke="currentColor" strokeWidth="2" />
+                </svg>
               </div>
-              <span className="stat-hint">Active catalog</span>
+              <div className="stat-details">
+                <span className="stat-label">Products</span>
+                <div className="stat-value-row">
+                  <span className="stat-value">{loading ? '...' : summary?.totalProducts || 0}</span>
+                  <span className="stat-trend trend-neutral">- 0%</span>
+                </div>
+                <span className="stat-hint">Active catalog</span>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="stat-card">
-            <div className="stat-icon stat-icon-stock">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M3 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M5 21H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="stat-details">
-              <span className="stat-label">Stock Alerts</span>
-              <div className="stat-value-row">
-                <span className="stat-value">{loading ? '...' : summary?.lowStockCount || 0}</span>
-                <span className={`stat-trend ${(summary?.lowStockCount > 0) ? 'trend-down' : 'trend-neutral'}`}>
-                  {(summary?.lowStockCount > 0) ? '↑ Action needed' : 'All good'}
-                </span>
+          {hasPermission('manage_inventory') && (
+            <div className="stat-card pa-stat-card">
+              <div className="stat-icon stat-icon-stock">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M5 21H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
               </div>
-              <span className="stat-hint">Items low on stock</span>
+              <div className="stat-details">
+                <span className="stat-label">Stock Alerts</span>
+                <div className="stat-value-row">
+                  <span className="stat-value">{loading ? '...' : summary?.lowStockCount || 0}</span>
+                  <span className={`stat-trend ${(summary?.lowStockCount > 0) ? 'trend-down' : 'trend-neutral'}`}>
+                    {(summary?.lowStockCount > 0) ? '↑ Action needed' : 'All good'}
+                  </span>
+                </div>
+                <span className="stat-hint">Items low on stock</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {hasPermission('view_analytics') && (
-            <div className="stat-card">
+            <div className="stat-card pa-stat-card">
               <div className="stat-icon stat-icon-alerts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 3L21 20H3L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -155,21 +166,29 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Activity Feed */}
-        <div className="dashboard-bento">
-          <div className="bento-card col-span-full">
-            <div className="bento-header">
-              <h3 className="bento-title">Recent Activity</h3>
-              <button className="btn btn-secondary btn-sm">View All</button>
-            </div>
-            <div className="activity-feed">
+        {/* Recent Activity Feed */}
+        <div className="pa-activity-section">
+          <h2 className="pa-section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Recent Activity
+          </h2>
+          <div className="content-card">
+            <div className="activity-feed" style={{ padding: 'var(--space-lg)' }}>
               {recentActivity.map(activity => (
-                <div key={activity.id} className="activity-item">
-                  <div className={`activity-indicator activity-${activity.status}`}></div>
-                  <div className="activity-content">
-                    <h4 className="activity-title">{activity.title}</h4>
-                    <span className="activity-time">{activity.time}</span>
+                <div key={activity.id} className="activity-item" style={{ paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div className={`activity-indicator activity-${activity.status}`}></div>
+                      <div className="activity-content">
+                        <h4 className="activity-title" style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>{activity.title}</h4>
+                        <span className="activity-time" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{activity.time}</span>
+                      </div>
+                    </div>
+                    <div className="activity-amount" style={{ fontWeight: '600' }}>{activity.amount}</div>
                   </div>
-                  <div className="activity-amount">{activity.amount}</div>
                 </div>
               ))}
             </div>

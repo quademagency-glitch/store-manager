@@ -133,8 +133,8 @@ export default function MainLayout() {
       items: [
         { path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard, visible: true },
         { path: '/products', label: 'Products', icon: Icons.products, visible: true },
-        { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: true },
-        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
+        { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('manage_inventory') },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
         { path: '/settings', label: 'Team Settings', icon: Icons.team, visible: hasPermission('manage_users') },
@@ -169,87 +169,87 @@ export default function MainLayout() {
 
   return (
     <div className="dashboard-page">
-      {/* ── Topbar (Mobile & Actions) ── */}
-      <header className="app-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="topbar-logo">
-          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="10" fill="var(--color-primary)" />
-            <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" />
-            <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.7" />
-          </svg>
-          <span className="brand-name">QERP</span>
+      {/* ── Sidebar ── */}
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
+              <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
+              <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
+              <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+              <defs>
+                <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
+                  <stop stopColor="#6366f1" />
+                  <stop offset="1" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span className="sidebar-brand">QERP Store</span>
         </div>
 
-        {/* Location Switcher */}
-        {availableLocations.length > 1 && (
-          <div style={{ marginLeft: 'auto', marginRight: '24px' }}>
-            <select 
-              value={activeLocationId || ''} 
-              onChange={(e) => switchLocation(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#f8fafc', outline: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              {availableLocations.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <nav className="sidebar-nav">
+          {navGroups.map((group, idx) => (
+            <div key={idx} className="sidebar-group" style={{ marginBottom: '16px' }}>
+              <span className="group-title" style={{ padding: '0 16px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.title}</span>
+              <div className="group-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                {group.items.map(item => {
+                  const isActive = item.exact 
+                    ? location.pathname === item.path 
+                    : location.pathname.startsWith(item.path);
+                    
+                  return (
+                    <button
+                      key={item.path}
+                      className={`sidebar-link ${isActive ? 'active' : ''}`}
+                      onClick={() => navigate(item.path)}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
 
-        <div className="topbar-actions">
-           <div className="user-profile">
-            <div className="avatar">
+        <div className="sidebar-footer">
+          {availableLocations.length > 1 && (
+            <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+              <select 
+                value={activeLocationId || ''} 
+                onChange={(e) => switchLocation(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                {availableLocations.map(loc => (
+                  <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          <div className="sidebar-user-info">
+            <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
               {user?.email?.charAt(0)?.toUpperCase() || '?'}
             </div>
-            <div className="user-info">
-              <span className="user-name">{user?.email?.split('@')[0] || 'User'}</span>
-              <span className="user-role">{role || 'Unknown'}</span>
+            <div className="sidebar-user-details">
+              <span className="sidebar-user-name">{user?.email?.split('@')[0] || 'User'}</span>
+              <span className="sidebar-user-role">{role || 'Unknown'}</span>
             </div>
           </div>
+          <button className="sidebar-signout" onClick={handleSignOut} id="signout-btn">
+             {Icons.signout}
+            Sign out
+          </button>
         </div>
-      </header>
+      </aside>
 
-      <div className="dashboard-page">
-        {/* ── Sidebar ── */}
-        <aside className="dashboard-sidebar">
-          <div className="sidebar-nav">
-            {navGroups.map((group, idx) => (
-              <div key={idx} className="sidebar-group" style={{ marginBottom: '16px' }}>
-                <span className="group-title" style={{ padding: '0 16px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.title}</span>
-                <nav className="group-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                  {group.items.map(item => {
-                    const isActive = item.exact 
-                      ? location.pathname === item.path 
-                      : location.pathname.startsWith(item.path);
-                      
-                    return (
-                      <button
-                        key={item.path}
-                        className={`sidebar-link ${isActive ? 'active' : ''}`}
-                        onClick={() => navigate(item.path)}
-                      >
-                        <span className="nav-icon">{item.icon}</span>
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </nav>
-              </div>
-            ))}
-          </div>
-
-          <div className="sidebar-footer">
-            <button className="sidebar-signout" onClick={handleSignOut}>
-              <span className="nav-icon">{Icons.signout}</span>
-              Sign out
-            </button>
-          </div>
-        </aside>
-
-        {/* ── Main Content Area ── */}
-        <main className="dashboard-main">
-          <Outlet />
-        </main>
-      </div>
+      {/* ── Main Content Area ── */}
+      <main className="dashboard-main">
+        <Outlet />
+      </main>
     </div>
   );
 }

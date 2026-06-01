@@ -1,13 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
+import { api } from '../lib/api';
 
 export default function Products() {
   const { hasPermission, role } = useAuthContext();
   const { products, loading, error, addProduct, updateProduct, deleteProduct } = useProducts();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [locations, setLocations] = useState([]);
+
+  useEffect(() => {
+    api.get('/api/locations').then(res => setLocations(res)).catch(() => setLocations([]));
+  }, []);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,8 +27,8 @@ export default function Products() {
     sku: '',
     category: '',
     price: '',
-    category: '',
-    price: ''
+    initialQuantity: '',
+    locationId: ''
   });
 
   // Filter products based on search term
@@ -43,7 +49,9 @@ export default function Products() {
       name: '',
       sku: '',
       category: 'General',
-      price: ''
+      price: '',
+      initialQuantity: '',
+      locationId: locations.length > 0 ? locations[0].id : ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -55,7 +63,9 @@ export default function Products() {
       name: product.name,
       sku: product.sku,
       category: product.category,
-      price: product.price
+      price: product.price,
+      initialQuantity: '',
+      locationId: ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -77,7 +87,9 @@ export default function Products() {
       name: formData.name,
       sku: formData.sku,
       category: formData.category,
-      price: parseFloat(formData.price) || 0
+      price: parseFloat(formData.price) || 0,
+      initialQuantity: formData.initialQuantity,
+      locationId: formData.locationId
     };
 
     let result;
@@ -314,6 +326,37 @@ export default function Products() {
               />
             </div>
           </div>
+
+          {!editingProduct && (
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="initialQuantity">Initial Quantity</label>
+                <input 
+                  type="number" 
+                  id="initialQuantity" 
+                  className="form-input" 
+                  value={formData.initialQuantity}
+                  onChange={(e) => setFormData({...formData, initialQuantity: e.target.value})}
+                  min="0"
+                  placeholder="e.g. 100"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="locationId">Location</label>
+                <select 
+                  id="locationId" 
+                  className="form-input" 
+                  value={formData.locationId}
+                  onChange={(e) => setFormData({...formData, locationId: e.target.value})}
+                >
+                  <option value="">Select location...</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
 
 

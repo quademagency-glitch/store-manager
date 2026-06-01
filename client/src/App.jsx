@@ -44,9 +44,15 @@ export default function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/sales" element={
+              <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>
+            } />
+            <Route path="/inventory" element={
+              <ProtectedRoute requiredPermission="manage_inventory"><Inventory /></ProtectedRoute>
+            } />
+            <Route path="/alerts" element={
+              <ProtectedRoute requiredPermission="view_analytics"><Alerts /></ProtectedRoute>
+            } />
             
             {/* Protected sub-routes handled within components or layout level */}
             <Route path="/reconciliation" element={

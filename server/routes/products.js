@@ -66,7 +66,7 @@ router.get('/:id', authGuard, async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price } = req.body;
+    const { name, sku, category, price, initialQuantity, locationId } = req.body;
 
     if (!name || !sku) {
       return res.status(400).json({ error: 'Name and SKU are required' });
@@ -91,6 +91,34 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
         return res.status(409).json({ error: 'A product with this SKU already exists.' });
       }
       throw error;
+    }
+
+    if (locationId) {
+      const qty = parseInt(initialQuantity, 10) || 0;
+      const { error: invError } = await supabaseAdmin
+        .from('product_inventory')
+        .insert({
+          product_id: data.id,
+          location_id: locationId,
+          quantity: qty,
+          low_stock_threshold: 5
+        });
+
+      if (invError) {
+        console.error('Error creating initial inventory:', invError);
+      } else if (qty > 0) {
+        await supabaseAdmin
+          .from('stock_movements')
+          .insert({
+            product_id: data.id,
+            user_id: req.user.id,
+            business_id: req.body.business_id || req.user.business_id,
+            location_id: locationId,
+            quantity_change: qty,
+            movement_type: 'RECEIPT',
+            notes: 'Initial stock on product creation'
+          });
+      }
     }
 
     res.status(201).json(data);

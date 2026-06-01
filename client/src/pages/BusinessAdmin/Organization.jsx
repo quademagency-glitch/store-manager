@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { api } from '../../lib/api';
 
 export default function Organization() {
   const { user } = useAuthContext();
@@ -32,16 +33,12 @@ export default function Organization() {
     setSaving(true);
     setMessage({ text: '', type: '' });
     try {
-      const { error } = await supabase
-        .from('businesses')
-        .update({
-          name: business.name,
-          contact_email: business.contact_email,
-          logo_url: business.logo_url
-        })
-        .eq('id', business.id);
+      await api.put(`/businesses/${business.id}`, {
+        name: business.name,
+        contact_email: business.contact_email,
+        logo_url: business.logo_url
+      });
         
-      if (error) throw error;
       setMessage({ text: 'Organization profile updated successfully!', type: 'success' });
     } catch (err) {
       setMessage({ text: err.message, type: 'error' });

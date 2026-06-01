@@ -32,6 +32,10 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
  */
 router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
+    if (req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only Platform Admins can create roles.' });
+    }
+
     const { name, description, permissions } = req.body;
 
     if (!name || !Array.isArray(permissions)) {
@@ -65,6 +69,10 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
  */
 router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
+    if (req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only Platform Admins can modify roles.' });
+    }
+
     const { name, description, permissions } = req.body;
 
     if (!name || !Array.isArray(permissions)) {
@@ -101,6 +109,10 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
  */
 router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
+    if (req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only Platform Admins can delete roles.' });
+    }
+
     // Basic check to prevent deleting 'Manager' or 'Salesperson' could be added here
     const { error, count } = await supabaseAdmin
       .from('roles')

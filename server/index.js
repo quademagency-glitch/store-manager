@@ -9,6 +9,7 @@ const stockRoutes = require('./routes/stock');
 const analyticsRoutes = require('./routes/analytics');
 const rolesRoutes = require('./routes/roles');
 const usersRoutes = require('./routes/users');
+const businessesRoutes = require('./routes/businesses');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -75,6 +76,9 @@ app.use('/api/roles', rolesRoutes);
 
 // Users routes
 app.use('/api/users', usersRoutes);
+
+// Businesses routes
+app.use('/api/businesses', businessesRoutes);
 
 // ============================================
 // Error handling

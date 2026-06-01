@@ -72,7 +72,7 @@ export default function Settings() {
           email: userForm.email, 
           password: userForm.password, 
           role_id: userForm.role_id,
-          role_name: roles.find(r => r.id === userForm.role_id)?.name || 'User',
+          role_name: roles.find(r => r.id === userForm.role_id)?.name || 'Sales Executive',
           location_ids: []
         });
       }

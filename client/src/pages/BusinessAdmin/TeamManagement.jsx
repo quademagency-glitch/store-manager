@@ -90,7 +90,7 @@ export default function TeamManagement() {
           email: userForm.email, 
           password: userForm.password, 
           role_id: userForm.role_id,
-          role_name: roles.find(r => r.id === userForm.role_id)?.name || 'Salesperson',
+          role_name: roles.find(r => r.id === userForm.role_id)?.name || 'Sales Executive',
           location_ids: userForm.location_ids
         });
       }

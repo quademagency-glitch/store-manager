@@ -7,7 +7,10 @@ const supabase = createClient(
 );
 
 (async () => {
-  const { data, error } = await supabase.from('users').select('*');
-  console.log('Users:', data);
+  const { data, error } = await supabase.from('roles').select('*');
+  console.log('Roles:', data);
   if (error) console.error(error);
+  
+  const { data: users, error: err2 } = await supabase.from('users').select('*');
+  console.log('Users:', users.length);
 })();

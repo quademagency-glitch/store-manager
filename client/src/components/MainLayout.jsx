@@ -137,6 +137,7 @@ export default function MainLayout() {
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
+        { path: '/settings', label: 'Team Settings', icon: Icons.team, visible: hasPermission('manage_users') },
       ].filter(i => i.visible)
     };
     if (coreGroup.items.length > 0) groups.push(coreGroup);
@@ -167,7 +168,7 @@ export default function MainLayout() {
   }, [hasPermission]);
 
   return (
-    <div className="app-layout">
+    <div className="dashboard-page">
       {/* ── Topbar (Mobile & Actions) ── */}
       <header className="app-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="topbar-logo">
@@ -207,14 +208,14 @@ export default function MainLayout() {
         </div>
       </header>
 
-      <div className="app-body">
+      <div className="dashboard-page">
         {/* ── Sidebar ── */}
-        <aside className="app-sidebar">
-          <div className="sidebar-scrollable">
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-nav">
             {navGroups.map((group, idx) => (
-              <div key={idx} className="sidebar-group">
-                <span className="group-title">{group.title}</span>
-                <nav className="group-nav">
+              <div key={idx} className="sidebar-group" style={{ marginBottom: '16px' }}>
+                <span className="group-title" style={{ padding: '0 16px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.title}</span>
+                <nav className="group-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
                   {group.items.map(item => {
                     const isActive = item.exact 
                       ? location.pathname === item.path 
@@ -223,7 +224,7 @@ export default function MainLayout() {
                     return (
                       <button
                         key={item.path}
-                        className={`nav-item ${isActive ? 'active' : ''}`}
+                        className={`sidebar-link ${isActive ? 'active' : ''}`}
                         onClick={() => navigate(item.path)}
                       >
                         <span className="nav-icon">{item.icon}</span>
@@ -237,7 +238,7 @@ export default function MainLayout() {
           </div>
 
           <div className="sidebar-footer">
-            <button className="signout-btn" onClick={handleSignOut}>
+            <button className="sidebar-signout" onClick={handleSignOut}>
               <span className="nav-icon">{Icons.signout}</span>
               Sign out
             </button>
@@ -245,10 +246,8 @@ export default function MainLayout() {
         </aside>
 
         {/* ── Main Content Area ── */}
-        <main className="app-main">
-          <div className="app-content-wrapper">
-            <Outlet />
-          </div>
+        <main className="dashboard-main">
+          <Outlet />
         </main>
       </div>
     </div>

@@ -38,8 +38,8 @@ export default function Settings() {
     setLoading(true);
     try {
       const [usersRes, rolesRes] = await Promise.all([
-        api.get('/api/users'),
-        api.get('/api/roles')
+        api.get('/users'),
+        api.get('/roles')
       ]);
       setUsers(usersRes);
       setRoles(rolesRes);
@@ -65,13 +65,15 @@ export default function Settings() {
     e.preventDefault();
     try {
       if (userForm.id) {
-        await api.put(`/api/users/${userForm.id}`, { name: userForm.name, role_id: userForm.role_id });
+        await api.put(`/users/${userForm.id}`, { name: userForm.name, role_id: userForm.role_id });
       } else {
-        await api.post('/api/auth/register', { 
+        await api.post('/users/create', { 
           name: userForm.name, 
           email: userForm.email, 
           password: userForm.password, 
-          role_id: userForm.role_id 
+          role_id: userForm.role_id,
+          role_name: roles.find(r => r.id === userForm.role_id)?.name || 'User',
+          location_ids: []
         });
       }
       setIsUserModalOpen(false);
@@ -84,7 +86,7 @@ export default function Settings() {
   const handleDeleteUser = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await api.delete(`/api/users/${id}`);
+        await api.delete(`/users/${id}`);
         fetchData();
       } catch (err) {
         setError(err.message || 'Failed to delete user');
@@ -106,13 +108,13 @@ export default function Settings() {
     e.preventDefault();
     try {
       if (roleForm.id) {
-        await api.put(`/api/roles/${roleForm.id}`, { 
+        await api.put(`/roles/${roleForm.id}`, { 
           name: roleForm.name, 
           description: roleForm.description, 
           permissions: roleForm.permissions 
         });
       } else {
-        await api.post('/api/roles', { 
+        await api.post('/roles', { 
           name: roleForm.name, 
           description: roleForm.description, 
           permissions: roleForm.permissions 
@@ -128,7 +130,7 @@ export default function Settings() {
   const handleDeleteRole = async (id) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
-        await api.delete(`/api/roles/${id}`);
+        await api.delete(`/roles/${id}`);
         fetchData();
       } catch (err) {
         setError(err.message || 'Failed to delete role');

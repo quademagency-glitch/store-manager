@@ -274,10 +274,13 @@ export default function PlatformAdmin() {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.from('users').update({ name: editingUser.name, role_id: editingUser.role_id, business_id: editingUser.business_id }).eq('id', editingUser.id);
-      if (error) throw error;
+      await api.put(`/users/${editingUser.id}`, {
+        name: editingUser.name,
+        role_id: editingUser.role_id,
+        business_id: editingUser.business_id
+      });
       setShowEditUserModal(false); setEditingUser(null); fetchData();
-    } catch (err) { alert(`Error updating user: ${err.message}`); }
+    } catch (err) { alert(`Error updating user: ${err.response?.data?.error || err.message}`); }
   };
 
   const handleToggleUserBan = async (u) => {
@@ -285,16 +288,23 @@ export default function PlatformAdmin() {
     const action = newStatus === 'banned' ? 'ban' : 'unban';
     if (!window.confirm(`Are you sure you want to ${action} ${u.email}? A banned user cannot access any data.`)) return;
     try {
-      const { error } = await supabase.from('users').update({ status: newStatus }).eq('id', u.id);
-      if (error) throw error;
+      await api.put(`/users/${u.id}`, {
+        name: u.name,
+        role_id: u.role_id,
+        status: newStatus
+      });
       fetchData();
-    } catch (err) { alert(`Error updating status: ${err.message}`); }
+    } catch (err) { alert(`Error updating status: ${err.response?.data?.error || err.message}`); }
   };
 
   const handleDeleteUser = async (id, email) => {
     if (!window.confirm(`CRITICAL: Are you sure you want to permanently delete user "${email}"? They will lose all access.`)) return;
-    try { await api.delete(`/users/${id}`); fetchData(); }
-    catch (err) { alert(`Error deleting user: ${err.message}`); }
+    try { 
+      await api.delete(`/users/${id}`); 
+      fetchData(); 
+    } catch (err) { 
+      alert(`Error deleting user: ${err.response?.data?.error || err.message}`); 
+    }
   };
 
   /* ============================
@@ -403,8 +413,72 @@ export default function PlatformAdmin() {
      RENDER
      ============================ */
   return (
-    <>
-      {error && (
+    <div className="dashboard-page">
+      {/* ── Sidebar ── */}
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
+              <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
+              <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
+              <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+              <defs>
+                <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
+                  <stop stopColor="#6366f1" />
+                  <stop offset="1" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span className="sidebar-brand">Platform Admin</span>
+        </div>
+
+        <nav className="sidebar-nav">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              className={`sidebar-link${(activeTab === item.id || (activeTab === 'business-detail' && item.id === 'businesses')) ? ' active' : ''}`}
+              onClick={() => {
+                if (item.id === 'businesses' && activeTab === 'business-detail') {
+                  handleBackFromDetail();
+                } else {
+                  setActiveTab(item.id);
+                  setSelectedBusiness(null);
+                }
+              }}
+              id={`nav-${item.id}`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user-info">
+            <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
+              {user?.email?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+            <div className="sidebar-user-details">
+              <span className="sidebar-user-name">{user?.email?.split('@')[0] || 'Admin'}</span>
+              <span className="sidebar-user-role">{role || 'Platform Admin'}</span>
+            </div>
+          </div>
+          <button className="sidebar-signout" onClick={handleSignOut} id="signout-btn">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 12.75L15.75 9L12 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M15.75 9H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main Content ── */}
+      <main className="dashboard-main">
+        {error && (
           <div className="alert alert-error mb-xl">
             <p>{error}</p>
           </div>
@@ -415,7 +489,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'overview' && (
           <>
-            <header className="page-header">
+            <header className="dashboard-header">
               <div>
                 <h1 className="dashboard-title">Platform Overview</h1>
                 <p className="dashboard-subtitle">
@@ -587,7 +661,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'businesses' && (
           <>
-            <header className="page-header">
+            <header className="dashboard-header">
               <div>
                 <h1 className="dashboard-title">Businesses</h1>
                 <p className="dashboard-subtitle">Manage all registered tenants on the platform.</p>
@@ -672,7 +746,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'business-detail' && selectedBusiness && (
           <>
-            <header className="page-header">
+            <header className="dashboard-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button className="btn btn-secondary" onClick={handleBackFromDetail}>
                   {Icons.back} Back
@@ -961,6 +1035,7 @@ export default function PlatformAdmin() {
             </div>
           </>
         )}
+      </main>
 
       {/* ═══════════════════════════════════
           MODALS
@@ -1155,6 +1230,6 @@ export default function PlatformAdmin() {
           </form>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -84,7 +84,7 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
  */
 router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { name, role_id, status, location_id } = req.body;
+    const { name, role_id, status, location_id, business_id } = req.body;
 
     if (!role_id) {
       return res.status(400).json({ error: 'role_id is required' });
@@ -93,12 +93,29 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     const updates = { name, role_id };
     if (status) updates.status = status;
     if (location_id !== undefined) updates.location_id = location_id || null;
+    
+    if (req.user.role === 'Platform Admin' && business_id !== undefined) {
+      updates.business_id = business_id || null;
+    }
 
     if (req.user.role !== 'Platform Admin') {
       const { data: targetUser } = await supabaseAdmin.from('users').select('business_id').eq('id', req.params.id).single();
       if (!targetUser || targetUser.business_id !== req.user.business_id) {
         return res.status(403).json({ error: 'Cannot update user from another business' });
       }
+    }
+
+    // Keep auth.users metadata in sync
+    try {
+      const userMetaUpdates = { name };
+      if (req.user.role === 'Platform Admin' && business_id !== undefined) {
+        userMetaUpdates.business_id = business_id || null;
+      }
+      await supabaseAdmin.auth.admin.updateUserById(req.params.id, {
+        user_metadata: userMetaUpdates
+      });
+    } catch (metaErr) {
+      console.warn('Could not update user metadata:', metaErr);
     }
 
     const { data, error } = await supabaseAdmin
@@ -112,6 +129,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
         status,
         created_at,
         role_id,
+        business_id,
         location_id,
         roles:role_id (id, name, permissions)
       `)
@@ -142,6 +160,19 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
       }
     }
 
+    // Check if the user has dependent records (sales or stock movements)
+    // ERP systems should not hard-delete users with historical transactions.
+    const [salesCheck, stockCheck] = await Promise.all([
+      supabaseAdmin.from('sales').select('id').eq('salesperson_id', req.params.id).limit(1),
+      supabaseAdmin.from('stock_movements').select('id').eq('user_id', req.params.id).limit(1)
+    ]);
+
+    if ((salesCheck.data && salesCheck.data.length > 0) || (stockCheck.data && stockCheck.data.length > 0)) {
+      return res.status(400).json({ 
+        error: 'Cannot delete user: They have historical sales or stock records. Please use the "Ban" action instead to revoke access while preserving financial data.' 
+      });
+    }
+
     // Supabase admin API deletes the user from auth.users, 
     // which cascades to public.users because of the foreign key ON DELETE CASCADE.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
@@ -151,7 +182,7 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error('Error deleting user:', err);
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({ error: err.message || 'Failed to delete user' });
   }
 });
 

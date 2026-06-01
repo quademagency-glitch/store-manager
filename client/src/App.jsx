@@ -31,6 +31,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/update-password" element={<UpdatePassword />} />
+          <Route path="/platform-admin" element={
+            <ProtectedRoute requiredPermission="manage_platform"><PlatformAdmin /></ProtectedRoute>
+          } />
           {/* ── UNIFIED LOGGED-IN ROUTES ── */}
           <Route
             element={
@@ -51,9 +54,6 @@ export default function App() {
             } />
             <Route path="/settings" element={
               <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>
-            } />
-            <Route path="/platform-admin" element={
-              <ProtectedRoute requiredPermission="manage_platform"><PlatformAdmin /></ProtectedRoute>
             } />
 
             {/* Business Admin Portal Routes */}

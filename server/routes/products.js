@@ -12,10 +12,16 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('products')
-      .select('*')
+      .select('*, product_inventory(location_id, quantity, low_stock_threshold)')
       .order('name');
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json(data);
@@ -32,11 +38,16 @@ router.get('/', authGuard, async (req, res) => {
  */
 router.get('/:id', authGuard, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('products')
-      .select('*')
-      .eq('id', req.params.id)
-      .single();
+      .select('*, product_inventory(location_id, quantity, low_stock_threshold)')
+      .eq('id', req.params.id);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Product not found' });
@@ -55,7 +66,7 @@ router.get('/:id', authGuard, async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price, stock_quantity, low_stock_threshold } = req.body;
+    const { name, sku, category, price } = req.body;
 
     if (!name || !sku) {
       return res.status(400).json({ error: 'Name and SKU are required' });
@@ -64,7 +75,13 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
     const { data, error } = await supabaseAdmin
       .from('products')
       .insert([
-        { name, sku, category, price, stock_quantity, low_stock_threshold }
+        { 
+          name, 
+          sku, 
+          category, 
+          price, 
+          business_id: req.body.business_id || req.user.business_id 
+        }
       ])
       .select()
       .single();
@@ -90,14 +107,18 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
  */
 router.put('/:id', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price, stock_quantity, low_stock_threshold } = req.body;
+    const { name, sku, category, price } = req.body;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('products')
-      .update({ name, sku, category, price, stock_quantity, low_stock_threshold })
-      .eq('id', req.params.id)
-      .select()
-      .single();
+      .update({ name, sku, category, price })
+      .eq('id', req.params.id);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query.select().single();
 
     if (error) {
       if (error.code === '23505') {
@@ -122,10 +143,16 @@ router.put('/:id', authGuard, permissionCheck('manage_products'), async (req, re
  */
 router.delete('/:id', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { error, count } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('products')
       .delete({ count: 'exact' })
       .eq('id', req.params.id);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { error, count } = await query;
 
     if (error) throw error;
     if (count === 0) return res.status(404).json({ error: 'Product not found' });

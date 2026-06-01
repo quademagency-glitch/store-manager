@@ -35,6 +35,7 @@ async function authGuard(req, res, next) {
         id,
         name,
         email,
+        business_id,
         role_id,
         roles:role_id (
           name,
@@ -56,6 +57,7 @@ async function authGuard(req, res, next) {
       id: userData.id,
       name: userData.name,
       email: userData.email,
+      business_id: userData.business_id,
       role: userData.roles ? userData.roles.name : 'Unknown',
       role_id: userData.role_id,
       permissions: userData.roles ? userData.roles.permissions : [],

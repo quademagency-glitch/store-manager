@@ -21,19 +21,31 @@ router.get('/summary', authGuard, async (req, res) => {
     // 1. Today's Sales Total
     // Supabase JS doesn't have a simple SUM() aggregate method via the standard syntax without RPC,
     // so we fetch today's sales and sum them in Node.
-    const { data: todaysSales, error: salesError } = await supabaseAdmin
+    let salesQuery = supabaseAdmin
       .from('sales')
       .select('total_amount')
       .gte('created_at', today.toISOString());
+    
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { data: todaysSales, error: salesError } = await salesQuery;
 
     if (salesError) throw salesError;
 
     const todaySalesTotal = todaysSales.reduce((acc, sale) => acc + Number(sale.total_amount), 0);
 
     // 2. Total Products Count & Low Stock Count
-    const { data: products, error: productsError } = await supabaseAdmin
+    let productsQuery = supabaseAdmin
       .from('products')
       .select('stock_quantity, low_stock_threshold');
+    
+    if (req.user.role !== 'Platform Admin') {
+      productsQuery = productsQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { data: products, error: productsError } = await productsQuery;
 
     if (productsError) throw productsError;
 
@@ -41,11 +53,17 @@ router.get('/summary', authGuard, async (req, res) => {
     const lowStockCount = products.filter(p => p.stock_quantity <= p.low_stock_threshold).length;
 
     // 3. Theft Alerts (Shrinkage events in last 30 days)
-    const { count: shrinkageCount, error: shrinkageError } = await supabaseAdmin
+    let shrinkageQuery = supabaseAdmin
       .from('stock_movements')
       .select('*', { count: 'exact', head: true })
       .eq('movement_type', 'SHRINKAGE')
       .gte('created_at', thirtyDaysAgo.toISOString());
+      
+    if (req.user.role !== 'Platform Admin') {
+      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { count: shrinkageCount, error: shrinkageError } = await shrinkageQuery;
 
     if (shrinkageError) throw shrinkageError;
 
@@ -68,7 +86,7 @@ router.get('/summary', authGuard, async (req, res) => {
  */
 router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('stock_movements')
       .select(`
         *,
@@ -77,6 +95,12 @@ router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (re
       `)
       .eq('movement_type', 'SHRINKAGE')
       .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -112,7 +136,7 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     endOfDay.setHours(23, 59, 59, 999);
 
     // 1. Fetch all users
-    const { data: users, error: usersError } = await supabaseAdmin
+    let usersQuery = supabaseAdmin
       .from('users')
       .select(`
         id,
@@ -121,23 +145,41 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
         role_id,
         roles:role_id (name)
       `);
+      
+    if (req.user.role !== 'Platform Admin') {
+      usersQuery = usersQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { data: users, error: usersError } = await usersQuery;
     if (usersError) throw usersError;
 
     // 2. Fetch sales for the date
-    const { data: sales, error: salesError } = await supabaseAdmin
+    let salesQuery = supabaseAdmin
       .from('sales')
       .select('id, salesperson_id, total_amount, discount_amount, status')
       .gte('created_at', startOfDay.toISOString())
       .lte('created_at', endOfDay.toISOString());
+      
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { data: sales, error: salesError } = await salesQuery;
     if (salesError) throw salesError;
 
     // 3. Fetch shrinkage for the date
-    const { data: shrinkage, error: shrinkageError } = await supabaseAdmin
+    let shrinkageQuery = supabaseAdmin
       .from('stock_movements')
       .select('id, user_id, quantity_change, product:products!product_id(price)')
       .eq('movement_type', 'SHRINKAGE')
       .gte('created_at', startOfDay.toISOString())
       .lte('created_at', endOfDay.toISOString());
+      
+    if (req.user.role !== 'Platform Admin') {
+      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
+    }
+
+    const { data: shrinkage, error: shrinkageError } = await shrinkageQuery;
     if (shrinkageError) throw shrinkageError;
 
     // 4. Group data by user

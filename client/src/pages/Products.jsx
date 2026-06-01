@@ -21,8 +21,8 @@ export default function Products() {
     sku: '',
     category: '',
     price: '',
-    stock_quantity: '',
-    low_stock_threshold: '5'
+    category: '',
+    price: ''
   });
 
   // Filter products based on search term
@@ -43,9 +43,7 @@ export default function Products() {
       name: '',
       sku: '',
       category: 'General',
-      price: '',
-      stock_quantity: '0',
-      low_stock_threshold: '5'
+      price: ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -57,9 +55,7 @@ export default function Products() {
       name: product.name,
       sku: product.sku,
       category: product.category,
-      price: product.price,
-      stock_quantity: product.stock_quantity,
-      low_stock_threshold: product.low_stock_threshold
+      price: product.price
     });
     setFormError('');
     setIsModalOpen(true);
@@ -81,9 +77,7 @@ export default function Products() {
       name: formData.name,
       sku: formData.sku,
       category: formData.category,
-      price: parseFloat(formData.price) || 0,
-      stock_quantity: parseInt(formData.stock_quantity, 10) || 0,
-      low_stock_threshold: parseInt(formData.low_stock_threshold, 10) || 5
+      price: parseFloat(formData.price) || 0
     };
 
     let result;
@@ -182,7 +176,9 @@ export default function Products() {
                   </tr>
                 ) : (
                   filteredProducts.map(product => {
-                    const isLowStock = product.stock_quantity <= product.low_stock_threshold;
+                    const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
+                    // For UI purposes, we'll mark it low stock if total is <= 5, though ideally it's per location now
+                    const isLowStock = totalStock <= 5;
                     return (
                       <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
                         <td>
@@ -206,9 +202,9 @@ export default function Products() {
                         <td>
                           <div className="stock-cell">
                             <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>
-                              {product.stock_quantity}
+                              {totalStock}
                             </span>
-                            <span className="stock-threshold text-muted text-sm">/ {product.low_stock_threshold}</span>
+                            <span className="stock-threshold text-muted text-sm">/ across locs</span>
                           </div>
                         </td>
                         {hasPermission('manage_products') && (
@@ -319,32 +315,7 @@ export default function Products() {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="stock_quantity">Current Stock</label>
-              <input 
-                type="number" 
-                id="stock_quantity" 
-                className="form-input" 
-                value={formData.stock_quantity}
-                onChange={(e) => setFormData({...formData, stock_quantity: e.target.value})}
-                min="0"
-                step="1"
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="low_stock_threshold">Low Stock Alert At</label>
-              <input 
-                type="number" 
-                id="low_stock_threshold" 
-                className="form-input" 
-                value={formData.low_stock_threshold}
-                onChange={(e) => setFormData({...formData, low_stock_threshold: e.target.value})}
-                min="0"
-                step="1"
-              />
-            </div>
-          </div>
+
 
           <div className="modal-footer">
             <button 

@@ -12,9 +12,9 @@ export default function Login() {
   const { signIn, isAuthenticated, loading } = useAuthContext();
   const navigate = useNavigate();
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to root so SmartRedirect handles role-based routing
   if (!loading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSubmit = async (e) => {

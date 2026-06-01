@@ -25,6 +25,11 @@ export default function SmartRedirect() {
     return <Navigate to="/platform-admin" replace />;
   }
 
+  // Business Admins go to their business admin dashboard
+  if (hasPermission('manage_business')) {
+    return <Navigate to="/business-admin" replace />;
+  }
+
   // Everyone else goes to the business dashboard
   return <Navigate to="/dashboard" replace />;
 }

@@ -403,72 +403,8 @@ export default function PlatformAdmin() {
      RENDER
      ============================ */
   return (
-    <div className="dashboard-page">
-      {/* ── Sidebar ── */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
-              <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
-              <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
-              <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
-              <defs>
-                <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
-                  <stop stopColor="#6366f1" />
-                  <stop offset="1" stopColor="#8b5cf6" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <span className="sidebar-brand">Platform Admin</span>
-        </div>
-
-        <nav className="sidebar-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              className={`sidebar-link${(activeTab === item.id || (activeTab === 'business-detail' && item.id === 'businesses')) ? ' active' : ''}`}
-              onClick={() => {
-                if (item.id === 'businesses' && activeTab === 'business-detail') {
-                  handleBackFromDetail();
-                } else {
-                  setActiveTab(item.id);
-                  setSelectedBusiness(null);
-                }
-              }}
-              id={`nav-${item.id}`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-user-info">
-            <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
-              {user?.email?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-            <div className="sidebar-user-details">
-              <span className="sidebar-user-name">{user?.email?.split('@')[0] || 'Admin'}</span>
-              <span className="sidebar-user-role">{role || 'Platform Admin'}</span>
-            </div>
-          </div>
-          <button className="sidebar-signout" onClick={handleSignOut} id="signout-btn">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 12.75L15.75 9L12 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M15.75 9H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Main Content ── */}
-      <main className="dashboard-main">
-        {error && (
+    <>
+      {error && (
           <div className="alert alert-error mb-xl">
             <p>{error}</p>
           </div>
@@ -479,7 +415,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'overview' && (
           <>
-            <header className="dashboard-header">
+            <header className="page-header">
               <div>
                 <h1 className="dashboard-title">Platform Overview</h1>
                 <p className="dashboard-subtitle">
@@ -651,7 +587,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'businesses' && (
           <>
-            <header className="dashboard-header">
+            <header className="page-header">
               <div>
                 <h1 className="dashboard-title">Businesses</h1>
                 <p className="dashboard-subtitle">Manage all registered tenants on the platform.</p>
@@ -736,7 +672,7 @@ export default function PlatformAdmin() {
             ═══════════════════════════════════ */}
         {activeTab === 'business-detail' && selectedBusiness && (
           <>
-            <header className="dashboard-header">
+            <header className="page-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button className="btn btn-secondary" onClick={handleBackFromDetail}>
                   {Icons.back} Back
@@ -1025,7 +961,6 @@ export default function PlatformAdmin() {
             </div>
           </>
         )}
-      </main>
 
       {/* ═══════════════════════════════════
           MODALS
@@ -1220,6 +1155,6 @@ export default function PlatformAdmin() {
           </form>
         </Modal>
       )}
-    </div>
+    </>
   );
 }

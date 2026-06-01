@@ -12,7 +12,7 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('stock_movements')
       .select(`
         *,
@@ -20,6 +20,12 @@ router.get('/', authGuard, async (req, res) => {
         user:users!user_id(id, name, email)
       `)
       .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json(data);
@@ -44,11 +50,11 @@ router.get('/', authGuard, async (req, res) => {
  */
 router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
-    const { product_id, quantity_change, movement_type, notes } = req.body;
+    const { product_id, quantity_change, movement_type, notes, location_id } = req.body;
 
     // Validate inputs
-    if (!product_id || typeof quantity_change !== 'number' || quantity_change === 0) {
-      return res.status(400).json({ error: 'Bad request', message: 'product_id and non-zero quantity_change are required' });
+    if (!product_id || typeof quantity_change !== 'number' || quantity_change === 0 || !location_id) {
+      return res.status(400).json({ error: 'Bad request', message: 'product_id, location_id, and non-zero quantity_change are required' });
     }
 
     const validTypes = ['RECEIPT', 'ADJUSTMENT', 'SHRINKAGE', 'RETURN'];
@@ -56,22 +62,25 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       return res.status(400).json({ error: 'Bad request', message: `Invalid movement_type. Must be one of: ${validTypes.join(', ')}` });
     }
 
-    // 1. Fetch current product stock
-    const { data: product, error: fetchError } = await supabaseAdmin
-      .from('products')
-      .select('id, name, stock_quantity')
-      .eq('id', product_id)
+    // 1. Fetch current product inventory for this location
+    let { data: inventoryItem, error: fetchError } = await supabaseAdmin
+      .from('product_inventory')
+      .select('id, quantity')
+      .eq('product_id', product_id)
+      .eq('location_id', location_id)
       .single();
 
-    if (fetchError || !product) {
-      return res.status(404).json({ error: 'Product not found' });
+    // If no inventory record exists yet for this location, assume 0
+    let currentStock = 0;
+    if (inventoryItem) {
+      currentStock = inventoryItem.quantity;
     }
 
-    const newStockQuantity = product.stock_quantity + quantity_change;
+    const newStockQuantity = currentStock + quantity_change;
 
     // Prevent negative stock
     if (newStockQuantity < 0) {
-       return res.status(400).json({ error: 'Bad request', message: `Adjustment would result in negative stock for ${product.name}.` });
+       return res.status(400).json({ error: 'Bad request', message: `Adjustment would result in negative stock for this location.` });
     }
 
     // 2. Insert movement record
@@ -80,6 +89,8 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       .insert({
         product_id,
         user_id: req.user.id,
+        business_id: req.user.business_id,
+        location_id,
         quantity_change,
         movement_type,
         notes
@@ -89,23 +100,26 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
 
     if (insertError) throw insertError;
 
-    // 3. Update product stock
-    const { data: updatedProduct, error: updateError } = await supabaseAdmin
-      .from('products')
-      .update({ stock_quantity: newStockQuantity })
-      .eq('id', product_id)
+    // 3. Upsert product inventory
+    const { data: updatedInventory, error: updateError } = await supabaseAdmin
+      .from('product_inventory')
+      .upsert({ 
+        product_id, 
+        location_id, 
+        quantity: newStockQuantity 
+      }, { onConflict: 'product_id,location_id' })
       .select()
       .single();
 
     if (updateError) {
-      console.error(`Failed to update product stock:`, updateError);
+      console.error(`Failed to update product inventory:`, updateError);
       return res.status(500).json({ error: 'Failed to update stock quantity on product' });
     }
 
     res.status(201).json({
       message: 'Stock adjusted successfully',
       movement,
-      product: updatedProduct
+      product: updatedInventory
     });
 
   } catch (err) {

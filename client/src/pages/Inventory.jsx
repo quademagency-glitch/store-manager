@@ -2,16 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useStock } from '../hooks/useStock';
+import { api } from '../lib/api';
 import Modal from '../components/Modal';
 
 export default function Inventory() {
-  const { hasPermission } = useAuthContext();
+  const { hasPermission, user } = useAuthContext();
   const { products, loading: productsLoading } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, setError } = useStock();
+
+  const [locations, setLocations] = useState([]);
 
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustData, setAdjustData] = useState({
     productId: '',
+    locationId: '',
     quantityChange: '',
     movementType: 'RECEIPT',
     notes: ''
@@ -20,11 +24,20 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchMovements();
+    api.get('/api/locations').then(res => setLocations(res)).catch(() => setLocations([]));
   }, [fetchMovements]);
 
   // Low stock products
   const lowStockProducts = useMemo(() => {
-    return products.filter(p => p.stock_quantity <= p.low_stock_threshold);
+    const alerts = [];
+    products.forEach(p => {
+      p.product_inventory?.forEach(inv => {
+        if (inv.quantity <= inv.low_stock_threshold) {
+          alerts.push({ ...p, loc_id: inv.location_id, quantity: inv.quantity, threshold: inv.low_stock_threshold });
+        }
+      });
+    });
+    return alerts;
   }, [products]);
 
   // Handle Adjustment Submit
@@ -45,12 +58,13 @@ export default function Inventory() {
       adjustData.productId, 
       finalQtyChange, 
       adjustData.movementType, 
+      adjustData.locationId,
       adjustData.notes
     );
 
     if (result.success) {
       setIsAdjustModalOpen(false);
-      setAdjustData({ productId: '', quantityChange: '', movementType: 'RECEIPT', notes: '' });
+      setAdjustData({ productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '' });
       // Ideally we would also refresh products to show updated stock, but page reload or full context handles it
       // Let's rely on fetchMovements being called and the next product refresh.
     }
@@ -100,9 +114,10 @@ export default function Inventory() {
             Low Stock Alerts ({lowStockProducts.length})
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-            {lowStockProducts.map(p => (
-              <div key={p.id} style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #fcd34d', fontSize: '14px' }}>
-                <strong>{p.name}</strong> • <span style={{ color: p.stock_quantity === 0 ? '#ef4444' : '#d97706' }}>{p.stock_quantity} left</span>
+            {lowStockProducts.map((p, idx) => (
+              <div key={`${p.id}-${idx}`} style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #fcd34d', fontSize: '14px' }}>
+                <strong>{p.name}</strong> • <span style={{ color: p.quantity === 0 ? '#ef4444' : '#d97706' }}>{p.quantity} left</span> 
+                {locations.length > 1 && <span style={{ color: '#94a3b8' }}> @ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown Loc'}</span>}
               </div>
             ))}
           </div>
@@ -169,7 +184,22 @@ export default function Inventory() {
             >
               <option value="">Select a product...</option>
               {products.map(p => (
-                <option key={p.id} value={p.id}>{p.name} (Current: {p.stock_quantity})</option>
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Location</label>
+            <select 
+              required
+              value={adjustData.locationId}
+              onChange={e => setAdjustData({...adjustData, locationId: e.target.value})}
+              className="form-input"
+            >
+              <option value="">Select a location...</option>
+              {locations.map(l => (
+                <option key={l.id} value={l.id}>{l.name}</option>
               ))}
             </select>
           </div>

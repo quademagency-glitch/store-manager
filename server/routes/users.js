@@ -12,17 +12,25 @@ const router = express.Router();
  */
 router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('users')
       .select(`
         id, 
         name, 
         email, 
+        status,
         created_at,
         role_id,
+        location_id,
         roles:role_id (id, name, permissions)
       `)
       .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json(data);
@@ -39,11 +47,13 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
  */
 router.post('/create', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { email, password, name, business_id, role_name } = req.body;
+    const { email, password, name, business_id, role_name, location_id } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+
+    const assigned_business_id = req.user.role === 'Platform Admin' && business_id ? business_id : req.user.business_id;
 
     // Use Supabase Admin API to create the user securely without logging out the admin
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -52,7 +62,8 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
       email_confirm: true,
       user_metadata: {
         name: name || '',
-        business_id: business_id || null,
+        business_id: assigned_business_id,
+        location_id: location_id || null,
         role: role_name || 'Salesperson'
       }
     });
@@ -73,22 +84,35 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
  */
 router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { name, role_id } = req.body;
+    const { name, role_id, status, location_id } = req.body;
 
     if (!role_id) {
       return res.status(400).json({ error: 'role_id is required' });
     }
 
+    const updates = { name, role_id };
+    if (status) updates.status = status;
+    if (location_id !== undefined) updates.location_id = location_id || null;
+
+    if (req.user.role !== 'Platform Admin') {
+      const { data: targetUser } = await supabaseAdmin.from('users').select('business_id').eq('id', req.params.id).single();
+      if (!targetUser || targetUser.business_id !== req.user.business_id) {
+        return res.status(403).json({ error: 'Cannot update user from another business' });
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('users')
-      .update({ name, role_id })
+      .update(updates)
       .eq('id', req.params.id)
       .select(`
         id, 
         name, 
         email, 
+        status,
         created_at,
         role_id,
+        location_id,
         roles:role_id (id, name, permissions)
       `)
       .single();
@@ -111,6 +135,13 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
  */
 router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
+    if (req.user.role !== 'Platform Admin') {
+      const { data: targetUser } = await supabaseAdmin.from('users').select('business_id').eq('id', req.params.id).single();
+      if (!targetUser || targetUser.business_id !== req.user.business_id) {
+        return res.status(403).json({ error: 'Cannot delete user from another business' });
+      }
+    }
+
     // Supabase admin API deletes the user from auth.users, 
     // which cascades to public.users because of the foreign key ON DELETE CASCADE.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);

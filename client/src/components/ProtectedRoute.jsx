@@ -21,6 +21,11 @@ export default function ProtectedRoute({ children, requiredPermission }) {
     return <Navigate to="/login" replace />;
   }
 
+  // Platform Admins should only access the platform admin dashboard, not business pages
+  if (hasPermission('manage_platform') && requiredPermission !== 'manage_platform') {
+    return <Navigate to="/platform-admin" replace />;
+  }
+
   if (requiredPermission && !hasPermission(requiredPermission)) {
     return (
       <div className="access-denied">

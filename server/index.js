@@ -101,8 +101,12 @@ app.use((err, req, res, next) => {
 // Start server
 // ============================================
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Store Manager API running on http://localhost:${PORT}`);
-  console.log(`   Health check: http://localhost:${PORT}/api/health`);
-  console.log(`   Auth routes:  http://localhost:${PORT}/api/auth\n`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Store Manager API running on http://localhost:${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/api/health`);
+    console.log(`   Auth routes:  http://localhost:${PORT}/api/auth\n`);
+  });
+}
+
+module.exports = app;

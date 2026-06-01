@@ -12,7 +12,7 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('sales')
       .select(`
         *,
@@ -25,6 +25,12 @@ router.get('/', authGuard, async (req, res) => {
         )
       `)
       .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     res.json(data);
@@ -41,7 +47,7 @@ router.get('/', authGuard, async (req, res) => {
  */
 router.get('/:id', authGuard, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('sales')
       .select(`
         *,
@@ -53,8 +59,13 @@ router.get('/:id', authGuard, async (req, res) => {
           product:products!product_id(id, name, sku)
         )
       `)
-      .eq('id', req.params.id)
-      .single();
+      .eq('id', req.params.id);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Sale not found' });
@@ -121,9 +132,19 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     const productIds = items.map(i => i.product_id);
 
+    // Get user location
+    const { data: userRec } = await supabaseAdmin.from('users').select('location_id, business_id').eq('id', req.user.id).single();
+    let location_id = userRec?.location_id;
+    
+    if (!location_id) {
+      // Fallback to first location in business
+      const { data: loc } = await supabaseAdmin.from('locations').select('id').eq('business_id', userRec.business_id).limit(1).single();
+      location_id = loc?.id;
+    }
+
     const { data: products, error: productError } = await supabaseAdmin
       .from('products')
-      .select('id, name, price, stock_quantity')
+      .select('id, name, price, product_inventory(location_id, quantity)')
       .in('id', productIds);
 
     if (productError) throw productError;
@@ -149,9 +170,12 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
     const stockErrors = [];
     for (const item of items) {
       const product = productMap[item.product_id];
-      if (product.stock_quantity < item.quantity) {
+      const invRecord = product.product_inventory?.find(inv => inv.location_id === location_id);
+      const stock = invRecord ? invRecord.quantity : 0;
+      
+      if (stock < item.quantity) {
         stockErrors.push(
-          `"${product.name}" — requested ${item.quantity}, only ${product.stock_quantity} in stock`
+          `"${product.name}" — requested ${item.quantity}, only ${stock} in stock at this location`
         );
       }
     }
@@ -189,6 +213,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       .from('sales')
       .insert({
         salesperson_id: req.user.id,
+        business_id: req.user.business_id,
+        location_id: location_id,
         total_amount: totalAmount,
         payment_method,
         discount_amount,
@@ -204,6 +230,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
     const itemsWithSaleId = saleItemsPayload.map(item => ({
       ...item,
       sale_id: sale.id,
+      business_id: req.user.business_id,
     }));
 
     const { data: saleItems, error: itemsError } = await supabaseAdmin
@@ -226,13 +253,15 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     for (const item of items) {
       const product = productMap[item.product_id];
-      const newQty = product.stock_quantity - item.quantity;
+      const invRecord = product.product_inventory?.find(inv => inv.location_id === location_id);
+      const newQty = (invRecord ? invRecord.quantity : 0) - item.quantity;
 
-      // Update product stock
+      // Update product inventory
       const { error: stockError } = await supabaseAdmin
-        .from('products')
-        .update({ stock_quantity: newQty })
-        .eq('id', item.product_id);
+        .from('product_inventory')
+        .update({ quantity: newQty })
+        .eq('product_id', item.product_id)
+        .eq('location_id', location_id);
 
       if (stockError) {
         console.error(`Failed to decrement stock for product ${item.product_id}:`, stockError);
@@ -244,6 +273,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
           .insert({
             product_id: item.product_id,
             user_id: req.user.id,
+            business_id: req.user.business_id,
+            location_id: location_id,
             quantity_change: -item.quantity,
             movement_type: 'SALE',
             reference_id: sale.id,
@@ -283,11 +314,16 @@ router.post('/:id/void', authGuard, permissionCheck('manage_sales'), async (req,
     const saleId = req.params.id;
 
     // 1. Fetch the sale and its items
-    const { data: sale, error: fetchError } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('sales')
-      .select('id, status, sale_items(product_id, quantity)')
-      .eq('id', saleId)
-      .single();
+      .select('id, status, location_id, sale_items(product_id, quantity)')
+      .eq('id', saleId);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data: sale, error: fetchError } = await query.single();
 
     if (fetchError || !sale) {
       return res.status(404).json({ error: 'Sale not found' });
@@ -308,21 +344,23 @@ router.post('/:id/void', authGuard, permissionCheck('manage_sales'), async (req,
     // 3. Revert stock and log movements
     for (const item of sale.sale_items) {
       // Get current stock
-      const { data: product, error: productError } = await supabaseAdmin
-        .from('products')
-        .select('stock_quantity')
-        .eq('id', item.product_id)
+      const { data: inv, error: invError } = await supabaseAdmin
+        .from('product_inventory')
+        .select('quantity')
+        .eq('product_id', item.product_id)
+        .eq('location_id', sale.location_id)
         .single();
 
-      if (productError) continue;
+      if (invError) continue;
 
-      const newQty = product.stock_quantity + item.quantity;
+      const newQty = inv.quantity + item.quantity;
 
       // Update product stock
       await supabaseAdmin
-        .from('products')
-        .update({ stock_quantity: newQty })
-        .eq('id', item.product_id);
+        .from('product_inventory')
+        .update({ quantity: newQty })
+        .eq('product_id', item.product_id)
+        .eq('location_id', sale.location_id);
 
       // Log movement (VOID)
       await supabaseAdmin
@@ -330,6 +368,8 @@ router.post('/:id/void', authGuard, permissionCheck('manage_sales'), async (req,
         .insert({
           product_id: item.product_id,
           user_id: req.user.id,
+          business_id: req.user.business_id,
+          location_id: sale.location_id,
           quantity_change: item.quantity,
           movement_type: 'VOID',
           reference_id: saleId,

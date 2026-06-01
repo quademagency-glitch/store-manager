@@ -22,7 +22,7 @@ export function useStock() {
     }
   }, []);
 
-  const adjustStock = useCallback(async (productId, quantityChange, type, notes = '') => {
+  const adjustStock = useCallback(async (productId, quantityChange, type, locationId, notes = '') => {
     setLoading(true);
     setError(null);
     try {
@@ -30,6 +30,7 @@ export function useStock() {
         product_id: productId,
         quantity_change: Number(quantityChange),
         movement_type: type,
+        location_id: locationId,
         notes
       };
 

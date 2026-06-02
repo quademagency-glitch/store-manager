@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const _envUrl = import.meta.env.VITE_API_URL;
+const API_BASE = _envUrl ? (_envUrl.endsWith('/api') ? _envUrl : `${_envUrl}/api`) : '/api';
 /**
  * Base fetch wrapper that injects the Supabase JWT token.
  * This ensures the server can authenticate the request.

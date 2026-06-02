@@ -24,21 +24,23 @@ export default function Dashboard() {
   return (
     <>
       {/* Dynamic Welcome Banner */}
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">
+      <div className="dashboard-welcome-banner">
+        <div className="banner-content">
+          <h1 className="banner-title">
             Good morning, <span className="highlight-text">{user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
           </h1>
-          <p className="dashboard-subtitle">
+          <p className="banner-subtitle">
             Here's what's happening in your store today.
           </p>
         </div>
-        <div className="dashboard-role-badge">
+        <div className="banner-role">
           <span className={`role-badge role-badge-${role?.toLowerCase().replace(/\s+/g, '-')}`}>
             {role || 'Unknown'}
           </span>
         </div>
-      </header>
+        <div className="banner-glow-1"></div>
+        <div className="banner-glow-2"></div>
+      </div>
 
       <div className="dashboard-content">
         
@@ -79,10 +81,9 @@ export default function Dashboard() {
         </div>
 
         {/* Enhanced Stats Grid */}
-        {/* Enhanced Stats Grid */}
-        <div className="stats-grid pa-stats-grid">
+        <div className="stats-grid">
           {hasPermission('view_sales') && (
-            <div className="stat-card pa-stat-card">
+            <div className="stat-card">
               <div className="stat-icon stat-icon-sales">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -101,7 +102,7 @@ export default function Dashboard() {
           )}
 
           {hasPermission('manage_products') && (
-            <div className="stat-card pa-stat-card">
+            <div className="stat-card">
               <div className="stat-icon stat-icon-products">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -121,7 +122,7 @@ export default function Dashboard() {
           )}
 
           {hasPermission('manage_inventory') && (
-            <div className="stat-card pa-stat-card">
+            <div className="stat-card">
               <div className="stat-icon stat-icon-stock">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -143,7 +144,7 @@ export default function Dashboard() {
           )}
 
           {hasPermission('view_analytics') && (
-            <div className="stat-card pa-stat-card">
+            <div className="stat-card">
               <div className="stat-icon stat-icon-alerts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 3L21 20H3L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -166,29 +167,21 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Activity Feed */}
-        {/* Recent Activity Feed */}
-        <div className="pa-activity-section">
-          <h2 className="pa-section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            Recent Activity
-          </h2>
-          <div className="content-card">
-            <div className="activity-feed" style={{ padding: 'var(--space-lg)' }}>
+        <div className="dashboard-bento">
+          <div className="bento-card col-span-full">
+            <div className="bento-header">
+              <h3 className="bento-title">Recent Activity</h3>
+              <button className="btn btn-secondary btn-sm">View All</button>
+            </div>
+            <div className="activity-feed">
               {recentActivity.map(activity => (
-                <div key={activity.id} className="activity-item" style={{ paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div className={`activity-indicator activity-${activity.status}`}></div>
-                      <div className="activity-content">
-                        <h4 className="activity-title" style={{ fontSize: '1rem', fontWeight: '500', color: 'var(--color-text-primary)' }}>{activity.title}</h4>
-                        <span className="activity-time" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{activity.time}</span>
-                      </div>
-                    </div>
-                    <div className="activity-amount" style={{ fontWeight: '600' }}>{activity.amount}</div>
+                <div key={activity.id} className="activity-item">
+                  <div className={`activity-indicator activity-${activity.status}`}></div>
+                  <div className="activity-content">
+                    <h4 className="activity-title">{activity.title}</h4>
+                    <span className="activity-time">{activity.time}</span>
                   </div>
+                  <div className="activity-amount">{activity.amount}</div>
                 </div>
               ))}
             </div>

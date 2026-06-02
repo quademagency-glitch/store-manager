@@ -832,8 +832,11 @@ export default function PlatformAdmin() {
                             <td style={{ fontWeight: 500 }}>{p.name}</td>
                             <td>${Number(p.price || 0).toFixed(2)}</td>
                             <td>
-                              <span className={`stock-count ${(p.stock_qty ?? 0) <= (p.low_stock_threshold ?? 5) ? 'text-warning' : ''}`}>
-                                {p.stock_qty ?? 0}
+                              <span className={`stock-count ${
+                                (p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0) <= 
+                                (p.product_inventory?.[0]?.low_stock_threshold || 5) ? 'text-warning' : ''
+                              }`}>
+                                {p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0}
                               </span>
                             </td>
                           </tr>

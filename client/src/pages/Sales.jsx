@@ -159,7 +159,7 @@ export default function Sales() {
                       position: 'relative'
                     }}
                     onClick={() => {
-                      if (!outOfStock && !inCart) addToCart(product);
+                      if (!outOfStock && !inCart) addToCart({ ...product, stock_quantity: localStock });
                     }}
                   >
                     {inCart && (

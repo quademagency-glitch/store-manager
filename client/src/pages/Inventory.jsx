@@ -24,7 +24,7 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchMovements();
-    api.get('/api/locations').then(res => setLocations(res)).catch(() => setLocations([]));
+    api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
   }, [fetchMovements]);
 
   // Low stock products

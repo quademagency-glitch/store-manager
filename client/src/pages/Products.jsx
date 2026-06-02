@@ -12,7 +12,7 @@ export default function Products() {
   const [locations, setLocations] = useState([]);
 
   useEffect(() => {
-    api.get('/api/locations').then(res => setLocations(res)).catch(() => setLocations([]));
+    api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
   }, []);
   
   // Modal state

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 
@@ -13,11 +12,7 @@ export default function Organization() {
   useEffect(() => {
     async function loadBusiness() {
       try {
-        const { data: userData } = await supabase.from('users').select('business_id').eq('id', user.id).single();
-        if (!userData?.business_id) return;
-        
-        const { data, error } = await supabase.from('businesses').select('*').eq('id', userData.business_id).single();
-        if (error) throw error;
+        const data = await api.get('/businesses/me');
         setBusiness(data);
       } catch (err) {
         console.error("Error loading business", err);

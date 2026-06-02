@@ -6,6 +6,33 @@ const permissionCheck = require('../middleware/permissionCheck');
 const router = express.Router();
 
 /**
+ * GET /api/businesses/me
+ * Fetch the current user's business profile
+ * Access: Authenticated users
+ */
+router.get('/me', authGuard, async (req, res) => {
+  try {
+    if (!req.user.business_id) {
+      return res.status(404).json({ error: 'No business associated with this account' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('businesses')
+      .select('*')
+      .eq('id', req.user.business_id)
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Business not found' });
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching business:', err);
+    res.status(500).json({ error: 'Failed to fetch business profile' });
+  }
+});
+
+/**
  * PUT /api/businesses/:id
  * Update business details (name, contact_email, logo_url)
  * Access: Must have manage_business permission and belong to the business (or be Platform Admin)

@@ -1,40 +1,41 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useAuthContext } from '../../lib/AuthContext';
+import { api } from '../../lib/api';
 
 export default function Overview() {
-  const { user } = useAuthContext();
   const [stats, setStats] = useState({ locations: 0, users: 0, products: 0, recentSales: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const { data: businessIdData } = await supabase.from('users').select('business_id').eq('id', user.id).single();
-        if (!businessIdData) return;
-        const businessId = businessIdData.business_id;
-
-        const [locRes, userRes, prodRes, salesRes] = await Promise.all([
-          supabase.from('locations').select('id', { count: 'exact' }).eq('business_id', businessId),
-          supabase.from('users').select('id', { count: 'exact' }).eq('business_id', businessId),
-          supabase.from('products').select('id', { count: 'exact' }).eq('business_id', businessId),
-          supabase.from('sales').select('*, sale_items(*)').eq('business_id', businessId).order('created_at', { ascending: false }).limit(5)
+        const [locRes, prodRes, salesRes] = await Promise.all([
+          api.get('/locations').catch(() => []),
+          api.get('/products').catch(() => []),
+          api.get('/sales').catch(() => [])
         ]);
 
         setStats({
-          locations: locRes.count || 0,
-          users: userRes.count || 0,
-          products: prodRes.count || 0,
-          recentSales: salesRes.data || []
+          locations: Array.isArray(locRes) ? locRes.length : 0,
+          users: 0, // Users endpoint requires manage_users permission; omit count if unavailable
+          products: Array.isArray(prodRes) ? prodRes.length : 0,
+          recentSales: Array.isArray(salesRes) ? salesRes.slice(0, 5) : []
         });
+
+        // Try to fetch users count (requires manage_users permission)
+        try {
+          const usersRes = await api.get('/users');
+          setStats(prev => ({ ...prev, users: Array.isArray(usersRes) ? usersRes.length : 0 }));
+        } catch {
+          // User may not have manage_users permission — that's okay
+        }
       } catch (err) {
         console.error("Error fetching overview stats", err);
       } finally {
         setLoading(false);
       }
     }
-    if (user?.id) fetchStats();
-  }, [user?.id]);
+    fetchStats();
+  }, []);
 
   if (loading) return <div className="p-xl text-center">Loading overview...</div>;
 

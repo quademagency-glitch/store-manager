@@ -123,6 +123,18 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       return res.status(500).json({ error: 'Failed to update stock quantity on product' });
     }
 
+    // Trigger SHRINKAGE alert
+    if (movement_type === 'SHRINKAGE' && quantity_change < 0) {
+      await supabaseAdmin.from('alerts').insert([{
+        business_id: req.user.business_id,
+        location_id,
+        type: 'SHRINKAGE',
+        user_id: req.user.id,
+        reference_id: movement.id,
+        note: `Shrinkage of ${Math.abs(quantity_change)} units. Notes: ${notes || 'none'}`
+      }]);
+    }
+
     res.status(201).json({
       message: 'Stock adjusted successfully',
       movement,

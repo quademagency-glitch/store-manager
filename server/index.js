@@ -11,6 +11,7 @@ const rolesRoutes = require('./routes/roles');
 const usersRoutes = require('./routes/users');
 const businessesRoutes = require('./routes/businesses');
 const locationsRoutes = require('./routes/locations');
+const alertsRoutes = require('./routes/alerts');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -83,6 +84,9 @@ app.use('/api/businesses', businessesRoutes);
 
 // Locations routes
 app.use('/api/locations', locationsRoutes);
+
+// Alerts routes
+app.use('/api/alerts', alertsRoutes);
 
 // ============================================
 // Error handling

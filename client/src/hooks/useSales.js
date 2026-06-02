@@ -101,6 +101,22 @@ export function useSales() {
     }
   }, []);
 
+  const voidSale = useCallback(async (saleId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.put(`/sales/${saleId}/void`);
+      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'voided' } : s));
+      return { success: true };
+    } catch (err) {
+      const message = err.message || 'Failed to void sale';
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     // Cart
     cart,
@@ -114,6 +130,7 @@ export function useSales() {
     // Sales data
     sales,
     fetchSales,
+    voidSale,
 
     // API
     createSale,

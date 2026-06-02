@@ -3,6 +3,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useSales } from '../hooks/useSales';
 import Modal from '../components/Modal';
+import SalesHistory from '../components/SalesHistory';
 
 export default function Sales() {
   const { user } = useAuthContext();
@@ -26,6 +27,7 @@ export default function Sales() {
   const [receiptData, setReceiptData] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [saleSuccess, setSaleSuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState('pos');
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
@@ -86,15 +88,30 @@ export default function Sales() {
 
   return (
     <>
-      <header className="page-header">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="dashboard-title">Point of Sale</h1>
           <p className="dashboard-subtitle">Process transactions and manage cart.</p>
         </div>
+        <div className="filter-group" style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className={`btn ${activeTab === 'pos' ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setActiveTab('pos')}
+          >
+            New Sale
+          </button>
+          <button 
+            className={`btn ${activeTab === 'history' ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setActiveTab('history')}
+          >
+            Sales History
+          </button>
+        </div>
       </header>
 
-      <div className="pos-container">
-        {/* ─── Left Panel: Product Catalog ─── */}
+      {activeTab === 'pos' ? (
+        <div className="pos-container">
+          {/* ─── Left Panel: Product Catalog ─── */}
         <div className="pos-products-area">
           <div className="toolbar" style={{ borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Catalog ({filteredProducts.length})</h2>
@@ -343,6 +360,9 @@ export default function Sales() {
           )}
         </div>
       </div>
+      ) : (
+        <SalesHistory />
+      )}
 
       {/* ─── Receipt Modal ─── */}
       <Modal

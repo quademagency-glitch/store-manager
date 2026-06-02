@@ -232,6 +232,17 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       }]);
     }
 
+    if (Number(discount) > 0) {
+      await supabaseAdmin.from('alerts').insert([{
+        business_id: req.user.business_id,
+        location_id: location_id,
+        type: 'DISCOUNT',
+        user_id: req.user.id,
+        reference_id: saleData.id,
+        note: `Discount of ${discount} applied to sale #${saleData.id}`
+      }]);
+    }
+
     return res.status(201).json({
       message: 'Sale recorded successfully',
       sale: saleData,
@@ -242,6 +253,84 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       error: 'Internal server error',
       message: 'An unexpected error occurred while processing the sale.',
     });
+  }
+});
+
+/**
+ * PUT /api/sales/:id/void
+ * Void a sale and return stock to inventory.
+ */
+router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, res) => {
+  try {
+    const saleId = req.params.id;
+
+    // Fetch sale and its items
+    const { data: sale, error: fetchError } = await supabaseAdmin
+      .from('sales')
+      .select('id, status, location_id, business_id, sale_items(product_id, quantity)')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (sale.status === 'voided') return res.status(400).json({ error: 'Sale already voided' });
+
+    // Enforce business isolation
+    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Update status
+    const { error: updateError } = await supabaseAdmin
+      .from('sales')
+      .update({ status: 'voided' })
+      .eq('id', saleId);
+    
+    if (updateError) throw updateError;
+
+    // Restore inventory and create stock movements
+    for (const item of sale.sale_items) {
+      // Get current inventory
+      const { data: inv } = await supabaseAdmin
+        .from('product_inventory')
+        .select('quantity')
+        .eq('product_id', item.product_id)
+        .eq('location_id', sale.location_id)
+        .single();
+      
+      if (inv) {
+        await supabaseAdmin
+          .from('product_inventory')
+          .update({ quantity: inv.quantity + item.quantity })
+          .eq('product_id', item.product_id)
+          .eq('location_id', sale.location_id);
+      }
+
+      await supabaseAdmin.from('stock_movements').insert([{
+        business_id: sale.business_id,
+        location_id: sale.location_id,
+        product_id: item.product_id,
+        quantity_change: item.quantity,
+        movement_type: 'ADJUSTMENT',
+        user_id: req.user.id,
+        reference_id: sale.id,
+        notes: `Voided Sale #${sale.id}`
+      }]);
+    }
+
+    // Trigger VOID alert
+    await supabaseAdmin.from('alerts').insert([{
+      business_id: sale.business_id,
+      location_id: sale.location_id,
+      type: 'VOID',
+      user_id: req.user.id,
+      reference_id: sale.id,
+      note: `Sale #${sale.id} was voided`
+    }]);
+
+    res.json({ message: 'Sale voided successfully' });
+  } catch (err) {
+    console.error('Error voiding sale:', err);
+    res.status(500).json({ error: 'Failed to void sale' });
   }
 });
 

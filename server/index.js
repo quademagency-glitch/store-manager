@@ -24,14 +24,24 @@ const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
   'http://localhost:5173', 
   'http://localhost:3000',
+  'https://store-manager-app-one.vercel.app',
+  'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
 ];
 
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }
 
+// Also allow any Vercel preview deployment URLs for this project
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (e.g. server-to-server, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow all Vercel preview deployments for this project
+    if (origin.match(/https:\/\/store-manager-.*\.vercel\.app$/)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 

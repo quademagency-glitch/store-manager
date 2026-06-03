@@ -8,6 +8,7 @@ export function useAuth() {
   const [permissions, setPermissions] = useState([]);
   const [locationIds, setLocationIds] = useState([]);
   const [activeLocationId, setActiveLocationId] = useState(localStorage.getItem('active_location_id') || null);
+  const [businessId, setBusinessId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch the user's role from the users table
@@ -17,6 +18,7 @@ export function useAuth() {
         .from('users')
         .select(`
           role_id,
+          business_id,
           roles:role_id (name, permissions),
           user_locations (location_id)
         `)
@@ -28,6 +30,7 @@ export function useAuth() {
         setRole(null);
         setPermissions([]);
         setLocationIds([]);
+        setBusinessId(null);
         return null;
       }
 
@@ -38,6 +41,7 @@ export function useAuth() {
       setRole(roleName);
       setPermissions(userPermissions);
       setLocationIds(userLocations);
+      setBusinessId(data.business_id || null);
 
       // Initialize active location if none set or if invalid
       const currentActive = localStorage.getItem('active_location_id');
@@ -59,6 +63,7 @@ export function useAuth() {
       setRole(null);
       setPermissions([]);
       setLocationIds([]);
+      setBusinessId(null);
       return null;
     }
   }, []);
@@ -74,6 +79,7 @@ export function useAuth() {
           setRole(null);
           setPermissions([]);
           setLocationIds([]);
+          setBusinessId(null);
           setActiveLocationId(null);
           localStorage.removeItem('active_location_id');
           setLoading(false);
@@ -145,6 +151,7 @@ export function useAuth() {
       setRole(null);
       setPermissions([]);
       setLocationIds([]);
+      setBusinessId(null);
       setActiveLocationId(null);
       localStorage.removeItem('active_location_id');
     } catch (err) {
@@ -166,12 +173,13 @@ export function useAuth() {
   }, []);
 
   return {
-    user,
+    user: user ? { ...user, business_id: businessId } : null,
     session,
     role,
     permissions,
     locationIds,
     activeLocationId,
+    businessId,
     loading,
     signIn,
     signOut,

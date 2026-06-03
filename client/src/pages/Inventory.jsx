@@ -22,6 +22,16 @@ export default function Inventory() {
   });
   const [adjusting, setAdjusting] = useState(false);
 
+  // Threshold state
+  const [isThresholdModalOpen, setIsThresholdModalOpen] = useState(false);
+  const [thresholdData, setThresholdData] = useState({
+    productId: '',
+    locationId: '',
+    threshold: ''
+  });
+  const [thresholding, setThresholding] = useState(false);
+  const [thresholdError, setThresholdError] = useState('');
+
   useEffect(() => {
     fetchMovements();
     api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
@@ -71,6 +81,25 @@ export default function Inventory() {
     setAdjusting(false);
   };
 
+  const handleThresholdSubmit = async (e) => {
+    e.preventDefault();
+    setThresholdError('');
+    setThresholding(true);
+    try {
+      await api.put(`/stock/${thresholdData.productId}/locations/${thresholdData.locationId}/threshold`, {
+        threshold: parseInt(thresholdData.threshold, 10)
+      });
+      setIsThresholdModalOpen(false);
+      setThresholdData({ productId: '', locationId: '', threshold: '' });
+      alert('Threshold updated successfully! Refreshing page to apply changes.');
+      window.location.reload(); // Quickest way to refresh product data
+    } catch (err) {
+      setThresholdError(err.message || 'Failed to update threshold');
+    } finally {
+      setThresholding(false);
+    }
+  };
+
   const formatDate = (iso) => {
     const d = new Date(iso);
     return d.toLocaleString('en-US', {
@@ -96,9 +125,14 @@ export default function Inventory() {
           <p>Track stock movements and alerts.</p>
         </div>
         {hasPermission('manage_inventory') && (
-          <button className="btn btn-primary" onClick={() => setIsAdjustModalOpen(true)}>
-            + Adjust Stock
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(true)}>
+              Manage Thresholds
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsAdjustModalOpen(true)}>
+              + Adjust Stock
+            </button>
+          </div>
         )}
       </div>
 
@@ -249,6 +283,80 @@ export default function Inventory() {
             </button>
             <button type="submit" className="btn btn-primary" disabled={adjusting || !adjustData.productId || !adjustData.quantityChange}>
               {adjusting ? 'Saving...' : 'Save Adjustment'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Threshold Modal */}
+      <Modal isOpen={isThresholdModalOpen} onClose={() => !thresholding && setIsThresholdModalOpen(false)} title="Manage Low Stock Threshold">
+        <form onSubmit={handleThresholdSubmit} className="modal-form">
+          {thresholdError && <div className="alert alert-error"><p>{thresholdError}</p></div>}
+          
+          <div className="form-group">
+            <label>Product</label>
+            <select 
+              required
+              value={thresholdData.productId}
+              onChange={e => setThresholdData({...thresholdData, productId: e.target.value})}
+              className="form-input"
+            >
+              <option value="">Select a product...</option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Location</label>
+            <select 
+              required
+              value={thresholdData.locationId}
+              onChange={e => {
+                const locId = e.target.value;
+                // Pre-fill existing threshold if available
+                const selectedProd = products.find(p => p.id === thresholdData.productId);
+                const existingInv = selectedProd?.product_inventory?.find(inv => inv.location_id === locId);
+                setThresholdData({
+                  ...thresholdData, 
+                  locationId: locId,
+                  threshold: existingInv?.low_stock_threshold !== undefined ? existingInv.low_stock_threshold : ''
+                });
+              }}
+              className="form-input"
+              disabled={!thresholdData.productId}
+            >
+              <option value="">Select a location...</option>
+              {locations.map(l => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Low Stock Alert Threshold</label>
+            <input 
+              type="number" 
+              required
+              min="0"
+              value={thresholdData.threshold}
+              onChange={e => setThresholdData({...thresholdData, threshold: e.target.value})}
+              className="form-input"
+              placeholder="e.g. 5"
+              disabled={!thresholdData.locationId}
+            />
+            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+              The system will trigger an alert when stock at this location falls to or below this number.
+            </small>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(false)} disabled={thresholding}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={thresholding || !thresholdData.productId || !thresholdData.locationId || thresholdData.threshold === ''}>
+              {thresholding ? 'Saving...' : 'Save Threshold'}
             </button>
           </div>
         </form>

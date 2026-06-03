@@ -140,7 +140,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     const { data: inventoryData, error: inventoryError } = await supabaseAdmin
       .from('product_inventory')
-      .select('product_id, quantity')
+      .select('product_id, quantity, low_stock_threshold')
       .eq('location_id', location_id)
       .in('product_id', productIds);
 
@@ -151,12 +151,12 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     const inventoryMap = {};
     for (const inv of inventoryData || []) {
-      inventoryMap[inv.product_id] = inv.quantity;
+      inventoryMap[inv.product_id] = { quantity: inv.quantity, threshold: inv.low_stock_threshold || 5 };
     }
 
     const insufficientStock = [];
     for (const item of items) {
-      const stockAvailable = inventoryMap[item.product_id] || 0;
+      const stockAvailable = inventoryMap[item.product_id]?.quantity || 0;
       if (item.quantity > stockAvailable) {
         insufficientStock.push(item.product_id);
       }
@@ -206,7 +206,9 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
     }
 
     for (const item of items) {
-      const newQuantity = (inventoryMap[item.product_id] || 0) - item.quantity;
+      const oldQuantity = inventoryMap[item.product_id]?.quantity || 0;
+      const threshold = inventoryMap[item.product_id]?.threshold || 5;
+      const newQuantity = oldQuantity - item.quantity;
       
       const { error: updateError } = await supabaseAdmin
         .from('product_inventory')
@@ -228,6 +230,18 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
         reference_id: saleData.id,
         notes: `Sale #${saleData.id}`
       }]);
+
+      // Check for LOW_STOCK alert (only trigger if it newly crossed the threshold)
+      if (newQuantity <= threshold && oldQuantity > threshold) {
+        await supabaseAdmin.from('alerts').insert([{
+          business_id: req.user.business_id,
+          location_id: location_id,
+          type: 'LOW_STOCK',
+          user_id: req.user.id,
+          reference_id: item.product_id,
+          note: `Stock fell to ${newQuantity} (Threshold: ${threshold}) due to sale #${saleData.id}`
+        }]);
+      }
     }
 
     if (Number(discount) > 0) {

@@ -74,14 +74,16 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
     // 1. Fetch current product inventory for this location
     let { data: inventoryItem, error: fetchError } = await supabaseAdmin
       .from('product_inventory')
-      .select('id, quantity')
+      .select('id, quantity, low_stock_threshold')
       .eq('product_id', product_id)
       .eq('location_id', location_id)
       .single();
 
     let currentStock = 0;
+    let threshold = 5;
     if (inventoryItem) {
       currentStock = inventoryItem.quantity;
+      threshold = inventoryItem.low_stock_threshold || 5;
     }
 
     const newStockQuantity = currentStock + quantity_change;
@@ -135,6 +137,18 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       }]);
     }
 
+    // Trigger LOW_STOCK alert if newly crossed threshold
+    if (newStockQuantity <= threshold && currentStock > threshold) {
+      await supabaseAdmin.from('alerts').insert([{
+        business_id: req.user.business_id,
+        location_id,
+        type: 'LOW_STOCK',
+        user_id: req.user.id,
+        reference_id: product_id,
+        note: `Stock fell to ${newStockQuantity} (Threshold: ${threshold}) due to ${movement_type}`
+      }]);
+    }
+
     res.status(201).json({
       message: 'Stock adjusted successfully',
       movement,
@@ -144,6 +158,47 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
   } catch (err) {
     console.error('Error adjusting stock:', err);
     res.status(500).json({ error: 'Failed to adjust stock' });
+  }
+});
+
+/**
+ * PUT /api/stock/:product_id/locations/:location_id/threshold
+ * Update the low stock threshold for a product at a specific location.
+ * Access: Managers only
+ */
+router.put('/:product_id/locations/:location_id/threshold', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+  try {
+    const { product_id, location_id } = req.params;
+    const { threshold } = req.body;
+
+    if (typeof threshold !== 'number' || threshold < 0) {
+      return res.status(400).json({ error: 'Bad request', message: 'Threshold must be a positive number.' });
+    }
+
+    // Verify location ownership
+    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
+      if (!req.user.location_ids.includes(location_id)) {
+        return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to manage stock at this location.' });
+      }
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('product_inventory')
+      .update({ low_stock_threshold: threshold })
+      .eq('product_id', product_id)
+      .eq('location_id', location_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return res.status(404).json({ error: 'Not found', message: 'Inventory record not found for this product and location.' });
+    }
+
+    res.json({ message: 'Threshold updated successfully', data });
+  } catch (err) {
+    console.error('Error updating threshold:', err);
+    res.status(500).json({ error: 'Failed to update threshold' });
   }
 });
 

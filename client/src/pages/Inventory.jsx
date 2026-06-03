@@ -6,9 +6,9 @@ import { api } from '../lib/api';
 import Modal from '../components/Modal';
 
 export default function Inventory() {
-  const { hasPermission, user } = useAuthContext();
-  const { products, loading: productsLoading } = useProducts();
-  const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, setError } = useStock();
+  const { hasPermission } = useAuthContext();
+  const { products } = useProducts();
+  const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError } = useStock();
 
   const [locations, setLocations] = useState([]);
 
@@ -125,41 +125,41 @@ export default function Inventory() {
       )}
 
       {/* Movement Ledger */}
-      <div className="table-container" style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      <div className="glass-panel" style={{ marginTop: '1rem' }}>
+        <table className="glass-table">
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '16px' }}>Date</th>
-              <th style={{ padding: '16px' }}>Product</th>
-              <th style={{ padding: '16px' }}>Type</th>
-              <th style={{ padding: '16px' }}>Change</th>
-              <th style={{ padding: '16px' }}>User</th>
-              <th style={{ padding: '16px' }}>Notes</th>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Type</th>
+              <th>Change</th>
+              <th>User</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
             {stockLoading ? (
-              <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center' }}>Loading movements...</td></tr>
+              <tr><td colSpan="6" className="text-center py-xl text-muted">Loading movements...</td></tr>
             ) : movements.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No stock movements found.</td></tr>
+              <tr><td colSpan="6" className="text-center py-xl text-muted">No stock movements found.</td></tr>
             ) : (
               movements.map(m => (
-                <tr key={m.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '16px', color: '#64748b' }}>{formatDate(m.created_at)}</td>
-                  <td style={{ padding: '16px', fontWeight: '500' }}>
+                <tr key={m.id}>
+                  <td className="text-muted">{formatDate(m.created_at)}</td>
+                  <td className="font-medium">
                     {m.product?.name || 'Unknown'} <br/>
-                    <small style={{ color: '#94a3b8', fontWeight: 'normal' }}>{m.product?.sku}</small>
+                    <small className="text-muted font-normal">{m.product?.sku}</small>
                   </td>
-                  <td style={{ padding: '16px' }}>
+                  <td>
                     <span className={`role-badge ${getTypeBadgeClass(m.movement_type)}`} style={{ fontSize: '12px', padding: '4px 8px' }}>
                       {m.movement_type}
                     </span>
                   </td>
-                  <td style={{ padding: '16px', fontWeight: 'bold', color: m.quantity_change > 0 ? '#10b981' : '#ef4444' }}>
+                  <td className="font-bold" style={{ color: m.quantity_change > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
                     {m.quantity_change > 0 ? '+' : ''}{m.quantity_change}
                   </td>
-                  <td style={{ padding: '16px' }}>{m.user?.email?.split('@')[0] || 'Unknown'}</td>
-                  <td style={{ padding: '16px', color: '#64748b', fontSize: '14px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <td>{m.user?.email?.split('@')[0] || 'Unknown'}</td>
+                  <td className="text-muted" style={{ fontSize: '14px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.notes || '-'}
                   </td>
                 </tr>

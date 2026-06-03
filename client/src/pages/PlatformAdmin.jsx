@@ -175,7 +175,6 @@ export default function PlatformAdmin() {
 
   // ── Business subscription detail ──
   const [businessSubscription, setBusinessSubscription] = useState(null);
-  const [businessInvoices, setBusinessInvoices] = useState([]);
 
   // All available permissions in the system
   const ALL_PERMISSIONS = [
@@ -226,8 +225,19 @@ export default function PlatformAdmin() {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      await Promise.resolve();
+      if (active) {
+        fetchData();
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [fetchData]);
 
   /* ============================
      BUSINESS DRILL-DOWN
@@ -550,16 +560,14 @@ export default function PlatformAdmin() {
      ============================ */
   const fetchBusinessSubscription = async (businessId) => {
     try {
-      const [sub, invs] = await Promise.all([
+      const [sub] = await Promise.all([
         api.get(`/subscriptions/business/${businessId}`),
         api.get(`/billing/invoices/${businessId}`),
       ]);
       setBusinessSubscription(sub);
-      setBusinessInvoices(invs || []);
     } catch (err) {
       console.warn('Could not fetch subscription:', err.message);
       setBusinessSubscription(null);
-      setBusinessInvoices([]);
     }
   };
 

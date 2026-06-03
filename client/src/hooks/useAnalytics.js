@@ -8,6 +8,24 @@ export function useAnalytics() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [recentActivity, setRecentActivity] = useState([]);
+  
+  const fetchRecentActivity = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.get('/analytics/recent-activity');
+      setRecentActivity(data);
+      return data;
+    } catch (err) {
+      const message = err.message || 'Failed to fetch recent activity';
+      setError(message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -61,10 +79,12 @@ export function useAnalytics() {
     summary,
     shrinkageEvents,
     reconciliationData,
+    recentActivity,
     loading,
     error,
     fetchSummary,
     fetchShrinkageEvents,
-    fetchReconciliation
+    fetchReconciliation,
+    fetchRecentActivity
   };
 }

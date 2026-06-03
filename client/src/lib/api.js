@@ -31,7 +31,7 @@ async function fetchWithAuth(endpoint, options = {}) {
       headers,
     });
   } catch (networkErr) {
-    throw new Error(`Network Error: Could not reach the server. Is the backend running? (Details: ${networkErr.message})`);
+    throw new Error(`Network Error: Could not reach the server. Is the backend running? (Details: ${networkErr.message})`, { cause: networkErr });
   }
 
   // Handle standard HTTP errors
@@ -40,7 +40,7 @@ async function fetchWithAuth(endpoint, options = {}) {
     try {
       const errorData = await response.json();
       errorMessage = errorData.message || errorData.error || errorMessage;
-    } catch (e) {
+    } catch {
       // Not JSON
     }
     throw new Error(errorMessage);

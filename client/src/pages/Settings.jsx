@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
@@ -30,11 +30,7 @@ export default function Settings() {
   const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '' });
   const [roleForm, setRoleForm] = useState({ id: null, name: '', description: '', permissions: [] });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [usersRes, rolesRes] = await Promise.all([
@@ -49,7 +45,11 @@ export default function Settings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // --- Users Handlers ---
   const openUserModal = (user = null) => {

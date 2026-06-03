@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
@@ -12,11 +12,7 @@ export default function Locations() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', address: '', tax_rate: 0, receipt_header: '' });
 
-  useEffect(() => {
-    fetchLocations();
-  }, [user?.id]);
-
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.get('/locations');
@@ -27,7 +23,11 @@ export default function Locations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations, user?.id]);
 
   const openModal = (loc = null) => {
     if (loc) {

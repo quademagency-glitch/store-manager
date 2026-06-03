@@ -112,8 +112,8 @@ export default function Sales() {
       {activeTab === 'pos' ? (
         <div className="pos-container">
           {/* ─── Left Panel: Product Catalog ─── */}
-        <div className="pos-products-area">
-          <div className="toolbar" style={{ borderRadius: 'var(--radius-md)', marginBottom: '1rem' }}>
+        <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem' }}>
+          <div className="toolbar" style={{ borderRadius: 'var(--radius-md)', marginBottom: '1rem', background: 'var(--color-bg-tertiary)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Catalog ({filteredProducts.length})</h2>
             <div className="search-bar">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="search-icon">
@@ -169,7 +169,7 @@ export default function Sales() {
                 return (
                   <div
                     key={product.id}
-                    className="product-card"
+                    className="pos-glass-card"
                     style={{ 
                       opacity: outOfStock ? 0.6 : 1,
                       borderColor: inCart ? 'var(--color-primary)' : 'var(--color-border)',
@@ -233,8 +233,8 @@ export default function Sales() {
         </div>
 
         {/* ─── Right Panel: Cart & Checkout ─── */}
-        <div className="pos-cart-area">
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(24, 24, 27, 0.4)' }}>
+        <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(26, 26, 46, 0.6)' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--color-primary)' }}>
                 <circle cx="9" cy="20" r="1.5" stroke="currentColor" strokeWidth="2" />
@@ -262,7 +262,7 @@ export default function Sales() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {cart.map(item => (
-                  <div key={item.product_id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                  <div key={item.product_id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span style={{ fontWeight: 600 }}>{item.name}</span>
                       <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(item.price * item.quantity)}</span>
@@ -291,7 +291,7 @@ export default function Sales() {
           </div>
 
           {cart.length > 0 && (
-            <div style={{ padding: '1.5rem', background: 'rgba(24, 24, 27, 0.4)', borderTop: '1px solid var(--color-border)' }}>
+            <div style={{ padding: '1.5rem', background: 'rgba(26, 26, 46, 0.6)', borderTop: '1px solid var(--color-border)' }}>
               {saleError && (
                 <div className="alert-error mb-xl">
                   {saleError}
@@ -318,7 +318,7 @@ export default function Sales() {
                       onClick={() => setPaymentMethod(method.value)}
                       style={{
                         padding: '0.75rem 0',
-                        background: paymentMethod === method.value ? 'rgba(99, 102, 241, 0.1)' : 'var(--color-bg-base)',
+                        background: paymentMethod === method.value ? 'rgba(99, 102, 241, 0.1)' : 'var(--color-bg-secondary)',
                         border: `1px solid ${paymentMethod === method.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
                         borderRadius: 'var(--radius-md)',
                         color: paymentMethod === method.value ? 'var(--color-primary)' : 'var(--color-text-primary)',
@@ -335,8 +335,8 @@ export default function Sales() {
               </div>
 
               <button
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 600 }}
+                className="btn pos-checkout-btn"
+                style={{ width: '100%', padding: '1.2rem', fontSize: '1.2rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}
                 onClick={handleCompleteSale}
                 disabled={saleLoading || cart.length === 0}
               >
@@ -371,7 +371,7 @@ export default function Sales() {
         title="Transaction Receipt"
       >
         {receiptData && (
-          <div className="modal-body" style={{ textAlign: 'center' }}>
+          <div className="pos-receipt-modal" style={{ textAlign: 'center', margin: '-2rem' }}>
             <div style={{ 
               width: '64px', height: '64px', borderRadius: '50%', 
               background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
@@ -388,7 +388,7 @@ export default function Sales() {
               {formatTime(receiptData.created_at)}
             </p>
 
-            <div style={{ background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', textAlign: 'left', marginBottom: '2rem' }}>
+            <div style={{ background: 'transparent', border: 'none', padding: '0.5rem', textAlign: 'left', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px dashed var(--color-border)' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Receipt #</span>
                 <span style={{ fontFamily: 'monospace' }}>{receiptData.id?.slice(0, 8)?.toUpperCase()}</span>
@@ -423,8 +423,8 @@ export default function Sales() {
               </div>
             </div>
 
-            <div className="modal-actions" style={{ justifyContent: 'center' }}>
-              <button className="btn btn-primary" style={{ minWidth: '200px' }} onClick={closeReceipt}>
+            <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '3rem' }}>
+              <button className="btn btn-primary" style={{ minWidth: '200px', borderRadius: 'var(--radius-full)' }} onClick={closeReceipt}>
                 Done
               </button>
             </div>

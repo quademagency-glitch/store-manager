@@ -40,8 +40,8 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="content-card">
-      <table className="data-table">
+    <div className="glass-panel" style={{ marginTop: '1rem' }}>
+      <table className="glass-table">
         <thead>
           <tr>
             <th>Date</th>
@@ -56,8 +56,8 @@ export default function SalesHistory() {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan="7" className="table-loading">
-                <div className="spinner"></div>
+              <td colSpan="7" className="text-center py-xl text-muted">
+                <div className="spinner mx-auto mb-sm"></div>
                 <p>Loading sales history...</p>
               </td>
             </tr>

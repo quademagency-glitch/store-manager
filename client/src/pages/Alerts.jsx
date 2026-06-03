@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 
@@ -9,7 +9,7 @@ export default function Alerts() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('pending'); // 'pending', 'resolved', 'all'
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -25,11 +25,11 @@ export default function Alerts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
 
   useEffect(() => {
     fetchAlerts();
-  }, [filter]);
+  }, [fetchAlerts]);
 
   const handleResolve = async (id) => {
     try {
@@ -101,8 +101,8 @@ export default function Alerts() {
         </div>
       )}
 
-      <div className="content-card">
-        <table className="data-table">
+      <div className="glass-panel" style={{ marginTop: '1rem' }}>
+        <table className="glass-table">
           <thead>
             <tr>
               <th>Date</th>
@@ -116,8 +116,8 @@ export default function Alerts() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={canResolve && filter !== 'resolved' ? "6" : "5"} className="table-loading">
-                  <div className="spinner"></div>
+                <td colSpan={canResolve && filter !== 'resolved' ? "6" : "5"} className="text-center py-xl text-muted">
+                  <div className="spinner mx-auto mb-sm"></div>
                   <p>Loading alerts...</p>
                 </td>
               </tr>

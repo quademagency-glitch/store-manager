@@ -223,4 +223,80 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
   }
 });
 
+/**
+ * GET /api/analytics/recent-activity
+ * Fetch the 10 most recent stock movements and sales
+ */
+router.get('/recent-activity', authGuard, async (req, res) => {
+  try {
+    // 1. Fetch recent sales
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id, created_at, total_amount, status')
+      .order('created_at', { ascending: false })
+      .limit(10);
+      
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+    salesQuery = applyLocationFilter(salesQuery, req);
+
+    const { data: sales, error: salesError } = await salesQuery;
+    if (salesError) throw salesError;
+
+    // 2. Fetch recent stock movements (shrinkage, low stock, etc)
+    let stockQuery = supabaseAdmin
+      .from('stock_movements')
+      .select(`
+        id, created_at, movement_type, quantity_change,
+        product:products!product_id(name)
+      `)
+      .in('movement_type', ['SHRINKAGE', 'RETURN'])
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (req.user.role !== 'Platform Admin') {
+      stockQuery = stockQuery.eq('business_id', req.user.business_id);
+    }
+    stockQuery = applyLocationFilter(stockQuery, req);
+
+    const { data: movements, error: movementsError } = await stockQuery;
+    if (movementsError) throw movementsError;
+
+    // 3. Format and combine
+    const formattedSales = sales.map(s => ({
+      id: s.id,
+      type: 'sale',
+      title: s.status === 'voided' ? 'Sale Voided' : 'New Sale Completed',
+      time: s.created_at,
+      amount: `$${Number(s.total_amount).toFixed(2)}`,
+      status: s.status === 'voided' ? 'error' : 'success',
+      timestamp: new Date(s.created_at).getTime()
+    }));
+
+    const formattedMovements = movements.map(m => ({
+      id: m.id,
+      type: 'stock',
+      title: m.movement_type === 'SHRINKAGE' ? `Shrinkage: ${m.product?.name}` : `Return: ${m.product?.name}`,
+      time: m.created_at,
+      amount: `${Math.abs(m.quantity_change)} items`,
+      status: m.movement_type === 'SHRINKAGE' ? 'error' : 'warning',
+      timestamp: new Date(m.created_at).getTime()
+    }));
+
+    // Merge, sort, and slice to top 10
+    const combined = [...formattedSales, ...formattedMovements]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 10);
+
+    // Format 'time' to relative string for UI (e.g. '10 mins ago') - simplified for now, UI can format if needed, but we'll return ISO and let UI format it or we can format it here.
+    // Actually, UI `time` string is used directly. We'll leave `time` as ISO string and let the frontend format it or just return ISO.
+    
+    res.json(combined);
+  } catch (err) {
+    console.error('Error fetching recent activity:', err);
+    res.status(500).json({ error: 'Failed to fetch recent activity' });
+  }
+});
+
 module.exports = router;

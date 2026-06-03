@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 
 export default function Login() {
@@ -10,7 +10,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { signIn, isAuthenticated, loading } = useAuthContext();
-  const navigate = useNavigate();
 
   // If already authenticated, redirect to root so SmartRedirect handles role-based routing
   if (!loading && isAuthenticated) {
@@ -105,9 +104,9 @@ export default function Login() {
             <div className="login-field">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label htmlFor="password" className="login-label">Password</label>
-                <a href="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--color-accent-primary)', textDecoration: 'none' }}>
+                <Link to="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--color-accent-primary)', textDecoration: 'none' }}>
                   Forgot Password?
-                </a>
+                </Link>
               </div>
               <div className="login-input-wrapper">
                 <svg className="login-input-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">

@@ -1,25 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { user, role, signOut, hasPermission } = useAuthContext();
-  const { summary, loading, fetchSummary } = useAnalytics();
+  const { user, role, hasPermission } = useAuthContext();
+  const { summary, recentActivity, loading, fetchSummary, fetchRecentActivity } = useAnalytics();
   
-  // Mock recent activity data
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, type: 'sale', title: 'New Sale Completed', time: '10 mins ago', amount: '$129.99', status: 'success' },
-    { id: 2, type: 'stock', title: 'Low Stock Alert: iPhone 15 Pro', time: '1 hour ago', amount: '2 left', status: 'warning' },
-    { id: 3, type: 'sale', title: 'New Sale Completed', time: '3 hours ago', amount: '$45.00', status: 'success' },
-    { id: 4, type: 'alert', title: 'Suspicious Void Detected', time: 'Yesterday', amount: '-$20.00', status: 'error' },
-  ]);
-
   useEffect(() => {
     fetchSummary();
-  }, [fetchSummary]);
+    fetchRecentActivity();
+  }, [fetchSummary, fetchRecentActivity]);
 
   const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
+
+  const timeAgo = (dateString) => {
+    const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + ' years ago';
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + ' months ago';
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + ' days ago';
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + ' hours ago';
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + ' mins ago';
+    return Math.floor(seconds) + ' seconds ago';
+  };
 
   return (
     <>
@@ -174,16 +182,22 @@ export default function Dashboard() {
               <button className="btn btn-secondary btn-sm">View All</button>
             </div>
             <div className="activity-feed">
-              {recentActivity.map(activity => (
-                <div key={activity.id} className="activity-item">
-                  <div className={`activity-indicator activity-${activity.status}`}></div>
-                  <div className="activity-content">
-                    <h4 className="activity-title">{activity.title}</h4>
-                    <span className="activity-time">{activity.time}</span>
+              {recentActivity && recentActivity.length > 0 ? (
+                recentActivity.map(activity => (
+                  <div key={activity.id} className="activity-item">
+                    <div className={`activity-indicator activity-${activity.status}`}></div>
+                    <div className="activity-content">
+                      <h4 className="activity-title">{activity.title}</h4>
+                      <span className="activity-time">{timeAgo(activity.time)}</span>
+                    </div>
+                    <div className="activity-amount">{activity.amount}</div>
                   </div>
-                  <div className="activity-amount">{activity.amount}</div>
+                ))
+              ) : (
+                <div className="activity-item" style={{ justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                  No recent activity found.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

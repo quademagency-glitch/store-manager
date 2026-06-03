@@ -43,14 +43,23 @@ export default function ForgotPassword() {
 
           <form onSubmit={handleResetPassword} className="login-form">
             {error && (
-              <div className="alert alert-error mb-md">
-                {error}
+              <div className="login-error" id="login-error">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M8 4.5V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="8" cy="11" r="0.75" fill="currentColor" />
+                </svg>
+                <span>{error}</span>
               </div>
             )}
             
             {message && (
-              <div className="alert alert-success mb-md" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '1rem', borderRadius: '8px' }}>
-                {message}
+              <div className="login-error" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#4ade80', animation: 'none' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span>{message}</span>
               </div>
             )}
 

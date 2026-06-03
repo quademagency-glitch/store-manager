@@ -3,6 +3,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendInvoiceEmail } = require('../services/emailService');
+const { initializeTransaction, verifyWebhookSignature } = require('../services/paystack');
 
 const router = express.Router();
 
@@ -146,6 +147,174 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), as
   } catch (err) {
     console.error('Error deleting gateway:', err);
     res.status(500).json({ error: err.message || 'Failed to delete gateway' });
+  }
+});
+
+/* ============================================================
+   PAYSTACK INTEGRATION
+   ============================================================ */
+
+/**
+ * POST /api/billing/paystack/initialize
+ * Initialize a Paystack transaction to subscribe to a plan
+ */
+router.post('/paystack/initialize', authGuard, async (req, res) => {
+  try {
+    const { plan_id, email, billing_cycle } = req.body;
+    const business_id = req.user.business_id;
+
+    if (!plan_id || !email) {
+      return res.status(400).json({ error: 'plan_id and email are required' });
+    }
+
+    // Get the plan details
+    const { data: plan, error: planError } = await supabaseAdmin
+      .from('platform_plans')
+      .select('*')
+      .eq('id', plan_id)
+      .single();
+
+    if (planError || !plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    // Get Paystack Gateway Config
+    const { data: gateway, error: gwError } = await supabaseAdmin
+      .from('payment_gateways')
+      .select('*')
+      .eq('provider', 'paystack')
+      .eq('is_active', true)
+      .single();
+
+    if (gwError || !gateway || !gateway.secret_key) {
+      return res.status(400).json({ error: 'Paystack gateway is not configured or inactive' });
+    }
+
+    const amount = billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+
+    // Build payload for Paystack
+    const callback_url = process.env.FRONTEND_URL 
+      ? `${process.env.FRONTEND_URL}/billing?success=true` 
+      : 'http://localhost:5173/billing?success=true';
+
+    const paystackParams = {
+      email,
+      amount, // The service multiplies by 100
+      callback_url,
+      metadata: {
+        business_id,
+        plan_id,
+        billing_cycle: billing_cycle || 'monthly'
+      }
+    };
+
+    const result = await initializeTransaction(paystackParams, gateway.secret_key);
+
+    res.json({
+      authorization_url: result.data.authorization_url,
+      reference: result.data.reference
+    });
+
+  } catch (err) {
+    console.error('Paystack Initialize Error:', err);
+    res.status(500).json({ error: err.message || 'Failed to initialize payment' });
+  }
+});
+
+/**
+ * POST /api/billing/paystack/webhook
+ * Handle Paystack Webhooks
+ */
+router.post('/paystack/webhook', express.json({type: 'application/json'}), async (req, res) => {
+  try {
+    const signature = req.headers['x-paystack-signature'];
+    const payload = JSON.stringify(req.body);
+
+    // Fetch the active paystack gateway config
+    const { data: gateway } = await supabaseAdmin
+      .from('payment_gateways')
+      .select('*')
+      .eq('provider', 'paystack')
+      .eq('is_active', true)
+      .single();
+
+    if (!gateway || !gateway.secret_key) {
+      return res.status(400).send('Paystack gateway not configured');
+    }
+
+    const isValid = verifyWebhookSignature(payload, signature, gateway.secret_key);
+    
+    if (!isValid && process.env.NODE_ENV === 'production') {
+       return res.status(401).send('Invalid signature');
+    }
+
+    const event = req.body;
+
+    if (event.event === 'charge.success') {
+      const data = event.data;
+      const metadata = data.metadata || {};
+      const business_id = metadata.business_id;
+      const plan_id = metadata.plan_id;
+      const billing_cycle = metadata.billing_cycle || 'monthly';
+
+      if (business_id && plan_id) {
+        // Calculate new period
+        const now = new Date();
+        const periodEnd = new Date(now);
+        periodEnd.setDate(periodEnd.getDate() + (billing_cycle === 'yearly' ? 365 : 30));
+
+        // Upsert Subscription
+        const subData = {
+          business_id,
+          plan_id,
+          gateway_id: gateway.id,
+          status: 'active',
+          billing_cycle,
+          current_period_start: now.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          paystack_customer_code: data.customer.customer_code,
+          amount: data.amount / 100,
+          currency: data.currency,
+          updated_at: now.toISOString(),
+        };
+
+        const { data: existingSub } = await supabaseAdmin
+          .from('business_subscriptions')
+          .select('id')
+          .eq('business_id', business_id)
+          .single();
+
+        let subId;
+        if (existingSub) {
+          await supabaseAdmin.from('business_subscriptions').update(subData).eq('id', existingSub.id);
+          subId = existingSub.id;
+        } else {
+          const { data: newSub } = await supabaseAdmin.from('business_subscriptions').insert([subData]).select('id').single();
+          subId = newSub?.id;
+        }
+
+        // Create Invoice Record
+        await supabaseAdmin.from('billing_invoices').insert([{
+          business_id,
+          subscription_id: subId,
+          amount: data.amount / 100,
+          currency: data.currency,
+          status: 'paid',
+          payment_method: data.channel || 'paystack',
+          paystack_reference: data.reference,
+          description: `Subscription payment (${billing_cycle})`,
+          paid_at: now.toISOString()
+        }]);
+
+        // Reactivate business
+        await supabaseAdmin.from('businesses').update({ status: 'active', subscription_plan_id: plan_id }).eq('id', business_id);
+      }
+    }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Webhook Error:', err);
+    res.status(500).send('Webhook handler failed');
   }
 });
 

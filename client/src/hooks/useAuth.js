@@ -134,6 +134,7 @@ export function useAuth() {
       setLoading(false);
       return { data };
     } catch (err) {
+      console.error('Sign in error:', err);
       setLoading(false);
       return { error: { message: 'An unexpected error occurred. Please try again.' } };
     }

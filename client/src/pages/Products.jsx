@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import { api } from '../lib/api';
 
 export default function Products() {
-  const { hasPermission, role } = useAuthContext();
+  const { hasPermission } = useAuthContext();
   const { products, loading, error, addProduct, updateProduct, deleteProduct } = useProducts();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,7 +132,7 @@ export default function Products() {
         )}
       </header>
 
-      <div className="content-card">
+      <div className="glass-panel" style={{ marginTop: '1rem' }}>
         {/* Toolbar */}
         <div className="toolbar">
           <div className="search-bar">
@@ -168,7 +168,7 @@ export default function Products() {
               <p>Loading inventory...</p>
             </div>
           ) : (
-            <table className="data-table">
+            <table className="glass-table">
               <thead>
                 <tr>
                   <th>Product Details</th>

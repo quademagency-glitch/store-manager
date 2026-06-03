@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
@@ -18,11 +18,7 @@ export default function TeamManagement() {
   // Forms
   const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '', location_ids: [] });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [usersRes, rolesRes, locationsRes] = await Promise.all([
@@ -39,7 +35,11 @@ export default function TeamManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const openUserModal = (user = null) => {
     if (user) {

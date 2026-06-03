@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { useAuthContext } from '../../lib/AuthContext';
 import Modal from '../../components/Modal';
@@ -18,11 +18,7 @@ export default function Billing() {
     return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);
   };
 
-  useEffect(() => {
-    fetchBillingData();
-  }, []);
-
-  const fetchBillingData = async () => {
+  const fetchBillingData = useCallback(async () => {
     setLoading(true);
     try {
       const [plansRes, subRes, invRes] = await Promise.all([
@@ -38,7 +34,11 @@ export default function Billing() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.business_id]);
+
+  useEffect(() => {
+    fetchBillingData();
+  }, [fetchBillingData]);
 
   const handleSelectPlan = (plan) => {
     setSelectedPlan(plan);
@@ -74,7 +74,7 @@ export default function Billing() {
       // Payment completed — refresh data
       setTimeout(() => fetchBillingData(), 2000);
     }
-  }, []);
+  }, [fetchBillingData]);
 
   if (loading) {
     return <div className="p-xl text-center"><div className="spinner" style={{ margin: '2rem auto' }}></div>Loading billing...</div>;

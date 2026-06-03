@@ -114,7 +114,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       });
     }
 
-    const validPaymentMethods = ['cash', 'card', 'mobile_money', 'bank_transfer'];
+    const validPaymentMethods = ['cash', 'card', 'mobile'];
     if (!validPaymentMethods.includes(payment_method)) {
       return res.status(400).json({
         error: 'Bad request',
@@ -177,10 +177,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
           business_id: req.user.business_id,
           location_id: location_id,
           salesperson_id: req.user.id,
-          total_amount,
-          subtotal,
-          tax,
-          discount,
+          total_amount: total_amount || 0,
+          discount_amount: discount || 0,
           payment_method,
         },
       ])

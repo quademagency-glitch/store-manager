@@ -189,7 +189,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     if (saleError || !saleData) {
       console.error('Sale insertion error:', saleError);
-      return res.status(500).json({ error: 'Internal server error', message: 'Failed to record sale.' });
+      return res.status(500).json({ error: 'Internal server error', message: `Failed to record sale. ${saleError?.message || 'Unknown error'}` });
     }
 
     const saleItemsToInsert = items.map(item => ({
@@ -251,7 +251,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
     console.error('POST /sales error:', err);
     return res.status(500).json({
       error: 'Internal server error',
-      message: 'An unexpected error occurred while processing the sale.',
+      message: `An unexpected error occurred while processing the sale. ${err.message || ''}`,
     });
   }
 });

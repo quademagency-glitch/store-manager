@@ -1726,7 +1726,7 @@ export default function PlatformAdmin() {
           MODAL: CREATE/EDIT PLAN
           ═══════════════════════════════════ */}
       {showPlanModal && (
-        <Modal title={editingPlan ? 'Edit Plan' : 'Create Plan'} onClose={() => setShowPlanModal(false)}>
+        <Modal isOpen={true} title={editingPlan ? 'Edit Plan' : 'Create Plan'} onClose={() => setShowPlanModal(false)}>
           <form onSubmit={handleSavePlan}>
             <div className="form-row" style={{ marginBottom: '1rem' }}>
               <div className="form-group">
@@ -1801,7 +1801,7 @@ export default function PlatformAdmin() {
           MODAL: CREATE/EDIT GATEWAY
           ═══════════════════════════════════ */}
       {showGatewayModal && (
-        <Modal title={editingGateway ? 'Edit Gateway' : 'Add Payment Gateway'} onClose={() => setShowGatewayModal(false)}>
+        <Modal isOpen={true} title={editingGateway ? 'Edit Gateway' : 'Add Payment Gateway'} onClose={() => setShowGatewayModal(false)}>
           <form onSubmit={handleSaveGateway}>
             <div className="form-row" style={{ marginBottom: '1rem' }}>
               <div className="form-group">
@@ -1851,7 +1851,7 @@ export default function PlatformAdmin() {
           MODAL: ASSIGN PLAN TO BUSINESS
           ═══════════════════════════════════ */}
       {showAssignPlanModal && (
-        <Modal title="Assign Plan to Business" onClose={() => setShowAssignPlanModal(false)}>
+        <Modal isOpen={true} title="Assign Plan to Business" onClose={() => setShowAssignPlanModal(false)}>
           <form onSubmit={handleAssignPlan}>
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label">Business</label>
@@ -1886,7 +1886,7 @@ export default function PlatformAdmin() {
           MODAL: SEND INVOICE
           ═══════════════════════════════════ */}
       {showSendInvoiceModal && (
-        <Modal title="Send Invoice Email" onClose={() => setShowSendInvoiceModal(false)}>
+        <Modal isOpen={true} title="Send Invoice Email" onClose={() => setShowSendInvoiceModal(false)}>
           <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
             This will send the invoice email to the business admin and platform admin email addresses.
           </p>
@@ -1901,7 +1901,7 @@ export default function PlatformAdmin() {
           MODAL: RECORD MANUAL PAYMENT
           ═══════════════════════════════════ */}
       {showRecordPaymentModal && (
-        <Modal title="Record Manual Payment" onClose={() => setShowRecordPaymentModal(false)}>
+        <Modal isOpen={true} title="Record Manual Payment" onClose={() => setShowRecordPaymentModal(false)}>
           <form onSubmit={handleRecordPayment}>
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label">Business</label>

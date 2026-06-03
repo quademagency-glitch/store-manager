@@ -391,14 +391,14 @@ export default function Sales() {
             <div style={{ background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', textAlign: 'left', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px dashed var(--color-border)' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Receipt #</span>
-                <span style={{ fontFamily: 'monospace' }}>{receiptData.id?.slice(0, 8).toUpperCase()}</span>
+                <span style={{ fontFamily: 'monospace' }}>{receiptData.id?.slice(0, 8)?.toUpperCase()}</span>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Method</span>
                 <span className="badge badge-neutral">
                   {paymentMethods.find(m => m.value === receiptData.payment_method)?.icon}{' '}
-                  {receiptData.payment_method.toUpperCase()}
+                  {receiptData.payment_method?.toUpperCase()}
                 </span>
               </div>
 

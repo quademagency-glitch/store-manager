@@ -79,9 +79,25 @@ export function useSales() {
         discount: 0,
       };
 
-      const sale = await api.post('/sales', payload);
+      const response = await api.post('/sales', payload);
+      const saleData = response.sale || response;
+
+      // Build complete receipt from cart data + sale metadata
+      // (the backend only returns the sales row, not joined sale_items)
+      const receiptData = {
+        ...saleData,
+        payment_method: saleData.payment_method || paymentMethod,
+        total_amount: saleData.total_amount || cartTotal,
+        sale_items: cart.map(item => ({
+          id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          product: { name: item.name, sku: item.sku },
+        })),
+      };
+
       setCart([]);
-      return { success: true, data: sale };
+      return { success: true, data: receiptData };
     } catch (err) {
       const message = err.message || 'Failed to complete sale';
       setError(message);
@@ -89,7 +105,7 @@ export function useSales() {
     } finally {
       setLoading(false);
     }
-  }, [cart]);
+  }, [cart, cartTotal]);
 
   const fetchSales = useCallback(async () => {
     setLoading(true);

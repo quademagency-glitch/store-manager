@@ -65,6 +65,23 @@ const Icons = {
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
     </svg>
   ),
+  pricing: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  billing: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M2 10h20" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M6 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  send: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
 };
 
 /* ============================================================
@@ -118,13 +135,47 @@ export default function PlatformAdmin() {
   const [showEditRoleModal, setShowEditRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
 
-  // ── Uptime simulation (mock — can be replaced with a real monitoring endpoint) ──
   const [uptimeStats] = useState({
     uptime: 99.97,
     lastDowntime: '2 days ago',
     avgResponseTime: '142ms',
     requestsToday: 1247,
   });
+
+  // ── Pricing & Plans ──
+  const [plans, setPlans] = useState([]);
+  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [planForm, setPlanForm] = useState({
+    name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS',
+    max_users: -1, max_locations: 1, max_products: -1, trial_days: 7, sort_order: 0,
+    features: { analytics: false, multi_location: false, priority_support: false, api_access: false },
+  });
+
+  // ── Billing & Gateways ──
+  const [gateways, setGateways] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [billingStats, setBillingStats] = useState({ total_revenue: 0, monthly_revenue: 0, mrr: 0, outstanding: 0, failed_payments: 0, active_subscriptions: 0 });
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [editingGateway, setEditingGateway] = useState(null);
+  const [gatewayForm, setGatewayForm] = useState({
+    provider: 'paystack', display_name: 'Paystack', public_key: '', secret_key: '',
+    webhook_secret: '', is_active: true, is_default: true, supported_currencies: ['GHS'],
+  });
+  const [showSendInvoiceModal, setShowSendInvoiceModal] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
+  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ business_id: '', amount: '', currency: 'GHS', payment_method: 'bank_transfer', description: '' });
+
+  // ── Assign Plan Modal ──
+  const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
+  const [assignForm, setAssignForm] = useState({ business_id: '', plan_id: '', billing_cycle: 'monthly' });
+
+  // ── Business subscription detail ──
+  const [businessSubscription, setBusinessSubscription] = useState(null);
+  const [businessInvoices, setBusinessInvoices] = useState([]);
 
   // All available permissions in the system
   const ALL_PERMISSIONS = [
@@ -150,6 +201,24 @@ export default function PlatformAdmin() {
       setBusinesses(bRes.data || []);
       setUsers(uRes.data || []);
       setRoles(rRes.data || []);
+
+      // Fetch pricing/billing data (non-blocking)
+      try {
+        const [plansRes, gwRes, invRes, statsRes, subsRes] = await Promise.all([
+          api.get('/subscriptions/plans/all'),
+          api.get('/billing/gateways'),
+          api.get('/billing/invoices?limit=100'),
+          api.get('/billing/stats'),
+          api.get('/subscriptions'),
+        ]);
+        setPlans(plansRes || []);
+        setGateways(gwRes || []);
+        setInvoices(invRes || []);
+        setBillingStats(statsRes || {});
+        setSubscriptions(subsRes || []);
+      } catch (billingErr) {
+        console.warn('Billing data not available yet (run migration 015):', billingErr.message);
+      }
     } catch (err) {
       console.error('Error fetching platform data:', err);
       setError(err.message);
@@ -178,6 +247,8 @@ export default function PlatformAdmin() {
         sales: sRes.data || [],
         inventory: smRes.data || [],
       });
+      // Also fetch subscription info
+      fetchBusinessSubscription(business.id);
     } catch (err) {
       console.error('Error fetching business details:', err);
     } finally {
@@ -361,6 +432,143 @@ export default function PlatformAdmin() {
   };
 
   /* ============================
+     PLAN CRUD
+     ============================ */
+  const FEATURE_LABELS = { analytics: 'Analytics Dashboard', multi_location: 'Multi-Location', priority_support: 'Priority Support', api_access: 'API Access' };
+
+  const openPlanModal = (plan = null) => {
+    if (plan) {
+      setEditingPlan(plan);
+      setPlanForm({
+        name: plan.name, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly,
+        currency: plan.currency || 'GHS', max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products,
+        trial_days: plan.trial_days ?? 7, sort_order: plan.sort_order ?? 0, features: plan.features || {},
+      });
+    } else {
+      setEditingPlan(null);
+      setPlanForm({ name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS', max_users: -1, max_locations: 1, max_products: -1, trial_days: 7, sort_order: 0, features: { analytics: false, multi_location: false, priority_support: false, api_access: false } });
+    }
+    setShowPlanModal(true);
+  };
+
+  const handleSavePlan = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingPlan) {
+        await api.put(`/subscriptions/plans/${editingPlan.id}`, planForm);
+      } else {
+        await api.post('/subscriptions/plans', planForm);
+      }
+      setShowPlanModal(false); setEditingPlan(null); fetchData();
+    } catch (err) { alert(`Error saving plan: ${err.message}`); }
+  };
+
+  const handleDeletePlan = async (id, name) => {
+    if (!window.confirm(`Deactivate plan "${name}"? Existing subscribers will keep their current plan.`)) return;
+    try { await api.delete(`/subscriptions/plans/${id}`); fetchData(); }
+    catch (err) { alert(`Error: ${err.message}`); }
+  };
+
+  /* ============================
+     GATEWAY CRUD
+     ============================ */
+  const openGatewayModal = (gw = null) => {
+    if (gw) {
+      setEditingGateway(gw);
+      setGatewayForm({ provider: gw.provider, display_name: gw.display_name, public_key: gw.public_key || '', secret_key: gw.secret_key || '', webhook_secret: gw.webhook_secret || '', is_active: gw.is_active, is_default: gw.is_default, supported_currencies: gw.supported_currencies || ['GHS'] });
+    } else {
+      setEditingGateway(null);
+      setGatewayForm({ provider: 'paystack', display_name: 'Paystack', public_key: '', secret_key: '', webhook_secret: '', is_active: true, is_default: true, supported_currencies: ['GHS'] });
+    }
+    setShowGatewayModal(true);
+  };
+
+  const handleSaveGateway = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingGateway) {
+        await api.put(`/billing/gateways/${editingGateway.id}`, gatewayForm);
+      } else {
+        await api.post('/billing/gateways', gatewayForm);
+      }
+      setShowGatewayModal(false); setEditingGateway(null); fetchData();
+    } catch (err) { alert(`Error saving gateway: ${err.message}`); }
+  };
+
+  const handleDeleteGateway = async (id) => {
+    if (!window.confirm('Remove this payment gateway configuration?')) return;
+    try { await api.delete(`/billing/gateways/${id}`); fetchData(); }
+    catch (err) { alert(`Error: ${err.message}`); }
+  };
+
+  /* ============================
+     ASSIGN PLAN TO BUSINESS
+     ============================ */
+  const handleAssignPlan = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/subscriptions/assign', assignForm);
+      alert('Plan assigned successfully!');
+      setShowAssignPlanModal(false);
+      setAssignForm({ business_id: '', plan_id: '', billing_cycle: 'monthly' });
+      fetchData();
+      // Refresh business detail if viewing one
+      if (selectedBusiness && selectedBusiness.id === assignForm.business_id) {
+        fetchBusinessSubscription(selectedBusiness.id);
+      }
+    } catch (err) { alert(`Error assigning plan: ${err.message}`); }
+  };
+
+  /* ============================
+     SEND INVOICE EMAIL
+     ============================ */
+  const handleSendInvoice = async () => {
+    if (!selectedInvoiceId) return;
+    try {
+      const result = await api.post('/billing/invoices/send', { invoice_id: selectedInvoiceId });
+      alert(result.simulated ? 'Invoice email simulated (configure Resend API key for real emails)' : `Invoice sent to: ${result.recipients?.join(', ')}`);
+      setShowSendInvoiceModal(false); setSelectedInvoiceId(null); fetchData();
+    } catch (err) { alert(`Error sending invoice: ${err.message}`); }
+  };
+
+  /* ============================
+     RECORD MANUAL PAYMENT
+     ============================ */
+  const handleRecordPayment = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/billing/record-payment', { ...paymentForm, amount: Number(paymentForm.amount) });
+      alert('Payment recorded successfully!');
+      setShowRecordPaymentModal(false);
+      setPaymentForm({ business_id: '', amount: '', currency: 'GHS', payment_method: 'bank_transfer', description: '' });
+      fetchData();
+    } catch (err) { alert(`Error recording payment: ${err.message}`); }
+  };
+
+  /* ============================
+     BUSINESS SUBSCRIPTION DETAIL
+     ============================ */
+  const fetchBusinessSubscription = async (businessId) => {
+    try {
+      const [sub, invs] = await Promise.all([
+        api.get(`/subscriptions/business/${businessId}`),
+        api.get(`/billing/invoices/${businessId}`),
+      ]);
+      setBusinessSubscription(sub);
+      setBusinessInvoices(invs || []);
+    } catch (err) {
+      console.warn('Could not fetch subscription:', err.message);
+      setBusinessSubscription(null);
+      setBusinessInvoices([]);
+    }
+  };
+
+  const formatCurrency = (amount, currency = 'GHS') => {
+    return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);
+  };
+
+
+  /* ============================
      COMPUTED / MEMOS
      ============================ */
   const filteredBusinesses = useMemo(() => {
@@ -398,6 +606,8 @@ export default function PlatformAdmin() {
     { id: 'businesses', label: 'Businesses', icon: Icons.business },
     { id: 'users', label: 'Users', icon: Icons.users },
     { id: 'roles', label: 'Roles', icon: Icons.roles },
+    { id: 'pricing', label: 'Pricing', icon: Icons.pricing },
+    { id: 'billing', label: 'Billing', icon: Icons.billing },
   ];
 
   /* ============================
@@ -780,6 +990,56 @@ export default function PlatformAdmin() {
               </div>
             ) : (
               <div className="pa-detail-sections">
+                {/* Subscription Info */}
+                {businessSubscription && (
+                  <div className="pa-sub-card">
+                    <div className="pa-sub-header">
+                      <span className="pa-sub-plan-name">{businessSubscription.platform_plans?.name || 'No Plan'} Plan</span>
+                      <span className={`pa-sub-status ${businessSubscription.status}`}>{businessSubscription.status}</span>
+                    </div>
+                    <div className="pa-sub-details">
+                      <div className="pa-sub-detail">
+                        <span className="pa-sub-detail-label">Billing Cycle</span>
+                        <span className="pa-sub-detail-value" style={{ textTransform: 'capitalize' }}>{businessSubscription.billing_cycle}</span>
+                      </div>
+                      <div className="pa-sub-detail">
+                        <span className="pa-sub-detail-label">Amount</span>
+                        <span className="pa-sub-detail-value">{formatCurrency(businessSubscription.amount, businessSubscription.currency)}</span>
+                      </div>
+                      <div className="pa-sub-detail">
+                        <span className="pa-sub-detail-label">Period Start</span>
+                        <span className="pa-sub-detail-value">{businessSubscription.current_period_start ? new Date(businessSubscription.current_period_start).toLocaleDateString() : '—'}</span>
+                      </div>
+                      <div className="pa-sub-detail">
+                        <span className="pa-sub-detail-label">Period End</span>
+                        <span className="pa-sub-detail-value">{businessSubscription.current_period_end ? new Date(businessSubscription.current_period_end).toLocaleDateString() : '—'}</span>
+                      </div>
+                      {businessSubscription.trial_ends_at && (
+                        <div className="pa-sub-detail">
+                          <span className="pa-sub-detail-label">Trial Ends</span>
+                          <span className="pa-sub-detail-value">{new Date(businessSubscription.trial_ends_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="pa-sub-actions">
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setAssignForm({ business_id: selectedBusiness.id, plan_id: businessSubscription.plan_id || '', billing_cycle: businessSubscription.billing_cycle || 'monthly' }); setShowAssignPlanModal(true); }}>
+                        {Icons.edit} Change Plan
+                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setPaymentForm({ business_id: selectedBusiness.id, amount: '', currency: businessSubscription.currency || 'GHS', payment_method: 'bank_transfer', description: '' }); setShowRecordPaymentModal(true); }}>
+                        {Icons.plus} Record Payment
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!businessSubscription && (
+                  <div className="pa-sub-card" style={{ textAlign: 'center', padding: 'var(--space-xl)' }}>
+                    <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>No subscription assigned to this business.</p>
+                    <button className="btn btn-primary btn-sm" onClick={() => { setAssignForm({ business_id: selectedBusiness.id, plan_id: '', billing_cycle: 'monthly' }); setShowAssignPlanModal(true); }}>
+                      {Icons.pricing} Assign a Plan
+                    </button>
+                  </div>
+                )}
+
                 {/* Quick Stats */}
                 <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                   <div className="stat-card">
@@ -1044,6 +1304,228 @@ export default function PlatformAdmin() {
             </div>
           </>
         )}
+
+        {/* ═══════════════════════════════════
+            TAB: PRICING & PLANS
+            ═══════════════════════════════════ */}
+        {activeTab === 'pricing' && (
+          <>
+            <header className="dashboard-header">
+              <div>
+                <h1 className="dashboard-title">Pricing & Plans</h1>
+                <p className="dashboard-subtitle">Define subscription tiers and pricing for your tenants.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div className="pa-cycle-toggle">
+                  <button className={`pa-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
+                  <button className={`pa-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`} onClick={() => setBillingCycle('yearly')}>Yearly</button>
+                </div>
+                <button className="btn btn-primary" onClick={() => openPlanModal()}>
+                  {Icons.plus} New Plan
+                </button>
+              </div>
+            </header>
+
+            <div className="pa-pricing-grid">
+              {plans.map((plan, idx) => {
+                const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                const subCount = subscriptions.filter(s => s.plan_id === plan.id).length;
+                const features = plan.features || {};
+                return (
+                  <div key={plan.id} className={`pa-plan-card ${idx === 1 ? 'featured' : ''}`}>
+                    {idx === 1 && <span className="pa-plan-badge">Popular</span>}
+                    <div className="pa-plan-header">
+                      <h3 className="pa-plan-name">{plan.name}</h3>
+                      <p className="pa-plan-desc">{plan.description || 'No description'}</p>
+                    </div>
+                    <div className="pa-plan-price">
+                      <span className="pa-plan-currency">{plan.currency || 'GHS'}</span>
+                      <span className="pa-plan-amount">{Number(price).toLocaleString()}</span>
+                      <span className="pa-plan-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                    </div>
+                    <div className="pa-plan-limits">
+                      <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
+                      <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
+                      <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>
+                      {plan.trial_days > 0 && Number(price) > 0 && <span className="pa-plan-limit"><strong>{plan.trial_days}d</strong> Trial</span>}
+                    </div>
+                    <div className="pa-plan-features">
+                      {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+                        <div key={key} className="pa-plan-feature">
+                          <span className={`pa-plan-feature-check ${features[key] ? 'enabled' : 'disabled'}`}>
+                            {features[key] ? '✓' : '×'}
+                          </span>
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pa-plan-subscribers">
+                      {Icons.users} {subCount} subscriber{subCount !== 1 ? 's' : ''}
+                    </div>
+                    <div className="pa-plan-actions">
+                      <button className="btn btn-secondary btn-sm" onClick={() => openPlanModal(plan)}>{Icons.edit} Edit</button>
+                      <button className="btn btn-secondary btn-sm text-error" onClick={() => handleDeletePlan(plan.id, plan.name)}>{Icons.trash} Remove</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {plans.length === 0 && (
+                <div className="text-center py-xl text-muted" style={{ gridColumn: '1 / -1' }}>
+                  No plans created yet. Click "New Plan" to get started.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ═══════════════════════════════════
+            TAB: BILLING & PAYMENTS
+            ═══════════════════════════════════ */}
+        {activeTab === 'billing' && (
+          <>
+            <header className="dashboard-header">
+              <div>
+                <h1 className="dashboard-title">Billing & Payments</h1>
+                <p className="dashboard-subtitle">Payment gateways, revenue overview, and invoice management.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button className="btn btn-secondary" onClick={() => setShowRecordPaymentModal(true)}>
+                  {Icons.plus} Record Payment
+                </button>
+                <button className="btn btn-primary" onClick={() => { setShowAssignPlanModal(true); setAssignForm({ business_id: '', plan_id: '', billing_cycle: 'monthly' }); }}>
+                  {Icons.pricing} Assign Plan
+                </button>
+              </div>
+            </header>
+
+            <div className="dashboard-content">
+              {/* Revenue Stats */}
+              <div className="pa-billing-stats">
+                <div className="pa-revenue-card revenue">
+                  <span className="pa-revenue-label">Total Revenue</span>
+                  <span className="pa-revenue-value positive">{formatCurrency(billingStats.total_revenue)}</span>
+                </div>
+                <div className="pa-revenue-card mrr">
+                  <span className="pa-revenue-label">Monthly Recurring</span>
+                  <span className="pa-revenue-value accent">{formatCurrency(billingStats.mrr)}</span>
+                </div>
+                <div className="pa-revenue-card subs">
+                  <span className="pa-revenue-label">Active Subs</span>
+                  <span className="pa-revenue-value">{billingStats.active_subscriptions}</span>
+                </div>
+                <div className="pa-revenue-card outstanding">
+                  <span className="pa-revenue-label">Outstanding</span>
+                  <span className="pa-revenue-value warning">{formatCurrency(billingStats.outstanding)}</span>
+                </div>
+                <div className="pa-revenue-card failed">
+                  <span className="pa-revenue-label">Failed</span>
+                  <span className="pa-revenue-value error">{formatCurrency(billingStats.failed_payments)}</span>
+                </div>
+              </div>
+
+              {/* Payment Gateways */}
+              <div style={{ marginBottom: 'var(--space-2xl)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                  <h2 className="pa-section-title" style={{ marginBottom: 0 }}>
+                    {Icons.billing} Payment Gateways
+                  </h2>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openGatewayModal()}>
+                    {Icons.plus} Add Gateway
+                  </button>
+                </div>
+                <div className="pa-gateway-grid">
+                  {gateways.map(gw => (
+                    <div key={gw.id} className="pa-gateway-card">
+                      <div className="pa-gateway-header">
+                        <div className="pa-gateway-provider">
+                          <div className={`pa-gateway-logo ${gw.provider}`}>
+                            {gw.provider === 'paystack' ? 'P' : gw.provider === 'flutterwave' ? 'F' : 'S'}
+                          </div>
+                          <span className="pa-gateway-name">{gw.display_name}</span>
+                        </div>
+                        <span className={`pa-gateway-status ${gw.is_active ? 'active' : 'inactive'}`}>
+                          <span className="pa-gateway-status-dot"></span>
+                          {gw.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="pa-gateway-details">
+                        {gw.public_key && (
+                          <div className="pa-key-field">
+                            <span className="pa-key-label">Public Key</span>
+                            <span className="pa-key-value">{gw.public_key}</span>
+                          </div>
+                        )}
+                        <div className="pa-key-field">
+                          <span className="pa-key-label">Secret Key</span>
+                          <span className="pa-key-value">{gw.secret_key || 'Not set'}</span>
+                        </div>
+                      </div>
+                      <div className="pa-gateway-currencies">
+                        {(gw.supported_currencies || []).map(c => (
+                          <span key={c} className="pa-currency-tag">{c}</span>
+                        ))}
+                      </div>
+                      <div className="pa-gateway-actions">
+                        <button className="btn btn-secondary btn-sm" onClick={() => openGatewayModal(gw)}>{Icons.edit} Edit</button>
+                        <button className="btn btn-secondary btn-sm text-error" onClick={() => handleDeleteGateway(gw.id)}>{Icons.trash} Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                  {gateways.length === 0 && (
+                    <div className="text-center py-xl text-muted">No payment gateways configured yet.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Invoices Table */}
+              <div>
+                <h2 className="pa-section-title">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 2v6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Recent Invoices
+                </h2>
+                <div className="content-card">
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Invoice #</th>
+                          <th>Business</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                          <th className="text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.slice(0, 25).map(inv => (
+                          <tr key={inv.id}>
+                            <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{inv.invoice_number}</td>
+                            <td>{inv.businesses?.name || '—'}</td>
+                            <td style={{ fontWeight: 600 }}>{formatCurrency(inv.amount, inv.currency)}</td>
+                            <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
+                            <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                            <td className="text-right">
+                              <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                                {inv.status !== 'paid' && (
+                                  <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedInvoiceId(inv.id); setShowSendInvoiceModal(true); }}>
+                                    {Icons.send} Send
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {invoices.length === 0 && (
+                          <tr><td colSpan="6" className="text-center py-xl text-muted">No invoices yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* ═══════════════════════════════════
@@ -1235,6 +1717,230 @@ export default function PlatformAdmin() {
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowEditRoleModal(false)}>Cancel</button>
               <button type="submit" className="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════
+          MODAL: CREATE/EDIT PLAN
+          ═══════════════════════════════════ */}
+      {showPlanModal && (
+        <Modal title={editingPlan ? 'Edit Plan' : 'Create Plan'} onClose={() => setShowPlanModal(false)}>
+          <form onSubmit={handleSavePlan}>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Plan Name</label>
+                <input className="form-input" value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} required placeholder="e.g., Starter" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <select className="form-input" value={planForm.currency} onChange={e => setPlanForm({ ...planForm, currency: e.target.value })}>
+                  <option value="GHS">GHS (Ghana Cedis)</option>
+                  <option value="NGN">NGN (Naira)</option>
+                  <option value="USD">USD (US Dollar)</option>
+                  <option value="GBP">GBP (Pound)</option>
+                  <option value="EUR">EUR (Euro)</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Description</label>
+              <textarea className="form-input" rows="2" value={planForm.description} onChange={e => setPlanForm({ ...planForm, description: e.target.value })} placeholder="Brief plan description..." />
+            </div>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Monthly Price</label>
+                <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_monthly} onChange={e => setPlanForm({ ...planForm, price_monthly: Number(e.target.value) })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Yearly Price</label>
+                <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_yearly} onChange={e => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Max Users <span style={{ color: 'var(--color-text-tertiary)' }}>(-1 = unlimited)</span></label>
+                <input className="form-input" type="number" value={planForm.max_users} onChange={e => setPlanForm({ ...planForm, max_users: Number(e.target.value) })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Max Locations</label>
+                <input className="form-input" type="number" min="1" value={planForm.max_locations} onChange={e => setPlanForm({ ...planForm, max_locations: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Max Products <span style={{ color: 'var(--color-text-tertiary)' }}>(-1 = unlimited)</span></label>
+                <input className="form-input" type="number" value={planForm.max_products} onChange={e => setPlanForm({ ...planForm, max_products: Number(e.target.value) })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Trial Days</label>
+                <input className="form-input" type="number" min="0" value={planForm.trial_days} onChange={e => setPlanForm({ ...planForm, trial_days: Number(e.target.value) })} />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Features</label>
+              <div className="checkbox-grid">
+                {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+                  <label key={key} className="checkbox-label">
+                    <input type="checkbox" checked={planForm.features?.[key] || false} onChange={e => setPlanForm({ ...planForm, features: { ...planForm.features, [key]: e.target.checked } })} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowPlanModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">{editingPlan ? 'Update Plan' : 'Create Plan'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════
+          MODAL: CREATE/EDIT GATEWAY
+          ═══════════════════════════════════ */}
+      {showGatewayModal && (
+        <Modal title={editingGateway ? 'Edit Gateway' : 'Add Payment Gateway'} onClose={() => setShowGatewayModal(false)}>
+          <form onSubmit={handleSaveGateway}>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Provider</label>
+                <select className="form-input" value={gatewayForm.provider} onChange={e => setGatewayForm({ ...gatewayForm, provider: e.target.value })}>
+                  <option value="paystack">Paystack</option>
+                  <option value="flutterwave">Flutterwave</option>
+                  <option value="stripe">Stripe</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Display Name</label>
+                <input className="form-input" value={gatewayForm.display_name} onChange={e => setGatewayForm({ ...gatewayForm, display_name: e.target.value })} required />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Public Key</label>
+              <input className="form-input" value={gatewayForm.public_key} onChange={e => setGatewayForm({ ...gatewayForm, public_key: e.target.value })} placeholder="pk_test_..." />
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Secret Key</label>
+              <input className="form-input" type="password" value={gatewayForm.secret_key} onChange={e => setGatewayForm({ ...gatewayForm, secret_key: e.target.value })} placeholder="sk_test_..." />
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Webhook Secret <span style={{ color: 'var(--color-text-tertiary)' }}>(optional)</span></label>
+              <input className="form-input" type="password" value={gatewayForm.webhook_secret} onChange={e => setGatewayForm({ ...gatewayForm, webhook_secret: e.target.value })} placeholder="whsec_..." />
+            </div>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <label className="checkbox-label">
+                <input type="checkbox" checked={gatewayForm.is_active} onChange={e => setGatewayForm({ ...gatewayForm, is_active: e.target.checked })} />
+                Active
+              </label>
+              <label className="checkbox-label">
+                <input type="checkbox" checked={gatewayForm.is_default} onChange={e => setGatewayForm({ ...gatewayForm, is_default: e.target.checked })} />
+                Default Gateway
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowGatewayModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">{editingGateway ? 'Update Gateway' : 'Add Gateway'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════
+          MODAL: ASSIGN PLAN TO BUSINESS
+          ═══════════════════════════════════ */}
+      {showAssignPlanModal && (
+        <Modal title="Assign Plan to Business" onClose={() => setShowAssignPlanModal(false)}>
+          <form onSubmit={handleAssignPlan}>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Business</label>
+              <select className="form-input" value={assignForm.business_id} onChange={e => setAssignForm({ ...assignForm, business_id: e.target.value })} required>
+                <option value="">Select a business...</option>
+                {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Plan</label>
+              <select className="form-input" value={assignForm.plan_id} onChange={e => setAssignForm({ ...assignForm, plan_id: e.target.value })} required>
+                <option value="">Select a plan...</option>
+                {plans.filter(p => p.is_active).map(p => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price_monthly, p.currency)}/mo</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Billing Cycle</label>
+              <select className="form-input" value={assignForm.billing_cycle} onChange={e => setAssignForm({ ...assignForm, billing_cycle: e.target.value })}>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAssignPlanModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Assign Plan</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════
+          MODAL: SEND INVOICE
+          ═══════════════════════════════════ */}
+      {showSendInvoiceModal && (
+        <Modal title="Send Invoice Email" onClose={() => setShowSendInvoiceModal(false)}>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+            This will send the invoice email to the business admin and platform admin email addresses.
+          </p>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setShowSendInvoiceModal(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSendInvoice}>{Icons.send} Send Invoice</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ═══════════════════════════════════
+          MODAL: RECORD MANUAL PAYMENT
+          ═══════════════════════════════════ */}
+      {showRecordPaymentModal && (
+        <Modal title="Record Manual Payment" onClose={() => setShowRecordPaymentModal(false)}>
+          <form onSubmit={handleRecordPayment}>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Business</label>
+              <select className="form-input" value={paymentForm.business_id} onChange={e => setPaymentForm({ ...paymentForm, business_id: e.target.value })} required>
+                <option value="">Select a business...</option>
+                {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+            <div className="form-row" style={{ marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Amount</label>
+                <input className="form-input" type="number" step="0.01" min="0.01" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} required placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <select className="form-input" value={paymentForm.currency} onChange={e => setPaymentForm({ ...paymentForm, currency: e.target.value })}>
+                  <option value="GHS">GHS</option>
+                  <option value="NGN">NGN</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Payment Method</label>
+              <select className="form-input" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash">Cash</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="cheque">Cheque</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Description <span style={{ color: 'var(--color-text-tertiary)' }}>(optional)</span></label>
+              <input className="form-input" value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="e.g., Bank transfer for Pro plan renewal" />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRecordPaymentModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">{Icons.plus} Record Payment</button>
             </div>
           </form>
         </Modal>

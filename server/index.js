@@ -12,6 +12,9 @@ const usersRoutes = require('./routes/users');
 const businessesRoutes = require('./routes/businesses');
 const locationsRoutes = require('./routes/locations');
 const alertsRoutes = require('./routes/alerts');
+const subscriptionsRoutes = require('./routes/subscriptions');
+const billingRoutes = require('./routes/billing');
+const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -98,6 +101,12 @@ app.use('/api/locations', locationsRoutes);
 // Alerts routes
 app.use('/api/alerts', alertsRoutes);
 
+// Subscriptions routes
+app.use('/api/subscriptions', subscriptionsRoutes);
+
+// Billing routes
+app.use('/api/billing', billingRoutes);
+
 // ============================================
 // Error handling
 // ============================================
@@ -129,7 +138,12 @@ if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`\n🚀 Store Manager API running on port ${PORT}`);
     console.log(`   Health check: port ${PORT}/api/health`);
-    console.log(`   Auth routes:  port ${PORT}/api/auth\n`);
+    console.log(`   Auth routes:  port ${PORT}/api/auth`);
+    console.log(`   Subscriptions: port ${PORT}/api/subscriptions`);
+    console.log(`   Billing:       port ${PORT}/api/billing\n`);
+
+    // Initialize subscription cron job
+    initSubscriptionCron();
   });
 }
 

@@ -2764,6 +2764,632 @@ input {
 }
 
 /* Business Admin & Platform Admin additions */
+
+/* ============================================
+   Platform Admin — Pricing Plans
+   ============================================ */
+
+.pa-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.pa-plan-card {
+  position: relative;
+  background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.pa-plan-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pa-plan-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+  transform: translateY(-4px);
+}
+
+.pa-plan-card:hover::before {
+  opacity: 1;
+}
+
+.pa-plan-card.featured {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+}
+
+.pa-plan-card.featured::before {
+  opacity: 1;
+}
+
+.pa-plan-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pa-plan-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pa-plan-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pa-plan-desc {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.pa-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: var(--space-md) 0;
+}
+
+.pa-plan-currency {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+}
+
+.pa-plan-amount {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+.pa-plan-period {
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.pa-plan-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pa-plan-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.pa-plan-limit strong {
+  color: var(--color-text-primary);
+}
+
+.pa-plan-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-border);
+  flex: 1;
+}
+
+.pa-plan-feature {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.pa-plan-feature-check {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.6rem;
+}
+
+.pa-plan-feature-check.enabled {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.pa-plan-feature-check.disabled {
+  background: rgba(148, 148, 184, 0.1);
+  color: var(--color-text-tertiary);
+}
+
+.pa-plan-subscribers {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  padding-top: var(--space-sm);
+}
+
+.pa-plan-actions {
+  display: flex;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Billing Cycle Toggle ── */
+.pa-cycle-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0.2rem;
+  gap: 0;
+}
+
+.pa-cycle-btn {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pa-cycle-btn.active {
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* ============================================
+   Platform Admin — Payment Gateways
+   ============================================ */
+
+.pa-gateway-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+.pa-gateway-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  transition: all var(--transition-normal);
+}
+
+.pa-gateway-card:hover {
+  border-color: rgba(148, 148, 184, 0.25);
+  box-shadow: var(--shadow-md);
+}
+
+.pa-gateway-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.pa-gateway-provider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pa-gateway-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.pa-gateway-logo.paystack {
+  background: linear-gradient(135deg, rgba(0, 164, 239, 0.15), rgba(0, 164, 239, 0.05));
+  color: #00a4ef;
+}
+
+.pa-gateway-logo.flutterwave {
+  background: linear-gradient(135deg, rgba(240, 181, 56, 0.15), rgba(240, 181, 56, 0.05));
+  color: #f0b538;
+}
+
+.pa-gateway-logo.stripe {
+  background: linear-gradient(135deg, rgba(99, 91, 255, 0.15), rgba(99, 91, 255, 0.05));
+  color: #635bff;
+}
+
+.pa-gateway-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.pa-gateway-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pa-gateway-status.active {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.pa-gateway-status.inactive {
+  background: rgba(148, 148, 184, 0.1);
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+.pa-gateway-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.pa-gateway-status.active .pa-gateway-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.pa-gateway-status.inactive .pa-gateway-status-dot {
+  background: var(--color-text-tertiary);
+}
+
+.pa-gateway-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.pa-key-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.4rem 0.65rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+}
+
+.pa-key-label {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.pa-key-value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pa-gateway-currencies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.pa-currency-tag {
+  padding: 0.15rem 0.45rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+}
+
+.pa-gateway-actions {
+  display: flex;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ============================================
+   Platform Admin — Revenue & Billing Stats
+   ============================================ */
+
+.pa-billing-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.pa-revenue-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.pa-revenue-card:hover {
+  border-color: rgba(148, 148, 184, 0.25);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.pa-revenue-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.pa-revenue-card.revenue::after { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.pa-revenue-card.mrr::after { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.pa-revenue-card.outstanding::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.pa-revenue-card.failed::after { background: linear-gradient(90deg, #ef4444, #f87171); }
+.pa-revenue-card.subs::after { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+
+.pa-revenue-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pa-revenue-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.pa-revenue-value.positive { color: #4ade80; }
+.pa-revenue-value.accent { color: var(--color-accent-primary); }
+.pa-revenue-value.warning { color: #fbbf24; }
+.pa-revenue-value.error { color: #f87171; }
+
+/* ============================================
+   Platform Admin — Invoice Badges
+   ============================================ */
+
+.pa-invoice-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pa-invoice-badge.draft {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.pa-invoice-badge.sent {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.pa-invoice-badge.paid {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.pa-invoice-badge.failed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.pa-invoice-badge.refunded {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+/* ============================================
+   Platform Admin — Subscription Card
+   ============================================ */
+
+.pa-sub-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(139, 92, 246, 0.03));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.pa-sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pa-sub-plan-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.pa-sub-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pa-sub-status.active {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.pa-sub-status.trialing {
+  background: rgba(6, 182, 212, 0.12);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.pa-sub-status.expired {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.pa-sub-status.past_due {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.pa-sub-status.cancelled {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.pa-sub-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.pa-sub-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pa-sub-detail-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pa-sub-detail-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.pa-sub-actions {
+  display: flex;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+/* ── Pricing / Billing Responsive ── */
+@media (max-width: 1024px) {
+  .pa-pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pa-gateway-grid {
+    grid-template-columns: 1fr;
+  }
+  .pa-billing-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .pa-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+  .pa-billing-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

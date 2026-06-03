@@ -17,8 +17,10 @@ export function useAuth() {
       const { data, error } = await supabase
         .from('users')
         .select(`
+          status,
           role_id,
           business_id,
+          businesses (status),
           roles:role_id (name, permissions),
           user_locations (location_id)
         `)
@@ -27,6 +29,17 @@ export function useAuth() {
 
       if (error) {
         console.error('Error fetching user role:', error.message);
+        setRole(null);
+        setPermissions([]);
+        setLocationIds([]);
+        setBusinessId(null);
+        return null;
+      }
+
+      // Check for bans globally on the frontend
+      if (data.status === 'banned' || (data.businesses && data.businesses.status === 'banned')) {
+        console.warn('User or Business is banned. Forcing logout.');
+        await supabase.auth.signOut();
         setRole(null);
         setPermissions([]);
         setLocationIds([]);

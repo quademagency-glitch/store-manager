@@ -36,10 +36,14 @@ async function authGuard(req, res, next) {
         name,
         email,
         business_id,
+        status,
         role_id,
         roles:role_id (
           name,
           permissions
+        ),
+        businesses (
+          status
         ),
         user_locations(location_id)
       `)
@@ -53,12 +57,28 @@ async function authGuard(req, res, next) {
       });
     }
 
+    // Check for bans
+    if (userData.status === 'banned') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Your account has been banned. Please contact support.',
+      });
+    }
+
+    if (userData.businesses && userData.businesses.status === 'banned') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Your business has been banned. Please contact support.',
+      });
+    }
+
     // Attach user data to the request
     req.user = {
       id: userData.id,
       name: userData.name,
       email: userData.email,
       business_id: userData.business_id,
+      status: userData.status,
       role: userData.roles ? userData.roles.name : 'Unknown',
       role_id: userData.role_id,
       permissions: userData.roles ? userData.roles.permissions : [],

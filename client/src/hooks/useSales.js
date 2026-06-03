@@ -70,8 +70,13 @@ export function useSales() {
         items: cart.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
+          unit_price: item.price,
         })),
         payment_method: paymentMethod,
+        total_amount: cartTotal,
+        subtotal: cartTotal,
+        tax: 0,
+        discount: 0,
       };
 
       const sale = await api.post('/sales', payload);

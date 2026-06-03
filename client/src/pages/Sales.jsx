@@ -83,7 +83,8 @@ export default function Sales() {
   const paymentMethods = [
     { value: 'cash', label: 'Cash', icon: '💵' },
     { value: 'card', label: 'Card', icon: '💳' },
-    { value: 'mobile', label: 'Mobile', icon: '📱' },
+    { value: 'mobile_money', label: 'Mobile Money', icon: '📱' },
+    { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦' },
   ];
 
   return (

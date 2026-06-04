@@ -85,6 +85,13 @@ export function useAuth() {
     // Listen for auth state changes without blocking the callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        // Handle password recovery specifically
+        if (event === 'PASSWORD_RECOVERY') {
+          if (window.location.pathname !== '/update-password') {
+            window.location.replace('/update-password');
+          }
+        }
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
         

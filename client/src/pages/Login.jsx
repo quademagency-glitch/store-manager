@@ -11,8 +11,20 @@ export default function Login() {
 
   const { signIn, isAuthenticated, loading } = useAuthContext();
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-spinner">
+          <div className="spinner-ring"></div>
+          <div className="spinner-ring"></div>
+          <div className="spinner-ring"></div>
+        </div>
+      </div>
+    );
+  }
+
   // If already authenticated, redirect to root so SmartRedirect handles role-based routing
-  if (!loading && isAuthenticated) {
+  if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 

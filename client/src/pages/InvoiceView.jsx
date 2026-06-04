@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuthContext } from '../lib/AuthContext';
 
 export default function InvoiceView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, role, businessId } = useAuthContext();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -14,12 +16,14 @@ export default function InvoiceView() {
         // We'll get all invoices for the business and find the one that matches
         // Wait, we can't easily fetch a single invoice unless we add a route for it.
         // Let's just fetch all invoices for the user's business and find it.
-        const userStr = localStorage.getItem('user');
-        if (!userStr) throw new Error("Not logged in");
-        const user = JSON.parse(userStr);
-        let invoicesUrl = user.role === 'Platform Admin' || user.role_name === 'Platform Admin' 
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+        
+        let invoicesUrl = role === 'Platform Admin'
           ? '/billing/invoices?limit=1000' 
-          : `/billing/invoices/${user.business_id}`;
+          : `/billing/invoices/${businessId}`;
           
         const res = await api.get(invoicesUrl);
         const found = res.find(inv => inv.id === id);
@@ -28,15 +32,18 @@ export default function InvoiceView() {
           try {
             // Fetch subscription for business details
             let subRes;
-            if (user.role === 'Platform Admin' || user.role_name === 'Platform Admin') {
+            try {
                subRes = await api.get(`/subscriptions/business/${found.business_id}`);
-            } else {
-               subRes = await api.get('/subscriptions/current');
+               setInvoice({
+                 ...found,
+                 business: subRes?.businesses || found.businesses || { name: 'Business Account', contact_email: user.email }
+               });
+            } catch (e) {
+               setInvoice({
+                 ...found,
+                 business: found.businesses || { name: 'Business Account', contact_email: user.email }
+               });
             }
-            setInvoice({
-              ...found,
-              business: subRes?.businesses || found.businesses || { name: 'Business Account', contact_email: user.email }
-            });
           } catch (e) {
             setInvoice({
               ...found,
@@ -50,10 +57,10 @@ export default function InvoiceView() {
         setLoading(false);
       }
     };
-    if (id) {
+    if (id && user?.id) {
       fetchInvoice();
     }
-  }, [id]);
+  }, [id, user?.id, role, businessId]);
 
   const formatCurrency = (amount, currency = 'GHS') => {
     return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);

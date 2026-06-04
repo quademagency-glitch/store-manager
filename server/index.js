@@ -137,7 +137,7 @@ app.use((err, req, res, next) => {
 // ============================================
 
 // Start server if this file is run directly (e.g. via `node index.js`)
-// This ensures it starts on Render/Heroku but skips when imported as a module (e.g. Vercel)
+// This ensures it starts on Railway but skips when imported as a module (e.g. Vercel)
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`\n🚀 Store Manager API running on port ${PORT}`);

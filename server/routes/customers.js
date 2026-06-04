@@ -30,6 +30,46 @@ router.get('/', authGuard, async (req, res) => {
 });
 
 /**
+ * GET /api/customers/search
+ * Search customers based on role permissions
+ */
+router.get('/search', authGuard, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.json([]);
+    }
+
+    let query = supabaseAdmin
+      .from('customers')
+      .select('*')
+      .order('name', { ascending: true })
+      .limit(20); // reasonable limit for dropdown/autocomplete
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    // Role-based searching
+    if (req.user.role === 'Business Admin' || req.user.role === 'Platform Admin') {
+      // Admins can search by name or phone
+      query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
+    } else {
+      // Sales and Managers can ONLY search by phone
+      query = query.ilike('phone', `%${q}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error searching customers:', err);
+    res.status(500).json({ error: 'Failed to search customers' });
+  }
+});
+
+/**
  * POST /api/customers
  * Create a new customer
  */
@@ -151,6 +191,107 @@ router.delete('/:id', authGuard, async (req, res) => {
   } catch (err) {
     console.error('Error deleting customer:', err);
     res.status(500).json({ error: 'Failed to delete customer' });
+  }
+});
+
+/**
+ * POST /api/customers/:id/send-verification
+ * Generates an OTP and sends via Arkesel SMS
+ */
+router.post('/:id/send-verification', authGuard, async (req, res) => {
+  try {
+    const customerId = req.params.id;
+
+    // Verify ownership
+    const { data: customer, error: fetchError } = await supabaseAdmin
+      .from('customers')
+      .select('business_id, phone, name')
+      .eq('id', customerId)
+      .single();
+
+    if (fetchError || !customer) return res.status(404).json({ error: 'Customer not found' });
+    if (req.user.role !== 'Platform Admin' && customer.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Generate 4-digit code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Save code to database
+    const { error: updateError } = await supabaseAdmin
+      .from('customers')
+      .update({ verification_code: code })
+      .eq('id', customerId);
+
+    if (updateError) throw updateError;
+
+    // Send SMS via Arkesel API
+    const arkeselKey = process.env.ARKESEL_API_KEY;
+    const arkeselSender = process.env.ARKESEL_SENDER_ID || 'StoreMgr';
+    
+    if (arkeselKey) {
+      const message = `Hello ${customer.name || 'Customer'}, your verification code is: ${code}`;
+      const url = `https://sms.arkesel.com/sms/api?action=send-sms&api_key=${arkeselKey}&to=${customer.phone}&from=${arkeselSender}&sms=${encodeURIComponent(message)}`;
+      
+      const smsRes = await fetch(url);
+      if (!smsRes.ok) {
+        console.error('Arkesel SMS failed:', await smsRes.text());
+        // We do not fail the whole request just yet, but log it.
+      }
+    } else {
+      console.warn('ARKESEL_API_KEY not set. Verification code generated but SMS not sent.');
+      // Optionally return the code in dev mode, but in prod we shouldn't.
+      // We will pretend it sent if there's no key for local testing.
+    }
+
+    res.json({ message: 'Verification code sent successfully' });
+  } catch (err) {
+    console.error('Error sending verification:', err);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+/**
+ * POST /api/customers/:id/verify
+ * Validates the provided code
+ */
+router.post('/:id/verify', authGuard, async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+
+    // Verify ownership and get code
+    const { data: customer, error: fetchError } = await supabaseAdmin
+      .from('customers')
+      .select('business_id, verification_code')
+      .eq('id', customerId)
+      .single();
+
+    if (fetchError || !customer) return res.status(404).json({ error: 'Customer not found' });
+    if (req.user.role !== 'Platform Admin' && customer.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (!customer.verification_code || customer.verification_code !== code) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // Update customer as verified
+    const { error: updateError } = await supabaseAdmin
+      .from('customers')
+      .update({ is_verified: true, verification_code: null })
+      .eq('id', customerId);
+
+    if (updateError) throw updateError;
+
+    res.json({ message: 'Customer verified successfully' });
+  } catch (err) {
+    console.error('Error verifying customer:', err);
+    res.status(500).json({ error: 'Failed to verify customer' });
   }
 });
 

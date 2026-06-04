@@ -88,7 +88,12 @@ export default function Customers() {
             ) : (
               customers.map(customer => (
                 <tr key={customer.id}>
-                  <td style={{ fontWeight: 600 }}>{customer.name}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    {customer.name}
+                    {customer.is_verified && (
+                      <span className="badge badge-success ml-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
+                    )}
+                  </td>
                   <td>{customer.phone}</td>
                   <td className="text-muted">{new Date(customer.created_at).toLocaleDateString()}</td>
                   {canEdit && (

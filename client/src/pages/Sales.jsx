@@ -29,16 +29,36 @@ export default function Sales() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [saleSuccess, setSaleSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('pos');
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '' });
   
-  const { customers, fetchCustomers, createCustomer, loading: customerLoading } = useCustomers();
+  // Search states
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Verification states
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [customerToVerify, setCustomerToVerify] = useState(null);
 
-  // Load customers
-  useMemo(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+  const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
+
+  // Debounce customer search
+  useEffect(() => {
+    if (customerSearchTerm.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const delay = setTimeout(async () => {
+      setIsSearching(true);
+      const results = await searchCustomers(customerSearchTerm);
+      setSearchResults(results || []);
+      setIsSearching(false);
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [customerSearchTerm, searchCustomers]);
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
@@ -59,7 +79,7 @@ export default function Sales() {
     if (cart.length === 0) return;
     setError(null);
 
-    const result = await createSale(paymentMethod, selectedCustomerId);
+    const result = await createSale(paymentMethod, selectedCustomer?.id);
     if (result.success) {
       setReceiptData(result.data);
       setShowReceipt(true);
@@ -73,18 +93,45 @@ export default function Sales() {
   const closeReceipt = () => {
     setShowReceipt(false);
     setReceiptData(null);
-    setSelectedCustomerId('');
+    setSelectedCustomer(null);
+    setCustomerSearchTerm('');
   };
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     const res = await createCustomer(newCustomerData);
     if (res.success) {
-      setSelectedCustomerId(res.customer.id);
+      setSelectedCustomer(res.customer);
       setShowNewCustomerModal(false);
       setNewCustomerData({ name: '', phone: '' });
     } else {
       alert(res.error || 'Failed to create customer');
+    }
+  };
+
+  const handleSendVerification = async (customer) => {
+    const res = await sendVerificationCode(customer.id);
+    if (res.success) {
+      setCustomerToVerify(customer);
+      setShowVerifyModal(true);
+    } else {
+      alert(res.error || 'Failed to send SMS');
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    const res = await verifyCustomerCode(customerToVerify.id, verifyCode);
+    if (res.success) {
+      setShowVerifyModal(false);
+      setVerifyCode('');
+      setCustomerToVerify(null);
+      if (selectedCustomer?.id === customerToVerify.id) {
+        setSelectedCustomer({ ...selectedCustomer, is_verified: true });
+      }
+      alert('Customer verified successfully!');
+    } else {
+      alert(res.error || 'Invalid code');
     }
   };
 
@@ -358,7 +405,7 @@ export default function Sales() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
                     Customer (Required)
@@ -371,25 +418,75 @@ export default function Sales() {
                     + Add New
                   </button>
                 </div>
-                <select 
-                  className="input" 
-                  value={selectedCustomerId} 
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  style={{ width: '100%' }}
-                  required
-                >
-                  <option value="" disabled>-- Select Customer --</option>
-                  {customers?.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
-                  ))}
-                </select>
+                
+                {selectedCustomer ? (
+                  <div style={{ 
+                    padding: '0.75rem', border: '1px solid var(--color-primary)', 
+                    borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.05)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {selectedCustomer.name}
+                        {selectedCustomer.is_verified ? (
+                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
+                        ) : (
+                          <button 
+                            className="btn btn-sm btn-outline text-warning" 
+                            style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', border: '1px solid var(--color-warning)' }}
+                            onClick={() => handleSendVerification(selectedCustomer)}
+                            disabled={customerLoading}
+                          >
+                            Verify OTP
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{selectedCustomer.phone}</div>
+                    </div>
+                    <button className="btn-icon text-muted" onClick={() => setSelectedCustomer(null)}>×</button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder="Search phone (or name if admin)..."
+                      value={customerSearchTerm}
+                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                      style={{ width: '100%' }}
+                    />
+                    {isSearching && <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--color-text-muted)' }}>Searching...</div>}
+                    {!isSearching && searchResults.length > 0 && (
+                      <div style={{ 
+                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                        background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)', maxHeight: '200px', overflowY: 'auto',
+                        boxShadow: 'var(--shadow-lg)'
+                      }}>
+                        {searchResults.map(c => (
+                          <div 
+                            key={c.id} 
+                            style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
+                            onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); }}
+                          >
+                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              {c.name}
+                              {c.is_verified && <span style={{ color: 'var(--color-success)', fontSize: '0.8rem' }}>✓</span>}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{c.phone}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
                 className="btn pos-checkout-btn"
                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.2rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}
                 onClick={handleCompleteSale}
-                disabled={saleLoading || cart.length === 0 || !selectedCustomerId}
+                disabled={saleLoading || cart.length === 0 || !selectedCustomer}
               >
                 {saleLoading ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -516,6 +613,39 @@ export default function Sales() {
             </button>
             <button type="submit" className="btn btn-primary" disabled={customerLoading}>
               {customerLoading ? 'Saving...' : 'Save Customer'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── Verification Modal ─── */}
+      <Modal
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        title="Verify Phone Number"
+      >
+        <form onSubmit={handleVerifyCode}>
+          <p className="text-muted mb-md">
+            An SMS with a verification code was just sent via Arkesel to <strong>{customerToVerify?.phone}</strong>.
+          </p>
+          <div className="form-group">
+            <label>Verification Code</label>
+            <input
+              type="text"
+              className="input"
+              value={verifyCode}
+              onChange={(e) => setVerifyCode(e.target.value)}
+              placeholder="e.g. 1234"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setShowVerifyModal(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={customerLoading}>
+              {customerLoading ? 'Verifying...' : 'Verify Code'}
             </button>
           </div>
         </form>

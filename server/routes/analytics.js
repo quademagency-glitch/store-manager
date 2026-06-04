@@ -41,41 +41,20 @@ router.get('/summary', authGuard, async (req, res) => {
     }
     salesQuery = applyLocationFilter(salesQuery, req);
 
-    const { data: todaysSales, error: salesError } = await salesQuery;
-    if (salesError) throw salesError;
+    // Run queries in parallel to speed up the dashboard
+    const [salesRes, invRes, shrinkageRes] = await Promise.all([
+      salesQuery,
+      inventoryQuery,
+      shrinkageQuery
+    ]);
 
-    const todaySalesTotal = todaysSales.reduce((acc, sale) => acc + Number(sale.total_amount), 0);
+    if (salesRes.error) throw salesRes.error;
+    if (invRes.error) throw invRes.error;
+    if (shrinkageRes.error) throw shrinkageRes.error;
 
-    // 2. Total Products Count & Low Stock Count (from product_inventory)
-    let inventoryQuery = supabaseAdmin
-      .from('product_inventory')
-      .select('quantity, low_stock_threshold, products!inner(business_id)');
-      
-    if (req.user.role !== 'Platform Admin') {
-      inventoryQuery = inventoryQuery.eq('products.business_id', req.user.business_id);
-    }
-    inventoryQuery = applyLocationFilter(inventoryQuery, req);
-
-    const { data: inventory, error: invError } = await inventoryQuery;
-    if (invError) throw invError;
-
-    const totalProducts = inventory.length; // Unique product-locations
-    const lowStockCount = inventory.filter(p => p.quantity <= (p.low_stock_threshold || 10)).length;
-
-    // 3. Theft Alerts
-    let shrinkageQuery = supabaseAdmin
-      .from('stock_movements')
-      .select('*', { count: 'exact', head: true })
-      .eq('movement_type', 'SHRINKAGE')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-      
-    if (req.user.role !== 'Platform Admin') {
-      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
-    }
-    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
-
-    const { count: shrinkageCount, error: shrinkageError } = await shrinkageQuery;
-    if (shrinkageError) throw shrinkageError;
+    const todaysSales = salesRes.data;
+    const inventory = invRes.data;
+    const shrinkageCount = shrinkageRes.count;
 
     res.json({
       todaySalesTotal,
@@ -151,40 +130,20 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     if (req.user.role !== 'Platform Admin') {
       usersQuery = usersQuery.eq('business_id', req.user.business_id);
     }
-    // We don't filter users by location here because we want to see their sales
-    const { data: users, error: usersError } = await usersQuery;
-    if (usersError) throw usersError;
+    // Fetch all required data in parallel
+    const [usersRes, salesRes, shrinkageRes] = await Promise.all([
+      usersQuery,
+      salesQuery,
+      shrinkageQuery
+    ]);
 
-    // 2. Fetch sales
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('id, salesperson_id, total_amount, discount_amount, status')
-      .gte('created_at', startOfDay.toISOString())
-      .lte('created_at', endOfDay.toISOString());
-      
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-    salesQuery = applyLocationFilter(salesQuery, req);
+    if (usersRes.error) throw usersRes.error;
+    if (salesRes.error) throw salesRes.error;
+    if (shrinkageRes.error) throw shrinkageRes.error;
 
-    const { data: sales, error: salesError } = await salesQuery;
-    if (salesError) throw salesError;
-
-    // 3. Fetch shrinkage
-    let shrinkageQuery = supabaseAdmin
-      .from('stock_movements')
-      .select('id, user_id, quantity_change, product:products!product_id(price)')
-      .eq('movement_type', 'SHRINKAGE')
-      .gte('created_at', startOfDay.toISOString())
-      .lte('created_at', endOfDay.toISOString());
-      
-    if (req.user.role !== 'Platform Admin') {
-      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
-    }
-    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
-
-    const { data: shrinkage, error: shrinkageError } = await shrinkageQuery;
-    if (shrinkageError) throw shrinkageError;
+    const users = usersRes.data;
+    const sales = salesRes.data;
+    const shrinkage = shrinkageRes.data;
 
     // 4. Group data by user
     const reconciliationData = users.map(user => {
@@ -241,27 +200,17 @@ router.get('/recent-activity', authGuard, async (req, res) => {
     }
     salesQuery = applyLocationFilter(salesQuery, req);
 
-    const { data: sales, error: salesError } = await salesQuery;
-    if (salesError) throw salesError;
+    // Fetch both datasets concurrently
+    const [salesRes, movementsRes] = await Promise.all([
+      salesQuery,
+      stockQuery
+    ]);
 
-    // 2. Fetch recent stock movements (shrinkage, low stock, etc)
-    let stockQuery = supabaseAdmin
-      .from('stock_movements')
-      .select(`
-        id, created_at, movement_type, quantity_change,
-        product:products!product_id(name)
-      `)
-      .in('movement_type', ['SHRINKAGE', 'RETURN'])
-      .order('created_at', { ascending: false })
-      .limit(10);
+    if (salesRes.error) throw salesRes.error;
+    if (movementsRes.error) throw movementsRes.error;
 
-    if (req.user.role !== 'Platform Admin') {
-      stockQuery = stockQuery.eq('business_id', req.user.business_id);
-    }
-    stockQuery = applyLocationFilter(stockQuery, req);
-
-    const { data: movements, error: movementsError } = await stockQuery;
-    if (movementsError) throw movementsError;
+    const sales = salesRes.data;
+    const movements = movementsRes.data;
 
     // 3. Format and combine
     const formattedSales = sales.map(s => ({

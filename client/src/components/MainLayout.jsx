@@ -86,6 +86,15 @@ const Icons = {
       <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  invoice: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="10 9 9 9 8 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   signout: (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
       <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -134,6 +143,7 @@ export default function MainLayout() {
         { path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard, visible: true },
         { path: '/products', label: 'Products', icon: Icons.products, visible: true },
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('manage_inventory') },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },

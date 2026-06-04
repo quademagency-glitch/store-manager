@@ -1514,6 +1514,9 @@ export default function PlatformAdmin() {
                             <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                             <td className="text-right">
                               <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                                <button className="btn btn-secondary btn-sm" onClick={() => window.open(`/invoice/${inv.id}`, '_blank')} title="View Invoice">
+                                  {Icons.eye} View
+                                </button>
                                 {inv.status !== 'paid' && (
                                   <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedInvoiceId(inv.id); setShowSendInvoiceModal(true); }}>
                                     {Icons.send} Send

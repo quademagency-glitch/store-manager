@@ -97,7 +97,7 @@ export default function InvoiceView() {
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
             <div>
               <h1 style={{ margin: 0, fontSize: '2rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
-                STORE MANAGER APP
+                QUADEM ERP
               </h1>
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px' }}>Platform Subscription Receipt</p>
             </div>
@@ -130,8 +130,8 @@ export default function InvoiceView() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>From:</h3>
-              <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Store Manager App</p>
-              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@storemanager.com</p>
+              <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Quadem Digital Enterprise</p>
+              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quadem.com</p>
             </div>
           </div>
 
@@ -169,7 +169,7 @@ export default function InvoiceView() {
           </div>
 
           <div style={{ textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '2rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            <p>Thank you for subscribing to Store Manager. We appreciate your business!</p>
+            <p>Thank you for subscribing to Quadem ERP. We appreciate your business!</p>
           </div>
         </div>
 

@@ -29,9 +29,11 @@ export default function Sales() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [saleSuccess, setSaleSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('pos');
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '' });
   
-  const { customers, fetchCustomers } = useCustomers();
+  const { customers, fetchCustomers, createCustomer, loading: customerLoading } = useCustomers();
 
   // Load customers
   useMemo(() => {
@@ -71,6 +73,19 @@ export default function Sales() {
   const closeReceipt = () => {
     setShowReceipt(false);
     setReceiptData(null);
+    setSelectedCustomerId('');
+  };
+
+  const handleCreateCustomer = async (e) => {
+    e.preventDefault();
+    const res = await createCustomer(newCustomerData);
+    if (res.success) {
+      setSelectedCustomerId(res.customer.id);
+      setShowNewCustomerModal(false);
+      setNewCustomerData({ name: '', phone: '' });
+    } else {
+      alert(res.error || 'Failed to create customer');
+    }
   };
 
   // Format currency
@@ -344,16 +359,26 @@ export default function Sales() {
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                  Customer (Optional)
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                    Customer (Required)
+                  </span>
+                  <button 
+                    className="btn btn-sm btn-outline" 
+                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                    onClick={() => setShowNewCustomerModal(true)}
+                  >
+                    + Add New
+                  </button>
+                </div>
                 <select 
                   className="input" 
-                  value={selectedCustomerId || ''} 
+                  value={selectedCustomerId} 
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
                   style={{ width: '100%' }}
+                  required
                 >
-                  <option value="">Guest (No Account)</option>
+                  <option value="" disabled>-- Select Customer --</option>
                   {customers?.map(c => (
                     <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
                   ))}
@@ -364,7 +389,7 @@ export default function Sales() {
                 className="btn pos-checkout-btn"
                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.2rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}
                 onClick={handleCompleteSale}
-                disabled={saleLoading || cart.length === 0}
+                disabled={saleLoading || cart.length === 0 || !selectedCustomerId}
               >
                 {saleLoading ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -456,6 +481,44 @@ export default function Sales() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ─── New Customer Modal ─── */}
+      <Modal
+        isOpen={showNewCustomerModal}
+        onClose={() => setShowNewCustomerModal(false)}
+        title="Quick Add Customer"
+      >
+        <form onSubmit={handleCreateCustomer}>
+          <div className="form-group">
+            <label>Full Name</label>
+            <input
+              type="text"
+              className="input"
+              value={newCustomerData.name}
+              onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Phone Number</label>
+            <input
+              type="tel"
+              className="input"
+              value={newCustomerData.phone}
+              onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
+              required
+            />
+          </div>
+          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setShowNewCustomerModal(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={customerLoading}>
+              {customerLoading ? 'Saving...' : 'Save Customer'}
+            </button>
+          </div>
+        </form>
       </Modal>
     </>
   );

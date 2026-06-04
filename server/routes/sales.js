@@ -116,6 +116,13 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       });
     }
 
+    if (!customer_id) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'A customer must be selected for the sale.',
+      });
+    }
+
     const validPaymentMethods = ['cash', 'card', 'mobile'];
     if (!validPaymentMethods.includes(payment_method)) {
       return res.status(400).json({

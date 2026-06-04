@@ -230,13 +230,30 @@ router.post('/:id/send-verification', authGuard, async (req, res) => {
     const arkeselSender = process.env.ARKESEL_SENDER_ID || 'StoreMgr';
     
     if (arkeselKey) {
+      // Clean phone number (remove spaces, dashes)
+      const cleanPhone = customer.phone.replace(/[\s\-+()]/g, '');
       const message = `Hello ${customer.name || 'Customer'}, your verification code is: ${code}`;
-      const url = `https://sms.arkesel.com/sms/api?action=send-sms&api_key=${arkeselKey}&to=${customer.phone}&from=${arkeselSender}&sms=${encodeURIComponent(message)}`;
       
-      const smsRes = await fetch(url);
-      if (!smsRes.ok) {
-        console.error('Arkesel SMS failed:', await smsRes.text());
-        // We do not fail the whole request just yet, but log it.
+      const smsRes = await fetch('https://sms.arkesel.com/api/v2/sms/send', {
+        method: 'POST',
+        headers: {
+          'api-key': arkeselKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: arkeselSender,
+          message: message,
+          recipients: [cleanPhone]
+        })
+      });
+      
+      const smsData = await smsRes.json();
+      
+      if (!smsRes.ok || smsData.status === 'error' || smsData.code === 400) {
+        console.error('Arkesel SMS failed:', smsData);
+        return res.status(400).json({ 
+          error: `SMS failed: ${smsData.message || 'Invalid phone number or API key'}` 
+        });
       }
     } else {
       console.warn('ARKESEL_API_KEY not set. Verification code generated but SMS not sent.');

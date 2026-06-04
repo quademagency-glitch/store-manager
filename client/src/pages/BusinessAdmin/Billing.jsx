@@ -52,7 +52,7 @@ export default function Billing() {
       const result = await api.post('/subscriptions/initialize-paystack', {
         plan_id: selectedPlan.id,
         billing_cycle: billingCycle,
-        callback_url: window.location.origin + '/business-admin?tab=billing&payment=success',
+        callback_url: window.location.origin + '/business-admin/billing?payment=success',
       });
 
       if (result.authorization_url) {

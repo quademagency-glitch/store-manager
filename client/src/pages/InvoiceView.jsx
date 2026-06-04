@@ -18,16 +18,23 @@ export default function InvoiceView() {
         if (!userStr) throw new Error("Not logged in");
         const user = JSON.parse(userStr);
         
-        const res = await api.get(`/billing/invoices/${user.business_id}`);
+        const res = await api.get(`/billing/invoices`);
         const found = res.find(inv => inv.id === id);
         
         if (found) {
-          // We need business details too. We can fetch the business.
-          const subRes = await api.get(`/subscriptions/business/${user.business_id}`);
-          setInvoice({
-            ...found,
-            business: subRes?.businesses || { name: user.user_metadata?.business_name || 'Business Account', contact_email: user.email }
-          });
+          try {
+            // Fetch current subscription for business details
+            const subRes = await api.get('/subscriptions/current');
+            setInvoice({
+              ...found,
+              business: subRes?.businesses || { name: user.user_metadata?.business_name || 'Business Account', contact_email: user.email }
+            });
+          } catch (e) {
+            setInvoice({
+              ...found,
+              business: { name: user.user_metadata?.business_name || 'Business Account', contact_email: user.email }
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to load invoice", err);

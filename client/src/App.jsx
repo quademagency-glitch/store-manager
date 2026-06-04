@@ -13,6 +13,7 @@ import PlatformAdmin from './pages/PlatformAdmin';
 import ForgotPassword from './pages/ForgotPassword';
 import UpdatePassword from './pages/UpdatePassword';
 import InvoiceGenerator from './pages/InvoiceGenerator';
+import InvoiceView from './pages/InvoiceView';
 import SmartRedirect from './components/SmartRedirect';
 
 import MainLayout from './components/MainLayout';
@@ -61,6 +62,9 @@ export default function App() {
             } />
             <Route path="/invoice" element={
               <ProtectedRoute><InvoiceGenerator /></ProtectedRoute>
+            } />
+            <Route path="/invoice/:id" element={
+              <ProtectedRoute><InvoiceView /></ProtectedRoute>
             } />
             <Route path="/settings" element={
               <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>

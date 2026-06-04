@@ -3,7 +3,7 @@ import { useSales } from '../hooks/useSales';
 import { useAuthContext } from '../lib/AuthContext';
 
 export default function SalesHistory() {
-  const { sales, fetchSales, voidSale, loading } = useSales();
+  const { sales, fetchSales, voidSale, deleteSale, loading } = useSales();
   const { user } = useAuthContext();
 
   useEffect(() => {
@@ -18,6 +18,18 @@ export default function SalesHistory() {
         fetchSales(); // Refresh to update status
       } else {
         alert(res.error || 'Failed to void sale');
+      }
+    }
+  };
+
+  const handleDelete = async (saleId) => {
+    if (window.confirm('Are you sure you want to PERMANENTLY delete this sale? This will remove all records.')) {
+      const res = await deleteSale(saleId);
+      if (res.success) {
+        alert('Sale deleted successfully.');
+        // Sales state is updated in the hook automatically
+      } else {
+        alert(res.error || 'Failed to delete sale');
       }
     }
   };
@@ -37,6 +49,10 @@ export default function SalesHistory() {
     if (user?.role === 'Platform Admin' || user?.role === 'Business Admin' || user?.role === 'Manager') return true;
     if (user?.id === sale.salesperson_id) return true;
     return false;
+  };
+
+  const canDelete = () => {
+    return user?.role === 'Business Admin' || user?.role === 'Platform Admin';
   };
 
   return (
@@ -89,10 +105,18 @@ export default function SalesHistory() {
                 <td>
                   {canVoid(sale) && (
                     <button 
-                      className="btn btn-sm btn-outline text-error"
+                      className="btn btn-sm btn-outline text-warning mr-sm"
                       onClick={() => handleVoid(sale.id)}
                     >
-                      Void Sale
+                      Void
+                    </button>
+                  )}
+                  {canDelete() && (
+                    <button 
+                      className="btn btn-sm btn-outline text-error"
+                      onClick={() => handleDelete(sale.id)}
+                    >
+                      Delete
                     </button>
                   )}
                 </td>

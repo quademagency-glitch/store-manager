@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { api } from '../lib/api';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -27,6 +28,21 @@ export default function Dashboard() {
     interval = seconds / 60;
     if (interval > 1) return Math.floor(interval) + ' mins ago';
     return Math.floor(seconds) + ' seconds ago';
+  };
+
+  const handleResetDashboard = async () => {
+    if (window.confirm("WARNING: This will PERMANENTLY delete all sales, stock movements, and alerts for this business/location. Inventory levels will NOT be reset. Are you absolutely sure you want to wipe the dashboard data?")) {
+      try {
+        const res = await api.delete('/analytics/reset');
+        if (res.message) {
+          alert('Dashboard has been reset.');
+          fetchSummary();
+          fetchRecentActivity();
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to reset dashboard');
+      }
+    }
   };
 
   return (
@@ -85,6 +101,14 @@ export default function Dashboard() {
               </div>
               <span>View Reports</span>
             </Link>
+          )}
+          {(role === 'Business Admin' || role === 'Manager') && (
+            <button onClick={handleResetDashboard} className="action-btn">
+              <div className="action-icon action-icon-error" style={{ color: 'var(--color-error)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+              </div>
+              <span>Reset Dash</span>
+            </button>
           )}
         </div>
 

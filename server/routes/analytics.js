@@ -248,4 +248,53 @@ router.get('/recent-activity', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/analytics/reset
+ * Wipes sales, sale_items, stock_movements, alerts for the business
+ * Access: Business Admin and Manager
+ */
+router.delete('/reset', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Manager' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Unauthorized to reset dashboard.' });
+    }
+
+    const business_id = req.user.business_id;
+
+    // Build the base query for deletion using business_id
+    // This removes all sales records (which cascade to sale_items if set up correctly)
+    const { error: salesError } = await supabaseAdmin
+      .from('sales')
+      .delete()
+      .eq('business_id', business_id);
+
+    if (salesError) throw salesError;
+
+    // Delete all stock movements
+    const { error: movementsError } = await supabaseAdmin
+      .from('stock_movements')
+      .delete()
+      .eq('business_id', business_id);
+
+    if (movementsError) throw movementsError;
+
+    // Delete all alerts
+    const { error: alertsError } = await supabaseAdmin
+      .from('alerts')
+      .delete()
+      .eq('business_id', business_id);
+
+    if (alertsError) throw alertsError;
+
+    // NOTE: This does NOT reset inventory quantities (product_inventory table)
+    // It only resets the historical transaction records that feed the dashboard.
+    // If you need inventory quantities reset to 0, that would be a different feature.
+
+    res.json({ message: 'Dashboard metrics and history have been successfully reset.' });
+  } catch (err) {
+    console.error('Error resetting dashboard:', err);
+    res.status(500).json({ error: 'Failed to reset dashboard' });
+  }
+});
+
 module.exports = router;

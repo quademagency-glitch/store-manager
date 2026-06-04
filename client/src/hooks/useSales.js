@@ -62,7 +62,7 @@ export function useSales() {
 
   // ── API Calls ───────────────────────────────────────
 
-  const createSale = useCallback(async (paymentMethod) => {
+  const createSale = useCallback(async (paymentMethod, customerId = null) => {
     setError(null);
     setLoading(true);
     try {
@@ -77,6 +77,7 @@ export function useSales() {
         subtotal: cartTotal,
         tax: 0,
         discount: 0,
+        customer_id: customerId,
       };
 
       const response = await api.post('/sales', payload);
@@ -138,6 +139,22 @@ export function useSales() {
     }
   }, []);
 
+  const deleteSale = useCallback(async (saleId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.delete(`/sales/${saleId}`);
+      setSales(prev => prev.filter(s => s.id !== saleId));
+      return { success: true };
+    } catch (err) {
+      const message = err.message || 'Failed to delete sale';
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     // Cart
     cart,
@@ -152,6 +169,7 @@ export function useSales() {
     sales,
     fetchSales,
     voidSale,
+    deleteSale,
 
     // API
     createSale,

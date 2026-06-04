@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useSales } from '../hooks/useSales';
+import { useCustomers } from '../hooks/useCustomers';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
 
@@ -28,6 +29,14 @@ export default function Sales() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [saleSuccess, setSaleSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('pos');
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  
+  const { customers, fetchCustomers } = useCustomers();
+
+  // Load customers
+  useMemo(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
@@ -48,7 +57,7 @@ export default function Sales() {
     if (cart.length === 0) return;
     setError(null);
 
-    const result = await createSale(paymentMethod);
+    const result = await createSale(paymentMethod, selectedCustomerId);
     if (result.success) {
       setReceiptData(result.data);
       setShowReceipt(true);
@@ -332,6 +341,23 @@ export default function Sales() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                  Customer (Optional)
+                </span>
+                <select 
+                  className="input" 
+                  value={selectedCustomerId || ''} 
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Guest (No Account)</option>
+                  {customers?.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
+                  ))}
+                </select>
               </div>
 
               <button

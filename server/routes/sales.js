@@ -17,6 +17,7 @@ router.get('/', authGuard, async (req, res) => {
       .select(`
         *,
         salesperson:users!salesperson_id(id, name, email),
+        customer:customers!customer_id(id, name, phone),
         sale_items(
           id,
           quantity,
@@ -64,6 +65,7 @@ router.get('/:id', authGuard, async (req, res) => {
       .select(`
         *,
         salesperson:users!salesperson_id(id, name, email),
+        customer:customers!customer_id(id, name, phone),
         sale_items(
           id,
           quantity,
@@ -105,7 +107,7 @@ router.get('/:id', authGuard, async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) => {
   try {
-    const { items, payment_method, total_amount, subtotal, tax, discount } = req.body;
+    const { items, payment_method, total_amount, subtotal, tax, discount, customer_id } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -180,6 +182,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
           total_amount: total_amount || 0,
           discount_amount: discount || 0,
           payment_method,
+          customer_id: customer_id || null,
         },
       ])
       .select()
@@ -343,6 +346,92 @@ router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, 
   } catch (err) {
     console.error('Error voiding sale:', err);
     res.status(500).json({ error: 'Failed to void sale' });
+  }
+});
+
+/**
+ * DELETE /api/sales/:id
+ * Hard delete a sale and return stock to inventory.
+ * Access: Business Admins only.
+ */
+router.delete('/:id', authGuard, async (req, res) => {
+  try {
+    const saleId = req.params.id;
+
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only Business Admins can permanently delete sales.' });
+    }
+
+    // Fetch sale and its items
+    const { data: sale, error: fetchError } = await supabaseAdmin
+      .from('sales')
+      .select('id, status, location_id, business_id, sale_items(product_id, quantity)')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
+
+    // Enforce business isolation
+    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // If sale wasn't voided before deleting, restore inventory and create stock movements
+    if (sale.status !== 'voided') {
+      for (const item of sale.sale_items) {
+        // Get current inventory
+        const { data: inv } = await supabaseAdmin
+          .from('product_inventory')
+          .select('quantity')
+          .eq('product_id', item.product_id)
+          .eq('location_id', sale.location_id)
+          .single();
+        
+        if (inv) {
+          await supabaseAdmin
+            .from('product_inventory')
+            .update({ quantity: inv.quantity + item.quantity })
+            .eq('product_id', item.product_id)
+            .eq('location_id', sale.location_id);
+        }
+
+        await supabaseAdmin.from('stock_movements').insert([{
+          business_id: sale.business_id,
+          location_id: sale.location_id,
+          product_id: item.product_id,
+          quantity_change: item.quantity,
+          movement_type: 'ADJUSTMENT',
+          user_id: req.user.id,
+          reference_id: sale.id,
+          notes: `Deleted Sale #${sale.id}`
+        }]);
+      }
+    }
+
+    // Delete stock movements referencing this sale (sales deletion itself doesn't cascade to stock_movements)
+    await supabaseAdmin
+      .from('stock_movements')
+      .delete()
+      .eq('reference_id', sale.id);
+
+    // Delete alerts referencing this sale
+    await supabaseAdmin
+      .from('alerts')
+      .delete()
+      .eq('reference_id', sale.id);
+
+    // Delete the sale (sale_items will cascade)
+    const { error: deleteError } = await supabaseAdmin
+      .from('sales')
+      .delete()
+      .eq('id', saleId);
+    
+    if (deleteError) throw deleteError;
+
+    res.json({ message: 'Sale deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting sale:', err);
+    res.status(500).json({ error: 'Failed to delete sale' });
   }
 });
 

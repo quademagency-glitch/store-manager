@@ -9,6 +9,7 @@ import Inventory from './pages/Inventory';
 import Alerts from './pages/Alerts';
 import Reconciliation from './pages/Reconciliation';
 import Settings from './pages/Settings';
+import Customers from './pages/Customers';
 import PlatformAdmin from './pages/PlatformAdmin';
 import ForgotPassword from './pages/ForgotPassword';
 import UpdatePassword from './pages/UpdatePassword';
@@ -48,6 +49,9 @@ export default function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/sales" element={
               <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>
+            } />
+            <Route path="/customers" element={
+              <ProtectedRoute><Customers /></ProtectedRoute>
             } />
             <Route path="/inventory" element={
               <ProtectedRoute requiredPermission="manage_inventory"><Inventory /></ProtectedRoute>

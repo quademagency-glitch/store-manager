@@ -14,6 +14,7 @@ const locationsRoutes = require('./routes/locations');
 const alertsRoutes = require('./routes/alerts');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const billingRoutes = require('./routes/billing');
+const customersRoutes = require('./routes/customers');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -82,6 +83,9 @@ app.use('/api/sales', salesRoutes);
 
 // Stock routes
 app.use('/api/stock', stockRoutes);
+
+// Customers routes
+app.use('/api/customers', customersRoutes);
 
 // Analytics routes
 app.use('/api/analytics', analyticsRoutes);

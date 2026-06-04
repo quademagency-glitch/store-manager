@@ -17,22 +17,30 @@ export default function InvoiceView() {
         const userStr = localStorage.getItem('user');
         if (!userStr) throw new Error("Not logged in");
         const user = JSON.parse(userStr);
-        
-        const res = await api.get(`/billing/invoices`);
+        let invoicesUrl = user.role === 'Platform Admin' || user.role_name === 'Platform Admin' 
+          ? '/billing/invoices?limit=1000' 
+          : `/billing/invoices/${user.business_id}`;
+          
+        const res = await api.get(invoicesUrl);
         const found = res.find(inv => inv.id === id);
         
         if (found) {
           try {
-            // Fetch current subscription for business details
-            const subRes = await api.get('/subscriptions/current');
+            // Fetch subscription for business details
+            let subRes;
+            if (user.role === 'Platform Admin' || user.role_name === 'Platform Admin') {
+               subRes = await api.get(`/subscriptions/business/${found.business_id}`);
+            } else {
+               subRes = await api.get('/subscriptions/current');
+            }
             setInvoice({
               ...found,
-              business: subRes?.businesses || { name: user.user_metadata?.business_name || 'Business Account', contact_email: user.email }
+              business: subRes?.businesses || found.businesses || { name: 'Business Account', contact_email: user.email }
             });
           } catch (e) {
             setInvoice({
               ...found,
-              business: { name: user.user_metadata?.business_name || 'Business Account', contact_email: user.email }
+              business: found.businesses || { name: 'Business Account', contact_email: user.email }
             });
           }
         }

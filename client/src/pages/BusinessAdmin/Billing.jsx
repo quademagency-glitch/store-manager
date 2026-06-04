@@ -13,6 +13,7 @@ export default function Billing() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const formatCurrency = (amount, currency = 'GHS') => {
     return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);
@@ -264,6 +265,7 @@ export default function Billing() {
                   <th>Status</th>
                   <th>Date</th>
                   <th>Method</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,10 +276,18 @@ export default function Billing() {
                     <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
                     <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td style={{ textTransform: 'capitalize', fontSize: '0.85rem' }}>{inv.payment_method || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button 
+                        className="btn btn-secondary btn-sm" 
+                        onClick={() => setSelectedInvoice(inv)}
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {invoices.length === 0 && (
-                  <tr><td colSpan="5" className="text-center py-xl text-muted">No invoices yet.</td></tr>
+                  <tr><td colSpan="6" className="text-center py-xl text-muted">No invoices yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -362,6 +372,59 @@ export default function Billing() {
               </div>
             </div>
           )}
+        </Modal>
+      )}
+
+      {/* Invoice Details Modal */}
+      {selectedInvoice && (
+        <Modal isOpen={true} title={`Invoice ${selectedInvoice.invoice_number}`} onClose={() => setSelectedInvoice(null)}>
+          <div className="invoice-details-content" style={{ padding: 'var(--space-md)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-xl)' }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--color-text-primary)' }}>{user?.user_metadata?.name || 'Business Account'}</h3>
+                <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{user?.email}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span className={`pa-invoice-badge ${selectedInvoice.status}`}>{selectedInvoice.status}</span>
+                <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  {new Date(selectedInvoice.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 'var(--space-xl)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                  <th style={{ padding: '8px 0', color: 'var(--color-text-secondary)' }}>Description</th>
+                  <th style={{ padding: '8px 0', textAlign: 'right', color: 'var(--color-text-secondary)' }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '16px 0', borderBottom: '1px solid var(--color-border)' }}>
+                    {selectedInvoice.description || 'Subscription Payment'}
+                  </td>
+                  <td style={{ padding: '16px 0', textAlign: 'right', borderBottom: '1px solid var(--color-border)' }}>
+                    {formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ width: '200px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>
+                  <span>Total:</span>
+                  <span>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-actions" style={{ marginTop: 'var(--space-2xl)' }}>
+              <button className="btn btn-secondary" onClick={() => window.print()}>Print / Save PDF</button>
+              <button className="btn btn-primary" onClick={() => setSelectedInvoice(null)}>Close</button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

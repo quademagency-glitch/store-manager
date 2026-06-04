@@ -67,12 +67,37 @@ export default function Billing() {
     }
   };
 
-  // Check for payment success callback
+  // Check for payment success callback and verify synchronously
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success' || params.get('trxref')) {
-      // Payment completed — refresh data
-      setTimeout(() => fetchBillingData(), 2000);
+    const trxref = params.get('trxref') || params.get('reference');
+
+    if (trxref) {
+      const verifyPayment = async () => {
+        try {
+          // Verify with our new synchronous endpoint
+          await api.post('/subscriptions/verify-paystack', { reference: trxref });
+          
+          // Clear URL parameters so we don't verify again
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // Force a full reload. This ensures the AuthContext completely refetches 
+          // the user's role, permissions, and business status from the database,
+          // granting them immediate access to their new features.
+          window.location.reload();
+        } catch (err) {
+          console.error('Payment verification failed:', err);
+          alert('We received your payment, but could not verify it immediately. It will be processed shortly by our system.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchBillingData();
+        }
+      };
+      
+      verifyPayment();
+    } else if (params.get('payment') === 'success') {
+      // Clear URL and refresh if it's just a generic success flag
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => fetchBillingData(), 1000);
     }
   }, [fetchBillingData]);
 

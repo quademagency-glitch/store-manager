@@ -396,6 +396,135 @@ router.post('/initialize-paystack', authGuard, async (req, res) => {
 });
 
 /**
+ * POST /api/subscriptions/verify-paystack
+ * Synchronously verify a Paystack transaction and provision the subscription immediately.
+ */
+router.post('/verify-paystack', authGuard, async (req, res) => {
+  try {
+    const { reference } = req.body;
+    if (!reference) {
+      return res.status(400).json({ error: 'Transaction reference is required' });
+    }
+
+    // Get the active Paystack gateway
+    const { data: gateway } = await supabaseAdmin
+      .from('payment_gateways')
+      .select('*')
+      .eq('provider', 'paystack')
+      .eq('is_active', true)
+      .single();
+
+    if (!gateway) {
+      return res.status(400).json({ error: 'Paystack is not configured.' });
+    }
+
+    // Verify transaction with Paystack
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${gateway.secret_key}`
+      }
+    });
+
+    const verifyData = await verifyRes.json();
+
+    if (!verifyData.status || verifyData.data.status !== 'success') {
+      return res.status(400).json({ error: 'Payment verification failed or payment was not successful' });
+    }
+
+    const { data } = verifyData;
+    const metadata = data.metadata || {};
+    
+    // Check if we already processed this invoice to prevent duplication
+    const { data: existingInvoice } = await supabaseAdmin
+      .from('billing_invoices')
+      .select('id')
+      .eq('paystack_reference', reference)
+      .single();
+
+    if (existingInvoice) {
+      // Already processed by webhook
+      return res.json({ message: 'Payment verified and already processed', status: 'success' });
+    }
+
+    if (metadata.business_id && metadata.plan_id) {
+      const now = new Date();
+      const periodEnd = new Date(now);
+      const cycle = metadata.billing_cycle || 'monthly';
+      if (cycle === 'yearly') {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setDate(periodEnd.getDate() + 30);
+      }
+
+      // Upsert subscription
+      const { data: existingSub } = await supabaseAdmin
+        .from('business_subscriptions')
+        .select('id')
+        .eq('business_id', metadata.business_id)
+        .single();
+
+      const subData = {
+        plan_id: metadata.plan_id,
+        status: 'active',
+        billing_cycle: cycle,
+        current_period_start: now.toISOString(),
+        current_period_end: periodEnd.toISOString(),
+        trial_ends_at: null,
+        amount: data.amount / 100, // Convert from pesewas/kobo
+        currency: data.currency || 'GHS',
+        paystack_subscription_code: reference,
+        updated_at: now.toISOString(),
+      };
+
+      let subId = existingSub?.id;
+      if (existingSub) {
+        await supabaseAdmin
+          .from('business_subscriptions')
+          .update(subData)
+          .eq('id', existingSub.id);
+      } else {
+        const { data: newSub } = await supabaseAdmin
+          .from('business_subscriptions')
+          .insert([{ business_id: metadata.business_id, ...subData }])
+          .select('id')
+          .single();
+        subId = newSub?.id;
+      }
+
+      // Update business plan reference and ensure active status
+      await supabaseAdmin
+        .from('businesses')
+        .update({
+          subscription_plan_id: metadata.plan_id,
+          status: 'active',
+        })
+        .eq('id', metadata.business_id);
+
+      // Create billing invoice record
+      await supabaseAdmin
+        .from('billing_invoices')
+        .insert([{
+          business_id: metadata.business_id,
+          subscription_id: subId || null,
+          amount: data.amount / 100,
+          currency: data.currency || 'GHS',
+          status: 'paid',
+          payment_method: data.channel || 'paystack',
+          paystack_reference: reference,
+          description: `${metadata.plan_name || 'Subscription'} — ${cycle} payment`,
+          paid_at: now.toISOString(),
+        }]);
+    }
+
+    res.json({ message: 'Payment verified and processed successfully', status: 'success' });
+  } catch (err) {
+    console.error('Error verifying Paystack:', err);
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+/**
  * POST /api/subscriptions/paystack-webhook
  * Handle Paystack webhook events (charge.success, subscription.disable, etc.)
  * This endpoint is PUBLIC but verified via Paystack signature

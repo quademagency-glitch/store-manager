@@ -227,13 +227,51 @@ export default function InventoryCount({ locations, products }) {
     }
   };
 
-  // View session
+  // View or Resume session
   const handleViewSession = async (id) => {
     setViewSessionLoading(true);
     setStep('view');
     try {
       const data = await api.get(`/stocktake/${id}`);
-      setViewSession(data);
+      
+      if (data.session.status === 'in_progress') {
+        // Resume session
+        setSession(data.session);
+        setSelectedLocationId(data.session.location_id);
+        
+        // Rehydrate product counts from existing scans
+        const counts = {};
+        for (const scan of data.scans) {
+          if (scan.scan_result === 'found' && scan.unit?.product?.id) {
+            const pid = scan.unit.product.id;
+            if (!counts[pid]) {
+              counts[pid] = {
+                counted: '', 
+                scannedQrs: [],
+                returnQrs: [],
+                damagedQrs: [],
+                status: 'pending'
+              };
+            }
+            if (!counts[pid].scannedQrs.includes(scan.qr_code)) {
+              counts[pid].scannedQrs.push(scan.qr_code);
+            }
+          }
+        }
+        
+        // Pre-fill 'counted' to match the number of scans
+        for (const pid of Object.keys(counts)) {
+          counts[pid].counted = counts[pid].scannedQrs.length.toString();
+          // Status ('match' or 'discrepancy') requires systemQty, which is dynamically calculated
+          // so we'll leave it as 'pending' and the user can click 'Save' to re-verify.
+        }
+        
+        setProductCounts(counts);
+        setStep('counting');
+      } else {
+        // View completed/cancelled session
+        setViewSession(data);
+      }
     } catch (err) {
       alert(err.message || 'Failed to fetch session details');
       setStep('select');

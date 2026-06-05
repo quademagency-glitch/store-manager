@@ -3,6 +3,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
 import { api } from '../lib/api';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
@@ -20,6 +21,9 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // QR Label state
+  const [qrLabelProduct, setQrLabelProduct] = useState(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -28,7 +32,8 @@ export default function Products() {
     category: '',
     price: '',
     initialQuantity: '',
-    locationId: ''
+    locationId: '',
+    qr_code_data: ''
   });
 
   // Filter products based on search term
@@ -51,7 +56,8 @@ export default function Products() {
       category: 'General',
       price: '',
       initialQuantity: '',
-      locationId: locations.length > 0 ? locations[0].id : ''
+      locationId: locations.length > 0 ? locations[0].id : '',
+      qr_code_data: ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -65,7 +71,8 @@ export default function Products() {
       category: product.category,
       price: product.price,
       initialQuantity: '',
-      locationId: ''
+      locationId: '',
+      qr_code_data: product.qr_code_data || ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -89,7 +96,8 @@ export default function Products() {
       category: formData.category,
       price: parseFloat(formData.price) || 0,
       initialQuantity: formData.initialQuantity,
-      locationId: formData.locationId
+      locationId: formData.locationId,
+      qr_code_data: formData.qr_code_data || formData.sku
     };
 
     let result;
@@ -219,9 +227,24 @@ export default function Products() {
                             <span className="stock-threshold text-muted text-sm">/ across locs</span>
                           </div>
                         </td>
-                        {hasPermission('manage_products') && (
+                          {hasPermission('manage_products') && (
                           <td className="text-right">
                             <div className="action-buttons">
+                              <button
+                                className="btn-icon"
+                                onClick={() => setQrLabelProduct(product)}
+                                aria-label="Print QR Label"
+                                title="Print QR Label"
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                  <rect x="14" y="14" width="3" height="3" fill="currentColor"/>
+                                  <rect x="18" y="18" width="3" height="3" fill="currentColor"/>
+                                  <rect x="14" y="18" width="3" height="3" fill="currentColor"/>
+                                </svg>
+                              </button>
                               <button 
                                 className="btn-icon" 
                                 onClick={() => openEditModal(product)}
@@ -358,7 +381,20 @@ export default function Products() {
             </div>
           )}
 
-
+          <div className="form-group">
+            <label htmlFor="qr_code_data">QR Code Data</label>
+            <input 
+              type="text" 
+              id="qr_code_data" 
+              className="form-input text-mono" 
+              value={formData.qr_code_data}
+              onChange={(e) => setFormData({...formData, qr_code_data: e.target.value})}
+              placeholder={formData.sku || 'Auto-generated from SKU'}
+            />
+            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+              Leave blank to auto-use the SKU. This value is encoded in the printed QR label.
+            </small>
+          </div>
 
           <div className="modal-footer">
             <button 
@@ -378,6 +414,35 @@ export default function Products() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* QR Label Modal */}
+      <Modal
+        isOpen={!!qrLabelProduct}
+        onClose={() => setQrLabelProduct(null)}
+        title="Print QR Label"
+      >
+        {qrLabelProduct && (
+          <div className="qr-print-label">
+            <div className="qr-code-wrapper">
+              <QRCodeSVG
+                value={qrLabelProduct.qr_code_data || qrLabelProduct.sku}
+                size={200}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+            <div className="product-label-info">
+              <div className="product-label-name">{qrLabelProduct.name}</div>
+              <div className="product-label-sku">SKU: {qrLabelProduct.sku}</div>
+              <div className="product-label-price">${Number(qrLabelProduct.price).toFixed(2)}</div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+              <button className="btn btn-secondary" onClick={() => setQrLabelProduct(null)}>Close</button>
+              <button className="btn btn-primary" onClick={() => window.print()}>🖨️ Print Label</button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

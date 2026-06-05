@@ -3725,3 +3725,302 @@ input {
   background-size: 20px 20px;
   background-image: radial-gradient(circle at 10px 10px, transparent 10px, #fdfdfd 11px);
 }
+
+/* ============================================
+   QR Scanner Overlay
+   ============================================ */
+.qr-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.qr-scanner-container {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 0 60px rgba(99, 102, 241, 0.15);
+}
+
+.qr-scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.qr-scanner-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.qr-scanner-region {
+  width: 100%;
+  min-height: 300px;
+}
+
+.qr-scanner-region video {
+  border-radius: 0 !important;
+}
+
+.qr-scanner-hint {
+  text-align: center;
+  padding: var(--space-md) var(--space-lg);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.qr-scanner-error {
+  padding: var(--space-2xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================
+   Inventory Tabs
+   ============================================ */
+.inventory-tabs {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.inventory-tab {
+  flex: 1;
+  padding: 0.6rem var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: center;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.inventory-tab:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.inventory-tab.active {
+  background: var(--color-bg-secondary);
+  color: var(--color-accent-hover);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Transfer Status Badges */
+.transfer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.transfer-status.pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.transfer-status.completed {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.transfer-status.cancelled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Audit Discrepancy */
+.discrepancy-positive {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.discrepancy-negative {
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.discrepancy-zero {
+  color: var(--color-text-muted);
+}
+
+/* Batch Expiry Warnings */
+.batch-expired {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.batch-expiring-soon {
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+.expiry-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.expiry-badge.expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.expiry-badge.soon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.expiry-badge.ok {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+/* ============================================
+   QR Print Label
+   ============================================ */
+.qr-print-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl);
+  gap: var(--space-md);
+}
+
+.qr-print-label .qr-code-wrapper {
+  padding: var(--space-lg);
+  background: white;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+}
+
+.qr-print-label .product-label-info {
+  text-align: center;
+}
+
+.qr-print-label .product-label-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.qr-print-label .product-label-sku {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+}
+
+.qr-print-label .product-label-price {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-accent-hover);
+  margin-top: var(--space-sm);
+}
+
+/* Print-specific styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .qr-print-label,
+  .qr-print-label * {
+    visibility: visible;
+  }
+  .qr-print-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: white !important;
+    color: black !important;
+  }
+  .qr-print-label .product-label-sku,
+  .qr-print-label .product-label-price {
+    color: black !important;
+  }
+  .modal-overlay,
+  .qr-scanner-overlay {
+    display: none !important;
+  }
+}
+
+/* Cycle Count Grid */
+.audit-grid {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.audit-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.audit-row .product-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.audit-row .expected-qty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.audit-row input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.audit-row input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

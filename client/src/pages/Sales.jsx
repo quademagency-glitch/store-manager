@@ -5,6 +5,8 @@ import { useSales } from '../hooks/useSales';
 import { useCustomers } from '../hooks/useCustomers';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
+import QrScanner from '../components/QrScanner';
+import { api } from '../lib/api';
 
 export default function Sales() {
   const { user } = useAuthContext();
@@ -42,6 +44,9 @@ export default function Sales() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyCode, setVerifyCode] = useState('');
   const [customerToVerify, setCustomerToVerify] = useState(null);
+
+  // QR Scanner
+  const [showScanner, setShowScanner] = useState(false);
 
   const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
 
@@ -211,6 +216,14 @@ export default function Sales() {
                 </button>
               )}
             </div>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+              onClick={() => setShowScanner(true)}
+              title="Scan QR Code"
+            >
+              📷 Scan
+            </button>
           </div>
 
           {productsLoading ? (
@@ -650,6 +663,27 @@ export default function Sales() {
           </div>
         </form>
       </Modal>
+
+      {/* ─── QR Scanner ─── */}
+      <QrScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={async (decodedText) => {
+          setShowScanner(false);
+          try {
+            const product = await api.get(`/products/lookup?qr=${encodeURIComponent(decodedText)}`);
+            if (product) {
+              const userLocationId = user?.user_metadata?.location_id;
+              const localStock = userLocationId
+                ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
+                : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
+              addToCart({ ...product, stock_quantity: localStock });
+            }
+          } catch {
+            alert(`No product found for QR code: ${decodedText}`);
+          }
+        }}
+      />
     </>
   );
 }

@@ -32,6 +32,34 @@ router.get('/', authGuard, async (req, res) => {
 });
 
 /**
+ * GET /api/products/lookup
+ * Look up a product by its QR code data.
+ * Access: All authenticated staff
+ */
+router.get('/lookup', authGuard, async (req, res) => {
+  try {
+    const { qr } = req.query;
+    if (!qr) return res.status(400).json({ error: 'Missing qr query parameter.' });
+
+    let query = supabaseAdmin
+      .from('products')
+      .select('*, product_inventory(location_id, quantity, low_stock_threshold)')
+      .eq('qr_code_data', qr);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query.single();
+    if (error || !data) return res.status(404).json({ error: 'Product not found for this QR code.' });
+    res.json(data);
+  } catch (err) {
+    console.error('Error looking up product by QR:', err);
+    res.status(500).json({ error: 'Failed to look up product' });
+  }
+});
+
+/**
  * GET /api/products/:id
  * Fetch a single product
  * Access: All authenticated staff
@@ -66,7 +94,7 @@ router.get('/:id', authGuard, async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price, initialQuantity, locationId } = req.body;
+    const { name, sku, category, price, initialQuantity, locationId, qr_code_data } = req.body;
 
     if (!name || !sku) {
       return res.status(400).json({ error: 'Name and SKU are required' });
@@ -80,6 +108,7 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
           sku, 
           category, 
           price, 
+          qr_code_data: qr_code_data || sku,
           business_id: req.body.business_id || req.user.business_id 
         }
       ])
@@ -135,11 +164,14 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
  */
 router.put('/:id', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price } = req.body;
+    const { name, sku, category, price, qr_code_data } = req.body;
+
+    const updatePayload = { name, sku, category, price };
+    if (qr_code_data !== undefined) updatePayload.qr_code_data = qr_code_data;
 
     let query = supabaseAdmin
       .from('products')
-      .update({ name, sku, category, price })
+      .update(updatePayload)
       .eq('id', req.params.id);
 
     if (req.user.role !== 'Platform Admin') {

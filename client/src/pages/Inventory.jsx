@@ -5,14 +5,26 @@ import { useStock } from '../hooks/useStock';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import QrScanner from '../components/QrScanner';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
-  const { products } = useProducts();
+  const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError } = useStock();
 
   const [locations, setLocations] = useState([]);
-  const [activeTab, setActiveTab] = useState('ledger');
+  const [activeTab, setActiveTab] = useState('products');
+
+  // ─── Products Tab State ───
+  const [productSearch, setProductSearch] = useState('');
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productFormError, setProductFormError] = useState('');
+  const [isProductSubmitting, setIsProductSubmitting] = useState(false);
+  const [qrLabelProduct, setQrLabelProduct] = useState(null);
+  const [productFormData, setProductFormData] = useState({
+    name: '', sku: '', category: '', price: '', initialQuantity: '', locationId: '', qr_code_data: ''
+  });
 
   // Adjust Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -279,11 +291,73 @@ export default function Inventory() {
     return { class: 'ok', label: `${daysLeft}d left`, rowClass: '' };
   };
 
+  // ─── Products Tab Handlers ───
+  const filteredProducts = useMemo(() => {
+    if (!productSearch) return products;
+    const lower = productSearch.toLowerCase();
+    return products.filter(p =>
+      p.name.toLowerCase().includes(lower) ||
+      p.sku.toLowerCase().includes(lower) ||
+      p.category?.toLowerCase().includes(lower)
+    );
+  }, [products, productSearch]);
+
+  const openAddProductModal = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      name: '', sku: '', category: 'General', price: '',
+      initialQuantity: '', locationId: locations.length > 0 ? locations[0].id : '', qr_code_data: ''
+    });
+    setProductFormError('');
+    setIsProductModalOpen(true);
+  };
+
+  const openEditProductModal = (product) => {
+    setEditingProduct(product);
+    setProductFormData({
+      name: product.name, sku: product.sku, category: product.category, price: product.price,
+      initialQuantity: '', locationId: '', qr_code_data: product.qr_code_data || ''
+    });
+    setProductFormError('');
+    setIsProductModalOpen(true);
+  };
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+    setProductFormError('');
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    setProductFormError('');
+    setIsProductSubmitting(true);
+    const payload = {
+      name: productFormData.name, sku: productFormData.sku, category: productFormData.category,
+      price: parseFloat(productFormData.price) || 0,
+      initialQuantity: productFormData.initialQuantity, locationId: productFormData.locationId,
+      qr_code_data: productFormData.qr_code_data || productFormData.sku
+    };
+    const result = editingProduct
+      ? await updateProduct(editingProduct.id, payload)
+      : await addProduct(payload);
+    if (result.success) closeProductModal();
+    else setProductFormError(result.error || 'An error occurred.');
+    setIsProductSubmitting(false);
+  };
+
+  const handleDeleteProduct = async (id, name) => {
+    if (window.confirm(`Delete ${name}? This cannot be undone.`)) {
+      await deleteProduct(id);
+    }
+  };
+
   const tabs = [
+    { id: 'products', label: '📦 Products' },
     { id: 'ledger', label: '📋 Ledger' },
     { id: 'transfers', label: '🔄 Transfers' },
     { id: 'audits', label: '📊 Cycle Counts' },
-    { id: 'batches', label: '📦 Batches' },
+    { id: 'batches', label: '🗓️ Batches' },
   ];
 
   return (
@@ -336,6 +410,106 @@ export default function Inventory() {
           </button>
         ))}
       </div>
+      {/* ═══ PRODUCTS TAB ═══ */}
+      {activeTab === 'products' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div className="search-bar" style={{ flex: 1, maxWidth: '400px' }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="search-icon">
+                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M18 18L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by name, SKU, or category..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span className="badge badge-neutral">{filteredProducts.length} items</span>
+              {hasPermission('manage_products') && (
+                <button className="btn btn-primary" onClick={openAddProductModal}>+ Add Product</button>
+              )}
+            </div>
+          </div>
+          <div className="glass-panel">
+            {productsLoading ? (
+              <div className="table-loading"><div className="spinner"></div><p>Loading products...</p></div>
+            ) : (
+              <table className="glass-table">
+                <thead>
+                  <tr>
+                    <th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th>
+                    {hasPermission('manage_products') && <th className="text-right">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.length === 0 ? (
+                    <tr><td colSpan={hasPermission('manage_products') ? 6 : 5} className="text-center py-xl text-muted">No products found.</td></tr>
+                  ) : (
+                    filteredProducts.map(product => {
+                      const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
+                      const isLowStock = totalStock <= 5;
+                      return (
+                        <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
+                          <td>
+                            <div className="product-cell">
+                              <div className="product-avatar">{product.name.charAt(0).toUpperCase()}</div>
+                              <div className="product-info">
+                                <span className="product-name">{product.name}</span>
+                                {isLowStock && <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>}
+                              </div>
+                            </div>
+                          </td>
+                          <td><code className="text-mono">{product.sku}</code></td>
+                          <td><span className="badge badge-neutral">{product.category}</span></td>
+                          <td className="font-medium">${Number(product.price).toFixed(2)}</td>
+                          <td>
+                            <div className="stock-cell">
+                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>{totalStock}</span>
+                              <span className="stock-threshold text-muted text-sm">/ across locs</span>
+                            </div>
+                          </td>
+                          {hasPermission('manage_products') && (
+                            <td className="text-right">
+                              <div className="action-buttons">
+                                <button className="btn-icon" onClick={() => setQrLabelProduct(product)} title="Print QR Label">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                                    <rect x="14" y="14" width="3" height="3" fill="currentColor"/>
+                                    <rect x="18" y="18" width="3" height="3" fill="currentColor"/>
+                                    <rect x="14" y="18" width="3" height="3" fill="currentColor"/>
+                                  </svg>
+                                </button>
+                                <button className="btn-icon" onClick={() => openEditProductModal(product)} title="Edit">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+                                <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteProduct(product.id, product.name)} title="Delete">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ═══ LEDGER TAB ═══ */}
       {activeTab === 'ledger' && (
@@ -725,9 +899,92 @@ export default function Inventory() {
           </div>
         </form>
       </Modal>
-
       {/* QR Scanner */}
       <QrScanner isOpen={showScanner} onClose={() => setShowScanner(false)} onScan={handleQrScan} />
+
+      {/* ═══ Product Add/Edit Modal ═══ */}
+      <Modal isOpen={isProductModalOpen} onClose={closeProductModal} title={editingProduct ? 'Edit Product' : 'Add New Product'}>
+        <form onSubmit={handleProductSubmit} className="form-layout">
+          {productFormError && <div className="alert alert-error"><p>{productFormError}</p></div>}
+          <div className="form-group">
+            <label htmlFor="prod-name">Product Name *</label>
+            <input type="text" id="prod-name" className="form-input" required value={productFormData.name}
+              onChange={e => setProductFormData({...productFormData, name: e.target.value})} placeholder="e.g. Wireless Headphones" />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="prod-sku">SKU *</label>
+              <input type="text" id="prod-sku" className="form-input text-mono" required value={productFormData.sku}
+                onChange={e => setProductFormData({...productFormData, sku: e.target.value})} placeholder="WH-001" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="prod-category">Category</label>
+              <input type="text" id="prod-category" className="form-input" value={productFormData.category}
+                onChange={e => setProductFormData({...productFormData, category: e.target.value})} placeholder="Electronics" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label htmlFor="prod-price">Price ($) *</label>
+            <div className="input-prefix-wrapper">
+              <span className="input-prefix">$</span>
+              <input type="number" id="prod-price" className="form-input with-prefix" required min="0" step="0.01"
+                value={productFormData.price} onChange={e => setProductFormData({...productFormData, price: e.target.value})} placeholder="99.99" />
+            </div>
+          </div>
+          {!editingProduct && (
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="prod-qty">Initial Quantity</label>
+                <input type="number" id="prod-qty" className="form-input" min="0" value={productFormData.initialQuantity}
+                  onChange={e => setProductFormData({...productFormData, initialQuantity: e.target.value})} placeholder="e.g. 100" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="prod-loc">Location</label>
+                <select id="prod-loc" className="form-input" value={productFormData.locationId}
+                  onChange={e => setProductFormData({...productFormData, locationId: e.target.value})}>
+                  <option value="">Select location...</option>
+                  {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+          <div className="form-group">
+            <label htmlFor="prod-qr">QR Code Data</label>
+            <input type="text" id="prod-qr" className="form-input text-mono" value={productFormData.qr_code_data}
+              onChange={e => setProductFormData({...productFormData, qr_code_data: e.target.value})}
+              placeholder={productFormData.sku || 'Auto-generated from SKU'} />
+            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+              Leave blank to auto-use the SKU. This value is encoded in the printed QR label.
+            </small>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={closeProductModal} disabled={isProductSubmitting}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isProductSubmitting}>
+              {isProductSubmitting ? 'Saving...' : 'Save Product'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ═══ QR Label Modal ═══ */}
+      <Modal isOpen={!!qrLabelProduct} onClose={() => setQrLabelProduct(null)} title="Print QR Label">
+        {qrLabelProduct && (
+          <div className="qr-print-label">
+            <div className="qr-code-wrapper">
+              <QRCodeSVG value={qrLabelProduct.qr_code_data || qrLabelProduct.sku} size={200} level="H" includeMargin={true} />
+            </div>
+            <div className="product-label-info">
+              <div className="product-label-name">{qrLabelProduct.name}</div>
+              <div className="product-label-sku">SKU: {qrLabelProduct.sku}</div>
+              <div className="product-label-price">${Number(qrLabelProduct.price).toFixed(2)}</div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+              <button className="btn btn-secondary" onClick={() => setQrLabelProduct(null)}>Close</button>
+              <button className="btn btn-primary" onClick={() => window.print()}>🖨️ Print Label</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

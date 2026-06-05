@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Products from './pages/Products';
+
 import Sales from './pages/Sales';
 import Inventory from './pages/Inventory';
 import Alerts from './pages/Alerts';
@@ -46,7 +46,7 @@ export default function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
+            <Route path="/products" element={<Navigate to="/inventory" replace />} />
             <Route path="/sales" element={
               <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>
             } />
@@ -54,7 +54,7 @@ export default function App() {
               <ProtectedRoute><Customers /></ProtectedRoute>
             } />
             <Route path="/inventory" element={
-              <ProtectedRoute requiredPermission="manage_inventory"><Inventory /></ProtectedRoute>
+              <ProtectedRoute><Inventory /></ProtectedRoute>
             } />
             <Route path="/alerts" element={
               <ProtectedRoute requiredPermission="view_analytics"><Alerts /></ProtectedRoute>

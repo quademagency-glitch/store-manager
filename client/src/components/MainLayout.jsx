@@ -157,8 +157,7 @@ export default function MainLayout() {
       icon: '🏪',
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
-        { path: '/products', label: 'Products', icon: Icons.products, visible: true },
-        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('manage_inventory') },
+        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)
     };

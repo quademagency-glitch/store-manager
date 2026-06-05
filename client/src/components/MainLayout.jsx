@@ -132,42 +132,87 @@ export default function MainLayout() {
     await signOut();
   };
 
-  // Dynamically build navigation groups
+  // Collapsible sidebar sections
+  const [collapsedSections, setCollapsedSections] = useState({});
+
+  const toggleSection = (sectionTitle) => {
+    setCollapsedSections(prev => ({ ...prev, [sectionTitle]: !prev[sectionTitle] }));
+  };
+
+  // Dynamically build navigation groups — organized by ERP module
   const navGroups = useMemo(() => {
     const groups = [];
 
-    // Core Operational Group
-    const coreGroup = {
-      title: 'Store Operations',
+    // ─── Overview ───
+    groups.push({
+      title: null, // No header for top-level
       items: [
         { path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard, visible: true },
-        { path: '/products', label: 'Products', icon: Icons.products, visible: true },
+      ].filter(i => i.visible)
+    });
+
+    // ─── Store Operations ───
+    const storeOps = {
+      title: 'Store Operations',
+      icon: '🏪',
+      items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
-        { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
+        { path: '/products', label: 'Products', icon: Icons.products, visible: true },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('manage_inventory') },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
-        { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
-        { path: '/settings', label: 'Team Settings', icon: Icons.team, visible: hasPermission('manage_users') },
       ].filter(i => i.visible)
     };
-    if (coreGroup.items.length > 0) groups.push(coreGroup);
+    if (storeOps.items.length > 0) groups.push(storeOps);
 
-    // Business Administration Group
+    // ─── Accounting & Finance ───
+    const accounting = {
+      title: 'Accounting',
+      icon: '📊',
+      items: [
+        { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
+        { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
+      ].filter(i => i.visible)
+    };
+    if (accounting.items.length > 0) groups.push(accounting);
+
+    // ─── CRM ───
+    const crm = {
+      title: 'CRM',
+      icon: '👥',
+      items: [
+        { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('create_sales') },
+      ].filter(i => i.visible)
+    };
+    if (crm.items.length > 0) groups.push(crm);
+
+    // ─── HR & Team ───
+    const hr = {
+      title: 'HR & Team',
+      icon: '🧑‍💼',
+      items: [
+        { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users') },
+      ].filter(i => i.visible)
+    };
+    if (hr.items.length > 0) groups.push(hr);
+
+    // ─── Business Administration ───
     const businessGroup = {
-      title: 'Business Admin',
+      title: 'Administration',
+      icon: '⚙️',
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_business') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_business') },
-        { path: '/business-admin/team', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_business') },
+        { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_business') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);
 
-    // Platform Admin Group
+    // ─── Platform Admin ───
     const platformGroup = {
-      title: 'Platform Admin',
+      title: 'Platform',
+      icon: '🛡️',
       items: [
         { path: '/platform-admin', label: 'Super Admin', icon: Icons.platform, visible: hasPermission('manage_platform') },
       ].filter(i => i.visible)
@@ -200,29 +245,54 @@ export default function MainLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {navGroups.map((group, idx) => (
-            <div key={idx} className="sidebar-group" style={{ marginBottom: '16px' }}>
-              <span className="group-title" style={{ padding: '0 16px', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.title}</span>
-              <div className="group-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                {group.items.map(item => {
-                  const isActive = item.exact 
-                    ? location.pathname === item.path 
-                    : location.pathname.startsWith(item.path);
-                    
-                  return (
-                    <button
-                      key={item.path}
-                      className={`sidebar-link ${isActive ? 'active' : ''}`}
-                      onClick={() => navigate(item.path)}
+          {navGroups.map((group, idx) => {
+            const isCollapsed = group.title ? collapsedSections[group.title] : false;
+            const hasActiveItem = group.items.some(item => 
+              item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
+            );
+
+            return (
+              <div key={idx} className={`sidebar-group ${!group.title ? 'sidebar-group--ungrouped' : ''}`}>
+                {group.title && (
+                  <button 
+                    className={`sidebar-group-header ${hasActiveItem ? 'has-active' : ''}`}
+                    onClick={() => toggleSection(group.title)}
+                  >
+                    <span className="sidebar-group-label">
+                      <span className="sidebar-group-icon">{group.icon}</span>
+                      {group.title}
+                    </span>
+                    <svg 
+                      className={`sidebar-group-chevron ${isCollapsed ? '' : 'open'}`}
+                      width="14" height="14" viewBox="0 0 24 24" fill="none"
                     >
-                      {item.icon}
-                      {item.label}
-                    </button>
-                  );
-                })}
+                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                )}
+                {!isCollapsed && (
+                  <div className="sidebar-group-items">
+                    {group.items.map(item => {
+                      const isActive = item.exact 
+                        ? location.pathname === item.path 
+                        : location.pathname.startsWith(item.path);
+                        
+                      return (
+                        <button
+                          key={item.path}
+                          className={`sidebar-link ${isActive ? 'active' : ''}`}
+                          onClick={() => navigate(item.path)}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">

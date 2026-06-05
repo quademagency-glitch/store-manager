@@ -1,7 +1,9 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
 
@@ -255,15 +257,48 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
     }
 
     if (Number(discount) > 0) {
-      await supabaseAdmin.from('alerts').insert([{
-        business_id: req.user.business_id,
-        location_id: location_id,
-        type: 'DISCOUNT',
-        user_id: req.user.id,
-        reference_id: saleData.id,
-        note: `Discount of ${discount} applied to sale #${saleData.id}`
-      }]);
+      // Check against business discount cap
+      const subtotalBeforeDiscount = Number(total_amount) + Number(discount);
+      const discountPercent = subtotalBeforeDiscount > 0 ? (Number(discount) / subtotalBeforeDiscount) * 100 : 0;
+
+      // Fetch business settings for discount cap
+      const { data: bizSettings } = await supabaseAdmin
+        .from('businesses')
+        .select('max_discount_percent')
+        .eq('id', req.user.business_id)
+        .single();
+
+      const maxDiscount = bizSettings?.max_discount_percent || 15;
+
+      if (discountPercent > maxDiscount) {
+        // HIGH_DISCOUNT alert — above business threshold
+        await supabaseAdmin.from('alerts').insert([{
+          business_id: req.user.business_id,
+          location_id: location_id,
+          type: 'HIGH_DISCOUNT',
+          severity: 'high',
+          user_id: req.user.id,
+          reference_id: saleData.id,
+          note: `High discount: ${discountPercent.toFixed(1)}% applied to sale (limit: ${maxDiscount}%). Amount: $${Number(discount).toFixed(2)}`,
+          metadata: { discount_percent: discountPercent.toFixed(1), max_allowed: maxDiscount, discount_amount: Number(discount) }
+        }]);
+      } else {
+        await supabaseAdmin.from('alerts').insert([{
+          business_id: req.user.business_id,
+          location_id: location_id,
+          type: 'DISCOUNT',
+          user_id: req.user.id,
+          reference_id: saleData.id,
+          note: `Discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleData.id}`
+        }]);
+      }
+
+      // Trigger detection engine for discount patterns
+      runChecks('discount', { userId: req.user.id, businessId: req.user.business_id, locationId: location_id });
     }
+
+    // Trigger after-hours check for the sale
+    runChecks('sale', { userId: req.user.id, businessId: req.user.business_id, locationId: location_id });
 
     return res.status(201).json({
       message: 'Sale recorded successfully',
@@ -285,74 +320,239 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, res) => {
   try {
     const saleId = req.params.id;
+    const { manager_pin } = req.body; // Optional: manager PIN for immediate void
 
     // Fetch sale and its items
     const { data: sale, error: fetchError } = await supabaseAdmin
       .from('sales')
-      .select('id, status, location_id, business_id, sale_items(product_id, quantity)')
+      .select('id, status, location_id, business_id, total_amount, sale_items(product_id, quantity)')
       .eq('id', saleId)
       .single();
 
     if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
     if (sale.status === 'voided') return res.status(400).json({ error: 'Sale already voided' });
+    if (sale.status === 'void_pending') return res.status(400).json({ error: 'Void already pending approval' });
 
     // Enforce business isolation
     if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Update status
-    const { error: updateError } = await supabaseAdmin
-      .from('sales')
-      .update({ status: 'voided' })
-      .eq('id', saleId);
-    
-    if (updateError) throw updateError;
+    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    let canVoidImmediately = isManager;
 
-    // Restore inventory and create stock movements
-    for (const item of sale.sale_items) {
-      // Get current inventory
-      const { data: inv } = await supabaseAdmin
-        .from('product_inventory')
-        .select('quantity')
-        .eq('product_id', item.product_id)
-        .eq('location_id', sale.location_id)
-        .single();
-      
-      if (inv) {
-        await supabaseAdmin
-          .from('product_inventory')
-          .update({ quantity: inv.quantity + item.quantity })
-          .eq('product_id', item.product_id)
-          .eq('location_id', sale.location_id);
+    // If not a manager, check if they provided a valid manager PIN
+    if (!canVoidImmediately && manager_pin) {
+      // Find a manager at this location with a matching PIN
+      const { data: managers } = await supabaseAdmin
+        .from('users')
+        .select('id, manager_pin, name')
+        .eq('business_id', sale.business_id)
+        .not('manager_pin', 'is', null);
+
+      if (managers) {
+        for (const mgr of managers) {
+          if (mgr.manager_pin && await bcrypt.compare(manager_pin, mgr.manager_pin)) {
+            canVoidImmediately = true;
+            break;
+          }
+        }
       }
 
-      await supabaseAdmin.from('stock_movements').insert([{
-        business_id: sale.business_id,
-        location_id: sale.location_id,
-        product_id: item.product_id,
-        quantity_change: item.quantity,
-        movement_type: 'ADJUSTMENT',
-        user_id: req.user.id,
-        reference_id: sale.id,
-        notes: `Voided Sale #${sale.id}`
-      }]);
+      if (!canVoidImmediately) {
+        return res.status(403).json({ error: 'Invalid manager PIN' });
+      }
     }
 
-    // Trigger VOID alert
-    await supabaseAdmin.from('alerts').insert([{
-      business_id: sale.business_id,
-      location_id: sale.location_id,
-      type: 'VOID',
-      user_id: req.user.id,
-      reference_id: sale.id,
-      note: `Sale #${sale.id} was voided`
-    }]);
+    if (!canVoidImmediately) {
+      // Non-manager without PIN → set to void_pending
+      await supabaseAdmin
+        .from('sales')
+        .update({ status: 'void_pending' })
+        .eq('id', saleId);
+
+      await supabaseAdmin.from('alerts').insert([{
+        business_id: sale.business_id,
+        location_id: sale.location_id,
+        type: 'VOID_REQUEST',
+        severity: 'high',
+        user_id: req.user.id,
+        reference_id: sale.id,
+        note: `Void requested for sale #${saleId} ($${Number(sale.total_amount).toFixed(2)}). Awaiting manager approval.`,
+        metadata: { sale_id: saleId, amount: Number(sale.total_amount) }
+      }]);
+
+      runChecks('void', { userId: req.user.id, businessId: sale.business_id, locationId: sale.location_id });
+
+      return res.json({ message: 'Void request submitted. Awaiting manager approval.', status: 'void_pending' });
+    }
+
+    // Manager or PIN verified → complete the void immediately
+    await completeVoid(sale, req.user.id);
+
+    // Trigger detection engine
+    runChecks('void', { userId: req.user.id, businessId: sale.business_id, locationId: sale.location_id });
 
     res.json({ message: 'Sale voided successfully' });
   } catch (err) {
     console.error('Error voiding sale:', err);
     res.status(500).json({ error: 'Failed to void sale' });
+  }
+});
+
+/**
+ * Helper: Complete a void (restore stock, create movements, fire alert)
+ */
+async function completeVoid(sale, userId) {
+  await supabaseAdmin
+    .from('sales')
+    .update({ status: 'voided' })
+    .eq('id', sale.id);
+
+  for (const item of sale.sale_items) {
+    const { data: inv } = await supabaseAdmin
+      .from('product_inventory')
+      .select('quantity')
+      .eq('product_id', item.product_id)
+      .eq('location_id', sale.location_id)
+      .single();
+
+    if (inv) {
+      await supabaseAdmin
+        .from('product_inventory')
+        .update({ quantity: inv.quantity + item.quantity })
+        .eq('product_id', item.product_id)
+        .eq('location_id', sale.location_id);
+    }
+
+    await supabaseAdmin.from('stock_movements').insert([{
+      business_id: sale.business_id,
+      location_id: sale.location_id,
+      product_id: item.product_id,
+      quantity_change: item.quantity,
+      movement_type: 'ADJUSTMENT',
+      user_id: userId,
+      reference_id: sale.id,
+      notes: `Voided Sale #${sale.id}`
+    }]);
+  }
+
+  await supabaseAdmin.from('alerts').insert([{
+    business_id: sale.business_id,
+    location_id: sale.location_id,
+    type: 'VOID',
+    severity: 'medium',
+    user_id: userId,
+    reference_id: sale.id,
+    note: `Sale #${sale.id} was voided`
+  }]);
+}
+
+/**
+ * PUT /api/sales/:id/approve-void
+ * Manager approves a pending void.
+ */
+router.put('/:id/approve-void', authGuard, async (req, res) => {
+  try {
+    const saleId = req.params.id;
+    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!isManager) return res.status(403).json({ error: 'Only managers can approve voids.' });
+
+    const { data: sale, error: fetchErr } = await supabaseAdmin
+      .from('sales')
+      .select('id, status, location_id, business_id, total_amount, sale_items(product_id, quantity)')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchErr || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (sale.status !== 'void_pending') return res.status(400).json({ error: 'Sale is not pending void approval.' });
+
+    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    await completeVoid(sale, req.user.id);
+
+    // Resolve the VOID_REQUEST alert
+    await supabaseAdmin
+      .from('alerts')
+      .update({ status: 'resolved', resolved_by: req.user.id, resolved_at: new Date().toISOString() })
+      .eq('reference_id', saleId)
+      .eq('type', 'VOID_REQUEST');
+
+    res.json({ message: 'Void approved. Sale voided and stock restored.' });
+  } catch (err) {
+    console.error('Error approving void:', err);
+    res.status(500).json({ error: 'Failed to approve void' });
+  }
+});
+
+/**
+ * PUT /api/sales/:id/reject-void
+ * Manager rejects a pending void.
+ */
+router.put('/:id/reject-void', authGuard, async (req, res) => {
+  try {
+    const saleId = req.params.id;
+    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!isManager) return res.status(403).json({ error: 'Only managers can reject voids.' });
+
+    const { data: sale, error: fetchErr } = await supabaseAdmin
+      .from('sales')
+      .select('id, status, business_id')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchErr || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (sale.status !== 'void_pending') return res.status(400).json({ error: 'Sale is not pending void approval.' });
+
+    // Revert to completed
+    await supabaseAdmin
+      .from('sales')
+      .update({ status: 'completed' })
+      .eq('id', saleId);
+
+    // Resolve the VOID_REQUEST alert
+    await supabaseAdmin
+      .from('alerts')
+      .update({ status: 'resolved', resolved_by: req.user.id, resolved_at: new Date().toISOString() })
+      .eq('reference_id', saleId)
+      .eq('type', 'VOID_REQUEST');
+
+    res.json({ message: 'Void rejected. Sale remains completed.' });
+  } catch (err) {
+    console.error('Error rejecting void:', err);
+    res.status(500).json({ error: 'Failed to reject void' });
+  }
+});
+
+/**
+ * POST /api/sales/verify-pin
+ * Verify a manager PIN (for POS terminal use).
+ */
+router.post('/verify-pin', authGuard, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ error: 'PIN is required' });
+
+    const { data: managers } = await supabaseAdmin
+      .from('users')
+      .select('id, name, manager_pin')
+      .eq('business_id', req.user.business_id)
+      .not('manager_pin', 'is', null);
+
+    if (!managers) return res.status(403).json({ error: 'No managers with PINs found.' });
+
+    for (const mgr of managers) {
+      if (await bcrypt.compare(pin, mgr.manager_pin)) {
+        return res.json({ valid: true, manager_name: mgr.name });
+      }
+    }
+
+    return res.status(403).json({ valid: false, error: 'Invalid PIN' });
+  } catch (err) {
+    console.error('Error verifying PIN:', err);
+    res.status(500).json({ error: 'Failed to verify PIN' });
   }
 });
 

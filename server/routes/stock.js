@@ -2,6 +2,7 @@ const express = require('express');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
 
@@ -71,6 +72,15 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       return res.status(400).json({ error: 'Bad request', message: `Invalid movement_type. Must be one of: ${validTypes.join(', ')}` });
     }
 
+    // Require shrinkage reason for SHRINKAGE type
+    const shrinkage_reason = req.body.shrinkage_reason;
+    if (movement_type === 'SHRINKAGE') {
+      const validReasons = ['theft_suspected', 'damage', 'admin_error', 'unknown'];
+      if (!shrinkage_reason || !validReasons.includes(shrinkage_reason)) {
+        return res.status(400).json({ error: 'Bad request', message: `Shrinkage requires a reason: ${validReasons.join(', ')}` });
+      }
+    }
+
     // 1. Fetch current product inventory for this location
     let { data: inventoryItem, error: fetchError } = await supabaseAdmin
       .from('product_inventory')
@@ -102,7 +112,9 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
         location_id,
         quantity_change,
         movement_type,
-        notes
+        notes: movement_type === 'SHRINKAGE' 
+          ? `[${(shrinkage_reason || 'unknown').toUpperCase()}] ${notes || ''}`.trim()
+          : notes
       })
       .select()
       .single();
@@ -131,10 +143,15 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
         business_id: req.user.business_id,
         location_id,
         type: 'SHRINKAGE',
+        severity: shrinkage_reason === 'theft_suspected' ? 'critical' : 'medium',
         user_id: req.user.id,
         reference_id: movement.id,
-        note: `Shrinkage of ${Math.abs(quantity_change)} units. Notes: ${notes || 'none'}`
+        note: `Shrinkage of ${Math.abs(quantity_change)} units [${(shrinkage_reason || 'unknown').toUpperCase()}]. Notes: ${notes || 'none'}`,
+        metadata: { reason: shrinkage_reason, quantity: Math.abs(quantity_change) }
       }]);
+
+      // Trigger detection engine for shrinkage patterns
+      runChecks('shrinkage', { userId: req.user.id, businessId: req.user.business_id, locationId: location_id });
     }
 
     // Trigger LOW_STOCK alert if newly crossed threshold

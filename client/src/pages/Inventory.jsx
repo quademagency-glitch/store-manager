@@ -29,7 +29,7 @@ export default function Inventory() {
   // Adjust Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustData, setAdjustData] = useState({
-    productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: ''
+    productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: ''
   });
   const [adjusting, setAdjusting] = useState(false);
 
@@ -67,6 +67,14 @@ export default function Inventory() {
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState('');
 
+  // Stock Take
+  const [stockTakeSessions, setStockTakeSessions] = useState([]);
+  const [stockTakeLoading, setStockTakeLoading] = useState(false);
+  const [activeStockTake, setActiveStockTake] = useState(null);
+  const [stockTakeProgress, setStockTakeProgress] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
+  const [showStockTakeScanner, setShowStockTakeScanner] = useState(false);
+
   // QR Scanner
   const [showScanner, setShowScanner] = useState(false);
 
@@ -80,6 +88,7 @@ export default function Inventory() {
     if (activeTab === 'transfers') fetchTransfers();
     if (activeTab === 'audits') fetchAudits();
     if (activeTab === 'batches') fetchBatches();
+    if (activeTab === 'stocktake') fetchStockTakeSessions();
   }, [activeTab]);
 
   const fetchTransfers = async () => {
@@ -141,10 +150,14 @@ export default function Inventory() {
     } else {
       finalQtyChange = Math.abs(finalQtyChange);
     }
-    const result = await adjustStock(adjustData.productId, finalQtyChange, adjustData.movementType, adjustData.locationId, adjustData.notes);
+    const result = await adjustStock(
+      adjustData.productId, finalQtyChange, adjustData.movementType,
+      adjustData.locationId, adjustData.notes,
+      adjustData.movementType === 'SHRINKAGE' ? adjustData.shrinkageReason : null
+    );
     if (result.success) {
       setIsAdjustModalOpen(false);
-      setAdjustData({ productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '' });
+      setAdjustData({ productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: '' });
     }
     setAdjusting(false);
   };
@@ -352,10 +365,79 @@ export default function Inventory() {
     }
   };
 
+  // Stock Take
+  const fetchStockTakeSessions = async () => {
+    setStockTakeLoading(true);
+    try {
+      const data = await api.get('/stocktake');
+      setStockTakeSessions(data);
+    } catch { setStockTakeSessions([]); }
+    setStockTakeLoading(false);
+  };
+
+  const startStockTake = async (locationId) => {
+    try {
+      const result = await api.post('/stocktake/start', { location_id: locationId });
+      setActiveStockTake(result.session);
+      setStockTakeProgress({ scanned: 0, expected: result.expected_units, errors: 0 });
+      setScanResult(null);
+      await fetchStockTakeSessions();
+    } catch (err) {
+      alert(err.message || 'Failed to start stock take');
+    }
+  };
+
+  const handleStockTakeScan = async (qrCode) => {
+    if (!activeStockTake) return;
+    try {
+      const result = await api.post(`/stocktake/${activeStockTake.id}/scan`, { qr_code: qrCode });
+      setScanResult(result);
+      setStockTakeProgress(prev => ({
+        ...prev,
+        scanned: result.progress?.scanned || (prev.scanned + (result.scan_result === 'found' ? 1 : 0)),
+        errors: prev.errors + (result.scan_result !== 'found' ? 1 : 0)
+      }));
+    } catch (err) {
+      setScanResult({ scan_result: 'error', message: err.message || 'Scan failed' });
+    }
+  };
+
+  const completeStockTake = async () => {
+    if (!activeStockTake) return;
+    if (!confirm('Complete this stock take? All unscanned items will be marked as missing.')) return;
+    try {
+      const result = await api.put(`/stocktake/${activeStockTake.id}/complete`);
+      alert(`Stock take completed. ${result.summary?.missing || 0} missing item(s) flagged.`);
+      setActiveStockTake(null);
+      setStockTakeProgress(null);
+      setScanResult(null);
+      setShowStockTakeScanner(false);
+      await fetchStockTakeSessions();
+    } catch (err) {
+      alert(err.message || 'Failed to complete stock take');
+    }
+  };
+
+  const cancelStockTake = async () => {
+    if (!activeStockTake) return;
+    if (!confirm('Cancel this stock take?')) return;
+    try {
+      await api.put(`/stocktake/${activeStockTake.id}/cancel`);
+      setActiveStockTake(null);
+      setStockTakeProgress(null);
+      setScanResult(null);
+      setShowStockTakeScanner(false);
+      await fetchStockTakeSessions();
+    } catch (err) {
+      alert(err.message || 'Failed to cancel stock take');
+    }
+  };
+
   const tabs = [
     { id: 'products', label: '📦 Products' },
     { id: 'ledger', label: '📋 Ledger' },
     { id: 'transfers', label: '🔄 Transfers' },
+    { id: 'stocktake', label: '🔍 Stock Take' },
     { id: 'audits', label: '📊 Cycle Counts' },
     { id: 'batches', label: '🗓️ Batches' },
   ];
@@ -598,6 +680,140 @@ export default function Inventory() {
         </div>
       )}
 
+      {/* ═══ STOCK TAKE TAB ═══ */}
+      {activeTab === 'stocktake' && (
+        <div>
+          {activeStockTake ? (
+            <div>
+              {/* Active Session */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontWeight: 600, margin: 0 }}>🔍 Stock Take In Progress</h3>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-sm btn-primary" onClick={() => setShowStockTakeScanner(true)}>📷 Scan QR</button>
+                    <button className="btn btn-sm btn-secondary" onClick={cancelStockTake}>Cancel</button>
+                    <button className="btn btn-sm" style={{ background: '#22c55e', color: 'white' }} onClick={completeStockTake}>✅ Complete</button>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {stockTakeProgress && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                      <span>{stockTakeProgress.scanned} / {stockTakeProgress.expected} scanned</span>
+                      <span style={{ color: stockTakeProgress.errors > 0 ? '#ef4444' : '#22c55e' }}>
+                        {stockTakeProgress.errors} error(s)
+                      </span>
+                    </div>
+                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: '4px', transition: 'width 0.3s',
+                        width: stockTakeProgress.expected > 0 ? `${(stockTakeProgress.scanned / stockTakeProgress.expected) * 100}%` : '0%',
+                        background: stockTakeProgress.scanned === stockTakeProgress.expected ? '#22c55e' : '#3b82f6'
+                      }} />
+                    </div>
+                    <div style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '1.5rem', fontWeight: 700 }}>
+                      {stockTakeProgress.expected > 0 ? Math.round((stockTakeProgress.scanned / stockTakeProgress.expected) * 100) : 0}%
+                    </div>
+                  </div>
+                )}
+
+                {/* Latest Scan Result */}
+                {scanResult && (
+                  <div style={{
+                    padding: '1rem', borderRadius: '8px', marginBottom: '1rem',
+                    background: scanResult.scan_result === 'found' ? 'rgba(34,197,94,0.15)' :
+                               scanResult.scan_result === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(251,191,36,0.15)',
+                    border: `1px solid ${scanResult.scan_result === 'found' ? 'rgba(34,197,94,0.3)' : scanResult.scan_result === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(251,191,36,0.3)'}`
+                  }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                      {scanResult.scan_result === 'found' ? '✅' : scanResult.scan_result === 'error' ? '❌' : '⚠️'} {scanResult.message}
+                    </div>
+                    {scanResult.product && (
+                      <div style={{ fontSize: '0.85rem', marginTop: '4px', opacity: 0.8 }}>
+                        {scanResult.product.name} ({scanResult.product.sku})
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* QR Scanner for Stock Take */}
+              {showStockTakeScanner && (
+                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Scanning...</h4>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setShowStockTakeScanner(false)}>Close Scanner</button>
+                  </div>
+                  <QrScanner onScan={handleStockTakeScan} continuous={true} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* Start New Stock Take */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontWeight: 600, marginBottom: '1rem' }}>Start New Stock Take</h3>
+                <p style={{ marginBottom: '1rem', opacity: 0.7, fontSize: '0.9rem' }}>
+                  Select a location to begin. All items with assigned QR codes at that location must be scanned.
+                  Unscanned items will be flagged as missing.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  {locations.map(loc => (
+                    <button key={loc.id} className="btn btn-outline" onClick={() => startStockTake(loc.id)}>
+                      📍 {loc.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* History */}
+              <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <h3 style={{ fontWeight: 600, margin: 0 }}>Stock Take History</h3>
+                </div>
+                <table className="glass-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Location</th>
+                      <th>Status</th>
+                      <th>Expected</th>
+                      <th>Scanned</th>
+                      <th>Missing</th>
+                      <th>Started By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockTakeLoading ? (
+                      <tr><td colSpan="7" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
+                    ) : stockTakeSessions.length === 0 ? (
+                      <tr><td colSpan="7" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No stock takes yet.</td></tr>
+                    ) : stockTakeSessions.map(s => (
+                      <tr key={s.id}>
+                        <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
+                        <td>{s.location?.name || 'Unknown'}</td>
+                        <td>
+                          <span className={`badge ${s.status === 'completed' ? 'badge-success' : s.status === 'cancelled' ? 'badge-secondary' : 'badge-warning'}`}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td>{s.expected_count}</td>
+                        <td>{s.scanned_count}</td>
+                        <td style={{ color: s.missing_count > 0 ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
+                          {s.missing_count}
+                        </td>
+                        <td>{s.starter?.name || 'Unknown'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ═══ CYCLE COUNTS TAB ═══ */}
       {activeTab === 'audits' && (
         <div>
@@ -759,6 +975,18 @@ export default function Inventory() {
               <option value="SHRINKAGE">Shrinkage / Damage (-)</option>
             </select>
           </div>
+          {adjustData.movementType === 'SHRINKAGE' && (
+            <div className="form-group">
+              <label>Shrinkage Reason <span style={{ color: '#ef4444' }}>*</span></label>
+              <select required value={adjustData.shrinkageReason} onChange={e => setAdjustData({...adjustData, shrinkageReason: e.target.value})} className="form-input">
+                <option value="">Select reason...</option>
+                <option value="theft_suspected">🚨 Theft Suspected</option>
+                <option value="damage">💥 Damage / Broken / Expired</option>
+                <option value="admin_error">📝 Admin / Counting Error</option>
+                <option value="unknown">❓ Unknown / Unexplained</option>
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label>Quantity Change (Absolute Number)</label>
             <input type="number" required min="1" value={adjustData.quantityChange} onChange={e => setAdjustData({...adjustData, quantityChange: e.target.value})} className="form-input" placeholder="e.g. 50" />

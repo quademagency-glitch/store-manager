@@ -15,6 +15,9 @@ const alertsRoutes = require('./routes/alerts');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const billingRoutes = require('./routes/billing');
 const customersRoutes = require('./routes/customers');
+const qrcodesRoutes = require('./routes/qrcodes');
+const unitsRoutes = require('./routes/units');
+const stocktakeRoutes = require('./routes/stocktake');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -110,6 +113,15 @@ app.use('/api/subscriptions', subscriptionsRoutes);
 
 // Billing routes
 app.use('/api/billing', billingRoutes);
+
+// QR Codes routes (Platform Admin)
+app.use('/api/qrcodes', qrcodesRoutes);
+
+// Inventory Units routes
+app.use('/api/units', unitsRoutes);
+
+// Stock Take routes
+app.use('/api/stocktake', stocktakeRoutes);
 
 // ============================================
 // Error handling

@@ -22,7 +22,7 @@ export function useStock() {
     }
   }, []);
 
-  const adjustStock = useCallback(async (productId, quantityChange, type, locationId, notes = '') => {
+  const adjustStock = useCallback(async (productId, quantityChange, type, locationId, notes = '', shrinkageReason = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -33,6 +33,10 @@ export function useStock() {
         location_id: locationId,
         notes
       };
+
+      if (type === 'SHRINKAGE' && shrinkageReason) {
+        payload.shrinkage_reason = shrinkageReason;
+      }
 
       const result = await api.post('/stock/adjust', payload);
       // Refresh movements after adjustment

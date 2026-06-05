@@ -394,157 +394,106 @@ export default function InventoryCount({ locations, products }) {
         {/* Right: Active Product Count Form */}
         {activeProduct && (
           <div style={{ flex: '1 1 450px', minWidth: '350px', position: 'sticky', top: '1rem' }}>
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              {/* Product Header */}
-              <div style={{ 
-                padding: '12px 16px', marginBottom: '1.5rem', borderRadius: '8px',
-                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)'
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{activeProduct.name}</div>
-                <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '2px' }}>
-                  SKU: {activeProduct.sku || '—'} · Category: {activeProduct.category || 'None'} · System: <strong>{activeProduct.systemQty}</strong>
+            <div className="glass-panel" style={{ padding: '1rem', borderTop: '4px solid #3b82f6' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{activeProduct.name}</h4>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                  SKU: {activeProduct.sku || '—'} | System Qty: <strong>{activeProduct.systemQty}</strong>
                 </div>
               </div>
 
               {/* Physical Count */}
-              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>📝 Physical Count</label>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Physical Count</label>
                 <input
                   type="number"
                   className="form-input"
-                  placeholder="Enter number counted..."
                   min="0"
                   value={productCounts[activeProduct.id]?.counted || ''}
                   onChange={e => setProductCounts(prev => ({
                     ...prev,
                     [activeProduct.id]: { ...prev[activeProduct.id], counted: e.target.value }
                   }))}
-                  style={{ fontSize: '1.2rem', fontWeight: 600, textAlign: 'center' }}
+                  style={{ fontSize: '1.1rem', fontWeight: 600 }}
                 />
               </div>
 
-              {/* Scan Target Selector */}
-              <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
+              {/* Scan Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '1rem' }}>
                 {[
-                  { id: 'instock', label: '📦 In Stock', color: '#3b82f6' },
-                  { id: 'returns', label: '🔄 Returns', color: '#f59e0b' },
-                  { id: 'damaged', label: '💥 Damaged', color: '#ef4444' },
+                  { id: 'instock', label: 'In Stock' },
+                  { id: 'returns', label: 'Returns' },
+                  { id: 'damaged', label: 'Damaged' },
                 ].map(t => (
                   <button
                     key={t.id}
-                    className={`btn btn-sm ${scanTarget === t.id ? '' : 'btn-outline'}`}
-                    style={scanTarget === t.id ? { background: t.color, color: 'white', flex: 1 } : { flex: 1 }}
                     onClick={() => setScanTarget(t.id)}
+                    style={{
+                      flex: 1, padding: '8px', background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '0.9rem', fontWeight: scanTarget === t.id ? 600 : 400,
+                      color: scanTarget === t.id ? '#3b82f6' : 'var(--color-text-secondary)',
+                      borderBottom: scanTarget === t.id ? '2px solid #3b82f6' : '2px solid transparent',
+                    }}
                   >
                     {t.label}
                   </button>
                 ))}
               </div>
 
-              {/* Scanner Toggle */}
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ width: '100%', marginBottom: '0.75rem' }}
-                onClick={() => setShowScanner(!showScanner)}
-              >
-                {showScanner ? '⏹ Close Scanner' : '📷 Open QR Scanner'}
-              </button>
-
-              {showScanner && (
-                <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden' }}>
-                  <QrScanner onScan={handleScan} continuous={true} />
+              {/* Active Tab Content */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scanned QR Codes</span>
+                  <button 
+                    onClick={() => setShowScanner(!showScanner)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }}
+                    title="Scan QR Code"
+                  >
+                    📷
+                  </button>
                 </div>
-              )}
 
-              {/* Scan Feedback */}
-              {scanFeedback && (
-                <div style={{
-                  padding: '8px 12px', borderRadius: '6px', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 500,
-                  background: scanFeedback.type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(251,191,36,0.15)',
-                  color: scanFeedback.type === 'success' ? '#22c55e' : '#f59e0b'
+                {showScanner && (
+                  <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <QrScanner onScan={handleScan} continuous={true} />
+                  </div>
+                )}
+
+                {scanFeedback && (
+                  <div style={{ padding: '6px', marginBottom: '8px', fontSize: '0.8rem', borderRadius: '4px', background: scanFeedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)', color: scanFeedback.type === 'success' ? '#22c55e' : '#f59e0b' }}>
+                    {scanFeedback.message}
+                  </div>
+                )}
+
+                <div style={{ 
+                  minHeight: '80px', padding: '8px', borderRadius: '4px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' 
                 }}>
-                  {scanFeedback.message}
-                </div>
-              )}
-
-              {/* QR Code Lists */}
-              {[
-                { key: 'scannedQrs', label: '📦 In-Stock Scanned', color: '#3b82f6' },
-                { key: 'returnQrs', label: '🔄 Returns Scanned', color: '#f59e0b' },
-                { key: 'damagedQrs', label: '💥 Damaged Scanned', color: '#ef4444' },
-              ].map(({ key, label, color }) => {
-                const qrs = productCounts[activeProduct.id]?.[key] || [];
-                return (
-                  <div key={key} style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px', color }}>
-                      {label} ({qrs.length})
-                    </div>
-                    <div style={{ 
-                      minHeight: '40px', padding: '8px', borderRadius: '6px',
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)'
-                    }}>
-                      {qrs.length === 0 ? (
-                        <span style={{ fontSize: '0.8rem', opacity: 0.3 }}>No codes scanned</span>
-                      ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {qrs.map(qr => (
-                            <span key={qr} style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '4px',
-                              padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem',
-                              background: `${color}22`, color, fontFamily: 'monospace'
-                            }}>
-                              {qr}
-                              <button
-                                onClick={() => removeQr(key, qr)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color, fontSize: '0.8rem', padding: 0 }}
-                              >×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Summary */}
-              {(() => {
-                const pc = productCounts[activeProduct.id];
-                const physCount = parseInt(pc?.counted, 10) || 0;
-                const totalScanned = (pc?.scannedQrs?.length || 0) + (pc?.returnQrs?.length || 0) + (pc?.damagedQrs?.length || 0);
-                const isMatch = physCount === activeProduct.systemQty && totalScanned === physCount;
-                return (
-                  <div style={{
-                    padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem',
-                    background: !pc?.counted ? 'rgba(255,255,255,0.03)' : isMatch ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                    border: `1px solid ${!pc?.counted ? 'rgba(255,255,255,0.05)' : isMatch ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>System Qty:</span><strong>{activeProduct.systemQty}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Physical Count:</span><strong>{physCount}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Total QR Scanned:</span><strong>{totalScanned}</strong>
-                    </div>
-                    {pc?.counted && (
-                      <div style={{ marginTop: '6px', fontWeight: 600, color: isMatch ? '#22c55e' : '#ef4444' }}>
-                        {isMatch ? '✅ All matched' : `⚠️ Discrepancy: ${physCount - activeProduct.systemQty > 0 ? '+' : ''}${physCount - activeProduct.systemQty} units`}
+                  {(() => {
+                    const listKey = scanTarget === 'instock' ? 'scannedQrs' : scanTarget === 'returns' ? 'returnQrs' : 'damagedQrs';
+                    const qrs = productCounts[activeProduct.id]?.[listKey] || [];
+                    if (qrs.length === 0) return <div style={{ opacity: 0.5, fontSize: '0.85rem', textAlign: 'center', marginTop: '1rem' }}>No QR codes scanned</div>;
+                    return (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {qrs.map(qr => (
+                          <span key={qr} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            {qr}
+                            <button onClick={() => removeQr(listKey, qr)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}>×</button>
+                          </span>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
+                    );
+                  })()}
+                </div>
+              </div>
 
-              {/* Save Button */}
+              {/* Save */}
               <button
                 className="btn btn-primary"
-                style={{ width: '100%', fontSize: '1rem' }}
+                style={{ width: '100%' }}
                 onClick={saveProductCount}
                 disabled={!productCounts[activeProduct.id]?.counted}
               >
-                Save & Return to List
+                Save
               </button>
             </div>
           </div>

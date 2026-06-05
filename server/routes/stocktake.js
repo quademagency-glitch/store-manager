@@ -466,4 +466,28 @@ router.get('/', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/stocktake/:id
+ * Delete a stock take session.
+ * Access: Inventory managers
+ */
+router.delete('/:id', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabaseAdmin
+      .from('stock_take_sessions')
+      .delete()
+      .eq('id', id)
+      .eq('business_id', req.user.business_id);
+
+    if (error) throw error;
+
+    res.json({ message: 'Stock take session deleted.' });
+  } catch (err) {
+    console.error('Error deleting stock take:', err);
+    res.status(500).json({ error: 'Failed to delete stock take session' });
+  }
+});
+
 module.exports = router;

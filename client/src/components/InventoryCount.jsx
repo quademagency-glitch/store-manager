@@ -26,6 +26,10 @@ export default function InventoryCount({ locations, products }) {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
 
+  // View state
+  const [viewSession, setViewSession] = useState(null);
+  const [viewSessionLoading, setViewSessionLoading] = useState(false);
+
   // Load sessions on mount
   useEffect(() => {
     fetchSessions();
@@ -211,6 +215,32 @@ export default function InventoryCount({ locations, products }) {
     }
   };
 
+  // Delete session
+  const handleDeleteSession = async (e, id) => {
+    e.stopPropagation(); // prevent row click
+    if (!confirm('Are you sure you want to delete this inventory count? This cannot be undone.')) return;
+    try {
+      await api.delete(`/stocktake/${id}`);
+      await fetchSessions();
+    } catch (err) {
+      alert(err.message || 'Failed to delete inventory count');
+    }
+  };
+
+  // View session
+  const handleViewSession = async (id) => {
+    setViewSessionLoading(true);
+    setStep('view');
+    try {
+      const data = await api.get(`/stocktake/${id}`);
+      setViewSession(data);
+    } catch (err) {
+      alert(err.message || 'Failed to fetch session details');
+      setStep('select');
+    }
+    setViewSessionLoading(false);
+  };
+
   // Stats
   const countedCount = Object.values(productCounts).filter(c => c.status !== 'pending').length;
   const totalProducts = locationProducts.length;
@@ -273,15 +303,16 @@ export default function InventoryCount({ locations, products }) {
                 <th>Scanned</th>
                 <th>Missing</th>
                 <th>Started By</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {sessionsLoading ? (
-                <tr><td colSpan="7" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
+                <tr><td colSpan="8" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
               ) : sessions.length === 0 ? (
-                <tr><td colSpan="7" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</td></tr>
+                <tr><td colSpan="8" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</td></tr>
               ) : sessions.map(s => (
-                <tr key={s.id}>
+                <tr key={s.id} onClick={() => handleViewSession(s.id)} style={{ cursor: 'pointer' }} className="hover-bg">
                   <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
                   <td>{s.location?.name || 'Unknown'}</td>
                   <td>
@@ -293,6 +324,16 @@ export default function InventoryCount({ locations, products }) {
                   <td>{s.scanned_count}</td>
                   <td style={{ color: s.missing_count > 0 ? '#ef4444' : '#22c55e', fontWeight: 600 }}>{s.missing_count}</td>
                   <td>{s.starter?.name || 'Unknown'}</td>
+                  <td>
+                    <button 
+                      className="btn btn-sm btn-icon" 
+                      style={{ color: '#ef4444', padding: '4px 8px' }}
+                      onClick={(e) => handleDeleteSession(e, s.id)}
+                      title="Delete Session"
+                    >
+                      🗑️
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -302,7 +343,101 @@ export default function InventoryCount({ locations, products }) {
     );
   }
 
-  // Step 2 & 3: Counting — product list with active product form
+  // Step 2: View Session Details
+  if (step === 'view') {
+    return (
+      <div>
+        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontWeight: 600, margin: 0, fontSize: '1.2rem' }}>
+              📋 Inventory Count Details
+            </h3>
+            <button className="btn btn-sm btn-outline" onClick={() => { setStep('select'); setViewSession(null); }}>
+              ← Back
+            </button>
+          </div>
+
+          {viewSessionLoading || !viewSession ? (
+            <div style={{ padding: '3rem', textAlign: 'center' }}>
+              <div className="spinner mx-auto mb-sm" /><p>Loading details...</p>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                <div>
+                  <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Location</span>
+                  <div style={{ fontWeight: 600 }}>{viewSession.session.location?.name || 'Unknown'}</div>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Status</span>
+                  <div>
+                    <span className={`badge ${viewSession.session.status === 'completed' ? 'badge-success' : viewSession.session.status === 'cancelled' ? 'badge-secondary' : 'badge-warning'}`}>
+                      {viewSession.session.status}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Date</span>
+                  <div style={{ fontWeight: 600 }}>{new Date(viewSession.session.created_at).toLocaleString()}</div>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Started By</span>
+                  <div style={{ fontWeight: 600 }}>{viewSession.session.starter?.name || 'Unknown'}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Expected</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{viewSession.summary.expected}</div>
+                </div>
+                <div style={{ padding: '1rem', background: 'rgba(59,130,246,0.1)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Scanned (Found)</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{viewSession.summary.scanned}</div>
+                </div>
+                <div style={{ padding: '1rem', background: viewSession.summary.errors > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', borderRadius: '8px', border: `1px solid ${viewSession.summary.errors > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}` }}>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Errors / Missing</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: viewSession.summary.errors > 0 ? '#ef4444' : '#22c55e' }}>{viewSession.summary.errors}</div>
+                </div>
+              </div>
+
+              {viewSession.product_progress && viewSession.product_progress.length > 0 && (
+                <div>
+                  <h4 style={{ marginBottom: '1rem' }}>Products</h4>
+                  <table className="glass-table">
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th>Expected</th>
+                        <th>Scanned</th>
+                        <th>Difference</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewSession.product_progress.map(p => (
+                        <tr key={p.product_id}>
+                          <td>{p.product_name}</td>
+                          <td>{p.product_sku || '—'}</td>
+                          <td>{p.expected}</td>
+                          <td>{p.scanned}</td>
+                          <td style={{ color: p.expected !== p.scanned ? '#ef4444' : '#22c55e', fontWeight: p.expected !== p.scanned ? 700 : 400 }}>
+                            {p.scanned - p.expected}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Counting — product list with active product form
   return (
     <div>
       {/* Header Bar */}

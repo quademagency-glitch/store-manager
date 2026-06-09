@@ -155,7 +155,7 @@ export default function MainLayout() {
     // ─── Store Operations ───
     const storeOps = {
       title: 'Store Operations',
-      icon: '🏪',
+      icon: Icons.products,
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
@@ -167,7 +167,7 @@ export default function MainLayout() {
     // ─── Accounting & Finance ───
     const accounting = {
       title: 'Accounting',
-      icon: '📊',
+      icon: Icons.billing,
       items: [
         { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
@@ -178,7 +178,7 @@ export default function MainLayout() {
     // ─── CRM ───
     const crm = {
       title: 'CRM',
-      icon: '👥',
+      icon: Icons.team,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('create_sales') },
       ].filter(i => i.visible)
@@ -188,7 +188,7 @@ export default function MainLayout() {
     // ─── HR & Team ───
     const hr = {
       title: 'HR & Team',
-      icon: '🧑‍💼',
+      icon: Icons.team,
       items: [
         { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users') },
       ].filter(i => i.visible)
@@ -198,7 +198,7 @@ export default function MainLayout() {
     // ─── Business Administration ───
     const businessGroup = {
       title: 'Administration',
-      icon: '⚙️',
+      icon: Icons.settings,
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_business') },
@@ -212,7 +212,7 @@ export default function MainLayout() {
     // ─── Platform Admin ───
     const platformGroup = {
       title: 'Platform',
-      icon: '🛡️',
+      icon: Icons.platform,
       items: [
         { path: '/platform-admin', label: 'Super Admin', icon: Icons.platform, visible: hasPermission('manage_platform') },
       ].filter(i => i.visible)

@@ -4157,11 +4157,12 @@ input {
 .top-nav-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0.5rem 1rem;
+  gap: 6px;
+  padding: 0.5rem 0.8rem;
   border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
   color: var(--color-text-secondary);
   transition: all var(--transition-fast);
   cursor: pointer;
@@ -4189,10 +4190,10 @@ input {
   left: 0;
   min-width: 220px;
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
   padding: var(--space-sm);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -4270,7 +4271,7 @@ input {
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .top-nav-menu, .top-nav-right {
     display: none; /* Hide horizontal menu and right actions on small screens */
   }
@@ -4293,12 +4294,12 @@ input {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     z-index: 200;
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-fast);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
   }
 
   .mobile-drawer-overlay.open {
@@ -4314,10 +4315,11 @@ input {
     left: -280px;
     width: 280px;
     height: 100vh;
-    background: var(--color-bg-secondary);
+    background: rgba(18, 18, 26, 0.85);
+    backdrop-filter: blur(24px);
     z-index: 201;
     transition: transform var(--transition-normal);
-    border-right: 1px solid var(--color-border);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
     overflow-y: auto;
   }
 

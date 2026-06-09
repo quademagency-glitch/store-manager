@@ -157,9 +157,9 @@ export default function Sales() {
   };
 
   const paymentMethods = [
-    { value: 'cash', label: 'Cash', icon: '💵' },
-    { value: 'card', label: 'Card', icon: '💳' },
-    { value: 'mobile', label: 'Mobile', icon: '📱' },
+    { value: 'cash', label: 'Cash', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { value: 'card', label: 'Card', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 10h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { value: 'mobile', label: 'Mobile', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 18h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
   ];
 
   return (
@@ -233,7 +233,12 @@ export default function Sales() {
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🔍</div>
+              <div className="empty-state-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
+                  <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
               <h2>No products found</h2>
               <p className="text-muted">Try adjusting your search criteria</p>
             </div>
@@ -340,7 +345,11 @@ export default function Sales() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
             {cart.length === 0 ? (
               <div className="empty-state" style={{ border: 'none', background: 'transparent', padding: '2rem 1rem' }}>
-                <div className="empty-state-icon" style={{ color: 'var(--color-border-hover)' }}>🛒</div>
+                <div className="empty-state-icon" style={{ color: 'var(--color-border-hover)' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
                 <p className="text-muted">Cart is empty.<br/>Add products to begin.</p>
               </div>
             ) : (

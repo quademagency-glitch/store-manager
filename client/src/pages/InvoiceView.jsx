@@ -110,9 +110,9 @@ export default function InvoiceView() {
           boxShadow: 'var(--shadow-lg)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '2rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
-                QUADEM ERP
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <h1 className="page-title">
+                {invoice.business?.name || 'Store Manager'}
               </h1>
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px' }}>Platform Subscription Receipt</p>
             </div>

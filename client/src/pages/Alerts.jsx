@@ -80,16 +80,16 @@ export default function Alerts() {
   const getTypeBadge = (type) => {
     const badges = {
       'VOID': { label: 'Voided Sale', cls: 'badge-error' },
-      'VOID_REQUEST': { label: '⏳ Void Request', cls: 'badge-warning' },
+      'VOID_REQUEST': { label: 'Void Request', cls: 'badge-warning' },
       'DISCOUNT': { label: 'Discount', cls: 'badge-warning' },
-      'HIGH_DISCOUNT': { label: '⚠️ High Discount', cls: 'badge-error' },
+      'HIGH_DISCOUNT': { label: 'High Discount', cls: 'badge-error' },
       'SHRINKAGE': { label: 'Shrinkage', cls: 'badge-error' },
       'CASH_OVERRIDE': { label: 'Cash Override', cls: 'badge-warning' },
       'LOW_STOCK': { label: 'Low Stock', cls: 'badge-warning' },
-      'SUSPICIOUS_PATTERN': { label: '🚨 Suspicious', cls: 'badge-error' },
+      'SUSPICIOUS_PATTERN': { label: 'Suspicious', cls: 'badge-error' },
       'AUDIT_DISCREPANCY': { label: 'Audit Issue', cls: 'badge-error' },
-      'STOCK_TAKE_MISSING': { label: '🔍 Missing Items', cls: 'badge-error' },
-      'AFTER_HOURS': { label: '🌙 After Hours', cls: 'badge-warning' },
+      'STOCK_TAKE_MISSING': { label: 'Missing Items', cls: 'badge-error' },
+      'AFTER_HOURS': { label: 'After Hours', cls: 'badge-warning' },
     };
     const badge = badges[type] || { label: type, cls: '' };
     return <span className={`badge ${badge.cls}`}>{badge.label}</span>;

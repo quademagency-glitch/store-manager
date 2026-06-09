@@ -369,22 +369,10 @@ export default function Inventory() {
 
   return (
     <div className="inventory-page">
-      <div className="inventory-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="inventory-header page-header">
         <div>
-          <h1 style={{ 
-            fontSize: '2rem', 
-            fontWeight: 700, 
-            margin: '0 0 8px 0',
-            background: 'linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '-0.02em'
-          }}>
-            Inventory Management
-          </h1>
-          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>
-            Track stock, transfers, audits, and batch expiries.
-          </p>
+          <h1 className="page-title">Inventory Management</h1>
+          <p className="page-subtitle">Track stock, transfers, audits, and batch expiries.</p>
         </div>
         {hasPermission('manage_inventory') && (
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

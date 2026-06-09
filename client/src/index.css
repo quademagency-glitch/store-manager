@@ -830,15 +830,20 @@ input {
 }
 
 .dashboard-title {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-xs);
+  margin: 0 0 var(--space-xs) 0;
+  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-subtitle {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
 }
 
 .dashboard-subtitle strong {
@@ -1265,18 +1270,25 @@ input {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+  gap: var(--space-md);
 }
 
 .page-title {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-xs);
+  margin: 0 0 var(--space-xs) 0;
+  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
 }
 
 .content-card {

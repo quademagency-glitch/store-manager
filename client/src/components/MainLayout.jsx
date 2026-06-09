@@ -400,6 +400,40 @@ export default function MainLayout() {
               );
             })}
           </nav>
+
+          <div className="mobile-drawer-footer" style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 'auto' }}>
+            {availableLocations.length > 1 && (
+              <div style={{ marginBottom: '16px' }}>
+                <select 
+                  value={activeLocationId || ''} 
+                  onChange={(e) => {
+                    switchLocation(e.target.value);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  {availableLocations.map(loc => (
+                    <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <button 
+              className="sidebar-signout" 
+              onClick={() => {
+                handleSignOut();
+                setIsMobileMenuOpen(false);
+              }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12 12.75L15.75 9L12 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15.75 9H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              Sign out
+            </button>
+          </div>
         </aside>
 
         <main className="admin-main-content dashboard-main">

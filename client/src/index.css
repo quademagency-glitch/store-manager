@@ -4271,8 +4271,8 @@ input {
 }
 
 @media (max-width: 1024px) {
-  .top-nav-menu {
-    display: none; /* Hide horizontal menu on small screens */
+  .top-nav-menu, .top-nav-right {
+    display: none; /* Hide horizontal menu and right actions on small screens */
   }
 
   .mobile-menu-toggle {

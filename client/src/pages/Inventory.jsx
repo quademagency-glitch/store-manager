@@ -369,16 +369,43 @@ export default function Inventory() {
 
   return (
     <div className="inventory-page">
-      <div className="inventory-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div className="inventory-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1>Inventory Management</h1>
-          <p>Track stock, transfers, audits, and batch expiries.</p>
+          <h1 style={{ 
+            fontSize: '2rem', 
+            fontWeight: 700, 
+            margin: '0 0 8px 0',
+            background: 'linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em'
+          }}>
+            Inventory Management
+          </h1>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>
+            Track stock, transfers, audits, and batch expiries.
+          </p>
         </div>
         {hasPermission('manage_inventory') && (
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn btn-secondary" onClick={() => setShowScanner(true)}>📷 Scan</button>
-            <button className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(true)}>Thresholds</button>
-            <button className="btn btn-primary" onClick={() => setIsAdjustModalOpen(true)}>+ Adjust Stock</button>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => setShowScanner(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Scan
+            </button>
+            <button className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v18M18 9l-6-6-6 6M18 15l-6 6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Thresholds
+            </button>
+            <button className="btn btn-primary" onClick={() => setIsAdjustModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Adjust Stock
+            </button>
           </div>
         )}
       </div>

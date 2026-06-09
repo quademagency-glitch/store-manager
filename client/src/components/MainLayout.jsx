@@ -110,6 +110,7 @@ export default function MainLayout() {
   const location = useLocation();
 
   const [availableLocations, setAvailableLocations] = useState([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Only fetch locations if they have assigned locationIds OR if they are an admin
@@ -220,6 +221,193 @@ export default function MainLayout() {
 
     return groups;
   }, [hasPermission]);
+
+  const isAdminView = role && !role.toLowerCase().includes('sales');
+
+  if (isAdminView) {
+    return (
+      <div className="admin-dashboard-page">
+        <header className="top-navbar">
+          <div className="top-nav-left">
+            <button 
+              className="mobile-menu-toggle"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            <div className="top-nav-logo">
+              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
+                <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
+                <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
+                <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+                <defs>
+                  <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
+                    <stop stopColor="#6366f1" />
+                    <stop offset="1" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span className="top-nav-brand" style={{marginLeft: '12px'}}>QERP Store</span>
+            </div>
+
+            <nav className="top-nav-menu">
+              {navGroups.map((group, idx) => {
+                const hasActiveItem = group.items.some(item => 
+                  item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
+                );
+
+                if (!group.title) {
+                  return group.items.map(item => {
+                    const isActive = item.exact 
+                      ? location.pathname === item.path 
+                      : location.pathname.startsWith(item.path);
+                    return (
+                      <button
+                        key={item.path}
+                        className={`top-nav-button ${isActive ? 'active' : ''}`}
+                        onClick={() => navigate(item.path)}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </button>
+                    );
+                  });
+                }
+
+                return (
+                  <div key={idx} className={`top-nav-group ${hasActiveItem ? 'has-active' : ''}`}>
+                    <button className="top-nav-button">
+                      {group.icon}
+                      {group.title}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <div className="top-nav-dropdown">
+                      {group.items.map(item => {
+                        const isActive = item.exact 
+                          ? location.pathname === item.path 
+                          : location.pathname.startsWith(item.path);
+                        return (
+                          <button
+                            key={item.path}
+                            className={`dropdown-link ${isActive ? 'active' : ''}`}
+                            onClick={() => navigate(item.path)}
+                          >
+                            {item.icon}
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="top-nav-right">
+            {availableLocations.length > 1 && (
+              <select 
+                value={activeLocationId || ''} 
+                onChange={(e) => switchLocation(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                {availableLocations.map(loc => (
+                  <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                ))}
+              </select>
+            )}
+            
+            <div className="user-profile" onClick={handleSignOut} title="Sign Out">
+              <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
+                {user?.email?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Drawer */}
+        <div 
+          className={`mobile-drawer-overlay ${isMobileMenuOpen ? 'open' : ''}`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+        <aside className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
+          <div className="mobile-drawer-header">
+            <div className="top-nav-logo">
+              <span className="top-nav-brand">QERP Store</span>
+            </div>
+            <button className="mobile-drawer-close" onClick={() => setIsMobileMenuOpen(false)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <nav className="mobile-drawer-nav sidebar-nav">
+             {navGroups.map((group, idx) => {
+              const isCollapsed = group.title ? collapsedSections[group.title] : false;
+              const hasActiveItem = group.items.some(item => 
+                item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
+              );
+
+              return (
+                <div key={idx} className={`sidebar-group ${!group.title ? 'sidebar-group--ungrouped' : ''}`}>
+                  {group.title && (
+                    <button 
+                      className={`sidebar-group-header ${hasActiveItem ? 'has-active' : ''}`}
+                      onClick={() => toggleSection(group.title)}
+                    >
+                      <span className="sidebar-group-label">
+                        <span className="sidebar-group-icon">{group.icon}</span>
+                        {group.title}
+                      </span>
+                      <svg 
+                        className={`sidebar-group-chevron ${isCollapsed ? '' : 'open'}`}
+                        width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      >
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
+                  {!isCollapsed && (
+                    <div className="sidebar-group-items">
+                      {group.items.map(item => {
+                        const isActive = item.exact 
+                          ? location.pathname === item.path 
+                          : location.pathname.startsWith(item.path);
+                          
+                        return (
+                          <button
+                            key={item.path}
+                            className={`sidebar-link ${isActive ? 'active' : ''}`}
+                            onClick={() => {
+                              navigate(item.path);
+                              setIsMobileMenuOpen(false);
+                            }}
+                          >
+                            {item.icon}
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="admin-main-content dashboard-main">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-page">

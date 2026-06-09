@@ -1359,9 +1359,9 @@ input {
   font-size: 0.65rem;
 }
 .badge-neutral {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
 }
 .badge-warning {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
@@ -1409,17 +1409,19 @@ input {
 
 .search-input {
   width: 100%;
-  padding: 0.5rem 1rem 0.5rem 2.25rem;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
   color: var(--color-text-primary);
   font-size: 0.875rem;
   transition: all var(--transition-fast);
 }
 .search-input:focus {
-  border-color: var(--color-border-focus);
-  background: var(--color-bg-tertiary);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  outline: none;
 }
 
 /* ============================================
@@ -3658,22 +3660,22 @@ input {
 }
 
 .glass-table th {
-  padding: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   text-align: left;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--color-border);
-  background: rgba(26, 26, 46, 0.4);
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .glass-table td {
-  padding: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   font-size: 0.95rem;
   color: var(--color-text-primary);
-  border-bottom: 1px solid rgba(148, 148, 184, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   transition: background var(--transition-fast);
 }
 
@@ -3865,17 +3867,20 @@ input {
    Inventory Tabs
    ============================================ */
 .inventory-tabs {
-  display: flex;
+  display: inline-flex;
   gap: var(--space-xs);
-  padding: var(--space-sm);
-  background: var(--color-bg-tertiary);
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-lg);
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .inventory-tab {
-  flex: 1;
-  padding: 0.6rem var(--space-md);
+  flex: none;
+  padding: 0.6rem 1.2rem;
   border-radius: var(--radius-md);
   font-size: 0.85rem;
   font-weight: 500;
@@ -3884,6 +3889,7 @@ input {
   transition: all var(--transition-fast);
   cursor: pointer;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .inventory-tab:hover {

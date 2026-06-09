@@ -359,12 +359,12 @@ export default function Inventory() {
 
 
   const tabs = [
-    { id: 'products', label: '📦 Products' },
-    { id: 'ledger', label: '📋 Ledger' },
-    { id: 'transfers', label: '🔄 Transfers' },
-    { id: 'inventorycount', label: '📋 Inventory Count' },
-    { id: 'audits', label: '📊 Cycle Counts' },
-    { id: 'batches', label: '🗓️ Batches' },
+    { id: 'products', label: 'Products' },
+    { id: 'ledger', label: 'Ledger' },
+    { id: 'transfers', label: 'Transfers' },
+    { id: 'inventorycount', label: 'Inventory Count' },
+    { id: 'audits', label: 'Cycle Counts' },
+    { id: 'batches', label: 'Batches' },
   ];
 
   return (

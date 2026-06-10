@@ -253,6 +253,13 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       const maxDiscount = bizSettings?.max_discount_percent || 15;
 
       if (discountPercent > maxDiscount) {
+        await supabaseAdmin.from('alerts').insert([{
+          business_id: req.user.business_id,
+          location_id: location_id,
+          type: 'HIGH_DISCOUNT',
+          user_id: req.user.id,
+          reference_id: saleId,
+          note: `High discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
         }]);
       } else {
         await supabaseAdmin.from('alerts').insert([{
@@ -260,8 +267,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
           location_id: location_id,
           type: 'DISCOUNT',
           user_id: req.user.id,
-          reference_id: saleData.id,
-          note: `Discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleData.id}`
+          reference_id: saleId,
+          note: `Discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
         }]);
       }
 

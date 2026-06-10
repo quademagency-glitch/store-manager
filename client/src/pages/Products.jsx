@@ -3,7 +3,6 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
 import { api } from '../lib/api';
-import { QRCodeSVG } from 'qrcode.react';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
@@ -22,9 +21,6 @@ export default function Products() {
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // QR Label state
-  const [qrLabelProduct, setQrLabelProduct] = useState(null);
-  
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -230,21 +226,6 @@ export default function Products() {
                           {hasPermission('manage_products') && (
                           <td className="text-right">
                             <div className="action-buttons">
-                              <button
-                                className="btn-icon"
-                                onClick={() => setQrLabelProduct(product)}
-                                aria-label="Print QR Label"
-                                title="Print QR Label"
-                              >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                  <rect x="14" y="14" width="3" height="3" fill="currentColor"/>
-                                  <rect x="18" y="18" width="3" height="3" fill="currentColor"/>
-                                  <rect x="14" y="18" width="3" height="3" fill="currentColor"/>
-                                </svg>
-                              </button>
                               <button 
                                 className="btn-icon" 
                                 onClick={() => openEditModal(product)}
@@ -416,33 +397,6 @@ export default function Products() {
         </form>
       </Modal>
 
-      {/* QR Label Modal */}
-      <Modal
-        isOpen={!!qrLabelProduct}
-        onClose={() => setQrLabelProduct(null)}
-        title="Print QR Label"
-      >
-        {qrLabelProduct && (
-          <div className="qr-print-label">
-            <div className="qr-code-wrapper">
-              <QRCodeSVG
-                value={qrLabelProduct.qr_code_data || qrLabelProduct.sku}
-                size={200}
-                level="H"
-                includeMargin={true}
-              />
-            </div>
-            <div className="product-label-info">
-              <div className="product-label-name">{qrLabelProduct.name}</div>
-              <div className="product-label-sku">SKU: {qrLabelProduct.sku}</div>
-              <div className="product-label-price">${Number(qrLabelProduct.price).toFixed(2)}</div>
-            </div>
-            <div className="modal-actions" style={{ marginTop: '1rem' }}>
-              <button className="btn btn-secondary" onClick={() => setQrLabelProduct(null)}>Close</button>
-              <button className="btn btn-primary" onClick={() => window.print()}>🖨️ Print Label</button>
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );

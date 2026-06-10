@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
-import { useSales } from '../hooks/useSales';
 import { useCustomers } from '../hooks/useCustomers';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
@@ -11,44 +10,54 @@ import { api } from '../lib/api';
 export default function Sales() {
   const { user } = useAuthContext();
   const { products, loading: productsLoading } = useProducts();
-  const {
-    cart,
-    cartTotal,
-    cartItemCount,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    createSale,
-    loading: saleLoading,
-    error: saleError,
-    setError,
-  } = useSales();
+  const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [receiptData, setReceiptData] = useState(null);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [saleSuccess, setSaleSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState('pos');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
-  const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '' });
+  // Wizard state
+  const [saleType, setSaleType] = useState(null); // 'new', 'batch', 'history'
+  const [step, setStep] = useState(1); // 1 = Customer, 2 = Items/Checkout
   
-  // Search states
+  // Customer state
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  
-  // Verification states
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '' });
+
+  // Verification state
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyCode, setVerifyCode] = useState('');
   const [customerToVerify, setCustomerToVerify] = useState(null);
 
-  // QR Scanner
-  const [showScanner, setShowScanner] = useState(false);
+  // Items State for the wizard
+  // For 'new': array of 1 item. For 'batch': array of multiple items.
+  // Each item: { id: uniqueId, product: {}, quantity: N, scanned_units: [unitId1, unitId2, ...], scanned_codes: [code1, code2, ...] }
+  const [wizardItems, setWizardItems] = useState([]);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  
+  // Batch quantity prompt
+  const [showQuantityPrompt, setShowQuantityPrompt] = useState(false);
+  const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
+  const [batchQuantityInput, setBatchQuantityInput] = useState('1');
 
-  const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [activeScanTarget, setActiveScanTarget] = useState(null); // { itemId, unitIndex }
+
+  // Checkout state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [saleError, setSaleError] = useState('');
+  
+  // Two-Stage Checkout State
+  const [pendingSale, setPendingSale] = useState(null); // Holds the sale object from Stage 1
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [amountPaid, setAmountPaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+
+  // Receipt state
+  const [receiptData, setReceiptData] = useState(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   // Debounce customer search
   useEffect(() => {
@@ -67,41 +76,42 @@ export default function Sales() {
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return products;
-    const lower = searchTerm.toLowerCase();
+    if (!productSearchTerm) return products;
+    const lower = productSearchTerm.toLowerCase();
     return products.filter(p =>
       p.name.toLowerCase().includes(lower) ||
       p.sku.toLowerCase().includes(lower) ||
       p.category.toLowerCase().includes(lower)
     );
-  }, [products, searchTerm]);
+  }, [products, productSearchTerm]);
 
-  // Check if product is in cart
-  const getCartItem = (productId) => cart.find(item => item.product_id === productId);
+  const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
 
-  // Complete the sale
-  const handleCompleteSale = async () => {
-    if (cart.length === 0) return;
-    setError(null);
+  const totalAmount = wizardItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
-    const result = await createSale(paymentMethod, selectedCustomer?.id);
-    if (result.success) {
-      setReceiptData(result.data);
-      setShowReceipt(true);
-      setSaleSuccess(true);
-      // Reset success animation after delay
-      setTimeout(() => setSaleSuccess(false), 2000);
-    }
-  };
-
-  // Close receipt and reset
-  const closeReceipt = () => {
-    setShowReceipt(false);
-    setReceiptData(null);
+  // ─── Flow Navigation ───
+  const startFlow = (type) => {
+    setSaleType(type);
+    if (type === 'history') return;
+    setStep(1);
     setSelectedCustomer(null);
-    setCustomerSearchTerm('');
+    setWizardItems([]);
+    setAmountPaid('');
+    setSaleError('');
   };
 
+  const confirmCustomer = () => {
+    if (!selectedCustomer) return;
+    setStep(2);
+  };
+
+  const cancelFlow = () => {
+    setSaleType(null);
+    setStep(1);
+    setWizardItems([]);
+  };
+
+  // ─── Customer Handling ───
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     const res = await createCustomer(newCustomerData);
@@ -134,449 +144,731 @@ export default function Sales() {
       if (selectedCustomer?.id === customerToVerify.id) {
         setSelectedCustomer({ ...selectedCustomer, is_verified: true });
       }
-      alert('Customer verified successfully!');
     } else {
       alert(res.error || 'Invalid code');
     }
   };
 
-  // Format currency
-  const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
+  // ─── Item Selection ───
+  const handleProductSelect = (product) => {
+    const userLocationId = user?.user_metadata?.location_id;
+    const localStock = userLocationId 
+      ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
+      : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
 
-  // Format timestamp
-  const formatTime = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    if (localStock <= 0) {
+      alert('This product is out of stock.');
+      return;
+    }
+
+    if (saleType === 'new') {
+      if (wizardItems.length > 0) {
+        alert('New Sale only supports a single item. Use Batch Sale for multiple items.');
+        return;
+      }
+      setWizardItems([{
+        id: Date.now().toString(),
+        product,
+        quantity: 1,
+        scanned_units: [],
+        scanned_codes: [],
+        stock: localStock
+      }]);
+      setShowProductModal(false);
+    } else if (saleType === 'batch') {
+      setSelectedProductForBatch({ product, stock: localStock });
+      setBatchQuantityInput('1');
+      setShowQuantityPrompt(true);
+      setShowProductModal(false);
+    }
   };
 
-  const paymentMethods = [
-    { value: 'cash', label: 'Cash', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-    { value: 'card', label: 'Card', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 10h20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-    { value: 'mobile', label: 'Mobile', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 18h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  ];
+  const confirmBatchQuantity = () => {
+    const qty = parseInt(batchQuantityInput, 10);
+    if (isNaN(qty) || qty <= 0) {
+      alert('Please enter a valid quantity.');
+      return;
+    }
+    if (qty > selectedProductForBatch.stock) {
+      alert(`Only ${selectedProductForBatch.stock} available in stock.`);
+      return;
+    }
 
+    setWizardItems(prev => [...prev, {
+      id: Date.now().toString(),
+      product: selectedProductForBatch.product,
+      quantity: qty,
+      scanned_units: Array(qty).fill(null), // array of nulls for unit IDs
+      scanned_codes: Array(qty).fill(null), // array of nulls for QR string display
+      stock: selectedProductForBatch.stock
+    }]);
+    
+    setShowQuantityPrompt(false);
+    setSelectedProductForBatch(null);
+  };
+
+  // ─── Scanning Logic ───
+  const openScanner = (itemId, unitIndex = 0) => {
+    setActiveScanTarget({ itemId, unitIndex });
+    setShowScanner(true);
+  };
+
+  const onScanComplete = async (decodedText) => {
+    setShowScanner(false);
+    if (!activeScanTarget) return;
+
+    try {
+      // Look up unit
+      const unitRes = await api.get(`/units/lookup?qr=${encodeURIComponent(decodedText)}`);
+      
+      if (!unitRes || !unitRes.unit) {
+        alert('QR code exists but is not assigned to any item.');
+        return;
+      }
+
+      const unit = unitRes.unit;
+      const { itemId, unitIndex } = activeScanTarget;
+      
+      setWizardItems(prev => prev.map(item => {
+        if (item.id === itemId) {
+          if (unit.product_id !== item.product.id) {
+            alert(`Mismatched product! Scanned unit is ${unit.product.name}, but expected ${item.product.name}.`);
+            return item;
+          }
+          
+          // Check for duplicate scan within same item
+          if (item.scanned_units.includes(unit.id)) {
+            alert('This exact unit was already scanned for this item.');
+            return item;
+          }
+
+          const newUnits = [...item.scanned_units];
+          newUnits[unitIndex] = unit.id;
+          
+          const newCodes = [...item.scanned_codes];
+          newCodes[unitIndex] = decodedText;
+
+          return { ...item, scanned_units: newUnits, scanned_codes: newCodes };
+        }
+        return item;
+      }));
+    } catch (err) {
+      // Fallback or generic product
+      alert(`Could not verify specific physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
+    }
+  };
+
+  const removeWizardItem = (itemId) => {
+    setWizardItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
+  // ─── Checkout ───
+  const isCheckoutReady = () => {
+    if (wizardItems.length === 0) return false;
+    
+    // Ensure all required QR boxes are filled
+    for (const item of wizardItems) {
+      if (item.scanned_units.length !== item.quantity) return false;
+      if (item.scanned_units.some(u => u === null)) return false;
+    }
+    return true;
+  };
+
+  const handleHoldSale = async () => {
+    if (!isCheckoutReady()) return;
+    setSaleError('');
+    setIsProcessing(true);
+
+    try {
+      const payload = {
+        items: wizardItems.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          unit_ids: item.scanned_units,
+        })),
+        payment_method: paymentMethod || 'cash', // Default fallback for stage 1
+        total_amount: totalAmount,
+        subtotal: totalAmount,
+        tax: 0,
+        discount: 0,
+        customer_id: selectedCustomer.id,
+      };
+
+      const response = await api.post('/sales', payload);
+      const saleData = response.sale || response;
+
+      setPendingSale(saleData);
+      setShowPaymentModal(true);
+    } catch (err) {
+      setSaleError(err.message || 'Failed to hold sale');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelSale = async () => {
+    if (!pendingSale) return;
+    setIsProcessing(true);
+    try {
+      await api.post(`/sales/${pendingSale.id}/cancel`, {});
+      setShowPaymentModal(false);
+      setPendingSale(null);
+      setSaleError('Transaction was cancelled. Items have been removed from your batch.');
+      setWizardItems([]);
+    } catch (err) {
+      setSaleError(err.message || 'Failed to cancel sale');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFinalizeSale = async () => {
+    if (!amountPaid || isNaN(parseFloat(amountPaid))) {
+       setSaleError('Please enter a valid amount paid.');
+       return;
+    }
+    if (!pendingSale) return;
+    setIsProcessing(true);
+    try {
+      const payload = { amount_paid: parseFloat(amountPaid) };
+      await api.post(`/sales/${pendingSale.id}/finalize`, payload);
+      
+      const fullReceipt = {
+        ...pendingSale,
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        amount_paid: parseFloat(amountPaid),
+        sale_items: wizardItems.map(item => ({
+          id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          product: { name: item.product.name, sku: item.product.sku },
+        })),
+      };
+
+      setReceiptData(fullReceipt);
+      setShowPaymentModal(false);
+      setShowReceipt(true);
+      // Reset wizard
+      setWizardItems([]);
+      setAmountPaid('');
+      setPendingSale(null);
+    } catch (err) {
+      setSaleError(err.message || 'Failed to finalize sale');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const closeReceipt = () => {
+    setShowReceipt(false);
+    setReceiptData(null);
+    setSaleType(null); // Return to landing
+  };
+
+  // ─── Render Landing ───
+  if (saleType === null) {
+    return (
+      <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '2rem' }}>
+        <h1 className="dashboard-title" style={{ textAlign: 'center', marginBottom: '2rem' }}>Point of Sale</h1>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+          
+          <button 
+            className="glass-panel" 
+            style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
+            onClick={() => startFlow('new')}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+          >
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>New Sale</h2>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Quick transaction for a single item.</p>
+          </button>
+
+          <button 
+            className="glass-panel" 
+            style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
+            onClick={() => startFlow('batch')}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+          >
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>Batch Sale</h2>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Process multiple items and quantities.</p>
+          </button>
+
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+          <button className="btn btn-outline" onClick={() => startFlow('history')}>
+            View Sales History
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (saleType === 'history') {
+    return (
+      <div>
+        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <h1 className="dashboard-title">Sales History</h1>
+            <p className="dashboard-subtitle">Review past transactions.</p>
+          </div>
+          <button className="btn btn-outline" onClick={() => setSaleType(null)}>Back to POS</button>
+        </header>
+        <SalesHistory />
+      </div>
+    );
+  }
+
+  // ─── Render Wizard ───
   return (
-    <>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 className="dashboard-title">Point of Sale</h1>
-          <p className="dashboard-subtitle">Process transactions and manage cart.</p>
+          <h1 className="dashboard-title">{saleType === 'new' ? 'New Sale' : 'Batch Sale'}</h1>
+          <p className="dashboard-subtitle">Step {step} of 2</p>
         </div>
-        <div className="filter-group" style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            className={`btn ${activeTab === 'pos' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('pos')}
-          >
-            New Sale
-          </button>
-          <button 
-            className={`btn ${activeTab === 'history' ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab('history')}
-          >
-            Sales History
-          </button>
-        </div>
+        <button className="btn btn-outline text-error" onClick={cancelFlow}>Cancel Sale</button>
       </header>
 
-      {activeTab === 'pos' ? (
-        <div className="pos-container">
-          {/* ─── Left Panel: Product Catalog ─── */}
-        <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '1.5rem' }}>
-          <div className="toolbar" style={{ borderRadius: 'var(--radius-md)', marginBottom: '1rem', background: 'var(--color-bg-tertiary)' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Catalog ({filteredProducts.length})</h2>
-            <div className="search-bar">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="search-icon">
-                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M18 18L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      {/* ─── STEP 1: Customer Selection ─── */}
+      {step === 1 && (
+        <div className="glass-panel" style={{ padding: '32px', maxWidth: '600px', margin: '0 auto', borderTop: '4px solid var(--color-primary)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              {searchTerm && (
-                <button 
-                  className="btn-icon" 
-                  style={{ width: '24px', height: '24px' }}
-                  onClick={() => setSearchTerm('')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              )}
             </div>
-            <button
-              className="btn btn-secondary"
-              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-              onClick={() => setShowScanner(true)}
-              title="Scan QR Code"
-            >
-              📷 Scan
-            </button>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Customer Identification</h2>
+            <p style={{ color: 'var(--color-text-secondary)', marginTop: '8px' }}>Please search for an existing customer or create a new profile.</p>
           </div>
-
-          {productsLoading ? (
-            <div className="empty-state">
-              <div className="loading-spinner" style={{ margin: '0 auto 1rem auto' }}></div>
-              <p>Loading catalog...</p>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-                  <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-              <h2>No products found</h2>
-              <p className="text-muted">Try adjusting your search criteria</p>
-            </div>
-          ) : (
-            <div className="product-grid">
-              {filteredProducts.map(product => {
-                const inCart = getCartItem(product.id);
-                const userLocationId = user?.user_metadata?.location_id;
-                const localStock = userLocationId 
-                  ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
-                  : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
-
-                const lowStockThreshold = product.product_inventory?.[0]?.low_stock_threshold || 5;
-                const outOfStock = localStock <= 0;
-                const maxedOut = inCart && inCart.quantity >= localStock;
-
-                return (
-                  <div
-                    key={product.id}
-                    className="pos-glass-card"
-                    style={{ 
-                      opacity: outOfStock ? 0.6 : 1,
-                      borderColor: inCart ? 'var(--color-primary)' : 'var(--color-border)',
-                      position: 'relative'
-                    }}
-                    onClick={() => {
-                      if (!outOfStock && !inCart) addToCart({ ...product, stock_quantity: localStock });
-                    }}
-                  >
-                    {inCart && (
-                      <div style={{
-                        position: 'absolute', top: '-8px', right: '-8px', 
-                        background: 'var(--color-primary)', color: '#fff',
-                        width: '24px', height: '24px', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.75rem', fontWeight: 'bold', boxShadow: 'var(--shadow-sm)'
-                      }}>
-                        {inCart.quantity}
-                      </div>
-                    )}
-                    
-                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem', fontWeight: 600 }}>{product.name}</h3>
-                    <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                      SKU: {product.sku}
-                    </div>
-                    
-                    <p style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: '1.25rem', marginBottom: '0.5rem' }}>
-                      {fmt(product.price)}
-                    </p>
-                    
-                    <div style={{ marginBottom: '1rem' }}>
-                      {outOfStock ? (
-                        <span className="badge badge-error">Out of Stock</span>
-                      ) : localStock <= lowStockThreshold ? (
-                        <span className="badge badge-warning">{localStock} Left</span>
-                      ) : (
-                        <span className="badge badge-success">{localStock} in stock</span>
-                      )}
-                    </div>
-
-                    {inCart ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                        <button className="btn-icon" style={{ border: '1px solid var(--color-border)' }} onClick={() => updateQuantity(product.id, inCart.quantity - 1)}>
-                          -
-                        </button>
-                        <span style={{ fontWeight: 600, width: '20px' }}>{inCart.quantity}</span>
-                        <button className="btn-icon" style={{ border: '1px solid var(--color-border)' }} disabled={maxedOut} onClick={() => updateQuantity(product.id, inCart.quantity + 1)}>
-                          +
-                        </button>
-                      </div>
-                    ) : (
-                      <button className="btn btn-secondary" style={{ width: '100%' }} disabled={outOfStock}>
-                        Add to Cart
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ─── Right Panel: Cart & Checkout ─── */}
-        <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(26, 26, 46, 0.6)' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--color-primary)' }}>
-                <circle cx="9" cy="20" r="1.5" stroke="currentColor" strokeWidth="2" />
-                <circle cx="18" cy="20" r="1.5" stroke="currentColor" strokeWidth="2" />
-                <path d="M2 2H4.5L7 14H19L21.5 6H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          
+          <div style={{ position: 'relative', marginBottom: '24px' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              Current Sale
-            </h2>
-            {cart.length > 0 && (
-              <button className="btn-icon text-error" onClick={clearCart} title="Clear Cart">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+            </div>
+            <input
+              type="text"
+              className="input"
+              placeholder={(user?.user_metadata?.role === 'Business Admin' || user?.user_metadata?.role === 'Platform Admin') ? "Search by name, phone, or ID..." : "Search by phone number..."}
+              value={customerSearchTerm}
+              onChange={(e) => setCustomerSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '16px 16px 16px 48px', fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)', transition: 'all 0.3s' }}
+              onFocus={e => e.target.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.2)'}
+              onBlur={e => e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'}
+            />
+          </div>
+          
+          <div style={{ minHeight: '150px' }}>
+            {isSearching && (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-primary)' }}>
+                <div className="loading-spinner" style={{ width: '24px', height: '24px', display: 'inline-block', marginBottom: '8px' }}></div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>Searching database...</div>
+              </div>
+            )}
+            
+            {!isSearching && searchResults.length > 0 && (
+              <div style={{ 
+                display: 'flex', flexDirection: 'column', gap: '8px',
+                maxHeight: '300px', overflowY: 'auto', paddingRight: '4px'
+              }}>
+                {searchResults.map(c => (
+                  <div 
+                    key={c.id} 
+                    className="glass-panel"
+                    style={{ 
+                      padding: '16px', 
+                      cursor: 'pointer', 
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '12px',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                      e.currentTarget.style.background = 'var(--color-bg-secondary)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--color-bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>{c.name}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{c.phone}</div>
+                      </div>
+                    </div>
+                    {c.is_verified ? (
+                       <span className="badge badge-success" style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '20px' }}>✓ Verified</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {!isSearching && customerSearchTerm.length >= 2 && searchResults.length === 0 && (
+               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '12px', background: 'rgba(0,0,0,0.02)' }}>
+                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ margin: '0 auto 16px auto', opacity: 0.5 }}>
+                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                   <circle cx="9" cy="7" r="4"></circle>
+                   <line x1="17" y1="8" x2="23" y2="14"></line>
+                   <line x1="23" y1="8" x2="17" y2="14"></line>
+                 </svg>
+                 <p style={{ marginBottom: '16px', fontSize: '1.05rem' }}>No customer found matching your search.</p>
+                 <button 
+                   className="btn btn-primary" 
+                   onClick={() => setShowNewCustomerModal(true)}
+                 >
+                   Create New Customer
+                 </button>
+               </div>
+            )}
+
+            {!isSearching && customerSearchTerm.length < 2 && !selectedCustomer && (
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: '24px 0' }}>
+                  <div style={{ height: '1px', background: 'var(--color-border)', flex: 1 }}></div>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>OR</span>
+                  <div style={{ height: '1px', background: 'var(--color-border)', flex: 1 }}></div>
+                </div>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ width: '100%', padding: '16px', fontSize: '1.05rem', borderStyle: 'dashed', borderRadius: '12px' }}
+                  onClick={() => setShowNewCustomerModal(true)}
+                >
+                  + Add New Customer Manually
+                </button>
+              </div>
             )}
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-            {cart.length === 0 ? (
-              <div className="empty-state" style={{ border: 'none', background: 'transparent', padding: '2rem 1rem' }}>
-                <div className="empty-state-icon" style={{ color: 'var(--color-border-hover)' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+          {/* Selected Customer Preview */}
+          {selectedCustomer && (
+            <div style={{ 
+              marginTop: '32px', 
+              padding: '24px', 
+              background: 'linear-gradient(145deg, rgba(99,102,241,0.05) 0%, rgba(139,92,246,0.05) 100%)', 
+              border: '1px solid rgba(99,102,241,0.2)', 
+              borderRadius: '16px', 
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.05, transform: 'scale(2)' }}>
+                <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+                    {selectedCustomer.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '2px' }}>Selected Customer</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--color-text-primary)' }}>{selectedCustomer.name}</div>
+                    <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📞 {selectedCustomer.phone}</span>
+                      <span style={{ color: 'var(--color-border)' }}>|</span>
+                      <span>ID: {selectedCustomer.customer_code || 'N/A'}</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-muted">Cart is empty.<br/>Add products to begin.</p>
+                <button className="btn btn-primary" onClick={confirmCustomer} style={{ padding: '12px 24px', borderRadius: '30px', boxShadow: '0 4px 12px rgba(99,102,241,0.2)' }}>
+                  Continue to Sale →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── STEP 2: Sale Workflow ─── */}
+      {step === 2 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Read-only Customer Header */}
+          <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+            <div>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '8px' }}>Customer:</span>
+              <span style={{ fontWeight: 600 }}>{selectedCustomer.name}</span>
+              <span style={{ color: 'var(--color-text-secondary)', marginLeft: '8px' }}>({selectedCustomer.phone})</span>
+            </div>
+            <button className="btn-icon text-muted" onClick={() => setStep(1)} title="Change Customer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5l13.732-13.732z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>2. Order Items</h2>
+              <button className="btn btn-secondary" onClick={() => setShowProductModal(true)}>
+                + Add Item{saleType === 'batch' ? 's' : ''}
+              </button>
+            </div>
+
+            {wizardItems.length === 0 ? (
+              <div className="empty-state" style={{ padding: '3rem 1rem' }}>
+                <p className="text-muted">No items added yet.<br/>Click "Add Item" to begin.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {cart.map(item => (
-                  <div key={item.product_id} style={{ display: 'flex', flexDirection: 'column', padding: '1rem', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600 }}>{item.name}</span>
-                      <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(item.price * item.quantity)}</span>
-                    </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {wizardItems.map((item) => (
+                  <div key={item.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px', background: 'var(--color-bg-secondary)' }}>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.sku}</span>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button className="btn-icon" style={{ width: '24px', height: '24px', border: '1px solid var(--color-border)' }} onClick={() => updateQuantity(item.product_id, item.quantity - 1)}>-</button>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, width: '16px', textAlign: 'center' }}>{item.quantity}</span>
-                        <button className="btn-icon" style={{ width: '24px', height: '24px', border: '1px solid var(--color-border)' }} onClick={() => updateQuantity(item.product_id, item.quantity + 1)} disabled={item.quantity >= item.stock_quantity}>+</button>
-                        
-                        <button className="btn-icon text-error" style={{ width: '28px', height: '28px', marginLeft: '0.5rem' }} onClick={() => removeFromCart(item.product_id)}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          </svg>
-                        </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px dashed var(--color-border)' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.product.name}</h3>
+                        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>SKU: {item.product.sku} | Qty: {item.quantity}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-primary)' }}>{fmt(item.product.price * item.quantity)}</div>
+                        <button className="btn-icon text-error" style={{ marginTop: '8px' }} onClick={() => removeWizardItem(item.id)}>Remove</button>
                       </div>
                     </div>
+
+                    {/* QR Code Scanners per quantity */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Scan Physical Units</h4>
+                      {Array.from({ length: item.quantity }).map((_, idx) => {
+                        const scannedCode = item.scanned_codes[idx];
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: scannedCode ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.2)', border: `1px solid ${scannedCode ? '#10b981' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Unit {idx + 1} of {item.quantity}</div>
+                              {scannedCode ? (
+                                <code style={{ fontSize: '0.9rem', color: '#10b981', background: 'transparent', padding: 0 }}>QR: {scannedCode}</code>
+                              ) : (
+                                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Waiting for scan...</span>
+                              )}
+                            </div>
+                            <button 
+                              className={`btn ${scannedCode ? 'btn-outline' : 'btn-secondary'}`} 
+                              style={{ padding: '0.5rem 1rem' }}
+                              onClick={() => openScanner(item.id, idx)}
+                            >
+                              {scannedCode ? 'Rescan' : '📷 Scan QR'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {cart.length > 0 && (
-            <div style={{ padding: '1.5rem', background: 'rgba(26, 26, 46, 0.6)', borderTop: '1px solid var(--color-border)' }}>
-              {saleError && (
-                <div className="alert-error mb-xl">
-                  {saleError}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                <span>Subtotal ({cartItemCount} items)</span>
-                <span>{fmt(cartTotal)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 700 }}>
-                <span>Total</span>
-                <span style={{ color: 'var(--color-primary)' }}>{fmt(cartTotal)}</span>
+          {/* Checkout Block */}
+          {wizardItems.length > 0 && (
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '24px' }}>3. Checkout</h2>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--color-border)' }}>
+                <span style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)' }}>Total Amount Due:</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(totalAmount)}</span>
               </div>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                  Payment Method
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                  {paymentMethods.map(method => (
-                    <button
-                      key={method.value}
-                      onClick={() => setPaymentMethod(method.value)}
-                      style={{
-                        padding: '0.75rem 0',
-                        background: paymentMethod === method.value ? 'rgba(99, 102, 241, 0.1)' : 'var(--color-bg-secondary)',
-                        border: `1px solid ${paymentMethod === method.value ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                        borderRadius: 'var(--radius-md)',
-                        color: paymentMethod === method.value ? 'var(--color-primary)' : 'var(--color-text-primary)',
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        transition: 'all var(--transition-fast)'
-                      }}
-                    >
-                      <div style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{method.icon}</div>
-                      <div style={{ fontSize: '0.8rem' }}>{method.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {saleError && <div className="alert alert-error mb-xl"><p>{saleError}</p></div>}
 
-              <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                    Customer (Required)
-                  </span>
-                  <button 
-                    className="btn btn-sm btn-outline" 
-                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                    onClick={() => setShowNewCustomerModal(true)}
-                  >
-                    + Add New
-                  </button>
-                </div>
-                
-                {selectedCustomer ? (
-                  <div style={{ 
-                    padding: '0.75rem', border: '1px solid var(--color-primary)', 
-                    borderRadius: 'var(--radius-md)', background: 'rgba(99, 102, 241, 0.05)',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {selectedCustomer.name}
-                        {selectedCustomer.is_verified ? (
-                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
-                        ) : (
-                          <button 
-                            className="btn btn-sm btn-outline text-warning" 
-                            style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', border: '1px solid var(--color-warning)' }}
-                            onClick={() => handleSendVerification(selectedCustomer)}
-                            disabled={customerLoading}
-                          >
-                            Verify OTP
-                          </button>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{selectedCustomer.phone}</div>
-                    </div>
-                    <button className="btn-icon text-muted" onClick={() => setSelectedCustomer(null)}>×</button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="text"
-                      className="input"
-                      placeholder="Search phone (or name if admin)..."
-                      value={customerSearchTerm}
-                      onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                      style={{ width: '100%' }}
-                    />
-                    {isSearching && <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--color-text-muted)' }}>Searching...</div>}
-                    {!isSearching && searchResults.length > 0 && (
-                      <div style={{ 
-                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-                        background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-md)', maxHeight: '200px', overflowY: 'auto',
-                        boxShadow: 'var(--shadow-lg)'
-                      }}>
-                        {searchResults.map(c => (
-                          <div 
-                            key={c.id} 
-                            style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
-                            onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); }}
-                          >
-                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              {c.name}
-                              {c.is_verified && <span style={{ color: 'var(--color-success)', fontSize: '0.8rem' }}>✓</span>}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{c.phone}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <button
-                className="btn pos-checkout-btn"
-                style={{ width: '100%', padding: '1.2rem', fontSize: '1.2rem', fontWeight: 700, borderRadius: 'var(--radius-lg)' }}
-                onClick={handleCompleteSale}
-                disabled={saleLoading || cart.length === 0 || !selectedCustomer}
+              <button 
+                className="btn btn-primary" 
+                style={{ width: '100%', padding: '16px', fontSize: '1.2rem', fontWeight: 700 }}
+                disabled={!isCheckoutReady() || isProcessing}
+                onClick={handleHoldSale}
               >
-                {saleLoading ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div className="loading-spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div>
-                    Processing...
-                  </span>
-                ) : saleSuccess ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    Payment Complete!
-                  </span>
-                ) : (
-                  `Checkout — ${fmt(cartTotal)}`
-                )}
+                {isProcessing ? 'Processing...' : `Hold & Continue to Payment — ${fmt(totalAmount)}`}
               </button>
+              {!isCheckoutReady() && (
+                <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '12px' }}>
+                  Please ensure all items have been scanned.
+                </p>
+              )}
             </div>
           )}
         </div>
-      </div>
-      ) : (
-        <SalesHistory />
       )}
 
-      {/* ─── Receipt Modal ─── */}
-      <Modal
-        isOpen={showReceipt}
-        onClose={closeReceipt}
-        title="Transaction Receipt"
-      >
+      {/* ─── Modals ─── */}
+
+      {/* Product Search Modal */}
+      <Modal isOpen={showProductModal} onClose={() => setShowProductModal(false)} title="Search Catalog">
+        <input
+          type="text"
+          className="input"
+          placeholder="Search by name, SKU, category..."
+          value={productSearchTerm}
+          onChange={(e) => setProductSearchTerm(e.target.value)}
+          style={{ width: '100%', marginBottom: '16px' }}
+          autoFocus
+        />
+        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {filteredProducts.map(p => (
+            <div key={p.id} style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>SKU: {p.sku} | Price: {fmt(p.price)}</div>
+              </div>
+              <button className="btn btn-sm btn-outline" onClick={() => handleProductSelect(p)}>Select</button>
+            </div>
+          ))}
+          {filteredProducts.length === 0 && <p className="text-muted text-center" style={{ padding: '2rem 0' }}>No products found.</p>}
+        </div>
+      </Modal>
+
+      {/* Quantity Prompt for Batch */}
+      <Modal isOpen={showQuantityPrompt} onClose={() => setShowQuantityPrompt(false)} title="Quantity">
+        <form onSubmit={(e) => { e.preventDefault(); confirmBatchQuantity(); }}>
+          <p style={{ marginBottom: '16px' }}>How many <strong>{selectedProductForBatch?.product?.name}</strong> items do you want to add to this batch?</p>
+          <div className="form-group">
+            <input 
+              type="number" 
+              className="input" 
+              min="1" 
+              max={selectedProductForBatch?.stock || 999} 
+              value={batchQuantityInput}
+              onChange={(e) => setBatchQuantityInput(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setShowQuantityPrompt(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Confirm Quantity</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* New Customer Modal */}
+      <Modal isOpen={showNewCustomerModal} onClose={() => setShowNewCustomerModal(false)} title="Quick Add Customer">
+        <form onSubmit={handleCreateCustomer}>
+          <div className="form-group">
+            <label>Full Name</label>
+            <input type="text" className="input" value={newCustomerData.name} onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label>Phone Number</label>
+            <input type="tel" className="input" value={newCustomerData.phone} onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })} required />
+          </div>
+          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setShowNewCustomerModal(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={customerLoading}>{customerLoading ? 'Saving...' : 'Save Customer'}</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* QR Scanner */}
+      <QrScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={onScanComplete}
+      />
+
+      {/* Payment Modal (Stage 2) */}
+      <Modal isOpen={showPaymentModal} onClose={() => {}} title="Complete Payment">
+        <div style={{ padding: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--color-border)' }}>
+            <span style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)' }}>Total Due:</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(totalAmount)}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Payment Method</label>
+              <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: '100%' }}>
+                <option value="cash">Cash</option>
+                <option value="card">Card / POS</option>
+                <option value="mobile">Mobile Money</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Amount Paid By Customer</label>
+              <input 
+                type="number" 
+                className="input" 
+                placeholder="e.g. 100.00" 
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+                style={{ width: '100%', fontSize: '1.2rem', padding: '12px' }}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {saleError && <div className="alert alert-error mb-xl"><p>{saleError}</p></div>}
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              className="btn btn-outline" 
+              style={{ flex: 1, padding: '16px', fontWeight: 600, color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+              onClick={handleCancelSale}
+              disabled={isProcessing}
+            >
+              Cancel Transaction
+            </button>
+            <button 
+              className="btn btn-primary" 
+              style={{ flex: 1.5, padding: '16px', fontSize: '1.1rem', fontWeight: 700 }}
+              onClick={handleFinalizeSale}
+              disabled={isProcessing || !amountPaid}
+            >
+              {isProcessing ? 'Processing...' : 'Finalize & Print Receipt'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Receipt Modal */}
+      <Modal isOpen={showReceipt} onClose={closeReceipt} title="Transaction Receipt">
         {receiptData && (
           <div className="pos-receipt-modal" style={{ textAlign: 'center', margin: '-2rem' }}>
-            <div style={{ 
-              width: '64px', height: '64px', borderRadius: '50%', 
-              background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 1.5rem auto'
-            }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-            
             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Payment Successful</h3>
-            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem' }}>
-              {formatTime(receiptData.created_at)}
-            </p>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem' }}>{new Date(receiptData.created_at || Date.now()).toLocaleString()}</p>
 
             <div style={{ background: 'transparent', border: 'none', padding: '0.5rem', textAlign: 'left', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px dashed var(--color-border)' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Receipt #</span>
-                <span style={{ fontFamily: 'monospace' }}>{receiptData.id?.slice(0, 8)?.toUpperCase()}</span>
+                <span style={{ fontFamily: 'monospace' }}>{receiptData.receipt_number || receiptData.id?.slice(0, 8)?.toUpperCase()}</span>
               </div>
-              
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <span style={{ color: 'var(--color-text-secondary)' }}>Method</span>
-                <span className="badge badge-neutral">
-                  {paymentMethods.find(m => m.value === receiptData.payment_method)?.icon}{' '}
-                  {receiptData.payment_method?.toUpperCase()}
-                </span>
+                <span className="badge badge-neutral">{receiptData.payment_method?.toUpperCase()}</span>
               </div>
-
               <div style={{ marginBottom: '1rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  <span>Item</span>
-                  <span style={{ textAlign: 'center' }}>Qty</span>
-                  <span style={{ textAlign: 'right' }}>Total</span>
+                  <span>Item</span><span style={{ textAlign: 'center' }}>Qty</span><span style={{ textAlign: 'right' }}>Total</span>
                 </div>
                 {receiptData.sale_items?.map(item => (
                   <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
@@ -586,113 +878,27 @@ export default function Sales() {
                   </div>
                 ))}
               </div>
-
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '1rem', borderTop: '1px dashed var(--color-border)', fontSize: '1.25rem', fontWeight: 700 }}>
-                <span>Total</span>
-                <span style={{ color: 'var(--color-primary)' }}>{fmt(receiptData.total_amount)}</span>
+                <span>Total</span><span style={{ color: 'var(--color-primary)' }}>{fmt(receiptData.total_amount)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Amount Paid</span>
+                <span>{fmt(receiptData.amount_paid)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Change</span>
+                <span>{fmt(Math.max(0, receiptData.amount_paid - receiptData.total_amount))}</span>
               </div>
             </div>
 
-            <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '3rem' }}>
-              <button className="btn btn-primary" style={{ minWidth: '200px', borderRadius: 'var(--radius-full)' }} onClick={closeReceipt}>
-                Done
-              </button>
+            <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '3rem', gap: '16px' }}>
+              <button className="btn btn-outline" style={{ minWidth: '150px', borderRadius: 'var(--radius-full)' }} onClick={() => window.print()}>Print Receipt</button>
+              <button className="btn btn-primary" style={{ minWidth: '150px', borderRadius: 'var(--radius-full)' }} onClick={closeReceipt}>Done</button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* ─── New Customer Modal ─── */}
-      <Modal
-        isOpen={showNewCustomerModal}
-        onClose={() => setShowNewCustomerModal(false)}
-        title="Quick Add Customer"
-      >
-        <form onSubmit={handleCreateCustomer}>
-          <div className="form-group">
-            <label>Full Name</label>
-            <input
-              type="text"
-              className="input"
-              value={newCustomerData.name}
-              onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Phone Number</label>
-            <input
-              type="tel"
-              className="input"
-              value={newCustomerData.phone}
-              onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
-              required
-            />
-          </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setShowNewCustomerModal(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={customerLoading}>
-              {customerLoading ? 'Saving...' : 'Save Customer'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* ─── Verification Modal ─── */}
-      <Modal
-        isOpen={showVerifyModal}
-        onClose={() => setShowVerifyModal(false)}
-        title="Verify Phone Number"
-      >
-        <form onSubmit={handleVerifyCode}>
-          <p className="text-muted mb-md">
-            An SMS with a verification code was just sent via Arkesel to <strong>{customerToVerify?.phone}</strong>.
-          </p>
-          <div className="form-group">
-            <label>Verification Code</label>
-            <input
-              type="text"
-              className="input"
-              value={verifyCode}
-              onChange={(e) => setVerifyCode(e.target.value)}
-              placeholder="e.g. 1234"
-              required
-              autoFocus
-            />
-          </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setShowVerifyModal(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={customerLoading}>
-              {customerLoading ? 'Verifying...' : 'Verify Code'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* ─── QR Scanner ─── */}
-      <QrScanner
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={async (decodedText) => {
-          setShowScanner(false);
-          try {
-            const product = await api.get(`/products/lookup?qr=${encodeURIComponent(decodedText)}`);
-            if (product) {
-              const userLocationId = user?.user_metadata?.location_id;
-              const localStock = userLocationId
-                ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
-                : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
-              addToCart({ ...product, stock_quantity: localStock });
-            }
-          } catch {
-            alert(`No product found for QR code: ${decodedText}`);
-          }
-        }}
-      />
-    </>
+    </div>
   );
 }

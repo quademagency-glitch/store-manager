@@ -9,15 +9,24 @@ export function useSales() {
 
   // ── Cart Management ─────────────────────────────────
 
-  const addToCart = useCallback((product) => {
+  const addToCart = useCallback((product, unit_id = null) => {
     setCart(prev => {
       const existing = prev.find(item => item.product_id === product.id);
       if (existing) {
         // Increment quantity (respect stock limit)
-        if (existing.quantity >= product.stock_quantity) return prev;
+        if (existing.quantity >= product.stock_quantity && !unit_id) return prev;
+        
+        const newUnitIds = [...(existing.unit_ids || [])];
+        if (unit_id && !newUnitIds.includes(unit_id)) {
+          newUnitIds.push(unit_id);
+        } else if (unit_id && newUnitIds.includes(unit_id)) {
+          // Already scanned this exact unit
+          return prev;
+        }
+
         return prev.map(item =>
           item.product_id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + 1, unit_ids: newUnitIds }
             : item
         );
       }
@@ -29,6 +38,7 @@ export function useSales() {
         price: Number(product.price),
         stock_quantity: product.stock_quantity,
         quantity: 1,
+        unit_ids: unit_id ? [unit_id] : [],
       }];
     });
   }, []);
@@ -43,11 +53,14 @@ export function useSales() {
       return;
     }
     setCart(prev =>
-      prev.map(item =>
-        item.product_id === productId
-          ? { ...item, quantity: Math.min(newQuantity, item.stock_quantity) }
-          : item
-      )
+      prev.map(item => {
+        if (item.product_id === productId) {
+          const qty = Math.min(newQuantity, item.stock_quantity);
+          const unit_ids = (item.unit_ids || []).slice(0, qty); // Slice if they manually reduce quantity below scanned units
+          return { ...item, quantity: qty, unit_ids };
+        }
+        return item;
+      })
     );
   }, []);
 
@@ -71,6 +84,7 @@ export function useSales() {
           product_id: item.product_id,
           quantity: item.quantity,
           unit_price: item.price,
+          unit_ids: item.unit_ids || [],
         })),
         payment_method: paymentMethod,
         total_amount: cartTotal,

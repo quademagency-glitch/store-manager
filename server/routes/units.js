@@ -262,4 +262,73 @@ router.put('/:id/status', authGuard, permissionCheck('manage_inventory'), async 
   }
 });
 
+/**
+ * GET /api/units/sold/:productId
+ * Fetch sold units for a specific product, along with sale/customer details.
+ * Implements role-based privacy for customer data.
+ * Access: Managers and Admins (manage_inventory)
+ */
+router.get('/sold/:productId', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { location_id } = req.query;
+
+    let query = supabaseAdmin
+      .from('inventory_units')
+      .select(`
+        *,
+        qr:qr_code_pool!qr_code_id(code),
+        sale:sales!sold_in_sale_id(
+          created_at,
+          receipt_number,
+          customer:customers(id, name, phone, customer_code)
+        )
+      `)
+      .eq('product_id', productId)
+      .eq('status', 'sold')
+      .order('sold_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    if (location_id) {
+      query = query.eq('location_id', location_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const isBusinessAdmin = req.user.role === 'Business Admin' || req.user.role === 'Platform Admin';
+
+    // Map the data to enforce privacy controls
+    const formattedData = data.map(unit => {
+      const sale = unit.sale;
+      const customer = sale ? sale.customer : null;
+
+      // Base payload visible to all authorized (Managers, Admins)
+      const payload = {
+        id: unit.id,
+        qr_code: unit.qr ? unit.qr.code : 'Unknown',
+        sold_at: unit.sold_at || (sale ? sale.created_at : null),
+        customer_code: customer ? customer.customer_code : 'Walk-in',
+      };
+
+      // Add sensitive fields only for Business Admins
+      if (isBusinessAdmin) {
+        payload.receipt_number = sale ? sale.receipt_number : null;
+        payload.customer_name = customer ? customer.name : 'Walk-in';
+        payload.customer_phone = customer ? customer.phone : '';
+      }
+
+      return payload;
+    });
+
+    res.json(formattedData);
+  } catch (err) {
+    console.error('Error fetching sold units:', err);
+    res.status(500).json({ error: 'Failed to fetch sold units' });
+  }
+});
+
 module.exports = router;

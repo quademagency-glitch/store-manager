@@ -1,6 +1,7 @@
 const express = require('express');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -52,10 +53,10 @@ router.get('/search', authGuard, async (req, res) => {
 
     // Role-based searching
     if (req.user.role === 'Business Admin' || req.user.role === 'Platform Admin') {
-      // Admins can search by name or phone
-      query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
+      // Admins can search by name, phone, or ID
+      query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%,customer_code.ilike.%${q}%`);
     } else {
-      // Sales and Managers can ONLY search by phone
+      // Other roles can ONLY search by phone
       query = query.ilike('phone', `%${q}%`);
     }
 
@@ -81,13 +82,16 @@ router.post('/', authGuard, async (req, res) => {
       return res.status(400).json({ error: 'Name and phone are required.' });
     }
 
+    const customer_code = 'CUST-' + crypto.randomBytes(2).toString('hex').toUpperCase() + Math.floor(Math.random() * 1000);
+
     const { data, error } = await supabaseAdmin
       .from('customers')
       .insert([
         {
           business_id: req.user.business_id,
           name,
-          phone
+          phone,
+          customer_code
         }
       ])
       .select()

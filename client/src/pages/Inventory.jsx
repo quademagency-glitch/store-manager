@@ -6,8 +6,8 @@ import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import QrScanner from '../components/QrScanner';
 import InventoryCount from '../components/InventoryCount';
-import { QRCodeSVG } from 'qrcode.react';
-
+import TrackingModal from '../components/TrackingModal';
+import SoldUnitsModal from '../components/SoldUnitsModal';
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
@@ -22,7 +22,6 @@ export default function Inventory() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormError, setProductFormError] = useState('');
   const [isProductSubmitting, setIsProductSubmitting] = useState(false);
-  const [qrLabelProduct, setQrLabelProduct] = useState(null);
   const [productFormData, setProductFormData] = useState({
     name: '', sku: '', category: '', price: '', initialQuantity: '', locationId: '', qr_code_data: ''
   });
@@ -70,6 +69,14 @@ export default function Inventory() {
 
   // QR Scanner
   const [showScanner, setShowScanner] = useState(false);
+
+  // Tracking Modal
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+  const [selectedTrackingProduct, setSelectedTrackingProduct] = useState(null);
+
+  // Sold Units Modal
+  const [isSoldUnitsModalOpen, setIsSoldUnitsModalOpen] = useState(false);
+  const [selectedSoldProduct, setSelectedSoldProduct] = useState(null);
 
   useEffect(() => {
     fetchMovements();
@@ -464,16 +471,23 @@ export default function Inventory() {
                 <thead>
                   <tr>
                     <th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th>
+                    {hasPermission('manage_inventory') && <th>Sold</th>}
                     {hasPermission('manage_products') && <th className="text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProducts.length === 0 ? (
-                    <tr><td colSpan={hasPermission('manage_products') ? 6 : 5} className="text-center py-xl text-muted">No products found.</td></tr>
+                    <tr><td colSpan={hasPermission('manage_products') ? 7 : 6} className="text-center py-xl text-muted">No products found.</td></tr>
                   ) : (
                     filteredProducts.map(product => {
                       const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
                       const isLowStock = totalStock <= 5;
+                      
+                      // Calculate total sold based on movements (or an API field if we fetch it, but we can also just show it if we have it)
+                      // Actually, let's just make it a clickable "View Sold" link if we don't have the count readily available,
+                      // or we can just say "View History" since fetching sold count per product requires a DB query we didn't add to `products` endpoint.
+                      // Let's just make the "Sold" column a button "View Sold" for managers/admins.
+
                       return (
                         <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
                           <td>
@@ -489,24 +503,25 @@ export default function Inventory() {
                           <td><span className="badge badge-neutral">{product.category}</span></td>
                           <td className="font-medium">${Number(product.price).toFixed(2)}</td>
                           <td>
-                            <div className="stock-cell">
-                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>{totalStock}</span>
+                            <div className="stock-cell" onClick={() => { setSelectedTrackingProduct(product); setIsTrackingModalOpen(true); }} style={{ cursor: 'pointer' }} title="Manage QR Tracking">
+                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`} style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', color: 'var(--color-primary)' }}>{totalStock}</span>
                               <span className="stock-threshold text-muted text-sm">/ across locs</span>
                             </div>
                           </td>
+                          {hasPermission('manage_inventory') && (
+                            <td>
+                              <button 
+                                className="btn btn-sm"
+                                onClick={() => { setSelectedSoldProduct(product); setIsSoldUnitsModalOpen(true); }}
+                                style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                View Sold
+                              </button>
+                            </td>
+                          )}
                           {hasPermission('manage_products') && (
                             <td className="text-right">
                               <div className="action-buttons">
-                                <button className="btn-icon" onClick={() => setQrLabelProduct(product)} title="Print QR Label">
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-                                    <rect x="14" y="14" width="3" height="3" fill="currentColor"/>
-                                    <rect x="18" y="18" width="3" height="3" fill="currentColor"/>
-                                    <rect x="14" y="18" width="3" height="3" fill="currentColor"/>
-                                  </svg>
-                                </button>
                                 <button className="btn-icon" onClick={() => openEditProductModal(product)} title="Edit">
                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -761,6 +776,16 @@ export default function Inventory() {
 
       {/* ═══ MODALS ═══ */}
 
+      <TrackingModal 
+        isOpen={isTrackingModalOpen} 
+        onClose={() => {
+          setIsTrackingModalOpen(false);
+          setSelectedTrackingProduct(null);
+        }}
+        product={selectedTrackingProduct}
+        locations={locations}
+      />
+
       {/* Adjust Modal */}
       <Modal isOpen={isAdjustModalOpen} onClose={() => !adjusting && setIsAdjustModalOpen(false)} title="Adjust Stock">
         <form onSubmit={handleAdjustSubmit} className="modal-form">
@@ -1006,26 +1031,16 @@ export default function Inventory() {
           </div>
         </form>
       </Modal>
+      
+      <SoldUnitsModal
+        isOpen={isSoldUnitsModalOpen}
+        onClose={() => {
+          setIsSoldUnitsModalOpen(false);
+          setSelectedSoldProduct(null);
+        }}
+        product={selectedSoldProduct}
+      />
 
-      {/* ═══ QR Label Modal ═══ */}
-      <Modal isOpen={!!qrLabelProduct} onClose={() => setQrLabelProduct(null)} title="Print QR Label">
-        {qrLabelProduct && (
-          <div className="qr-print-label">
-            <div className="qr-code-wrapper">
-              <QRCodeSVG value={qrLabelProduct.qr_code_data || qrLabelProduct.sku} size={200} level="H" includeMargin={true} />
-            </div>
-            <div className="product-label-info">
-              <div className="product-label-name">{qrLabelProduct.name}</div>
-              <div className="product-label-sku">SKU: {qrLabelProduct.sku}</div>
-              <div className="product-label-price">${Number(qrLabelProduct.price).toFixed(2)}</div>
-            </div>
-            <div className="modal-actions" style={{ marginTop: '1rem' }}>
-              <button className="btn btn-secondary" onClick={() => setQrLabelProduct(null)}>Close</button>
-              <button className="btn btn-primary" onClick={() => window.print()}>🖨️ Print Label</button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

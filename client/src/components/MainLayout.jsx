@@ -111,6 +111,7 @@ export default function MainLayout() {
 
   const [availableLocations, setAvailableLocations] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     // Only fetch locations if they have assigned locationIds OR if they are an admin
@@ -159,6 +160,8 @@ export default function MainLayout() {
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
+        { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)
     };
@@ -223,6 +226,46 @@ export default function MainLayout() {
   }, [hasPermission]);
 
   const isAdminView = role && !role.toLowerCase().includes('sales');
+
+  const renderUserMenu = (isMobile = false) => (
+    <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={isMobile ? { position: 'static', width: '100%', background: 'transparent', boxShadow: 'none', border: 'none', marginTop: '8px' } : {
+      position: 'absolute', bottom: isAdminView ? 'auto' : '80px', top: isAdminView ? '60px' : 'auto', right: isAdminView ? '16px' : 'auto', left: isAdminView ? 'auto' : '16px',
+      width: '240px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+      boxShadow: 'var(--shadow-xl)', zIndex: 100, padding: '8px 0',
+      display: isUserMenuOpen ? 'block' : 'none'
+    }}>
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--color-border)', marginBottom: '8px' }}>
+        <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{user?.email?.split('@')[0] || 'User'}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{role || 'Unknown Role'}</div>
+      </div>
+      
+      <button className="dropdown-link" style={{ width: '100%', textAlign: 'left', padding: '8px 16px', color: 'var(--color-text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}>
+        Profile
+      </button>
+
+      <div style={{ padding: '8px 16px 4px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '8px' }}>
+        Settings
+      </div>
+      <button className="dropdown-link" style={{ width: '100%', textAlign: 'left', padding: '8px 16px', color: 'var(--color-text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => { navigate('/profile?tab=password'); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}>
+        Change Password
+      </button>
+      <button className="dropdown-link" style={{ width: '100%', textAlign: 'left', padding: '8px 16px', color: 'var(--color-text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => { navigate('/profile?tab=payslip'); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}>
+        Download Payslip
+      </button>
+      <button className="dropdown-link" style={{ width: '100%', textAlign: 'left', padding: '8px 16px', color: 'var(--color-text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => { navigate('/profile?tab=scanner'); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}>
+        Setup Scanner
+      </button>
+
+      <div style={{ margin: '8px 0', borderTop: '1px solid var(--color-border)' }}></div>
+      <button 
+        className="dropdown-link text-error" 
+        style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} 
+        onClick={() => { handleSignOut(); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}
+      >
+        {Icons.signout} Sign Out
+      </button>
+    </div>
+  );
 
   if (isAdminView) {
     return (
@@ -323,10 +366,18 @@ export default function MainLayout() {
               </select>
             )}
             
-            <div className="user-profile" onClick={handleSignOut} title="Sign Out">
-              <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
-                {user?.email?.charAt(0)?.toUpperCase() || '?'}
+            <div style={{ position: 'relative' }}>
+              <div 
+                className="user-profile" 
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
+                title="Account Menu"
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
+                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
+                </div>
               </div>
+              {renderUserMenu(false)}
             </div>
           </div>
         </header>
@@ -418,21 +469,24 @@ export default function MainLayout() {
                 </select>
               </div>
             )}
-            <button 
-              className="sidebar-signout" 
-              onClick={() => {
-                handleSignOut();
-                setIsMobileMenuOpen(false);
-              }}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 12.75L15.75 9L12 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M15.75 9H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              Sign out
-            </button>
+            <div style={{ width: '100%' }}>
+              <button 
+                className="sidebar-signout" 
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', cursor: 'pointer', color: 'white' }}
+              >
+                <div className="sidebar-avatar" style={{ width: '24px', height: '24px', fontSize: '0.8rem', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>Account</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d={isUserMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {renderUserMenu(true)}
+            </div>
           </div>
         </aside>
 
@@ -531,19 +585,27 @@ export default function MainLayout() {
             </div>
           )}
           
-          <div className="sidebar-user-info">
-            <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
-              {user?.email?.charAt(0)?.toUpperCase() || '?'}
-            </div>
-            <div className="sidebar-user-details">
-              <span className="sidebar-user-name">{user?.email?.split('@')[0] || 'User'}</span>
-              <span className="sidebar-user-role">{role || 'Unknown'}</span>
-            </div>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <button 
+              className="sidebar-signout" 
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', cursor: 'pointer', color: 'white' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="sidebar-avatar" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <div className="sidebar-user-details" style={{ textAlign: 'left' }}>
+                  <span className="sidebar-user-name" style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600 }}>{user?.email?.split('@')[0] || 'User'}</span>
+                  <span className="sidebar-user-role" style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>{role || 'Unknown'}</span>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d={isUserMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {renderUserMenu(false)}
           </div>
-          <button className="sidebar-signout" onClick={handleSignOut} id="signout-btn">
-             {Icons.signout}
-            Sign out
-          </button>
         </div>
       </aside>
 

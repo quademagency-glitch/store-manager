@@ -8,14 +8,17 @@ import Sales from './pages/Sales';
 import Inventory from './pages/Inventory';
 import Alerts from './pages/Alerts';
 import Reconciliation from './pages/Reconciliation';
-import Settings from './pages/Settings';
-import Customers from './pages/Customers';
-import PlatformAdmin from './pages/PlatformAdmin';
-import ForgotPassword from './pages/ForgotPassword';
+import Settings from "./pages/Settings";
+import Customers from "./pages/Customers";
+import Returns from "./pages/Returns";
+import SalesRecord from "./pages/SalesRecord";
+import PlatformAdmin from "./pages/PlatformAdmin";
+import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from './pages/UpdatePassword';
 import InvoiceList from './pages/InvoiceList';
 import InvoiceView from './pages/InvoiceView';
 import SmartRedirect from './components/SmartRedirect';
+import UserProfile from './pages/UserProfile';
 
 import MainLayout from './components/MainLayout';
 
@@ -50,6 +53,12 @@ export default function App() {
             <Route path="/sales" element={
               <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>
             } />
+            <Route path="/returns" element={
+              <ProtectedRoute><Returns /></ProtectedRoute>
+            } />
+            <Route path="/sales-record" element={
+              <ProtectedRoute><SalesRecord /></ProtectedRoute>
+            } />
             <Route path="/customers" element={
               <ProtectedRoute><Customers /></ProtectedRoute>
             } />
@@ -70,6 +79,9 @@ export default function App() {
             } />
             <Route path="/settings" element={
               <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute><UserProfile /></ProtectedRoute>
             } />
 
             {/* Business Admin Portal Routes */}

@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 const _envUrl = import.meta.env.VITE_API_URL;
-const API_BASE = _envUrl ? (_envUrl.endsWith('/api') ? _envUrl : `${_envUrl}/api`) : '/api';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : (_envUrl ? (_envUrl.endsWith('/api') ? _envUrl : `${_envUrl}/api`) : '/api');
 /**
  * Base fetch wrapper that injects the Supabase JWT token.
  * This ensures the server can authenticate the request.
@@ -31,7 +31,7 @@ async function fetchWithAuth(endpoint, options = {}) {
       headers,
     });
   } catch (networkErr) {
-    throw new Error(`Network Error: Could not reach the server. Is the backend running? (Details: ${networkErr.message})`, { cause: networkErr });
+    throw new Error(`[Target: ${API_BASE}${endpoint}] Network Error: Could not reach the server. Is the backend running? (Details: ${networkErr.message})`, { cause: networkErr });
   }
 
   // Handle standard HTTP errors
@@ -43,7 +43,7 @@ async function fetchWithAuth(endpoint, options = {}) {
     } catch {
       // Not JSON
     }
-    throw new Error(errorMessage);
+    throw new Error(`[Target: ${API_BASE}${endpoint}] ` + errorMessage);
   }
 
   // Handle 204 No Content

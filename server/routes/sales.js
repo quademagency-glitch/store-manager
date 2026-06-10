@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const crypto = require('crypto');
 const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
@@ -50,6 +51,61 @@ router.get('/', authGuard, async (req, res) => {
   } catch (err) {
     console.error('Error fetching sales:', err);
     res.status(500).json({ error: 'Failed to fetch sales' });
+  }
+});
+
+/**
+ * GET /api/sales/history
+ * Fetch historical sales with date range filtering.
+ * Access: All authenticated staff (scoped to their location)
+ */
+router.get('/history', authGuard, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    let query = supabaseAdmin
+      .from('sales')
+      .select(`
+        *,
+        salesperson:users!salesperson_id(id, name, email),
+        customer:customers!customer_id(id, name, phone, customer_code),
+        sale_items(
+          id,
+          quantity,
+          unit_price,
+          product:products!product_id(id, name, sku)
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+    
+    if (req.user.active_location_id) {
+      query = query.eq('location_id', req.user.active_location_id);
+    } else if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
+      if (req.user.location_ids && req.user.location_ids.length > 0) {
+        query = query.in('location_id', req.user.location_ids);
+      } else {
+        query = query.eq('location_id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      query = query.lte('created_at', endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching sales history:', err);
+    res.status(500).json({ error: 'Failed to fetch sales history' });
   }
 });
 
@@ -181,6 +237,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       });
     }
 
+    const receipt_number = 'RCPT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+
     const { data: saleData, error: saleError } = await supabaseAdmin
       .from('sales')
       .insert([
@@ -192,6 +250,8 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
           discount_amount: discount || 0,
           payment_method,
           customer_id: customer_id || null,
+          receipt_number: receipt_number,
+          status: 'pending' // Stage 1 of checkout
         },
       ])
       .select()
@@ -215,6 +275,24 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
 
     if (saleItemsError) {
       console.error('Sale items insertion error:', saleItemsError);
+    }
+
+    // Process unit-level tracking (Two-Stage POS)
+    const allUnitIds = [];
+    for (const item of items) {
+      if (item.unit_ids && Array.isArray(item.unit_ids)) {
+        allUnitIds.push(...item.unit_ids);
+      }
+    }
+
+    if (allUnitIds.length > 0) {
+      const { error: unitsError } = await supabaseAdmin
+        .from('inventory_units')
+        .update({ status: 'pending_sale', sold_in_sale_id: saleData.id })
+        .in('id', allUnitIds);
+      if (unitsError) {
+        console.error('Error updating inventory units status:', unitsError);
+      }
     }
 
     for (const item of items) {
@@ -639,6 +717,118 @@ router.delete('/:id', authGuard, async (req, res) => {
   } catch (err) {
     console.error('Error deleting sale:', err);
     res.status(500).json({ error: 'Failed to delete sale' });
+  }
+});
+
+/**
+ * POST /api/sales/:id/finalize
+ * Stage 2 of POS: Finalize a pending sale
+ */
+router.post('/:id/finalize', authGuard, permissionCheck('create_sales'), async (req, res) => {
+  try {
+    const saleId = req.params.id;
+    const { amount_paid } = req.body;
+
+    // Verify ownership
+    const { data: sale, error: fetchError } = await supabaseAdmin
+      .from('sales')
+      .select('business_id, status, total_amount')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (sale.status !== 'pending') {
+      return res.status(400).json({ error: 'Sale is not in a pending state' });
+    }
+
+    // Update sale status
+    const { data: updatedSale, error: updateError } = await supabaseAdmin
+      .from('sales')
+      .update({ status: 'completed' })
+      .eq('id', saleId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Update inventory units to sold
+    await supabaseAdmin
+      .from('inventory_units')
+      .update({ status: 'sold' })
+      .eq('sold_in_sale_id', saleId)
+      .eq('status', 'pending_sale');
+
+    res.json({ message: 'Sale finalized successfully', sale: updatedSale });
+  } catch (err) {
+    console.error('Error finalizing sale:', err);
+    res.status(500).json({ error: 'Failed to finalize sale' });
+  }
+});
+
+/**
+ * POST /api/sales/:id/cancel
+ * Cancel a pending sale and restore inventory
+ */
+router.post('/:id/cancel', authGuard, permissionCheck('create_sales'), async (req, res) => {
+  try {
+    const saleId = req.params.id;
+
+    // Verify ownership
+    const { data: sale, error: fetchError } = await supabaseAdmin
+      .from('sales')
+      .select('business_id, status, location_id, sale_items(product_id, quantity)')
+      .eq('id', saleId)
+      .single();
+
+    if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    if (sale.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending sales can be cancelled' });
+    }
+
+    // 1. Restore product inventory
+    for (const item of sale.sale_items) {
+      const { data: inv } = await supabaseAdmin
+        .from('product_inventory')
+        .select('quantity')
+        .eq('product_id', item.product_id)
+        .eq('location_id', sale.location_id)
+        .single();
+        
+      if (inv) {
+        await supabaseAdmin
+          .from('product_inventory')
+          .update({ quantity: inv.quantity + item.quantity })
+          .eq('product_id', item.product_id)
+          .eq('location_id', sale.location_id);
+      }
+    }
+
+    // 2. Restore inventory units
+    await supabaseAdmin
+      .from('inventory_units')
+      .update({ status: 'in_stock', sold_in_sale_id: null })
+      .eq('sold_in_sale_id', saleId);
+
+    // 3. Mark sale as voided
+    const { error: voidError } = await supabaseAdmin
+      .from('sales')
+      .update({ status: 'void_pending' }) // or 'voided', but per schema constraints void_pending fits
+      .eq('id', saleId);
+
+    if (voidError) throw voidError;
+
+    res.json({ message: 'Sale cancelled and inventory restored' });
+  } catch (err) {
+    console.error('Error cancelling sale:', err);
+    res.status(500).json({ error: 'Failed to cancel sale' });
   }
 });
 

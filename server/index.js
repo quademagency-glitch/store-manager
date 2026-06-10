@@ -18,6 +18,8 @@ const customersRoutes = require('./routes/customers');
 const qrcodesRoutes = require('./routes/qrcodes');
 const unitsRoutes = require('./routes/units');
 const stocktakeRoutes = require('./routes/stocktake');
+const scannerRoutes = require('./routes/scanner');
+const returnsRoutes = require('./routes/returns');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -30,6 +32,7 @@ const PORT = process.env.PORT || 3001;
 // CORS — allow the Vite dev server and production frontend
 const allowedOrigins = [
   'http://localhost:5173', 
+  'http://127.0.0.1:5173',
   'http://localhost:3000',
   'https://store-manager-app-one.vercel.app',
   'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
@@ -122,6 +125,12 @@ app.use('/api/units', unitsRoutes);
 
 // Stock Take routes
 app.use('/api/stocktake', stocktakeRoutes);
+
+// Scanner routes
+app.use('/api/scanner', scannerRoutes);
+
+// Returns routes
+app.use('/api/returns', returnsRoutes);
 
 // ============================================
 // Error handling

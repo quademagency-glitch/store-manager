@@ -1,71 +1,36 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
+import { api } from '../lib/api';
 
 /**
- * QrScanner — Reusable camera-based QR code scanner component.
- * Uses html5-qrcode under the hood.
+ * QrScanner — External Scanner App listener component.
+ * Polls the backend for scanned QR codes from the linked mobile app.
  * 
  * Props:
  *  - onScan(decodedText): Called when a QR code is successfully scanned.
- *  - onClose(): Called when the user closes the scanner.
+ *  - onClose(): Called when the user closes the scanner modal.
  *  - isOpen: Boolean to show/hide the scanner overlay.
  */
 export default function QrScanner({ onScan, onClose, isOpen }) {
-  const scannerRef = useRef(null);
-  const html5QrCodeRef = useRef(null);
-  const [error, setError] = useState('');
-  const [hasCamera, setHasCamera] = useState(true);
-
   useEffect(() => {
     if (!isOpen) return;
 
-    let scanner = null;
+    let pollInterval = null;
 
-    const startScanner = async () => {
+    // Start polling the backend for external scanner app events
+    pollInterval = setInterval(async () => {
       try {
-        const { Html5Qrcode } = await import('html5-qrcode');
-        
-        scanner = new Html5Qrcode('qr-scanner-region');
-        html5QrCodeRef.current = scanner;
-
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-          },
-          (decodedText) => {
-            // Stop scanning after a successful read
-            scanner.stop().then(() => {
-              html5QrCodeRef.current = null;
-              onScan(decodedText);
-            }).catch(() => {});
-          },
-          () => {
-            // Ignore scan failures (no QR in frame)
-          }
-        );
-      } catch (err) {
-        console.error('QR Scanner error:', err);
-        if (err.toString().includes('NotAllowedError') || err.toString().includes('Permission')) {
-          setError('Camera access denied. Please allow camera permissions in your browser settings.');
-        } else if (err.toString().includes('NotFoundError')) {
-          setHasCamera(false);
-          setError('No camera found on this device.');
-        } else {
-          setError('Failed to start camera. Please try again.');
+        const res = await api.get('/scanner/poll');
+        if (res && res.scanned && res.qr_code) {
+          clearInterval(pollInterval);
+          onScan(res.qr_code);
         }
+      } catch (err) {
+        // Ignore polling errors
       }
-    };
-
-    startScanner();
+    }, 1500);
 
     return () => {
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().then(() => {
-          html5QrCodeRef.current = null;
-        }).catch(() => {});
-      }
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [isOpen, onScan]);
 
@@ -84,22 +49,15 @@ export default function QrScanner({ onScan, onClose, isOpen }) {
           </button>
         </div>
 
-        {error ? (
-          <div className="qr-scanner-error">
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📷</div>
-            <p>{error}</p>
-            <button className="btn btn-secondary" onClick={onClose} style={{ marginTop: '1rem' }}>
-              Close
-            </button>
-          </div>
-        ) : (
-          <>
-            <div id="qr-scanner-region" ref={scannerRef} className="qr-scanner-region" />
-            <p className="qr-scanner-hint">
-              Point your camera at a product's QR label
-            </p>
-          </>
-        )}
+        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          <div className="spinner" style={{ margin: '0 auto 1.5rem', width: '40px', height: '40px', borderTopColor: 'var(--color-primary)' }}></div>
+          <p className="qr-scanner-hint" style={{ fontSize: '1.1rem', color: 'var(--color-text)' }}>
+            Waiting for external Scanner App...
+          </p>
+          <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+            Please scan the item using your linked mobile device.
+          </p>
+        </div>
       </div>
     </div>
   );

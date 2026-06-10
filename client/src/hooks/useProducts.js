@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import { saveProductsToIDB, getProductsFromIDB } from '../lib/idb';
 
 export function useProducts() {
   const [products, setProducts] = useState([]);
@@ -12,9 +13,20 @@ export function useProducts() {
     try {
       const data = await api.get('/products');
       setProducts(data);
+      saveProductsToIDB(data).catch(console.error); // Cache for offline
     } catch (err) {
-      setError(err.message || 'Failed to fetch products');
-      console.error(err);
+      console.warn('Network fetch failed, trying offline cache...', err);
+      try {
+        const cached = await getProductsFromIDB();
+        if (cached && cached.length > 0) {
+          setProducts(cached);
+          // Don't show error if we have cached data
+        } else {
+          setError('Offline and no cached products available.');
+        }
+      } catch (idbErr) {
+        setError('Offline and failed to load cache.');
+      }
     } finally {
       setLoading(false);
     }

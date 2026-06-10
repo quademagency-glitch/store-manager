@@ -8,6 +8,11 @@ import QrScanner from '../components/QrScanner';
 import InventoryCount from '../components/InventoryCount';
 import TrackingModal from '../components/TrackingModal';
 import SoldUnitsModal from '../components/SoldUnitsModal';
+import ProductModal from '../features/inventory/components/ProductModal';
+import AdjustStockModal from '../features/inventory/components/AdjustStockModal';
+import ThresholdModal from '../features/inventory/components/ThresholdModal';
+import TransferModal from '../features/inventory/components/TransferModal';
+import BatchModal from '../features/inventory/components/BatchModal';
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
@@ -35,7 +40,6 @@ export default function Inventory() {
 
   // Threshold Modal
   const [isThresholdModalOpen, setIsThresholdModalOpen] = useState(false);
-  const [thresholdData, setThresholdData] = useState({ productId: '', locationId: '', threshold: '' });
   const [thresholding, setThresholding] = useState(false);
   const [thresholdError, setThresholdError] = useState('');
 
@@ -43,9 +47,6 @@ export default function Inventory() {
   const [transfers, setTransfers] = useState([]);
   const [transfersLoading, setTransfersLoading] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [transferData, setTransferData] = useState({
-    productId: '', fromLocationId: '', toLocationId: '', quantity: '', notes: ''
-  });
   const [transferring, setTransferring] = useState(false);
   const [transferError, setTransferError] = useState('');
 
@@ -61,9 +62,6 @@ export default function Inventory() {
   const [batches, setBatches] = useState([]);
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [batchData, setBatchData] = useState({
-    productId: '', locationId: '', batchNumber: '', quantity: '', expiryDate: '', notes: ''
-  });
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState('');
 
@@ -140,8 +138,7 @@ export default function Inventory() {
   }, [products, auditLocationId]);
 
   // Handle Adjustment Submit
-  const handleAdjustSubmit = async (e) => {
-    e.preventDefault();
+  const handleAdjustSubmit = async (adjustData) => {
     setAdjusting(true);
     let finalQtyChange = Number(adjustData.quantityChange);
     if (['SHRINKAGE', 'SALE'].includes(adjustData.movementType)) {
@@ -156,13 +153,11 @@ export default function Inventory() {
     );
     if (result.success) {
       setIsAdjustModalOpen(false);
-      setAdjustData({ productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: '' });
     }
     setAdjusting(false);
   };
 
-  const handleThresholdSubmit = async (e) => {
-    e.preventDefault();
+  const handleThresholdSubmit = async (thresholdData) => {
     setThresholdError('');
     setThresholding(true);
     try {
@@ -170,7 +165,6 @@ export default function Inventory() {
         threshold: parseInt(thresholdData.threshold, 10)
       });
       setIsThresholdModalOpen(false);
-      setThresholdData({ productId: '', locationId: '', threshold: '' });
       window.location.reload();
     } catch (err) {
       setThresholdError(err.message || 'Failed to update threshold');
@@ -180,8 +174,7 @@ export default function Inventory() {
   };
 
   // Transfers
-  const handleTransferSubmit = async (e) => {
-    e.preventDefault();
+  const handleTransferSubmit = async (transferData) => {
     setTransferError('');
     setTransferring(true);
     try {
@@ -193,7 +186,6 @@ export default function Inventory() {
         notes: transferData.notes
       });
       setIsTransferModalOpen(false);
-      setTransferData({ productId: '', fromLocationId: '', toLocationId: '', quantity: '', notes: '' });
       fetchTransfers();
     } catch (err) {
       setTransferError(err.message || 'Failed to create transfer');
@@ -241,8 +233,7 @@ export default function Inventory() {
   };
 
   // Batches
-  const handleBatchSubmit = async (e) => {
-    e.preventDefault();
+  const handleBatchSubmit = async (batchData) => {
     setBatchError('');
     setBatchSubmitting(true);
     try {
@@ -255,10 +246,9 @@ export default function Inventory() {
         notes: batchData.notes
       });
       setIsBatchModalOpen(false);
-      setBatchData({ productId: '', locationId: '', batchNumber: '', quantity: '', expiryDate: '', notes: '' });
       fetchBatches();
     } catch (err) {
-      setBatchError(err.message || 'Failed to register batch');
+      setBatchError(err.message || 'Failed to create batch');
     } finally {
       setBatchSubmitting(false);
     }
@@ -340,22 +330,37 @@ export default function Inventory() {
     setProductFormError('');
   };
 
-  const handleProductSubmit = async (e) => {
-    e.preventDefault();
+  const handleProductSubmit = async (data) => {
     setProductFormError('');
     setIsProductSubmitting(true);
-    const payload = {
-      name: productFormData.name, sku: productFormData.sku, category: productFormData.category,
-      price: parseFloat(productFormData.price) || 0,
-      initialQuantity: productFormData.initialQuantity, locationId: productFormData.locationId,
-      qr_code_data: productFormData.qr_code_data || productFormData.sku
-    };
-    const result = editingProduct
-      ? await updateProduct(editingProduct.id, payload)
-      : await addProduct(payload);
-    if (result.success) closeProductModal();
-    else setProductFormError(result.error || 'An error occurred.');
-    setIsProductSubmitting(false);
+    try {
+      if (editingProduct) {
+        const result = await updateProduct(editingProduct.id, {
+          name: data.name,
+          sku: data.sku,
+          category: data.category,
+          price: parseFloat(data.price),
+          qr_code_data: data.qr_code_data
+        });
+        if (!result.success) throw new Error(result.error || 'Failed to update product');
+      } else {
+        const result = await addProduct({
+          name: data.name,
+          sku: data.sku,
+          category: data.category,
+          price: parseFloat(data.price),
+          initialQuantity: data.initialQuantity ? parseInt(data.initialQuantity, 10) : 0,
+          locationId: data.locationId,
+          qr_code_data: data.qr_code_data
+        });
+        if (!result.success) throw new Error(result.error || 'Failed to add product');
+      }
+      closeProductModal();
+    } catch (err) {
+      setProductFormError(err.message);
+    } finally {
+      setIsProductSubmitting(false);
+    }
   };
 
   const handleDeleteProduct = async (id, name) => {
@@ -483,11 +488,6 @@ export default function Inventory() {
                       const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
                       const isLowStock = totalStock <= 5;
                       
-                      // Calculate total sold based on movements (or an API field if we fetch it, but we can also just show it if we have it)
-                      // Actually, let's just make it a clickable "View Sold" link if we don't have the count readily available,
-                      // or we can just say "View History" since fetching sold count per product requires a DB query we didn't add to `products` endpoint.
-                      // Let's just make the "Sold" column a button "View Sold" for managers/admins.
-
                       return (
                         <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
                           <td>
@@ -640,8 +640,6 @@ export default function Inventory() {
         <InventoryCount locations={locations} products={products} />
       )}
 
-
-
       {/* ═══ CYCLE COUNTS TAB ═══ */}
       {activeTab === 'audits' && (
         <div>
@@ -776,6 +774,59 @@ export default function Inventory() {
 
       {/* ═══ MODALS ═══ */}
 
+      {/* Extracted Modals */}
+      <AdjustStockModal 
+        isOpen={isAdjustModalOpen} 
+        onClose={() => setIsAdjustModalOpen(false)} 
+        onSubmit={handleAdjustSubmit} 
+        locations={locations} 
+        products={products} 
+        adjusting={adjusting} 
+      />
+
+      <ThresholdModal 
+        isOpen={isThresholdModalOpen} 
+        onClose={() => setIsThresholdModalOpen(false)} 
+        onSubmit={handleThresholdSubmit} 
+        locations={locations} 
+        products={products} 
+        thresholding={thresholding} 
+        error={thresholdError} 
+      />
+
+      <TransferModal 
+        isOpen={isTransferModalOpen} 
+        onClose={() => setIsTransferModalOpen(false)} 
+        onSubmit={handleTransferSubmit} 
+        locations={locations} 
+        products={products} 
+        transferring={transferring} 
+        error={transferError} 
+      />
+
+      <BatchModal 
+        isOpen={isBatchModalOpen} 
+        onClose={() => setIsBatchModalOpen(false)} 
+        onSubmit={handleBatchSubmit} 
+        locations={locations} 
+        products={products} 
+        submitting={batchSubmitting} 
+        error={batchError} 
+      />
+
+      <ProductModal 
+        isOpen={isProductModalOpen} 
+        onClose={closeProductModal} 
+        onSubmit={handleProductSubmit} 
+        editingProduct={editingProduct} 
+        locations={locations} 
+        isSubmitting={isProductSubmitting} 
+        error={productFormError} 
+      />
+
+      {/* QR Scanner */}
+      <QrScanner isOpen={showScanner} onClose={() => setShowScanner(false)} onScan={handleQrScan} />
+
       <TrackingModal 
         isOpen={isTrackingModalOpen} 
         onClose={() => {
@@ -785,252 +836,6 @@ export default function Inventory() {
         product={selectedTrackingProduct}
         locations={locations}
       />
-
-      {/* Adjust Modal */}
-      <Modal isOpen={isAdjustModalOpen} onClose={() => !adjusting && setIsAdjustModalOpen(false)} title="Adjust Stock">
-        <form onSubmit={handleAdjustSubmit} className="modal-form">
-          {stockError && <div className="alert alert-error"><p>{stockError}</p></div>}
-          <div className="form-group">
-            <label>Product</label>
-            <select required value={adjustData.productId} onChange={e => setAdjustData({...adjustData, productId: e.target.value})} className="form-input">
-              <option value="">Select a product...</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Location</label>
-            <select required value={adjustData.locationId} onChange={e => setAdjustData({...adjustData, locationId: e.target.value})} className="form-input">
-              <option value="">Select a location...</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Movement Type</label>
-            <select required value={adjustData.movementType} onChange={e => setAdjustData({...adjustData, movementType: e.target.value})} className="form-input">
-              <option value="RECEIPT">Receive Stock (+)</option>
-              <option value="ADJUSTMENT">Manual Adjustment</option>
-              <option value="RETURN">Customer Return (+)</option>
-              <option value="SHRINKAGE">Shrinkage / Damage (-)</option>
-            </select>
-          </div>
-          {adjustData.movementType === 'SHRINKAGE' && (
-            <div className="form-group">
-              <label>Shrinkage Reason <span style={{ color: '#ef4444' }}>*</span></label>
-              <select required value={adjustData.shrinkageReason} onChange={e => setAdjustData({...adjustData, shrinkageReason: e.target.value})} className="form-input">
-                <option value="">Select reason...</option>
-                <option value="theft_suspected">🚨 Theft Suspected</option>
-                <option value="damage">💥 Damage / Broken / Expired</option>
-                <option value="admin_error">📝 Admin / Counting Error</option>
-                <option value="unknown">❓ Unknown / Unexplained</option>
-              </select>
-            </div>
-          )}
-          <div className="form-group">
-            <label>Quantity Change (Absolute Number)</label>
-            <input type="number" required min="1" value={adjustData.quantityChange} onChange={e => setAdjustData({...adjustData, quantityChange: e.target.value})} className="form-input" placeholder="e.g. 50" />
-          </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <input type="text" value={adjustData.notes} onChange={e => setAdjustData({...adjustData, notes: e.target.value})} className="form-input" placeholder="e.g. Received PO-1029" />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsAdjustModalOpen(false)} disabled={adjusting}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={adjusting || !adjustData.productId || !adjustData.quantityChange}>
-              {adjusting ? 'Saving...' : 'Save Adjustment'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Threshold Modal */}
-      <Modal isOpen={isThresholdModalOpen} onClose={() => !thresholding && setIsThresholdModalOpen(false)} title="Manage Low Stock Threshold">
-        <form onSubmit={handleThresholdSubmit} className="modal-form">
-          {thresholdError && <div className="alert alert-error"><p>{thresholdError}</p></div>}
-          <div className="form-group">
-            <label>Product</label>
-            <select required value={thresholdData.productId} onChange={e => setThresholdData({...thresholdData, productId: e.target.value})} className="form-input">
-              <option value="">Select a product...</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Location</label>
-            <select required value={thresholdData.locationId} onChange={e => {
-              const locId = e.target.value;
-              const selectedProd = products.find(p => p.id === thresholdData.productId);
-              const existingInv = selectedProd?.product_inventory?.find(inv => inv.location_id === locId);
-              setThresholdData({ ...thresholdData, locationId: locId, threshold: existingInv?.low_stock_threshold !== undefined ? existingInv.low_stock_threshold : '' });
-            }} className="form-input" disabled={!thresholdData.productId}>
-              <option value="">Select a location...</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Low Stock Alert Threshold</label>
-            <input type="number" required min="0" value={thresholdData.threshold} onChange={e => setThresholdData({...thresholdData, threshold: e.target.value})} className="form-input" placeholder="e.g. 5" disabled={!thresholdData.locationId} />
-            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
-              The system will trigger an alert when stock at this location falls to or below this number.
-            </small>
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(false)} disabled={thresholding}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={thresholding || !thresholdData.productId || !thresholdData.locationId || thresholdData.threshold === ''}>
-              {thresholding ? 'Saving...' : 'Save Threshold'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Transfer Modal */}
-      <Modal isOpen={isTransferModalOpen} onClose={() => !transferring && setIsTransferModalOpen(false)} title="New Stock Transfer">
-        <form onSubmit={handleTransferSubmit} className="modal-form">
-          {transferError && <div className="alert alert-error"><p>{transferError}</p></div>}
-          <div className="form-group">
-            <label>Product</label>
-            <select required value={transferData.productId} onChange={e => setTransferData({...transferData, productId: e.target.value})} className="form-input">
-              <option value="">Select a product...</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>From Location</label>
-            <select required value={transferData.fromLocationId} onChange={e => setTransferData({...transferData, fromLocationId: e.target.value})} className="form-input">
-              <option value="">Source location...</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>To Location</label>
-            <select required value={transferData.toLocationId} onChange={e => setTransferData({...transferData, toLocationId: e.target.value})} className="form-input">
-              <option value="">Destination location...</option>
-              {locations.filter(l => l.id !== transferData.fromLocationId).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Quantity</label>
-            <input type="number" required min="1" value={transferData.quantity} onChange={e => setTransferData({...transferData, quantity: e.target.value})} className="form-input" placeholder="e.g. 25" />
-          </div>
-          <div className="form-group">
-            <label>Notes (optional)</label>
-            <input type="text" value={transferData.notes} onChange={e => setTransferData({...transferData, notes: e.target.value})} className="form-input" placeholder="e.g. Restocking branch B" />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsTransferModalOpen(false)} disabled={transferring}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={transferring || !transferData.productId || !transferData.fromLocationId || !transferData.toLocationId || !transferData.quantity}>
-              {transferring ? 'Creating...' : 'Initiate Transfer'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Batch Modal */}
-      <Modal isOpen={isBatchModalOpen} onClose={() => !batchSubmitting && setIsBatchModalOpen(false)} title="Register Product Batch">
-        <form onSubmit={handleBatchSubmit} className="modal-form">
-          {batchError && <div className="alert alert-error"><p>{batchError}</p></div>}
-          <div className="form-group">
-            <label>Product</label>
-            <select required value={batchData.productId} onChange={e => setBatchData({...batchData, productId: e.target.value})} className="form-input">
-              <option value="">Select a product...</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Location</label>
-            <select required value={batchData.locationId} onChange={e => setBatchData({...batchData, locationId: e.target.value})} className="form-input">
-              <option value="">Select a location...</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Batch Number</label>
-            <input type="text" required value={batchData.batchNumber} onChange={e => setBatchData({...batchData, batchNumber: e.target.value})} className="form-input" placeholder="e.g. LOT-2026-001" />
-          </div>
-          <div className="form-group">
-            <label>Quantity</label>
-            <input type="number" required min="1" value={batchData.quantity} onChange={e => setBatchData({...batchData, quantity: e.target.value})} className="form-input" placeholder="e.g. 100" />
-          </div>
-          <div className="form-group">
-            <label>Expiry Date</label>
-            <input type="date" required value={batchData.expiryDate} onChange={e => setBatchData({...batchData, expiryDate: e.target.value})} className="form-input" />
-          </div>
-          <div className="form-group">
-            <label>Notes (optional)</label>
-            <input type="text" value={batchData.notes} onChange={e => setBatchData({...batchData, notes: e.target.value})} className="form-input" placeholder="e.g. Supplier: Acme Corp" />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setIsBatchModalOpen(false)} disabled={batchSubmitting}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={batchSubmitting || !batchData.productId || !batchData.batchNumber || !batchData.expiryDate}>
-              {batchSubmitting ? 'Saving...' : 'Register Batch'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-      {/* QR Scanner */}
-      <QrScanner isOpen={showScanner} onClose={() => setShowScanner(false)} onScan={handleQrScan} />
-
-      {/* ═══ Product Add/Edit Modal ═══ */}
-      <Modal isOpen={isProductModalOpen} onClose={closeProductModal} title={editingProduct ? 'Edit Product' : 'Add New Product'}>
-        <form onSubmit={handleProductSubmit} className="form-layout">
-          {productFormError && <div className="alert alert-error"><p>{productFormError}</p></div>}
-          <div className="form-group">
-            <label htmlFor="prod-name">Product Name *</label>
-            <input type="text" id="prod-name" className="form-input" required value={productFormData.name}
-              onChange={e => setProductFormData({...productFormData, name: e.target.value})} placeholder="e.g. Wireless Headphones" />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="prod-sku">SKU *</label>
-              <input type="text" id="prod-sku" className="form-input text-mono" required value={productFormData.sku}
-                onChange={e => setProductFormData({...productFormData, sku: e.target.value})} placeholder="WH-001" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="prod-category">Category</label>
-              <input type="text" id="prod-category" className="form-input" value={productFormData.category}
-                onChange={e => setProductFormData({...productFormData, category: e.target.value})} placeholder="Electronics" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="prod-price">Price ($) *</label>
-            <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
-              <input type="number" id="prod-price" className="form-input with-prefix" required min="0" step="0.01"
-                value={productFormData.price} onChange={e => setProductFormData({...productFormData, price: e.target.value})} placeholder="99.99" />
-            </div>
-          </div>
-          {!editingProduct && (
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="prod-qty">Initial Quantity</label>
-                <input type="number" id="prod-qty" className="form-input" min="0" value={productFormData.initialQuantity}
-                  onChange={e => setProductFormData({...productFormData, initialQuantity: e.target.value})} placeholder="e.g. 100" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="prod-loc">Location</label>
-                <select id="prod-loc" className="form-input" value={productFormData.locationId}
-                  onChange={e => setProductFormData({...productFormData, locationId: e.target.value})}>
-                  <option value="">Select location...</option>
-                  {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-          <div className="form-group">
-            <label htmlFor="prod-qr">QR Code Data</label>
-            <input type="text" id="prod-qr" className="form-input text-mono" value={productFormData.qr_code_data}
-              onChange={e => setProductFormData({...productFormData, qr_code_data: e.target.value})}
-              placeholder={productFormData.sku || 'Auto-generated from SKU'} />
-            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
-              Leave blank to auto-use the SKU. This value is encoded in the printed QR label.
-            </small>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={closeProductModal} disabled={isProductSubmitting}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={isProductSubmitting}>
-              {isProductSubmitting ? 'Saving...' : 'Save Product'}
-            </button>
-          </div>
-        </form>
-      </Modal>
       
       <SoldUnitsModal
         isOpen={isSoldUnitsModalOpen}

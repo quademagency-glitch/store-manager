@@ -205,79 +205,9 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
        return res.status(400).json({ error: 'Bad request', message: 'Active location not set. Please select a branch to process sales.' });
     }
 
-    const { data: inventoryData, error: inventoryError } = await supabaseAdmin
-      .from('product_inventory')
-      .select('product_id, quantity, low_stock_threshold')
-      .eq('location_id', location_id)
-      .in('product_id', productIds);
-
-    if (inventoryError) {
-      console.error('Inventory lookup error:', inventoryError);
-      return res.status(500).json({ error: 'Internal server error', message: 'Could not verify product stock.' });
-    }
-
-    const inventoryMap = {};
-    for (const inv of inventoryData || []) {
-      inventoryMap[inv.product_id] = { quantity: inv.quantity, threshold: inv.low_stock_threshold || 5 };
-    }
-
-    const insufficientStock = [];
-    for (const item of items) {
-      const stockAvailable = inventoryMap[item.product_id]?.quantity || 0;
-      if (item.quantity > stockAvailable) {
-        insufficientStock.push(item.product_id);
-      }
-    }
-
-    if (insufficientStock.length > 0) {
-      return res.status(400).json({
-        error: 'Insufficient stock',
-        message: 'One or more items do not have enough stock available.',
-        productIds: insufficientStock,
-      });
-    }
-
     const receipt_number = 'RCPT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-    const { data: saleData, error: saleError } = await supabaseAdmin
-      .from('sales')
-      .insert([
-        {
-          business_id: req.user.business_id,
-          location_id: location_id,
-          salesperson_id: req.user.id,
-          total_amount: total_amount || 0,
-          discount_amount: discount || 0,
-          payment_method,
-          customer_id: customer_id || null,
-          receipt_number: receipt_number,
-          status: 'pending' // Stage 1 of checkout
-        },
-      ])
-      .select()
-      .single();
-
-    if (saleError || !saleData) {
-      console.error('Sale insertion error:', saleError);
-      return res.status(500).json({ error: 'Internal server error', message: `Failed to record sale. ${saleError?.message || 'Unknown error'}` });
-    }
-
-    const saleItemsToInsert = items.map(item => ({
-      sale_id: saleData.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-    }));
-
-    const { error: saleItemsError } = await supabaseAdmin
-      .from('sale_items')
-      .insert(saleItemsToInsert);
-
-    if (saleItemsError) {
-      console.error('Sale items insertion error:', saleItemsError);
-    }
-
-    // Process unit-level tracking (Two-Stage POS)
+    // Collect all unique unit_ids to pass to the RPC
     const allUnitIds = [];
     for (const item of items) {
       if (item.unit_ids && Array.isArray(item.unit_ids)) {
@@ -285,61 +215,35 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       }
     }
 
-    if (allUnitIds.length > 0) {
-      const { error: unitsError } = await supabaseAdmin
-        .from('inventory_units')
-        .update({ status: 'pending_sale', sold_in_sale_id: saleData.id })
-        .in('id', allUnitIds);
-      if (unitsError) {
-        console.error('Error updating inventory units status:', unitsError);
-      }
+    // Call the Postgres RPC function
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('process_sale_transaction', {
+      p_business_id: req.user.business_id,
+      p_location_id: location_id,
+      p_salesperson_id: req.user.id,
+      p_customer_id: customer_id,
+      p_total_amount: total_amount || 0,
+      p_discount_amount: discount || 0,
+      p_payment_method: payment_method,
+      p_receipt_number: receipt_number,
+      p_items: items,
+      p_unit_ids: allUnitIds
+    });
+
+    if (rpcError) {
+      console.error('RPC Sale transaction error:', rpcError);
+      return res.status(500).json({ 
+        error: 'Transaction failed', 
+        message: rpcError.message || 'Could not finalize sale. Please check stock levels and try again.'
+      });
     }
 
-    for (const item of items) {
-      const oldQuantity = inventoryMap[item.product_id]?.quantity || 0;
-      const threshold = inventoryMap[item.product_id]?.threshold || 5;
-      const newQuantity = oldQuantity - item.quantity;
-      
-      const { error: updateError } = await supabaseAdmin
-        .from('product_inventory')
-        .update({ quantity: newQuantity })
-        .eq('product_id', item.product_id)
-        .eq('location_id', location_id);
-
-      if (updateError) {
-        console.error(`Error updating stock for product ${item.product_id}:`, updateError);
-      }
-      
-      await supabaseAdmin.from('stock_movements').insert([{
-        business_id: req.user.business_id,
-        location_id: location_id,
-        product_id: item.product_id,
-        quantity_change: -item.quantity,
-        movement_type: 'SALE',
-        user_id: req.user.id,
-        reference_id: saleData.id,
-        notes: `Sale #${saleData.id}`
-      }]);
-
-      // Check for LOW_STOCK alert (only trigger if it newly crossed the threshold)
-      if (newQuantity <= threshold && oldQuantity > threshold) {
-        await supabaseAdmin.from('alerts').insert([{
-          business_id: req.user.business_id,
-          location_id: location_id,
-          type: 'LOW_STOCK',
-          user_id: req.user.id,
-          reference_id: item.product_id,
-          note: `Stock fell to ${newQuantity} (Threshold: ${threshold}) due to sale #${saleData.id}`
-        }]);
-      }
-    }
+    const saleId = rpcResult.sale_id;
 
     if (Number(discount) > 0) {
-      // Check against business discount cap
+      // Check against business discount cap asynchronously since it's non-critical to the transaction
       const subtotalBeforeDiscount = Number(total_amount) + Number(discount);
       const discountPercent = subtotalBeforeDiscount > 0 ? (Number(discount) / subtotalBeforeDiscount) * 100 : 0;
 
-      // Fetch business settings for discount cap
       const { data: bizSettings } = await supabaseAdmin
         .from('businesses')
         .select('max_discount_percent')
@@ -349,16 +253,6 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
       const maxDiscount = bizSettings?.max_discount_percent || 15;
 
       if (discountPercent > maxDiscount) {
-        // HIGH_DISCOUNT alert — above business threshold
-        await supabaseAdmin.from('alerts').insert([{
-          business_id: req.user.business_id,
-          location_id: location_id,
-          type: 'HIGH_DISCOUNT',
-          severity: 'high',
-          user_id: req.user.id,
-          reference_id: saleData.id,
-          note: `High discount: ${discountPercent.toFixed(1)}% applied to sale (limit: ${maxDiscount}%). Amount: $${Number(discount).toFixed(2)}`,
-          metadata: { discount_percent: discountPercent.toFixed(1), max_allowed: maxDiscount, discount_amount: Number(discount) }
         }]);
       } else {
         await supabaseAdmin.from('alerts').insert([{

@@ -14,23 +14,31 @@ export default function QrScanner({ onScan, onClose, isOpen }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    let pollInterval = null;
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    // Start polling the backend for external scanner app events
-    pollInterval = setInterval(async () => {
+    // Connect to the Server-Sent Events (SSE) endpoint
+    const eventSource = new EventSource(`${import.meta.env.VITE_API_URL}/scanner/events?token=${token}`);
+
+    eventSource.onmessage = (event) => {
       try {
-        const res = await api.get('/scanner/poll');
-        if (res && res.scanned && res.qr_code) {
-          clearInterval(pollInterval);
-          onScan(res.qr_code);
+        const data = JSON.parse(event.data);
+        if (data && data.scanned && data.qr_code) {
+          eventSource.close();
+          onScan(data.qr_code);
         }
       } catch (err) {
-        // Ignore polling errors
+        console.error('Error parsing SSE scan event:', err);
       }
-    }, 1500);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+      // EventSource automatically reconnects, but we can log it here.
+    };
 
     return () => {
-      if (pollInterval) clearInterval(pollInterval);
+      eventSource.close();
     };
   }, [isOpen, onScan]);
 

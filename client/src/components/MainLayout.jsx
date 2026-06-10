@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
+import OfflineStatus from './OfflineStatus';
 
 const Icons = {
   dashboard: (
@@ -491,6 +492,9 @@ export default function MainLayout() {
         </aside>
 
         <main className="admin-main-content dashboard-main">
+          <div style={{ padding: '0 24px', display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', marginTop: '-16px' }}>
+            <OfflineStatus />
+          </div>
           <Outlet />
         </main>
       </div>
@@ -609,8 +613,11 @@ export default function MainLayout() {
         </div>
       </aside>
 
-      {/* ── Main Content Area ── */}
-      <main className="dashboard-main">
+      {/* ── Main Content ── */}
+      <main className="dashboard-main admin-main-content" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '24px', right: '32px', zIndex: 50 }}>
+          <OfflineStatus />
+        </div>
         <Outlet />
       </main>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { api } from '../lib/api';
+import { saveCustomersToIDB, getCustomersFromIDB } from '../lib/idb';
 
 export function useCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -12,9 +13,21 @@ export function useCustomers() {
     try {
       const data = await api.get('/customers');
       setCustomers(data);
+      saveCustomersToIDB(data).catch(console.error);
       return data;
     } catch (err) {
-      setError(err.message);
+      console.warn('Network fetch failed, trying offline cache...', err);
+      try {
+        const cached = await getCustomersFromIDB();
+        if (cached && cached.length > 0) {
+          setCustomers(cached);
+          return cached;
+        } else {
+          setError('Offline and no cached customers available.');
+        }
+      } catch (idbErr) {
+        setError('Offline and failed to load cache.');
+      }
       return [];
     } finally {
       setLoading(false);

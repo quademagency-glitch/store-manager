@@ -7,6 +7,12 @@ import SalesHistory from '../components/SalesHistory';
 import QrScanner from '../components/QrScanner';
 import { api } from '../lib/api';
 
+import NewCustomerModal from '../features/sales/components/NewCustomerModal';
+import VerifyModal from '../features/sales/components/VerifyModal';
+import PaymentModal from '../features/sales/components/PaymentModal';
+import ReceiptModal from '../features/sales/components/ReceiptModal';
+import { addToOfflineQueue } from '../lib/idb';
+
 export default function Sales() {
   const { user } = useAuthContext();
   const { products, loading: productsLoading } = useProducts();
@@ -112,13 +118,11 @@ export default function Sales() {
   };
 
   // ─── Customer Handling ───
-  const handleCreateCustomer = async (e) => {
-    e.preventDefault();
-    const res = await createCustomer(newCustomerData);
+  const handleCreateCustomer = async (data) => {
+    const res = await createCustomer(data);
     if (res.success) {
       setSelectedCustomer(res.customer);
       setShowNewCustomerModal(false);
-      setNewCustomerData({ name: '', phone: '' });
     } else {
       alert(res.error || 'Failed to create customer');
     }
@@ -301,7 +305,20 @@ export default function Sales() {
       setPendingSale(saleData);
       setShowPaymentModal(true);
     } catch (err) {
-      setSaleError(err.message || 'Failed to hold sale');
+      if (err.message === 'Failed to fetch' || !navigator.onLine) {
+        // Offline: hold the sale locally and proceed to payment
+        alert('You are offline. Proceeding to payment locally. The transaction will be synced later.');
+        setPendingSale({
+          id: `offline-${Date.now()}`,
+          total_amount: totalAmount,
+          status: 'pending',
+          _isOffline: true,
+          _payload: payload
+        });
+        setShowPaymentModal(true);
+      } else {
+        setSaleError(err.message || 'Failed to hold sale');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -332,20 +349,47 @@ export default function Sales() {
     setIsProcessing(true);
     try {
       const payload = { amount_paid: parseFloat(amountPaid) };
-      await api.post(`/sales/${pendingSale.id}/finalize`, payload);
       
-      const fullReceipt = {
-        ...pendingSale,
-        payment_method: paymentMethod,
-        total_amount: totalAmount,
-        amount_paid: parseFloat(amountPaid),
-        sale_items: wizardItems.map(item => ({
-          id: item.product.id,
-          quantity: item.quantity,
-          unit_price: item.product.price,
-          product: { name: item.product.name, sku: item.product.sku },
-        })),
-      };
+      let fullReceipt = null;
+
+      if (pendingSale._isOffline) {
+        // Offline transaction
+        const offlineData = {
+          stage1: pendingSale._payload,
+          stage2: payload,
+          paymentMethod
+        };
+        await addToOfflineQueue('/sales/offline-sync', 'POST', offlineData);
+        
+        fullReceipt = {
+          ...pendingSale,
+          payment_method: paymentMethod,
+          total_amount: totalAmount,
+          amount_paid: parseFloat(amountPaid),
+          receipt_number: `OFFLINE-${pendingSale.id.split('-')[1]}`,
+          sale_items: wizardItems.map(item => ({
+            id: item.product.id,
+            quantity: item.quantity,
+            unit_price: item.product.price,
+            product: { name: item.product.name, sku: item.product.sku },
+          })),
+        };
+      } else {
+        // Online transaction
+        await api.post(`/sales/${pendingSale.id}/finalize`, payload);
+        fullReceipt = {
+          ...pendingSale,
+          payment_method: paymentMethod,
+          total_amount: totalAmount,
+          amount_paid: parseFloat(amountPaid),
+          sale_items: wizardItems.map(item => ({
+            id: item.product.id,
+            quantity: item.quantity,
+            unit_price: item.product.price,
+            product: { name: item.product.name, sku: item.product.sku },
+          })),
+        };
+      }
 
       setReceiptData(fullReceipt);
       setShowPaymentModal(false);
@@ -768,136 +812,44 @@ export default function Sales() {
         </form>
       </Modal>
 
-      {/* New Customer Modal */}
-      <Modal isOpen={showNewCustomerModal} onClose={() => setShowNewCustomerModal(false)} title="Quick Add Customer">
-        <form onSubmit={handleCreateCustomer}>
-          <div className="form-group">
-            <label>Full Name</label>
-            <input type="text" className="input" value={newCustomerData.name} onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })} required />
-          </div>
-          <div className="form-group">
-            <label>Phone Number</label>
-            <input type="tel" className="input" value={newCustomerData.phone} onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })} required />
-          </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setShowNewCustomerModal(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={customerLoading}>{customerLoading ? 'Saving...' : 'Save Customer'}</button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* QR Scanner */}
-      <QrScanner
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={onScanComplete}
+      {/* Extracted Modals */}
+      <NewCustomerModal
+        isOpen={showNewCustomerModal}
+        onClose={() => setShowNewCustomerModal(false)}
+        onSubmit={handleCreateCustomer}
       />
 
-      {/* Payment Modal (Stage 2) */}
-      <Modal isOpen={showPaymentModal} onClose={() => {}} title="Complete Payment">
-        <div style={{ padding: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--color-border)' }}>
-            <span style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)' }}>Total Due:</span>
-            <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(totalAmount)}</span>
-          </div>
+      {customerToVerify && (
+        <VerifyModal
+          isOpen={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          customerToVerify={customerToVerify}
+          verifyCode={verifyCode}
+          setVerifyCode={setVerifyCode}
+          handleVerifyCode={handleVerifyCode}
+        />
+      )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Payment Method</label>
-              <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: '100%' }}>
-                <option value="cash">Cash</option>
-                <option value="card">Card / POS</option>
-                <option value="mobile">Mobile Money</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Amount Paid By Customer</label>
-              <input 
-                type="number" 
-                className="input" 
-                placeholder="e.g. 100.00" 
-                value={amountPaid}
-                onChange={(e) => setAmountPaid(e.target.value)}
-                style={{ width: '100%', fontSize: '1.2rem', padding: '12px' }}
-                autoFocus
-              />
-            </div>
-          </div>
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        pendingSale={pendingSale}
+        fmt={fmt}
+        amountPaid={amountPaid}
+        setAmountPaid={setAmountPaid}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        handleFinalizePayment={handleFinalizeSale}
+        isProcessing={isProcessing}
+        saleError={saleError}
+      />
 
-          {saleError && <div className="alert alert-error mb-xl"><p>{saleError}</p></div>}
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button 
-              className="btn btn-outline" 
-              style={{ flex: 1, padding: '16px', fontWeight: 600, color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
-              onClick={handleCancelSale}
-              disabled={isProcessing}
-            >
-              Cancel Transaction
-            </button>
-            <button 
-              className="btn btn-primary" 
-              style={{ flex: 1.5, padding: '16px', fontSize: '1.1rem', fontWeight: 700 }}
-              onClick={handleFinalizeSale}
-              disabled={isProcessing || !amountPaid}
-            >
-              {isProcessing ? 'Processing...' : 'Finalize & Print Receipt'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Receipt Modal */}
-      <Modal isOpen={showReceipt} onClose={closeReceipt} title="Transaction Receipt">
-        {receiptData && (
-          <div className="pos-receipt-modal" style={{ textAlign: 'center', margin: '-2rem' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Payment Successful</h3>
-            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '2rem' }}>{new Date(receiptData.created_at || Date.now()).toLocaleString()}</p>
-
-            <div style={{ background: 'transparent', border: 'none', padding: '0.5rem', textAlign: 'left', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px dashed var(--color-border)' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Receipt #</span>
-                <span style={{ fontFamily: 'monospace' }}>{receiptData.receipt_number || receiptData.id?.slice(0, 8)?.toUpperCase()}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Method</span>
-                <span className="badge badge-neutral">{receiptData.payment_method?.toUpperCase()}</span>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>
-                  <span>Item</span><span style={{ textAlign: 'center' }}>Qty</span><span style={{ textAlign: 'right' }}>Total</span>
-                </div>
-                {receiptData.sale_items?.map(item => (
-                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product?.name || 'Product'}</span>
-                    <span style={{ textAlign: 'center' }}>{item.quantity}</span>
-                    <span style={{ textAlign: 'right', fontWeight: 500 }}>{fmt(item.unit_price * item.quantity)}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '1rem', borderTop: '1px dashed var(--color-border)', fontSize: '1.25rem', fontWeight: 700 }}>
-                <span>Total</span><span style={{ color: 'var(--color-primary)' }}>{fmt(receiptData.total_amount)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Amount Paid</span>
-                <span>{fmt(receiptData.amount_paid)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--color-text-secondary)' }}>Change</span>
-                <span>{fmt(Math.max(0, receiptData.amount_paid - receiptData.total_amount))}</span>
-              </div>
-            </div>
-
-            <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '3rem', gap: '16px' }}>
-              <button className="btn btn-outline" style={{ minWidth: '150px', borderRadius: 'var(--radius-full)' }} onClick={() => window.print()}>Print Receipt</button>
-              <button className="btn btn-primary" style={{ minWidth: '150px', borderRadius: 'var(--radius-full)' }} onClick={closeReceipt}>Done</button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <ReceiptModal
+        isOpen={showReceipt}
+        onClose={closeReceipt}
+        receiptData={receiptData}
+        fmt={fmt}
+      />
 
     </div>
   );

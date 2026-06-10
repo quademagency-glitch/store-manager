@@ -2,8 +2,17 @@ const express = require('express');
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
+
+const scanLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60, // Limit each IP to 60 scans per minute
+  message: { error: 'Too many scans, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * GET /api/scanner/token
@@ -119,18 +128,17 @@ router.post('/unlink', authGuard, async (req, res) => {
 });
 
 /**
- * In-memory store for recent scans.
- * Structure: { [userId]: { qr_code: '...', timestamp: Date.now() } }
- * In a multi-instance production environment, use Redis or Supabase Realtime.
+ * Active SSE connections
+ * Structure: { [userId]: express.Response }
  */
-const recentScans = {};
+const activeClients = {};
 
 /**
  * POST /api/scanner/push-scan
  * External scanner app calls this endpoint to push a scanned code.
  * Access: Public (Uses scanner session token)
  */
-router.post('/push-scan', async (req, res) => {
+router.post('/push-scan', scanLimiter, async (req, res) => {
   try {
     const { token, qr_code } = req.body;
 
@@ -151,11 +159,11 @@ router.post('/push-scan', async (req, res) => {
 
     const userId = users[0].id;
 
-    // Store the scan event
-    recentScans[userId] = {
-      qr_code,
-      timestamp: Date.now()
-    };
+    // Send the scan event directly if the user's Web App is connected via SSE
+    const client = activeClients[userId];
+    if (client) {
+      client.write(`data: ${JSON.stringify({ scanned: true, qr_code })}\n\n`);
+    }
 
     res.json({ message: 'Scan received successfully' });
   } catch (err) {
@@ -165,29 +173,34 @@ router.post('/push-scan', async (req, res) => {
 });
 
 /**
- * GET /api/scanner/poll
- * Web app polls this endpoint to check if the external scanner has scanned anything.
+ * GET /api/scanner/events
+ * Web app connects to this endpoint to receive scan events via SSE.
  * Access: Authenticated users
  */
-router.get('/poll', authGuard, (req, res) => {
+router.get('/events', authGuard, (req, res) => {
   const userId = req.user.id;
-  const scanEvent = recentScans[userId];
 
-  if (scanEvent) {
-    // Check if it's recent (e.g. within the last 15 seconds) to prevent stale reads
-    const isRecent = (Date.now() - scanEvent.timestamp) < 15000;
-    
-    if (isRecent) {
-      // Clear it so we don't read it twice
-      delete recentScans[userId];
-      return res.json({ scanned: true, qr_code: scanEvent.qr_code });
-    } else {
-      // Clean up stale event
-      delete recentScans[userId];
+  // Set headers for Server-Sent Events
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders(); // flush the headers to establish connection
+
+  // Register the client
+  activeClients[userId] = res;
+
+  // Keep the connection alive with a ping every 30 seconds
+  const keepAlive = setInterval(() => {
+    res.write(':ping\n\n');
+  }, 30000);
+
+  // Cleanup on connection close
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    if (activeClients[userId] === res) {
+      delete activeClients[userId];
     }
-  }
-
-  res.json({ scanned: false });
+  });
 });
 
 module.exports = router;

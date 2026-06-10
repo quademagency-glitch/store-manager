@@ -7,16 +7,21 @@ const { supabaseAdmin } = require('../db/supabase');
  */
 async function authGuard(req, res, next) {
   try {
+    let token;
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Missing or invalid authorization header. Expected: Bearer <token>',
-      });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Missing or invalid authorization token.',
+      });
+    }
 
     // Verify the JWT using Supabase
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);

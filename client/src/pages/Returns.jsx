@@ -18,6 +18,10 @@ export default function Returns() {
   const [returnReason, setReturnReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Refund Receipt State
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [refundReceiptData, setRefundReceiptData] = useState(null);
+
   // Security Check: Only Admins
   const role = user?.user_metadata?.role || '';
   const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
@@ -111,10 +115,30 @@ export default function Returns() {
         items: itemsToReturn,
         reason: returnReason
       });
+      
+      const refundData = {
+        receiptNumber: selectedSale.receipt_number || selectedSale.id.substring(0,8),
+        customerName: selectedSale.customers ? selectedSale.customers.name : 'Walk-in Customer',
+        items: itemsToReturn.map(rtnItem => {
+          const original = selectedSale.sale_items.find(si => si.id === rtnItem.sale_item_id);
+          return {
+            name: original?.product?.name || 'Unknown',
+            qty: rtnItem.quantity,
+            price: rtnItem.unit_price,
+            total: rtnItem.quantity * rtnItem.unit_price
+          };
+        }),
+        totalRefund: calculateTotalRefund(),
+        reason: returnReason,
+        date: new Date().toISOString()
+      };
+
+      setRefundReceiptData(refundData);
       setShowReturnModal(false);
       setSelectedSale(null);
+      setShowReceiptModal(true);
+      
       handleSearch({ preventDefault: () => {} });
-      alert("Return processed successfully!");
     } catch (err) {
       alert(err.message || 'Failed to process return.');
     } finally {
@@ -301,6 +325,64 @@ export default function Returns() {
                   {isProcessing ? 'Processing...' : 'Confirm Return'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Refund Receipt Modal */}
+      <Modal isOpen={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Refund Receipt">
+        {refundReceiptData && (
+          <div style={{ padding: '0.5rem' }}>
+            <div id="refund-receipt-print-area" style={{ padding: '24px', background: 'white', color: 'black', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'monospace' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px dashed #ccc', paddingBottom: '16px' }}>
+                <h2 style={{ margin: '0 0 8px 0' }}>STORE REFUND</h2>
+                <div>Receipt #: {refundReceiptData.receiptNumber}</div>
+                <div>Date: {new Date(refundReceiptData.date).toLocaleString()}</div>
+                <div>Customer: {refundReceiptData.customerName}</div>
+              </div>
+              
+              <table style={{ width: '100%', marginBottom: '24px', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px dashed #ccc' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 0' }}>Item</th>
+                    <th style={{ textAlign: 'center', padding: '8px 0' }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '8px 0' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refundReceiptData.items.map((item, i) => (
+                    <tr key={i}>
+                      <td style={{ padding: '8px 0' }}>{item.name}</td>
+                      <td style={{ textAlign: 'center', padding: '8px 0' }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right', padding: '8px 0' }}>{fmt(item.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px dashed #ccc', paddingTop: '16px', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                <span>TOTAL REFUND</span>
+                <span>{fmt(refundReceiptData.totalRefund)}</span>
+              </div>
+              
+              {refundReceiptData.reason && (
+                <div style={{ marginTop: '24px', fontStyle: 'italic', color: '#666' }}>
+                  Reason: {refundReceiptData.reason}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '24px' }}>
+              <button className="btn btn-outline" onClick={() => setShowReceiptModal(false)}>Close</button>
+              <button className="btn btn-primary" onClick={() => {
+                const printContent = document.getElementById('refund-receipt-print-area').innerHTML;
+                const originalContent = document.body.innerHTML;
+                document.body.innerHTML = printContent;
+                window.print();
+                document.body.innerHTML = originalContent;
+                window.location.reload();
+              }}>Print Receipt</button>
             </div>
           </div>
         )}

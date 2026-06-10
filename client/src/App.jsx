@@ -29,6 +29,7 @@ import BusinessLocations from './pages/BusinessAdmin/Locations';
 import BusinessTeam from './pages/BusinessAdmin/TeamManagement';
 import BusinessRoles from './pages/BusinessAdmin/RolesManagement';
 import Billing from './pages/BusinessAdmin/Billing';
+import ShrinkageReport from './pages/BusinessAdmin/ShrinkageReport';
 
 export default function App() {
   return (
@@ -103,6 +104,9 @@ export default function App() {
             } />
             <Route path="/business-admin/billing" element={
               <ProtectedRoute requiredPermission="manage_business"><Billing /></ProtectedRoute>
+            } />
+            <Route path="/business-admin/shrinkage" element={
+              <ProtectedRoute requiredPermission="manage_business"><ShrinkageReport /></ProtectedRoute>
             } />
           </Route>
 

@@ -21,46 +21,63 @@ function applyLocationFilter(query, req) {
 /**
  * GET /api/analytics/summary
  * Fetch high-level stats for the Dashboard.
- * Access: All authenticated staff
  */
 router.get('/summary', authGuard, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 1. Today's Sales Total
     let salesQuery = supabaseAdmin
       .from('sales')
-      .select('total_amount')
-      .gte('created_at', today.toISOString());
+      .select('total_amount', { count: 'exact' })
+      .gte('created_at', today.toISOString())
+      .neq('status', 'voided');
     
+    // 2. Total Products
+    let productsQuery = supabaseAdmin
+      .from('products')
+      .select('id', { count: 'exact' });
+
+    // 3. Alerts (Low Stock & Shrinkage)
+    let alertsQuery = supabaseAdmin
+      .from('alerts')
+      .select('type', { count: 'exact' });
+
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
+      productsQuery = productsQuery.eq('business_id', req.user.business_id);
+      alertsQuery = alertsQuery.eq('business_id', req.user.business_id);
     }
+    
     salesQuery = applyLocationFilter(salesQuery, req);
+    alertsQuery = applyLocationFilter(alertsQuery, req);
 
-    // Run queries in parallel to speed up the dashboard
-    const [salesRes, invRes, shrinkageRes] = await Promise.all([
+    const [salesRes, productsRes, alertsRes] = await Promise.all([
       salesQuery,
-      inventoryQuery,
-      shrinkageQuery
+      productsQuery,
+      alertsQuery
     ]);
 
     if (salesRes.error) throw salesRes.error;
-    if (invRes.error) throw invRes.error;
-    if (shrinkageRes.error) throw shrinkageRes.error;
+    if (productsRes.error) throw productsRes.error;
+    if (alertsRes.error) throw alertsRes.error;
 
-    const todaysSales = salesRes.data;
-    const inventory = invRes.data;
-    const shrinkageCount = shrinkageRes.count;
+    const todaySalesTotal = salesRes.data.reduce((sum, s) => sum + Number(s.total_amount), 0);
+    const totalProducts = productsRes.count || 0;
+    
+    let lowStockCount = 0;
+    let theftAlertsCount = 0;
+    alertsRes.data.forEach(a => {
+      if (a.type === 'LOW_STOCK') lowStockCount++;
+      if (a.type === 'SHRINKAGE') theftAlertsCount++;
+    });
 
     res.json({
       todaySalesTotal,
       totalProducts,
       lowStockCount,
-      theftAlertsCount: shrinkageCount || 0
+      theftAlertsCount
     });
   } catch (err) {
     console.error('Error fetching analytics summary:', err);
@@ -69,9 +86,60 @@ router.get('/summary', authGuard, async (req, res) => {
 });
 
 /**
+ * GET /api/analytics/sales-trend
+ * Fetch the last 7 days of sales
+ */
+router.get('/sales-trend', authGuard, async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('total_amount, created_at')
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .neq('status', 'voided');
+
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+    salesQuery = applyLocationFilter(salesQuery, req);
+
+    const { data, error } = await salesQuery;
+    if (error) throw error;
+
+    const trendMap = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      trendMap[dateStr] = 0;
+    }
+
+    data.forEach(sale => {
+      const dateStr = new Date(sale.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (trendMap[dateStr] !== undefined) {
+        trendMap[dateStr] += Number(sale.total_amount);
+      }
+    });
+
+    const trendData = Object.keys(trendMap).map(date => ({
+      date,
+      revenue: trendMap[date]
+    }));
+
+    res.json(trendData);
+  } catch (err) {
+    console.error('Error fetching sales trend:', err);
+    res.status(500).json({ error: 'Failed to fetch sales trend' });
+  }
+});
+
+/**
  * GET /api/analytics/shrinkage
  */
-router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (req, res) => {
+router.get('/shrinkage', authGuard, async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('stock_movements')
@@ -106,7 +174,7 @@ router.get('/shrinkage', authGuard, permissionCheck('view_analytics'), async (re
 /**
  * GET /api/analytics/reconciliation
  */
-router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), async (req, res) => {
+router.get('/reconciliation', authGuard, async (req, res) => {
   try {
     const dateParam = req.query.date;
     const targetDate = dateParam ? new Date(dateParam) : new Date();
@@ -116,21 +184,37 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // 1. Fetch users in the same business/locations
     let usersQuery = supabaseAdmin
       .from('users')
-      .select(`
-        id,
-        name,
-        email,
-        role_id,
-        roles:role_id (name)
-      `);
+      .select('id, name, email, role_id, roles:role_id (name)');
       
     if (req.user.role !== 'Platform Admin') {
       usersQuery = usersQuery.eq('business_id', req.user.business_id);
     }
-    // Fetch all required data in parallel
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id, salesperson_id, total_amount, discount_amount, status')
+      .gte('created_at', startOfDay.toISOString())
+      .lte('created_at', endOfDay.toISOString());
+
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+    salesQuery = applyLocationFilter(salesQuery, req);
+
+    let shrinkageQuery = supabaseAdmin
+      .from('stock_movements')
+      .select('user_id, quantity_change, product:products!product_id(price)')
+      .eq('movement_type', 'SHRINKAGE')
+      .gte('created_at', startOfDay.toISOString())
+      .lte('created_at', endOfDay.toISOString());
+
+    if (req.user.role !== 'Platform Admin') {
+      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
+    }
+    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
+
     const [usersRes, salesRes, shrinkageRes] = await Promise.all([
       usersQuery,
       salesQuery,
@@ -145,7 +229,6 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
     const sales = salesRes.data;
     const shrinkage = shrinkageRes.data;
 
-    // 4. Group data by user
     const reconciliationData = users.map(user => {
       const userSales = sales.filter(s => s.salesperson_id === user.id);
       const completedSales = userSales.filter(s => s.status !== 'voided');
@@ -171,7 +254,7 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
         shrinkageCount: userShrinkage.length,
         totalShrinkageValue
       };
-    }).filter(data => data.salesCount > 0 || data.voidCount > 0 || data.shrinkageCount > 0); // Only return active users
+    }).filter(data => data.salesCount > 0 || data.voidCount > 0 || data.shrinkageCount > 0);
 
     reconciliationData.sort((a, b) => b.totalSalesRevenue - a.totalSalesRevenue);
 
@@ -184,11 +267,9 @@ router.get('/reconciliation', authGuard, permissionCheck('view_analytics'), asyn
 
 /**
  * GET /api/analytics/recent-activity
- * Fetch the 10 most recent stock movements and sales
  */
 router.get('/recent-activity', authGuard, async (req, res) => {
   try {
-    // 1. Fetch recent sales
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('id, created_at, total_amount, status')
@@ -200,7 +281,18 @@ router.get('/recent-activity', authGuard, async (req, res) => {
     }
     salesQuery = applyLocationFilter(salesQuery, req);
 
-    // Fetch both datasets concurrently
+    let stockQuery = supabaseAdmin
+      .from('stock_movements')
+      .select('id, created_at, movement_type, quantity_change, product:products!product_id(name)')
+      .in('movement_type', ['SHRINKAGE', 'RETURN'])
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (req.user.role !== 'Platform Admin') {
+      stockQuery = stockQuery.eq('business_id', req.user.business_id);
+    }
+    stockQuery = applyLocationFilter(stockQuery, req);
+
     const [salesRes, movementsRes] = await Promise.all([
       salesQuery,
       stockQuery
@@ -212,7 +304,6 @@ router.get('/recent-activity', authGuard, async (req, res) => {
     const sales = salesRes.data;
     const movements = movementsRes.data;
 
-    // 3. Format and combine
     const formattedSales = sales.map(s => ({
       id: s.id,
       type: 'sale',
@@ -233,67 +324,14 @@ router.get('/recent-activity', authGuard, async (req, res) => {
       timestamp: new Date(m.created_at).getTime()
     }));
 
-    // Merge, sort, and slice to top 10
     const combined = [...formattedSales, ...formattedMovements]
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
-
-    // Format 'time' to relative string for UI (e.g. '10 mins ago') - simplified for now, UI can format if needed, but we'll return ISO and let UI format it or we can format it here.
-    // Actually, UI `time` string is used directly. We'll leave `time` as ISO string and let the frontend format it or just return ISO.
     
     res.json(combined);
   } catch (err) {
     console.error('Error fetching recent activity:', err);
     res.status(500).json({ error: 'Failed to fetch recent activity' });
-  }
-});
-
-/**
- * DELETE /api/analytics/reset
- * Wipes sales, sale_items, stock_movements, alerts for the business
- * Access: Business Admin and Manager
- */
-router.delete('/reset', authGuard, async (req, res) => {
-  try {
-    if (req.user.role !== 'Business Admin' && req.user.role !== 'Manager' && req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Unauthorized to reset dashboard.' });
-    }
-
-    const business_id = req.user.business_id;
-
-    // Build the base query for deletion using business_id
-    // This removes all sales records (which cascade to sale_items if set up correctly)
-    const { error: salesError } = await supabaseAdmin
-      .from('sales')
-      .delete()
-      .eq('business_id', business_id);
-
-    if (salesError) throw salesError;
-
-    // Delete all stock movements
-    const { error: movementsError } = await supabaseAdmin
-      .from('stock_movements')
-      .delete()
-      .eq('business_id', business_id);
-
-    if (movementsError) throw movementsError;
-
-    // Delete all alerts
-    const { error: alertsError } = await supabaseAdmin
-      .from('alerts')
-      .delete()
-      .eq('business_id', business_id);
-
-    if (alertsError) throw alertsError;
-
-    // NOTE: This does NOT reset inventory quantities (product_inventory table)
-    // It only resets the historical transaction records that feed the dashboard.
-    // If you need inventory quantities reset to 0, that would be a different feature.
-
-    res.json({ message: 'Dashboard metrics and history have been successfully reset.' });
-  } catch (err) {
-    console.error('Error resetting dashboard:', err);
-    res.status(500).json({ error: 'Failed to reset dashboard' });
   }
 });
 

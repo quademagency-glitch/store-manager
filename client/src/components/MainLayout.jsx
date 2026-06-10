@@ -210,6 +210,7 @@ export default function MainLayout() {
         { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_business') },
         { path: '/business-admin/roles', label: 'Roles', icon: Icons.settings, visible: hasPermission('manage_users') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_business') },
+        { path: '/business-admin/shrinkage', label: 'Loss Prevention', icon: Icons.alerts, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);

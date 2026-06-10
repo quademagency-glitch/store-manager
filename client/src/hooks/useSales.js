@@ -137,17 +137,44 @@ export function useSales() {
     }
   }, []);
 
-  const voidSale = useCallback(async (saleId) => {
+  const voidSale = useCallback(async (saleId, manager_pin = null) => {
     setLoading(true);
     setError(null);
     try {
-      await api.put(`/sales/${saleId}/void`);
-      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'voided' } : s));
-      return { success: true };
+      const payload = manager_pin ? { manager_pin } : {};
+      const res = await api.put(`/sales/${saleId}/void`, payload);
+      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: res.status || 'void_pending' } : s));
+      return { success: true, status: res.status };
     } catch (err) {
       const message = err.message || 'Failed to void sale';
       setError(message);
       return { success: false, error: message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const approveVoid = useCallback(async (saleId) => {
+    setLoading(true);
+    try {
+      const res = await api.put(`/sales/${saleId}/approve-void`);
+      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'voided' } : s));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const rejectVoid = useCallback(async (saleId) => {
+    setLoading(true);
+    try {
+      const res = await api.put(`/sales/${saleId}/reject-void`);
+      setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'completed' } : s));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
     } finally {
       setLoading(false);
     }
@@ -183,6 +210,8 @@ export function useSales() {
     sales,
     fetchSales,
     voidSale,
+    approveVoid,
+    rejectVoid,
     deleteSale,
 
     // API

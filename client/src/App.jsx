@@ -27,6 +27,7 @@ import BusinessOverview from './pages/BusinessAdmin/Overview';
 import BusinessOrganization from './pages/BusinessAdmin/Organization';
 import BusinessLocations from './pages/BusinessAdmin/Locations';
 import BusinessTeam from './pages/BusinessAdmin/TeamManagement';
+import BusinessRoles from './pages/BusinessAdmin/RolesManagement';
 import Billing from './pages/BusinessAdmin/Billing';
 
 export default function App() {
@@ -96,6 +97,9 @@ export default function App() {
             } />
             <Route path="/business-admin/team" element={
               <ProtectedRoute requiredPermission="manage_business"><BusinessTeam /></ProtectedRoute>
+            } />
+            <Route path="/business-admin/roles" element={
+              <ProtectedRoute requiredPermission="manage_users"><BusinessRoles /></ProtectedRoute>
             } />
             <Route path="/business-admin/billing" element={
               <ProtectedRoute requiredPermission="manage_business"><Billing /></ProtectedRoute>

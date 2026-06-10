@@ -1,25 +1,64 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSales } from '../hooks/useSales';
 import { useAuthContext } from '../lib/AuthContext';
+import Modal from './Modal';
 
 export default function SalesHistory() {
-  const { sales, fetchSales, voidSale, deleteSale, loading } = useSales();
+  const { sales, fetchSales, voidSale, approveVoid, rejectVoid, deleteSale, loading } = useSales();
   const { user } = useAuthContext();
+  const [pinModal, setPinModal] = useState({ isOpen: false, saleId: null, pin: '' });
 
   useEffect(() => {
     fetchSales();
   }, [fetchSales]);
 
-  const handleVoid = async (saleId) => {
-    if (window.confirm('Are you sure you want to void this sale? This action cannot be undone.')) {
-      const res = await voidSale(saleId);
-      if (res.success) {
-        alert('Sale voided successfully.');
-        fetchSales(); // Refresh to update status
-      } else {
-        alert(res.error || 'Failed to void sale');
+  const handleVoidClick = (saleId) => {
+    if (user?.role === 'Manager' || user?.role === 'Business Admin' || user?.role === 'Platform Admin') {
+      // Immediate void without PIN since they are already a manager
+      if (window.confirm('Are you sure you want to void this sale? This action cannot be undone.')) {
+        processVoid(saleId, null);
       }
+    } else {
+      // Open PIN modal for cashiers
+      setPinModal({ isOpen: true, saleId, pin: '' });
     }
+  };
+
+  const processVoid = async (saleId, pin) => {
+    const res = await voidSale(saleId, pin);
+    if (res.success) {
+      if (res.status === 'void_pending') {
+        alert('Void request submitted for manager approval.');
+      } else {
+        alert('Sale voided successfully.');
+      }
+      fetchSales(); 
+    } else {
+      alert(res.error || 'Failed to void sale');
+    }
+  };
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    processVoid(pinModal.saleId, pinModal.pin);
+    setPinModal({ isOpen: false, saleId: null, pin: '' });
+  };
+
+  const requestApprovalVoid = () => {
+    processVoid(pinModal.saleId, null);
+    setPinModal({ isOpen: false, saleId: null, pin: '' });
+  };
+
+  const handleApproveVoid = async (saleId) => {
+    const res = await approveVoid(saleId);
+    if (res.success) alert('Void approved.');
+    else alert(res.error || 'Failed to approve void.');
+  };
+
+  const handleRejectVoid = async (saleId) => {
+    const res = await rejectVoid(saleId);
+    if (res.success) alert('Void rejected.');
+    else alert(res.error || 'Failed to reject void.');
   };
 
   const handleDelete = async (saleId) => {
@@ -27,7 +66,6 @@ export default function SalesHistory() {
       const res = await deleteSale(saleId);
       if (res.success) {
         alert('Sale deleted successfully.');
-        // Sales state is updated in the hook automatically
       } else {
         alert(res.error || 'Failed to delete sale');
       }
@@ -42,14 +80,13 @@ export default function SalesHistory() {
     });
   };
 
-  // Only managers or admins can void, or the salesperson who made the sale (if allowed by business logic).
-  // We'll allow platform admins, business admins, managers, and the salesperson.
   const canVoid = (sale) => {
-    if (sale.status === 'voided') return false;
-    if (user?.role === 'Platform Admin' || user?.role === 'Business Admin' || user?.role === 'Manager') return true;
-    if (user?.id === sale.salesperson_id) return true;
-    return false;
+    if (sale.status === 'voided' || sale.status === 'void_pending') return false;
+    // Anyone who made the sale or managers can initiate a void
+    return user?.role === 'Platform Admin' || user?.role === 'Business Admin' || user?.role === 'Manager' || user?.id === sale.salesperson_id;
   };
+
+  const isManager = user?.role === 'Business Admin' || user?.role === 'Platform Admin' || user?.role === 'Manager';
 
   const canDelete = () => {
     return user?.role === 'Business Admin' || user?.role === 'Platform Admin';
@@ -98,6 +135,8 @@ export default function SalesHistory() {
                 <td>
                   {sale.status === 'voided' ? (
                     <span className="badge badge-error">Voided</span>
+                  ) : sale.status === 'void_pending' ? (
+                    <span className="badge badge-warning" style={{ background: '#fef08a', color: '#854d0e' }}>Pending Void</span>
                   ) : (
                     <span className="badge badge-success">Completed</span>
                   )}
@@ -106,10 +145,16 @@ export default function SalesHistory() {
                   {canVoid(sale) && (
                     <button 
                       className="btn btn-sm btn-outline text-warning mr-sm"
-                      onClick={() => handleVoid(sale.id)}
+                      onClick={() => handleVoidClick(sale.id)}
                     >
                       Void
                     </button>
+                  )}
+                  {sale.status === 'void_pending' && isManager && (
+                    <>
+                      <button className="btn btn-sm btn-outline mr-sm" onClick={() => handleApproveVoid(sale.id)}>Approve</button>
+                      <button className="btn btn-sm btn-outline text-error mr-sm" onClick={() => handleRejectVoid(sale.id)}>Reject</button>
+                    </>
                   )}
                   {canDelete() && (
                     <button 
@@ -125,6 +170,34 @@ export default function SalesHistory() {
           )}
         </tbody>
       </table>
+
+      <Modal isOpen={pinModal.isOpen} onClose={() => setPinModal({ isOpen: false, saleId: null, pin: '' })} title="Authorize Void">
+        <form onSubmit={handlePinSubmit} className="form-layout">
+          <p style={{ marginBottom: '16px', fontSize: '0.875rem', color: '#475569' }}>
+            To void this sale immediately, a manager must enter their PIN. Otherwise, you can submit this void request for manager approval.
+          </p>
+          <div className="form-group">
+            <label>Manager PIN</label>
+            <input 
+              type="password" 
+              className="form-input" 
+              value={pinModal.pin} 
+              onChange={(e) => setPinModal({...pinModal, pin: e.target.value})}
+              placeholder="Enter PIN"
+              autoFocus
+            />
+          </div>
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+            <button type="button" className="btn btn-outline" onClick={requestApprovalVoid}>
+              Submit for Approval
+            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setPinModal({ isOpen: false, saleId: null, pin: '' })}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={!pinModal.pin}>Override & Void</button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

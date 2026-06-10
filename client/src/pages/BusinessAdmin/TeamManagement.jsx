@@ -14,9 +14,11 @@ export default function TeamManagement() {
 
   // Modals
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   
   // Forms
   const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '', location_ids: [] });
+  const [pinForm, setPinForm] = useState({ userId: null, pin: '' });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -111,6 +113,17 @@ export default function TeamManagement() {
     }
   };
 
+  const handlePinSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/users/${pinForm.userId}/pin`, { pin: pinForm.pin });
+      setIsPinModalOpen(false);
+      alert('PIN updated successfully.');
+    } catch (err) {
+      setError(err.message || 'Failed to set PIN');
+    }
+  };
+
   const handleDeleteUser = async (id, name) => {
     if (window.confirm(`Are you sure you want to permanently delete user "${name}"?`)) {
       try {
@@ -185,6 +198,12 @@ export default function TeamManagement() {
                         )}
                       </td>
                       <td className="text-right">
+                        <button className="btn-icon" onClick={() => {
+                          setPinForm({ userId: u.id, pin: '' });
+                          setIsPinModalOpen(true);
+                        }} title="Set Manager PIN">
+                          🔑
+                        </button>
                         <button className="btn-icon" onClick={() => toggleUserStatus(u)} title={u.status === 'banned' ? 'Restore Access' : 'Revoke Access'}>
                           {u.status === 'banned' ? '✅' : '🚫'}
                         </button>
@@ -247,6 +266,30 @@ export default function TeamManagement() {
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setIsUserModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save User</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isPinModalOpen} onClose={() => setIsPinModalOpen(false)} title="Set Manager PIN">
+        <form onSubmit={handlePinSubmit} className="form-layout">
+          <div className="form-group">
+            <label>New PIN</label>
+            <input 
+              type="password" 
+              required 
+              pattern="\d{4,6}"
+              title="PIN must be 4 to 6 digits"
+              maxLength="6"
+              className="form-input" 
+              value={pinForm.pin} 
+              onChange={e => setPinForm({...pinForm, pin: e.target.value})} 
+              placeholder="e.g. 1234"
+            />
+            <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '4px' }}>Must be 4-6 digits. Used for overriding sales voids at the register.</p>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={() => setIsPinModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Save PIN</button>
           </div>
         </form>
       </Modal>

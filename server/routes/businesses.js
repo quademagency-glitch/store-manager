@@ -39,7 +39,7 @@ router.get('/me', authGuard, async (req, res) => {
  */
 router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, contact_email, logo_url } = req.body;
+    const { name, contact_email, logo_url, tax_rate, return_policy } = req.body;
 
     // Verify tenant isolation
     if (req.user.role !== 'Platform Admin' && req.user.business_id !== req.params.id) {
@@ -48,7 +48,13 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
 
     const { data, error } = await supabaseAdmin
       .from('businesses')
-      .update({ name, contact_email, logo_url })
+      .update({ 
+        name, 
+        contact_email, 
+        logo_url,
+        tax_rate: tax_rate !== undefined ? tax_rate : undefined,
+        return_policy: return_policy !== undefined ? return_policy : undefined
+      })
       .eq('id', req.params.id)
       .select()
       .single();

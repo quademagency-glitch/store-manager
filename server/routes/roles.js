@@ -7,17 +7,22 @@ const router = express.Router();
 
 /**
  * GET /api/roles
- * Fetch all roles
+ * Fetch all roles available to the business (Generic + Custom)
  * Access: Must have manage_users permission
  */
 router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('roles')
-      .select('*')
-      .order('name');
+    let query = supabaseAdmin.from('roles').select('*').order('name');
+    
+    // Platform Admins can see everything
+    if (req.user.role !== 'Platform Admin') {
+      // Get Generic roles (business_id IS NULL) + their own custom roles
+      query = query.or(`business_id.is.null,business_id.eq.${req.user.business_id}`);
+    }
 
+    const { data, error } = await query;
     if (error) throw error;
+
     res.json(data);
   } catch (err) {
     console.error('Error fetching roles:', err);
@@ -27,30 +32,28 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
 
 /**
  * POST /api/roles
- * Create a new role
+ * Create a new custom role for the business
  * Access: Must have manage_users permission
  */
 router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    if (req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Only Platform Admins can create roles.' });
-    }
-
     const { name, description, permissions } = req.body;
-
+    
     if (!name || !Array.isArray(permissions)) {
       return res.status(400).json({ error: 'Name and permissions array are required' });
     }
 
+    const business_id = req.user.role === 'Platform Admin' ? req.body.business_id || null : req.user.business_id;
+
     const { data, error } = await supabaseAdmin
       .from('roles')
-      .insert([{ name, description, permissions }])
+      .insert([{ name, description, permissions, business_id }])
       .select()
       .single();
 
     if (error) {
       if (error.code === '23505') {
-        return res.status(409).json({ error: 'A role with this name already exists.' });
+        return res.status(409).json({ error: 'A role with this name already exists in your business.' });
       }
       throw error;
     }
@@ -64,25 +67,35 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
 
 /**
  * PUT /api/roles/:id
- * Update a role
+ * Update an existing role
  * Access: Must have manage_users permission
  */
 router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    if (req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Only Platform Admins can modify roles.' });
-    }
-
+    const roleId = req.params.id;
     const { name, description, permissions } = req.body;
 
     if (!name || !Array.isArray(permissions)) {
       return res.status(400).json({ error: 'Name and permissions array are required' });
     }
 
-    const { data, error } = await supabaseAdmin
+    // Check if the role exists and if it's generic
+    const { data: role } = await supabaseAdmin.from('roles').select('*').eq('id', roleId).single();
+    if (!role) return res.status(404).json({ error: 'Role not found' });
+
+    if (role.business_id === null && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Cannot modify a generic platform role. Please create a custom role instead.' });
+    }
+
+    // Verify tenant isolation
+    if (req.user.role !== 'Platform Admin' && role.business_id !== req.user.business_id) {
+       return res.status(403).json({ error: 'Unauthorized to edit this role.' });
+    }
+
+    const { data: updatedRole, error } = await supabaseAdmin
       .from('roles')
       .update({ name, description, permissions })
-      .eq('id', req.params.id)
+      .eq('id', roleId)
       .select()
       .single();
 
@@ -93,9 +106,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
       throw error;
     }
 
-    if (!data) return res.status(404).json({ error: 'Role not found' });
-
-    res.json(data);
+    res.json(updatedRole);
   } catch (err) {
     console.error('Error updating role:', err);
     res.status(500).json({ error: 'Failed to update role' });
@@ -104,23 +115,31 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
 /**
  * DELETE /api/roles/:id
- * Delete a role
+ * Delete a custom role
  * Access: Must have manage_users permission
  */
 router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
   try {
-    if (req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Only Platform Admins can delete roles.' });
+    const roleId = req.params.id;
+    
+    const { data: role } = await supabaseAdmin.from('roles').select('*').eq('id', roleId).single();
+    if (!role) return res.status(404).json({ error: 'Role not found' });
+
+    if (role.business_id === null && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Cannot delete a generic platform role.' });
     }
 
-    // Basic check to prevent deleting 'Manager' or 'Salesperson' could be added here
+    if (req.user.role !== 'Platform Admin' && role.business_id !== req.user.business_id) {
+       return res.status(403).json({ error: 'Unauthorized to delete this role.' });
+    }
+
     const { error, count } = await supabaseAdmin
       .from('roles')
       .delete({ count: 'exact' })
-      .eq('id', req.params.id);
+      .eq('id', roleId);
 
     if (error) {
-      if (error.code === '23503') { // Foreign key violation
+      if (error.code === '23503') { 
         return res.status(400).json({ error: 'Cannot delete a role that is assigned to users.' });
       }
       throw error;

@@ -208,6 +208,7 @@ export default function MainLayout() {
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_business') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_business') },
         { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_business') },
+        { path: '/business-admin/roles', label: 'Roles', icon: Icons.settings, visible: hasPermission('manage_users') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };

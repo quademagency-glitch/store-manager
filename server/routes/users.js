@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
@@ -143,6 +144,49 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
   } catch (err) {
     console.error('Error updating user:', err);
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+/**
+ * PUT /api/users/:id/pin
+ * Set a manager PIN for a user
+ * Access: Must have manage_users permission
+ */
+router.put('/:id/pin', authGuard, permissionCheck('manage_users'), async (req, res) => {
+  try {
+    const { pin } = req.body;
+
+    if (!pin || !/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({ error: 'PIN must be a 4 to 6 digit number' });
+    }
+
+    const { data: userToUpdate, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('business_id, roles(name)')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError || !userToUpdate) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (req.user.role !== 'Platform Admin' && userToUpdate.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'You can only set PINs for users in your own business.' });
+    }
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ manager_pin: hashedPin })
+      .eq('id', req.params.id);
+
+    if (updateError) throw updateError;
+
+    res.json({ message: 'Manager PIN set successfully' });
+  } catch (err) {
+    console.error('Error setting PIN:', err);
+    res.status(500).json({ error: 'Failed to set PIN' });
   }
 });
 

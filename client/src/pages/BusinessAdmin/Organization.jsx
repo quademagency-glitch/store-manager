@@ -97,6 +97,33 @@ export default function Organization() {
               <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '4px' }}>Used for receipts and reports.</p>
             </div>
 
+            <div className="form-group" style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Store Policies & Compliance</h3>
+              
+              <label>Default Tax Rate (%)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                className="form-input" 
+                placeholder="e.g. 8.5"
+                value={business.tax_rate || 0} 
+                onChange={(e) => setBusiness({...business, tax_rate: parseFloat(e.target.value)})}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Return Policy</label>
+              <textarea 
+                className="form-input" 
+                rows="4"
+                placeholder="e.g. Returns accepted within 30 days with receipt."
+                value={business.return_policy || ''} 
+                onChange={(e) => setBusiness({...business, return_policy: e.target.value})}
+              ></textarea>
+              <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '4px' }}>This policy can be printed on customer receipts.</p>
+            </div>
+
             <div style={{ marginTop: '24px' }}>
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Saving...' : 'Save Profile'}

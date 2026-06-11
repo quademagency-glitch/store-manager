@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
+import { useToast } from '../hooks/useToast';
 
 export default function Returns() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const [searchType, setSearchType] = useState('receipt');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -104,7 +106,7 @@ export default function Returns() {
     });
 
     if (itemsToReturn.length === 0) {
-      alert("Please select at least one item to return.");
+      toast.warning('Please select at least one item to return.');
       return;
     }
 
@@ -140,7 +142,7 @@ export default function Returns() {
       
       handleSearch({ preventDefault: () => {} });
     } catch (err) {
-      alert(err.message || 'Failed to process return.');
+      toast.error(err.message || 'Failed to process return.');
     } finally {
       setIsProcessing(false);
     }

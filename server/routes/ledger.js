@@ -1,9 +1,22 @@
 const express = require('express');
 const archiver = require('archiver');
+const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { validateBody } = require('../middleware/validate');
 
 const router = express.Router();
+
+const ledgerEntrySchema = z.object({
+  type: z.enum(['expense', 'deposit_to_bank', 'pay_in']),
+  amount: z.number().positive('Amount must be greater than 0'),
+  description: z.string().optional(),
+  location_id: z.string().uuid('Location ID is required and must be a valid UUID'),
+  template_id: z.string().uuid().optional().nullable(),
+  receipt_url: z.string().url().optional().nullable(),
+  metadata: z.record(z.any()).optional().nullable(),
+  date: z.string().optional().nullable(),
+});
 
 /**
  * Helper to apply location filters based on role/assignment.
@@ -216,15 +229,9 @@ router.get('/till-balance', authGuard, async (req, res) => {
  * POST /api/ledger
  * Create a new ledger entry (expense, deposit)
  */
-router.post('/', authGuard, async (req, res) => {
+router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) => {
   try {
     const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
-
-    if (!amount || amount <= 0) return res.status(400).json({ error: 'Amount must be greater than 0' });
-    if (!['expense', 'deposit_to_bank', 'pay_in'].includes(type)) {
-      return res.status(400).json({ error: 'Invalid ledger type' });
-    }
-    if (!location_id) return res.status(400).json({ error: 'Location ID is required' });
 
     // Permissions logic
     // Admin & Managers = approved automatically

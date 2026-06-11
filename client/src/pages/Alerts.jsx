@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
+import { useToast } from '../hooks/useToast';
 
 export default function Alerts() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +23,7 @@ export default function Alerts() {
       const res = await api.get(url);
       setAlerts(res.data);
     } catch (err) {
-      console.error('Error fetching alerts:', err);
+      if (import.meta.env.DEV) console.error('Error fetching alerts:', err);
       setError('Failed to fetch alerts. Please try again.');
     } finally {
       setLoading(false);
@@ -41,8 +43,8 @@ export default function Alerts() {
         fetchAlerts();
       }
     } catch (err) {
-      console.error('Error resolving alert:', err);
-      alert('Failed to resolve alert.');
+      if (import.meta.env.DEV) console.error('Error resolving alert:', err);
+      toast.error('Failed to resolve alert.');
     }
   };
 
@@ -51,10 +53,10 @@ export default function Alerts() {
     if (!saleId) return;
     try {
       await api.put(`/api/sales/${saleId}/approve-void`);
-      alert('Void approved. Sale voided and stock restored.');
+      toast.success('Void approved. Sale voided and stock restored.');
       fetchAlerts();
     } catch (err) {
-      alert(err.message || 'Failed to approve void');
+      toast.error(err.message || 'Failed to approve void');
     }
   };
 
@@ -63,10 +65,10 @@ export default function Alerts() {
     if (!saleId) return;
     try {
       await api.put(`/api/sales/${saleId}/reject-void`);
-      alert('Void rejected. Sale remains completed.');
+      toast.info('Void rejected. Sale remains completed.');
       fetchAlerts();
     } catch (err) {
-      alert(err.message || 'Failed to reject void');
+      toast.error(err.message || 'Failed to reject void');
     }
   };
 

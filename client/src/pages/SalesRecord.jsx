@@ -4,9 +4,13 @@ import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function SalesRecord() {
   const { hasPermission } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   
   // Date range state (default to today or URL param)
@@ -18,6 +22,9 @@ export default function SalesRecord() {
   const [endDate, setEndDate] = useState(urlDate || today);
   
   const [sales, setSales] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSales, setTotalSales] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,7 +40,7 @@ export default function SalesRecord() {
 
   useEffect(() => {
     fetchHistory();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, page]);
 
   const fetchHistory = async () => {
     if (!startDate || !endDate) return;
@@ -45,10 +52,12 @@ export default function SalesRecord() {
     const endIso = new Date(`${endDate}T23:59:59.999Z`).toISOString();
 
     try {
-      const data = await api.get(`/sales/history?startDate=${startIso}&endDate=${endIso}`);
-      setSales(data);
+      const data = await api.get(`/sales/history?startDate=${startIso}&endDate=${endIso}&page=${page}&limit=50`);
+      setSales(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalSales(data.total || 0);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setError('Failed to fetch sales history.');
     } finally {
       setLoading(false);
@@ -94,7 +103,7 @@ export default function SalesRecord() {
       .filter(item => item.return_quantity > 0);
 
     if (itemsToReturn.length === 0) {
-      alert('Please select at least one item to return.');
+      toast.warning('Please select at least one item to return.');
       return;
     }
 
@@ -104,12 +113,12 @@ export default function SalesRecord() {
         sale_id: selectedSale.id,
         items: itemsToReturn
       });
-      alert('Return processed successfully!');
+      toast.success('Return processed successfully!');
       closeReturnModal();
       fetchHistory(); // Refresh
     } catch (err) {
-      console.error(err);
-      alert(err.message || 'Failed to process return');
+      if (import.meta.env.DEV) console.error(err);
+      toast.error(err.message || 'Failed to process return');
     } finally {
       setIsProcessing(false);
     }
@@ -126,32 +135,34 @@ export default function SalesRecord() {
   };
 
   const handleVoidSale = async (sale) => {
-    if (!window.confirm(`Are you sure you want to void sale #${sale.receipt_number || sale.id.substring(0,8)}?`)) return;
+    const confirmed = await confirm({ title: 'Void Sale', message: `Are you sure you want to void sale #${sale.receipt_number || sale.id.substring(0,8)}?`, variant: 'danger', confirmText: 'Void Sale' });
+    if (!confirmed) return;
     setIsProcessing(true);
     try {
       await api.put(`/sales/${sale.id}/void`);
-      alert('Sale voided successfully!');
+      toast.success('Sale voided successfully!');
       closeReceiptModal();
       fetchHistory();
     } catch (err) {
-      console.error(err);
-      alert(err.message || 'Failed to void sale');
+      if (import.meta.env.DEV) console.error(err);
+      toast.error(err.message || 'Failed to void sale');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleDeleteSale = async (sale) => {
-    if (!window.confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete sale #${sale.receipt_number || sale.id.substring(0,8)}? This action cannot be undone.`)) return;
+    const confirmed = await confirm({ title: 'Delete Sale', message: `CRITICAL: Are you sure you want to PERMANENTLY delete sale #${sale.receipt_number || sale.id.substring(0,8)}? This action cannot be undone.`, variant: 'danger', confirmText: 'Delete Permanently' });
+    if (!confirmed) return;
     setIsProcessing(true);
     try {
       await api.delete(`/sales/${sale.id}`);
-      alert('Sale deleted successfully!');
+      toast.success('Sale deleted successfully!');
       closeReceiptModal();
       fetchHistory();
     } catch (err) {
-      console.error(err);
-      alert(err.message || 'Failed to delete sale');
+      if (import.meta.env.DEV) console.error(err);
+      toast.error(err.message || 'Failed to delete sale');
     } finally {
       setIsProcessing(false);
     }
@@ -217,55 +228,82 @@ export default function SalesRecord() {
         ) : sales.length === 0 ? (
           <div className="text-center py-xl text-muted">No sales found for this date range.</div>
         ) : (
-          <table className="glass-table">
-            <thead>
-              <tr>
-                <th style={{ padding: '16px' }}>Date</th>
-                <th style={{ padding: '16px' }}>Receipt #</th>
-                <th style={{ padding: '16px' }}>Customer</th>
-                <th style={{ padding: '16px' }}>Status</th>
-                <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map(sale => {
-                const isHighlighted = highlightId && sale.id === highlightId;
-                return (
-                <tr key={sale.id} style={{ 
-                  borderBottom: '1px solid var(--color-border)',
-                  backgroundColor: isHighlighted ? 'rgba(79, 70, 229, 0.05)' : 'transparent'
-                }}>
-                  <td style={{ padding: '16px' }}>
-                    {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
-                    {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    <button 
-                      onClick={() => openReceiptModal(sale)}
-                      className="btn btn-sm"
-                      style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      {sale.receipt_number || sale.id.substring(0,8)}
-                    </button>
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    {sale.customer ? (
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{sale.customer.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div>
-                      </div>
-                    ) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
-                      {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
+          <div className="glass-table-wrapper">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th style={{ padding: '16px' }}>Date</th>
+                  <th style={{ padding: '16px' }}>Receipt #</th>
+                  <th style={{ padding: '16px' }}>Customer</th>
+                  <th style={{ padding: '16px' }}>Status</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
                 </tr>
-              )})}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sales.map(sale => {
+                  const isHighlighted = highlightId && sale.id === highlightId;
+                  return (
+                  <tr key={sale.id} style={{ 
+                    borderBottom: '1px solid var(--color-border)',
+                    backgroundColor: isHighlighted ? 'rgba(79, 70, 229, 0.05)' : 'transparent'
+                  }}>
+                    <td style={{ padding: '16px' }}>
+                      {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
+                      {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <button 
+                        onClick={() => openReceiptModal(sale)}
+                        className="btn btn-sm"
+                        style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        {sale.receipt_number || sale.id.substring(0,8)}
+                      </button>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      {sale.customer ? (
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{sale.customer.name}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div>
+                        </div>
+                      ) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
+                        {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="text-sm text-muted">
+                  Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalSales)} of {totalSales} sales
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn btn-secondary btn-sm" 
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    className="btn btn-secondary btn-sm" 
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

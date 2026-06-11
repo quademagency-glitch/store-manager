@@ -28,7 +28,7 @@ export function useAuth() {
         .single();
 
       if (error) {
-        console.error('Error fetching user role:', error.message);
+        if (import.meta.env.DEV) console.error('Error fetching user role:', error.message);
         setRole(null);
         setPermissions([]);
         setLocationIds([]);
@@ -38,7 +38,7 @@ export function useAuth() {
 
       // Check for bans globally on the frontend
       if (data.status === 'banned' || (data.businesses && data.businesses.status === 'banned')) {
-        console.warn('User or Business is banned. Forcing logout.');
+        if (import.meta.env.DEV) console.warn('User or Business is banned. Forcing logout.');
         await supabase.auth.signOut();
         setRole(null);
         setPermissions([]);
@@ -72,7 +72,7 @@ export function useAuth() {
 
       return { role: roleName, permissions: userPermissions, locationIds: userLocations };
     } catch (err) {
-      console.error('Unexpected error fetching role:', err);
+      if (import.meta.env.DEV) console.error('Unexpected error fetching role:', err);
       setRole(null);
       setPermissions([]);
       setLocationIds([]);
@@ -154,7 +154,7 @@ export function useAuth() {
       setLoading(false);
       return { data };
     } catch (err) {
-      console.error('Sign in error:', err);
+      if (import.meta.env.DEV) console.error('Sign in error:', err);
       setLoading(false);
       return { error: { message: 'An unexpected error occurred. Please try again.' } };
     }
@@ -165,7 +165,7 @@ export function useAuth() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Error signing out:', error.message);
+        if (import.meta.env.DEV) console.error('Error signing out:', error.message);
       }
       setUser(null);
       setSession(null);
@@ -176,7 +176,7 @@ export function useAuth() {
       setActiveLocationId(null);
       localStorage.removeItem('active_location_id');
     } catch (err) {
-      console.error('Unexpected error signing out:', err);
+      if (import.meta.env.DEV) console.error('Unexpected error signing out:', err);
     } finally {
       setLoading(false);
     }

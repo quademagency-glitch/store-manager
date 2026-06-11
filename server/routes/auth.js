@@ -1,7 +1,9 @@
 const express = require('express');
+const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { validateBody } = require('../middleware/validate');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
@@ -13,29 +15,26 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const registerSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  role_id: z.string().uuid('Invalid role ID'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
 /**
  * POST /api/auth/register
  * Create a new user (Supabase Auth + users table).
  * Requires authentication and manager role.
  */
-router.post('/register', authGuard, permissionCheck('manage_users'), async (req, res) => {
+router.post('/register', authGuard, permissionCheck('manage_users'), validateBody(registerSchema), async (req, res) => {
   try {
     const { name, email, password, role_id } = req.body;
-
-    // ── Validation ──────────────────────────────────────
-    if (!name || !email || !password || !role_id) {
-      return res.status(400).json({
-        error: 'Bad request',
-        message: 'name, email, password, and role_id are required.',
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        error: 'Bad request',
-        message: 'Password must be at least 6 characters.',
-      });
-    }
 
     // ── Create auth user in Supabase ────────────────────
     const { data: authData, error: authError } =
@@ -92,16 +91,9 @@ router.post('/register', authGuard, permissionCheck('manage_users'), async (req,
  * Sign in with email and password.
  * Returns session data and user role.
  */
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        error: 'Bad request',
-        message: 'Email and password are required.',
-      });
-    }
 
     // Sign in via Supabase Auth
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({

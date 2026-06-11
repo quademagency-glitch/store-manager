@@ -2,9 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
+import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 export default function Locations() {
   const { user } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +22,7 @@ export default function Locations() {
       const data = await api.get('/locations');
       setLocations(data || []);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -59,17 +63,18 @@ export default function Locations() {
       setIsModalOpen(false);
       fetchLocations();
     } catch (err) {
-      alert("Error saving location: " + err.message);
+      toast.error("Error saving location: " + err.message);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this location? Ensure no sales or users are actively tied to it.")) {
+    const confirmed = await confirm({ title: 'Delete Location', message: 'Are you sure you want to delete this location? Ensure no sales or users are actively tied to it.', variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       try {
         await api.delete(`/locations/${id}`);
         fetchLocations();
       } catch (err) {
-        alert("Error deleting location: " + err.message);
+        toast.error("Error deleting location: " + err.message);
       }
     }
   };

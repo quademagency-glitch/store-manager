@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import Modal from './Modal';
 import { api } from '../lib/api';
+import { useToast } from '../hooks/useToast';
 
 export default function TrackingModal({ isOpen, onClose, product, locations }) {
+  const toast = useToast();
   const [selectedLocationId, setSelectedLocationId] = useState('');
   
   const [trackedUnits, setTrackedUnits] = useState([]);
@@ -52,7 +54,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations }) {
       
     } catch (err) {
       setError('Failed to fetch tracking data');
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations }) {
 
   const simulateScan = (index) => {
     // Placeholder for Scanner Integration as per user request
-    alert('Scanner Integration Placeholder: In the future, this will send a command to the Scanner App or open the camera.');
+    toast.info('Scanner Integration Placeholder: In the future, this will send a command to the Scanner App or open the camera.');
   };
 
   const handleSave = async () => {

@@ -31,7 +31,7 @@ export default function Overview() {
         setTrendData(Array.isArray(trendRes) ? trendRes : []);
         setRecentActivity(Array.isArray(activityRes) ? activityRes : []);
       } catch (err) {
-        console.error("Error fetching overview stats", err);
+        if (import.meta.env.DEV) console.error("Error fetching overview stats", err);
       } finally {
         setLoading(false);
       }

@@ -15,7 +15,7 @@ export default function Organization() {
         const data = await api.get('/businesses/me');
         setBusiness(data);
       } catch (err) {
-        console.error("Error loading business", err);
+        if (import.meta.env.DEV) console.error("Error loading business", err);
       } finally {
         setLoading(false);
       }

@@ -7,16 +7,23 @@ export function useCustomers() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchCustomers = useCallback(async () => {
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+
+  const fetchCustomers = useCallback(async (pageNum = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get('/customers');
-      setCustomers(data);
-      saveCustomersToIDB(data).catch(console.error);
+      const data = await api.get(`/customers?page=${pageNum}&limit=50`);
+      setCustomers(data.data || []);
+      setPage(data.page || 1);
+      setTotalPages(data.totalPages || 1);
+      setTotalCustomers(data.total || 0);
+      saveCustomersToIDB(data.data || []).catch(console.error);
       return data;
     } catch (err) {
-      console.warn('Network fetch failed, trying offline cache...', err);
+      if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);
       try {
         const cached = await getCustomersFromIDB();
         if (cached && cached.length > 0) {
@@ -40,7 +47,7 @@ export function useCustomers() {
       const data = await api.get(`/customers/search?q=${encodeURIComponent(query)}`);
       return data;
     } catch (err) {
-      console.error('Search failed:', err);
+      if (import.meta.env.DEV) console.error('Search failed:', err);
       return [];
     }
   }, []);
@@ -133,6 +140,9 @@ export function useCustomers() {
     deleteCustomer,
     sendVerificationCode,
     verifyCustomerCode,
-    setError
+    setError,
+    page,
+    totalPages,
+    totalCustomers
   };
 }

@@ -11,19 +11,29 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
     let query = supabaseAdmin
       .from('customers')
-      .select('*')
-      .order('name', { ascending: true });
+      .select('*', { count: 'exact' })
+      .order('name', { ascending: true })
+      .range(offset, offset + limit - 1);
 
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) throw error;
 
-    res.json(data);
+    res.json({
+      data,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (err) {
     console.error('Error fetching customers:', err);
     res.status(500).json({ error: 'Failed to fetch customers' });

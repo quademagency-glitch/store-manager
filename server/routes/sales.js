@@ -1,12 +1,36 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { validateBody } = require('../middleware/validate');
 const crypto = require('crypto');
 const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
+
+const createSaleSchema = z.object({
+  items: z.array(z.object({
+    product_id: z.string().uuid(),
+    quantity: z.number().int().positive(),
+    unit_ids: z.array(z.string().uuid()).optional(),
+  })).min(1, 'A sale must contain at least one item.'),
+  payment_method: z.enum(['cash', 'card', 'mobile']),
+  total_amount: z.number().min(0),
+  subtotal: z.number().min(0).optional(),
+  tax: z.number().min(0).optional(),
+  discount: z.number().min(0).optional(),
+  customer_id: z.string().uuid('A customer must be selected for the sale.'),
+});
+
+const verifyPinSchema = z.object({
+  pin: z.string().min(1, 'PIN is required'),
+});
+
+const finalizeSaleSchema = z.object({
+  amount_paid: z.number().min(0).optional(),
+});
 
 /**
  * GET /api/sales
@@ -15,6 +39,10 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
     let query = supabaseAdmin
       .from('sales')
       .select(`
@@ -27,8 +55,9 @@ router.get('/', authGuard, async (req, res) => {
           unit_price,
           product:products!product_id(id, name, sku)
         )
-      `)
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
@@ -44,10 +73,15 @@ router.get('/', authGuard, async (req, res) => {
       }
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) throw error;
-    res.json(data);
+    res.json({
+      data,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (err) {
     console.error('Error fetching sales:', err);
     res.status(500).json({ error: 'Failed to fetch sales' });
@@ -62,6 +96,9 @@ router.get('/', authGuard, async (req, res) => {
 router.get('/history', authGuard, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
     
     let query = supabaseAdmin
       .from('sales')
@@ -75,8 +112,9 @@ router.get('/history', authGuard, async (req, res) => {
           unit_price,
           product:products!product_id(id, name, sku)
         )
-      `)
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
@@ -99,10 +137,15 @@ router.get('/history', authGuard, async (req, res) => {
       query = query.lte('created_at', endDate);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) throw error;
-    res.json(data);
+    res.json({
+      data,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (err) {
     console.error('Error fetching sales history:', err);
     res.status(500).json({ error: 'Failed to fetch sales history' });
@@ -163,23 +206,9 @@ router.get('/:id', authGuard, async (req, res) => {
  * Create a new sale and update product inventory.
  * Access: Must have create_sales permission
  */
-router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) => {
+router.post('/', authGuard, permissionCheck('create_sales'), validateBody(createSaleSchema), async (req, res) => {
   try {
     const { items, payment_method, total_amount, subtotal, tax, discount, customer_id } = req.body;
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        error: 'Bad request',
-        message: 'A sale must contain at least one item.',
-      });
-    }
-
-    if (!customer_id) {
-      return res.status(400).json({
-        error: 'Bad request',
-        message: 'A customer must be selected for the sale.',
-      });
-    }
 
     const validPaymentMethods = ['cash', 'card', 'mobile'];
     if (!validPaymentMethods.includes(payment_method)) {
@@ -188,17 +217,6 @@ router.post('/', authGuard, permissionCheck('create_sales'), async (req, res) =>
         message: `Invalid payment method. Must be one of: ${validPaymentMethods.join(', ')}.`,
       });
     }
-
-    for (const item of items) {
-      if (!item.product_id || !item.quantity || item.quantity < 1) {
-        return res.status(400).json({
-          error: 'Bad request',
-          message: 'Each item must have a valid product_id and quantity >= 1.',
-        });
-      }
-    }
-
-    const productIds = items.map(i => i.product_id);
 
     let location_id = req.user.active_location_id;
     if (!location_id) {
@@ -509,10 +527,9 @@ router.put('/:id/reject-void', authGuard, async (req, res) => {
  * POST /api/sales/verify-pin
  * Verify a manager PIN (for POS terminal use).
  */
-router.post('/verify-pin', authGuard, async (req, res) => {
+router.post('/verify-pin', authGuard, validateBody(verifyPinSchema), async (req, res) => {
   try {
     const { pin } = req.body;
-    if (!pin) return res.status(400).json({ error: 'PIN is required' });
 
     const { data: managers } = await supabaseAdmin
       .from('users')
@@ -625,7 +642,7 @@ router.delete('/:id', authGuard, async (req, res) => {
  * POST /api/sales/:id/finalize
  * Stage 2 of POS: Finalize a pending sale
  */
-router.post('/:id/finalize', authGuard, permissionCheck('create_sales'), async (req, res) => {
+router.post('/:id/finalize', authGuard, permissionCheck('create_sales'), validateBody(finalizeSaleSchema), async (req, res) => {
   try {
     const saleId = req.params.id;
     const { amount_paid } = req.body;

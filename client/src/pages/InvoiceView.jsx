@@ -52,7 +52,7 @@ export default function InvoiceView() {
           }
         }
       } catch (err) {
-        console.error("Failed to load invoice", err);
+        if (import.meta.env.DEV) console.error("Failed to load invoice", err);
       } finally {
         setLoading(false);
       }

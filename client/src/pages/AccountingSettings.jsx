@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function AccountingSettings() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +32,7 @@ export default function AccountingSettings() {
       const data = await api.get('/accounting/templates');
       setTemplates(data);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -103,18 +107,19 @@ export default function AccountingSettings() {
       setIsModalOpen(false);
       fetchTemplates();
     } catch (err) {
-      console.error('Failed to save template', err);
-      alert('Failed to save template. Make sure you have Admin permissions.');
+      if (import.meta.env.DEV) console.error('Failed to save template', err);
+      toast.error('Failed to save template. Make sure you have Admin permissions.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this template?')) return;
+    const confirmed = await confirm({ title: 'Delete Template', message: 'Are you sure you want to delete this template?', variant: 'danger', confirmText: 'Delete' });
+    if (!confirmed) return;
     try {
       await api.delete(`/accounting/templates/${id}`);
       fetchTemplates();
     } catch (err) {
-      console.error('Failed to delete template', err);
+      if (import.meta.env.DEV) console.error('Failed to delete template', err);
     }
   };
 

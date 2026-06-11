@@ -4,14 +4,19 @@ import { api } from '../lib/api';
 export function useStock() {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalMovements, setTotalMovements] = useState(0);
 
-  const fetchMovements = useCallback(async () => {
+  const fetchMovements = useCallback(async (pageNum = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get('/stock');
-      setMovements(data);
+      const data = await api.get(`/stock?page=${pageNum}&limit=50`);
+      setMovements(data.data || []);
+      setPage(data.page || 1);
+      setTotalPages(data.totalPages || 1);
+      setTotalMovements(data.total || 0);
       return data;
     } catch (err) {
       const message = err.message || 'Failed to fetch stock movements';
@@ -57,6 +62,9 @@ export function useStock() {
     error,
     setError,
     fetchMovements,
-    adjustStock
+    adjustStock,
+    page,
+    totalPages,
+    totalMovements
   };
 }

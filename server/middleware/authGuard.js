@@ -1,5 +1,20 @@
 const { supabaseAdmin } = require('../db/supabase');
 
+// Simple in-memory cache for user data to avoid DB queries on every request
+// Key: JWT token, Value: { user: Object, expiresAt: Number }
+const userCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+// Periodic cleanup of expired cache entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of userCache.entries()) {
+    if (value.expiresAt < now) {
+      userCache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 /**
  * Auth guard middleware.
  * Verifies the JWT from the Authorization header using Supabase.
@@ -21,6 +36,24 @@ async function authGuard(req, res, next) {
         error: 'Unauthorized',
         message: 'Missing or invalid authorization token.',
       });
+    }
+
+    // Check Cache First
+    const cachedData = userCache.get(token);
+    if (cachedData && cachedData.expiresAt > Date.now()) {
+      req.user = cachedData.user;
+      
+      // Attach active location if provided in headers and valid
+      const requestedLocationId = req.headers['x-location-id'];
+      if (requestedLocationId && req.user.location_ids.includes(requestedLocationId)) {
+        req.user.active_location_id = requestedLocationId;
+      } else if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+        req.user.active_location_id = requestedLocationId; // Admins can view any
+      } else if (req.user.location_ids.length > 0) {
+        req.user.active_location_id = req.user.location_ids[0]; // Default to first
+      }
+
+      return next();
     }
 
     // Verify the JWT using Supabase
@@ -101,6 +134,8 @@ async function authGuard(req, res, next) {
     } else {
       req.user.active_location_id = null;
     }
+
+    userCache.set(token, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });
 
     next();
   } catch (err) {

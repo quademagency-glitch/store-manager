@@ -29,7 +29,7 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
       const data = await api.get(url);
       setUnits(data);
     } catch (err) {
-      console.error('Failed to fetch sold units:', err);
+      if (import.meta.env.DEV) console.error('Failed to fetch sold units:', err);
     } finally {
       setLoading(false);
     }

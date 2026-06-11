@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'manage_users', label: 'Manage Staff & Roles' },
@@ -15,6 +17,8 @@ const AVAILABLE_PERMISSIONS = [
 
 export default function RolesManagement() {
   const { user } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingRole, setEditingRole] = useState(null);
@@ -29,7 +33,7 @@ export default function RolesManagement() {
       const data = await api.get('/roles');
       setRoles(data);
     } catch (err) {
-      console.error('Error fetching roles:', err);
+      if (import.meta.env.DEV) console.error('Error fetching roles:', err);
     } finally {
       setLoading(false);
     }
@@ -78,17 +82,18 @@ export default function RolesManagement() {
       setShowModal(false);
       fetchRoles();
     } catch (err) {
-      alert(err.message || 'Failed to save role');
+      toast.error(err.message || 'Failed to save role');
     }
   };
 
   const handleDelete = async (roleId) => {
-    if (window.confirm('Are you sure you want to delete this role? Any users assigned to it will need to be reassigned.')) {
+    const confirmed = await confirm({ title: 'Delete Role', message: 'Are you sure you want to delete this role? Any users assigned to it will need to be reassigned.', variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       try {
         await api.delete(`/roles/${roleId}`);
         fetchRoles();
       } catch (err) {
-        alert(err.message || 'Failed to delete role');
+        toast.error(err.message || 'Failed to delete role');
       }
     }
   };

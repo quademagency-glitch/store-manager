@@ -15,7 +15,7 @@ export function useProducts() {
       setProducts(data);
       saveProductsToIDB(data).catch(console.error); // Cache for offline
     } catch (err) {
-      console.warn('Network fetch failed, trying offline cache...', err);
+      if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);
       try {
         const cached = await getProductsFromIDB();
         if (cached && cached.length > 0) {

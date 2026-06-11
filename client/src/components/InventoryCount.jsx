@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../lib/api';
 import QrScanner from '../components/QrScanner';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 /**
  * InventoryCount — Full inventory count flow:
@@ -10,6 +12,8 @@ import QrScanner from '../components/QrScanner';
  * Step 4: Save model → green (match) or red (discrepancy)
  */
 export default function InventoryCount({ locations, products }) {
+  const toast = useToast();
+  const confirm = useConfirm();
   // Flow state: 'select' | 'counting' | 'review'
   const [step, setStep] = useState('select');
   const [selectedLocationId, setSelectedLocationId] = useState('');
@@ -79,7 +83,7 @@ export default function InventoryCount({ locations, products }) {
       setProductCounts({});
       setStep('counting');
     } catch (err) {
-      alert(err.message || 'Failed to start inventory count');
+      toast.error(err.message || 'Failed to start inventory count');
     }
   };
 
@@ -180,29 +184,29 @@ export default function InventoryCount({ locations, products }) {
     });
   };
 
-  // Complete the entire inventory count
   const completeCount = async () => {
     if (!session) return;
-    if (!confirm('Complete this inventory count? All uncounted items will be flagged.')) return;
+    const confirmed = await confirm({ title: 'Complete Inventory Count', message: 'Complete this inventory count? All uncounted items will be flagged.', confirmText: 'Complete Count' });
+    if (!confirmed) return;
     setCompleting(true);
     try {
       const result = await api.put(`/stocktake/${session.id}/complete`);
-      alert(`Inventory count completed. ${result.summary?.missing || 0} discrepancies flagged.`);
+      toast.success(`Inventory count completed. ${result.summary?.missing || 0} discrepancies flagged.`);
       setStep('select');
       setSession(null);
       setActiveProduct(null);
       setProductCounts({});
       await fetchSessions();
     } catch (err) {
-      alert(err.message || 'Failed to complete count');
+      toast.error(err.message || 'Failed to complete count');
     }
     setCompleting(false);
   };
 
-  // Cancel session
   const cancelCount = async () => {
     if (!session) return;
-    if (!confirm('Cancel this inventory count?')) return;
+    const confirmed = await confirm({ title: 'Cancel Inventory Count', message: 'Cancel this inventory count?', variant: 'danger', confirmText: 'Cancel Count' });
+    if (!confirmed) return;
     try {
       await api.put(`/stocktake/${session.id}/cancel`);
       setStep('select');
@@ -211,19 +215,19 @@ export default function InventoryCount({ locations, products }) {
       setProductCounts({});
       await fetchSessions();
     } catch (err) {
-      alert(err.message || 'Failed to cancel');
+      toast.error(err.message || 'Failed to cancel');
     }
   };
 
-  // Delete session
   const handleDeleteSession = async (e, id) => {
     e.stopPropagation(); // prevent row click
-    if (!confirm('Are you sure you want to delete this inventory count? This cannot be undone.')) return;
+    const confirmed = await confirm({ title: 'Delete Session', message: 'Are you sure you want to delete this inventory count? This cannot be undone.', variant: 'danger', confirmText: 'Delete' });
+    if (!confirmed) return;
     try {
       await api.delete(`/stocktake/${id}`);
       await fetchSessions();
     } catch (err) {
-      alert(err.message || 'Failed to delete inventory count');
+      toast.error(err.message || 'Failed to delete inventory count');
     }
   };
 
@@ -273,7 +277,7 @@ export default function InventoryCount({ locations, products }) {
         setViewSession(data);
       }
     } catch (err) {
-      alert(err.message || 'Failed to fetch session details');
+      toast.error(err.message || 'Failed to fetch session details');
       setStep('select');
     }
     setViewSessionLoading(false);

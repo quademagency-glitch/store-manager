@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getOfflineQueue, removeFromOfflineQueue } from '../lib/idb';
 import { api } from '../lib/api';
+import { useToast } from '../hooks/useToast';
 
 export default function OfflineStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const toast = useToast();
   const [queueCount, setQueueCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -12,7 +14,7 @@ export default function OfflineStatus() {
       const q = await getOfflineQueue();
       setQueueCount(q.length);
     } catch (e) {
-      console.error('Error checking offline queue', e);
+      if (import.meta.env.DEV) console.error('Error checking offline queue', e);
     }
   };
 
@@ -36,7 +38,7 @@ export default function OfflineStatus() {
 
   const handleSync = async () => {
     if (!isOnline) {
-      alert('You are currently offline.');
+      toast.warning('You are currently offline.');
       return;
     }
     
@@ -64,14 +66,14 @@ export default function OfflineStatus() {
           await removeFromOfflineQueue(item.id);
           successCount++;
         } catch (err) {
-          console.error('Failed to sync item', item, err);
+          if (import.meta.env.DEV) console.error('Failed to sync item', item, err);
         }
       }
       
-      alert(`Successfully synced ${successCount} out of ${queue.length} offline transactions.`);
+      toast.success(`Successfully synced ${successCount} out of ${queue.length} offline transactions.`);
       checkQueue();
     } catch (err) {
-      console.error('Sync process failed', err);
+      if (import.meta.env.DEV) console.error('Sync process failed', err);
     } finally {
       setIsSyncing(false);
     }

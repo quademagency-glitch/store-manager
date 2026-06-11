@@ -13,10 +13,14 @@ import AdjustStockModal from '../features/inventory/components/AdjustStockModal'
 import ThresholdModal from '../features/inventory/components/ThresholdModal';
 import TransferModal from '../features/inventory/components/TransferModal';
 import BatchModal from '../features/inventory/components/BatchModal';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
-  const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError } = useStock();
+  const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
 
   const [locations, setLocations] = useState([]);
   const [activeTab, setActiveTab] = useState('products');
@@ -77,9 +81,9 @@ export default function Inventory() {
   const [selectedSoldProduct, setSelectedSoldProduct] = useState(null);
 
   useEffect(() => {
-    fetchMovements();
+    fetchMovements(stockPage);
     api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
-  }, [fetchMovements]);
+  }, [fetchMovements, stockPage]);
 
   // Fetch tab data on tab change
   useEffect(() => {
@@ -199,7 +203,7 @@ export default function Inventory() {
       await api.put(`/stock/transfers/${id}/${action}`);
       fetchTransfers();
     } catch (err) {
-      alert(err.message || `Failed to ${action} transfer`);
+      toast.error(err.message || `Failed to ${action} transfer`);
     }
   };
 
@@ -215,7 +219,7 @@ export default function Inventory() {
       }));
 
     if (counts.length === 0) {
-      alert('Please enter at least one count.');
+      toast.warning('Please enter at least one count.');
       setSubmittingAudit(false);
       return;
     }
@@ -226,7 +230,7 @@ export default function Inventory() {
       setAuditCounts({});
       fetchAudits();
     } catch (err) {
-      alert(err.message || 'Failed to submit audit');
+      toast.error(err.message || 'Failed to submit audit');
     } finally {
       setSubmittingAudit(false);
     }
@@ -264,7 +268,7 @@ export default function Inventory() {
         setIsAdjustModalOpen(true);
       }
     } catch {
-      alert(`No product found for QR code: ${decodedText}`);
+      toast.warning(`No product found for QR code: ${decodedText}`);
     }
   };
 
@@ -364,7 +368,8 @@ export default function Inventory() {
   };
 
   const handleDeleteProduct = async (id, name) => {
-    if (window.confirm(`Delete ${name}? This cannot be undone.`)) {
+    const confirmed = await confirm({ title: 'Delete Product', message: `Delete ${name}? This cannot be undone.`, variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       await deleteProduct(id);
     }
   };
@@ -587,6 +592,31 @@ export default function Inventory() {
               )}
             </tbody>
           </table>
+          
+          {/* Pagination Controls */}
+          {stockTotalPages > 1 && (
+            <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="text-sm text-muted">
+                Showing {(stockPage - 1) * 50 + 1} to {Math.min(stockPage * 50, totalMovements)} of {totalMovements} movements
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  onClick={() => fetchMovements(Math.max(1, stockPage - 1))}
+                  disabled={stockPage === 1}
+                >
+                  Previous
+                </button>
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  onClick={() => fetchMovements(Math.min(stockTotalPages, stockPage + 1))}
+                  disabled={stockPage === stockTotalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

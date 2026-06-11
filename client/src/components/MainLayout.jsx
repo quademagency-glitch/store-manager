@@ -128,7 +128,7 @@ export default function MainLayout() {
           }
         }
       }).catch(err => {
-        console.error("Failed to load locations for switcher", err);
+        if (import.meta.env.DEV) console.error("Failed to load locations for switcher", err);
       });
     }
   }, [locationIds, role, activeLocationId, switchLocation]);

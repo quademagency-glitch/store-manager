@@ -13,7 +13,7 @@ export default function InvoiceList() {
         const res = await api.get('/billing/invoices');
         setInvoices(res || []);
       } catch (err) {
-        console.error("Failed to fetch invoices", err);
+        if (import.meta.env.DEV) console.error("Failed to fetch invoices", err);
       } finally {
         setLoading(false);
       }

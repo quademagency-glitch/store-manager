@@ -3,9 +3,11 @@ import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
+import { useToast } from '../hooks/useToast';
 
 export default function AccountingTemplates() {
   const { user, role, locationIds, activeLocationId } = useAuthContext();
+  const toast = useToast();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -36,7 +38,7 @@ export default function AccountingTemplates() {
       });
       setTemplates(allowed);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export default function AccountingTemplates() {
         setSelectedLocation(activeLocationId);
       }
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     }
   };
 
@@ -72,8 +74,8 @@ export default function AccountingTemplates() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0) return alert('Enter a valid amount');
-    if (!selectedLocation) return alert('Select a branch/location');
+    if (!amount || Number(amount) <= 0) { toast.warning('Enter a valid amount'); return; }
+    if (!selectedLocation) { toast.warning('Select a branch/location'); return; }
 
     try {
       setIsSubmitting(true);
@@ -103,36 +105,83 @@ export default function AccountingTemplates() {
       };
 
       await api.post('/ledger', payload);
-      alert('Entry submitted successfully!');
+      toast.success('Entry submitted successfully!');
       setSelectedTemplate(null);
     } catch (err) {
-      console.error('Submit error:', err);
-      alert('Failed to submit entry. Please try again.');
+      if (import.meta.env.DEV) console.error('Submit error:', err);
+      toast.error('Failed to submit entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Basic conditional logic evaluator
+  // Safe conditional logic evaluator — no eval/new Function
   const evaluateCondition = (conditionStr) => {
     if (!conditionStr) return true;
     try {
-      // E.g. "Payment Method == 'Mobile'" -> Replace {Field Label} with metadata['Field Label']
-      // This is a naive implementation for basic rules.
-      let evalStr = conditionStr;
+      // Resolve {Field Label} placeholders with actual metadata values
+      let resolved = conditionStr;
       Object.keys(metadata).forEach(key => {
-        // replace {key} with the actual value (stringified)
-        evalStr = evalStr.replace(new RegExp(`{${key}}`, 'g'), `'${metadata[key]}'`);
+        resolved = resolved.replace(new RegExp(`\\{${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}`, 'g'), metadata[key] || '');
       });
-      // Removing curly braces that weren't matched (empty fields)
-      evalStr = evalStr.replace(/{[^}]+}/g, "''");
-      
-      // Extremely unsafe to use eval in production if users can inject arbitrary JS,
-      // but since it's admin configured internal logic:
-      // eslint-disable-next-line no-new-func
-      return new Function(`return ${evalStr}`)();
+      // Replace unresolved placeholders with empty string
+      resolved = resolved.replace(/\{[^}]+\}/g, '');
+
+      // Parse and evaluate simple boolean expressions safely
+      // Supports: ==, !=, &&, ||  with string/number operands
+      const evaluateSimple = (expr) => {
+        expr = expr.trim();
+
+        // Handle || (lowest precedence)
+        const orParts = splitOnOperator(expr, '||');
+        if (orParts.length > 1) return orParts.some(p => evaluateSimple(p));
+
+        // Handle && 
+        const andParts = splitOnOperator(expr, '&&');
+        if (andParts.length > 1) return andParts.every(p => evaluateSimple(p));
+
+        // Handle == and !=
+        for (const op of ['!=', '==']) {
+          const idx = expr.indexOf(op);
+          if (idx !== -1) {
+            const left = stripQuotes(expr.substring(0, idx).trim());
+            const right = stripQuotes(expr.substring(idx + op.length).trim());
+            return op === '==' ? left === right : left !== right;
+          }
+        }
+
+        // Single truthy value
+        const val = stripQuotes(expr);
+        return val !== '' && val !== 'false' && val !== '0';
+      };
+
+      const splitOnOperator = (expr, op) => {
+        const parts = [];
+        let depth = 0, start = 0;
+        for (let i = 0; i < expr.length; i++) {
+          if (expr[i] === '(') depth++;
+          else if (expr[i] === ')') depth--;
+          else if (depth === 0 && expr.substring(i, i + op.length) === op) {
+            parts.push(expr.substring(start, i));
+            i += op.length - 1;
+            start = i + 1;
+          }
+        }
+        parts.push(expr.substring(start));
+        return parts.filter(p => p.trim());
+      };
+
+      const stripQuotes = (s) => {
+        s = s.trim();
+        if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+          return s.slice(1, -1);
+        }
+        return s;
+      };
+
+      return evaluateSimple(resolved);
     } catch (err) {
-      console.warn("Logic evaluation failed:", err);
+      if (import.meta.env.DEV) console.warn('Logic evaluation failed:', err);
       return true; // fail open
     }
   };
@@ -312,7 +361,7 @@ export default function AccountingTemplates() {
                 disabled={isSubmitting}
               >
                 {isSubmitting && (
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style={{ color: 'currentColor' }}>
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>

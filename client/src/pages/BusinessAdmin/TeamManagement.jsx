@@ -2,9 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
+import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 export default function TeamManagement() {
   const { hasPermission } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -33,7 +37,7 @@ export default function TeamManagement() {
       setLocations(Array.isArray(locationsRes) ? locationsRes : []);
     } catch (err) {
       setError('Failed to fetch data.');
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -118,14 +122,15 @@ export default function TeamManagement() {
     try {
       await api.put(`/users/${pinForm.userId}/pin`, { pin: pinForm.pin });
       setIsPinModalOpen(false);
-      alert('PIN updated successfully.');
+      toast.success('PIN updated successfully.');
     } catch (err) {
       setError(err.message || 'Failed to set PIN');
     }
   };
 
   const handleDeleteUser = async (id, name) => {
-    if (window.confirm(`Are you sure you want to permanently delete user "${name}"?`)) {
+    const confirmed = await confirm({ title: 'Delete User', message: `Are you sure you want to permanently delete user "${name}"?`, variant: 'danger', confirmText: 'Delete Permanently' });
+    if (confirmed) {
       try {
         await api.delete(`/users/${id}`);
         fetchData();

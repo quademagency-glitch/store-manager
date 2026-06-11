@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
+import { useConfirm } from '../hooks/useConfirm';
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'manage_users', label: 'Manage Users & Roles' },
@@ -15,6 +16,7 @@ const AVAILABLE_PERMISSIONS = [
 
 export default function Settings() {
   const { hasPermission } = useAuthContext();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('users');
 
   const [users, setUsers] = useState([]);
@@ -41,7 +43,7 @@ export default function Settings() {
       setRoles(rolesRes);
     } catch (err) {
       setError('Failed to fetch data.');
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,8 @@ export default function Settings() {
   };
 
   const handleDeleteUser = async (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    const confirmed = await confirm({ title: 'Delete User', message: 'Are you sure you want to delete this user?', variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       try {
         await api.delete(`/users/${id}`);
         fetchData();
@@ -128,7 +131,8 @@ export default function Settings() {
   };
 
   const handleDeleteRole = async (id) => {
-    if (window.confirm('Are you sure you want to delete this role?')) {
+    const confirmed = await confirm({ title: 'Delete Role', message: 'Are you sure you want to delete this role?', variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       try {
         await api.delete(`/roles/${id}`);
         fetchData();

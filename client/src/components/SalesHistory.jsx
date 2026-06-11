@@ -2,20 +2,25 @@ import { useState, useEffect } from 'react';
 import { useSales } from '../hooks/useSales';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from './Modal';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function SalesHistory() {
   const { sales, fetchSales, voidSale, approveVoid, rejectVoid, deleteSale, loading } = useSales();
   const { user } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [pinModal, setPinModal] = useState({ isOpen: false, saleId: null, pin: '' });
 
   useEffect(() => {
     fetchSales();
   }, [fetchSales]);
 
-  const handleVoidClick = (saleId) => {
+  const handleVoidClick = async (saleId) => {
     if (user?.role === 'Manager' || user?.role === 'Business Admin' || user?.role === 'Platform Admin') {
       // Immediate void without PIN since they are already a manager
-      if (window.confirm('Are you sure you want to void this sale? This action cannot be undone.')) {
+      const confirmed = await confirm({ title: 'Void Sale', message: 'Are you sure you want to void this sale? This action cannot be undone.', variant: 'danger', confirmText: 'Void Sale' });
+      if (confirmed) {
         processVoid(saleId, null);
       }
     } else {
@@ -28,13 +33,13 @@ export default function SalesHistory() {
     const res = await voidSale(saleId, pin);
     if (res.success) {
       if (res.status === 'void_pending') {
-        alert('Void request submitted for manager approval.');
+        toast.info('Void request submitted for manager approval.');
       } else {
-        alert('Sale voided successfully.');
+        toast.success('Sale voided successfully.');
       }
       fetchSales(); 
     } else {
-      alert(res.error || 'Failed to void sale');
+      toast.error(res.error || 'Failed to void sale');
     }
   };
 
@@ -51,23 +56,24 @@ export default function SalesHistory() {
 
   const handleApproveVoid = async (saleId) => {
     const res = await approveVoid(saleId);
-    if (res.success) alert('Void approved.');
-    else alert(res.error || 'Failed to approve void.');
+    if (res.success) toast.success('Void approved.');
+    else toast.error(res.error || 'Failed to approve void.');
   };
 
   const handleRejectVoid = async (saleId) => {
     const res = await rejectVoid(saleId);
-    if (res.success) alert('Void rejected.');
-    else alert(res.error || 'Failed to reject void.');
+    if (res.success) toast.success('Void rejected.');
+    else toast.error(res.error || 'Failed to reject void.');
   };
 
   const handleDelete = async (saleId) => {
-    if (window.confirm('Are you sure you want to PERMANENTLY delete this sale? This will remove all records.')) {
+    const confirmed = await confirm({ title: 'Delete Sale', message: 'Are you sure you want to PERMANENTLY delete this sale? This will remove all records.', variant: 'danger', confirmText: 'Delete Permanently' });
+    if (confirmed) {
       const res = await deleteSale(saleId);
       if (res.success) {
-        alert('Sale deleted successfully.');
+        toast.success('Sale deleted successfully.');
       } else {
-        alert(res.error || 'Failed to delete sale');
+        toast.error(res.error || 'Failed to delete sale');
       }
     }
   };

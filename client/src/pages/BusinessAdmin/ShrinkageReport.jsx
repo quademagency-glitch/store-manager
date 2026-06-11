@@ -14,7 +14,7 @@ export default function ShrinkageReport() {
         const res = await api.get('/analytics/shrinkage');
         setEvents(res || []);
       } catch (err) {
-        console.error("Error fetching shrinkage events:", err);
+        if (import.meta.env.DEV) console.error("Error fetching shrinkage events:", err);
       } finally {
         setLoading(false);
       }

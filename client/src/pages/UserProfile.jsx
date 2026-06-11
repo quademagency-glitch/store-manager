@@ -3,9 +3,11 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { QRCodeSVG } from 'qrcode.react';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function UserProfile() {
   const { user, role } = useAuthContext();
+  const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') || 'profile';
   
@@ -36,7 +38,7 @@ export default function UserProfile() {
       setIsLinked(linked);
       return linked;
     } catch (err) {
-      console.error('Failed to check scanner status', err);
+      if (import.meta.env.DEV) console.error('Failed to check scanner status', err);
       return false;
     }
   }, []);
@@ -49,14 +51,15 @@ export default function UserProfile() {
       setIsLinked(false);
     } catch (err) {
       setError(err.message || 'Failed to generate scanner token');
-      console.error('generateToken error:', err);
+      if (import.meta.env.DEV) console.error('generateToken error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const handleUnlink = async () => {
-    if (window.confirm('Are you sure you want to unlink your scanner?')) {
+    const confirmed = await confirm({ title: 'Unlink Scanner', message: 'Are you sure you want to unlink your scanner?', confirmText: 'Unlink' });
+    if (confirmed) {
       try {
         setLoading(true);
         await api.post('/scanner/unlink');
@@ -64,7 +67,7 @@ export default function UserProfile() {
         await generateToken();
       } catch (err) {
         setError('Failed to unlink scanner');
-        console.error(err);
+        if (import.meta.env.DEV) console.error(err);
       } finally {
         setLoading(false);
       }

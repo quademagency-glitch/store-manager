@@ -3,10 +3,12 @@ import { api } from '../../lib/api';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
+import { useToast } from '../../hooks/useToast';
 
 export default function Billing() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
+  const toast = useToast();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -32,7 +34,7 @@ export default function Billing() {
       setSubscription(subRes);
       setInvoices(invRes || []);
     } catch (err) {
-      console.error('Error fetching billing data:', err);
+      if (import.meta.env.DEV) console.error('Error fetching billing data:', err);
     } finally {
       setLoading(false);
     }
@@ -60,10 +62,10 @@ export default function Billing() {
       if (result.authorization_url) {
         window.location.href = result.authorization_url;
       } else {
-        alert('Could not initialize payment. Please try again.');
+        toast.error('Could not initialize payment. Please try again.');
       }
     } catch (err) {
-      alert(err.message || 'Payment initialization failed. Please contact support.');
+      toast.error(err.message || 'Payment initialization failed. Please contact support.');
     } finally {
       setProcessing(false);
     }
@@ -88,8 +90,8 @@ export default function Billing() {
           // granting them immediate access to their new features.
           window.location.reload();
         } catch (err) {
-          console.error('Payment verification failed:', err);
-          alert('We received your payment, but could not verify it immediately. It will be processed shortly by our system.');
+          if (import.meta.env.DEV) console.error('Payment verification failed:', err);
+          toast.warning('We received your payment, but could not verify it immediately. It will be processed shortly by our system.');
           window.history.replaceState({}, document.title, window.location.pathname);
           fetchBillingData();
         }
@@ -334,11 +336,11 @@ export default function Billing() {
                       plan_id: selectedPlan.id,
                       billing_cycle: billingCycle,
                     });
-                    alert('Switched to Free plan!');
+                    toast.success('Switched to Free plan!');
                     setShowUpgradeModal(false);
                     fetchBillingData();
                   } catch (err) {
-                    alert(err.message || 'Failed to switch plan');
+                    toast.error(err.message || 'Failed to switch plan');
                   } finally {
                     setProcessing(false);
                   }

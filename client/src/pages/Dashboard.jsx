@@ -3,9 +3,13 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { api } from '../lib/api';
 import { Link } from 'react-router-dom';
+import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function Dashboard() {
   const { user, role, hasPermission } = useAuthContext();
+  const toast = useToast();
+  const confirm = useConfirm();
   const { summary, recentActivity, loading, fetchSummary, fetchRecentActivity } = useAnalytics();
   
   useEffect(() => {
@@ -31,16 +35,17 @@ export default function Dashboard() {
   };
 
   const handleResetDashboard = async () => {
-    if (window.confirm("WARNING: This will PERMANENTLY delete all sales, stock movements, and alerts for this business/location. Inventory levels will NOT be reset. Are you absolutely sure you want to wipe the dashboard data?")) {
+    const confirmed = await confirm({ title: 'Reset Dashboard', message: 'WARNING: This will PERMANENTLY delete all sales, stock movements, and alerts for this business/location. Inventory levels will NOT be reset. Are you absolutely sure you want to wipe the dashboard data?', variant: 'danger', confirmText: 'Reset Data' });
+    if (confirmed) {
       try {
         const res = await api.delete('/analytics/reset');
         if (res.message) {
-          alert('Dashboard has been reset.');
+          toast.success('Dashboard has been reset.');
           fetchSummary();
           fetchRecentActivity();
         }
       } catch (err) {
-        alert(err.message || 'Failed to reset dashboard');
+        toast.error(err.message || 'Failed to reset dashboard');
       }
     }
   };

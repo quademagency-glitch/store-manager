@@ -63,19 +63,19 @@ export default function Reconciliation() {
       <div className="stats-grid mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-lg)' }}>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Sales</span>
-          <span className="stat-value text-success" style={{ fontSize: '2.25rem', fontWeight: 800, color: '#4ade80' }}>{fmt(totals.salesTotal)}</span>
+          <span className="stat-value text-success" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-success)' }}>{fmt(totals.salesTotal)}</span>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Discounts</span>
-          <span className="stat-value text-warning" style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fbbf24' }}>{fmt(totals.discountsTotal)}</span>
+          <span className="stat-value text-warning" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-warning)' }}>{fmt(totals.discountsTotal)}</span>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Voids</span>
-          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f87171' }}>{fmt(totals.voidsTotal)}</span>
+          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.voidsTotal)}</span>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Shrinkage</span>
-          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f87171' }}>{fmt(totals.shrinkageTotal)}</span>
+          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.shrinkageTotal)}</span>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export default function Reconciliation() {
                   return (
                     <tr key={row.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', transition: 'background-color 0.2s' }}>
                       <td style={{ padding: '1rem var(--space-xl)' }}>
-                        <div className="font-medium text-white">{row.name || 'Unknown'}</div>
+                        <div className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{row.name || 'Unknown'}</div>
                         <div className="text-sm text-muted">{row.email}</div>
                       </td>
                       <td style={{ padding: '1rem' }}>
@@ -170,7 +170,7 @@ export default function Reconciliation() {
                         <div className="text-sm text-muted">{row.shrinkageCount} item(s)</div>
                       </td>
                       <td style={{ padding: '1rem var(--space-xl)' }}>
-                        <div className="font-bold" style={{ color: net >= 0 ? '#4ade80' : '#f87171', fontSize: '1.1rem' }}>
+                        <div className="font-bold" style={{ color: net >= 0 ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem' }}>
                           {fmt(net)}
                         </div>
                       </td>

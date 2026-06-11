@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useCustomers } from '../hooks/useCustomers';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function Customers() {
-  const { customers, loading, error, fetchCustomers, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { customers, loading, error, fetchCustomers, createCustomer, updateCustomer, deleteCustomer, page, totalPages, totalCustomers } = useCustomers();
   const { role } = useAuthContext();
+  const confirm = useConfirm();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,8 +15,8 @@ export default function Customers() {
   const [formData, setFormData] = useState({ name: '', phone: '' });
 
   useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+    fetchCustomers(page);
+  }, [fetchCustomers, page]);
 
   const openNewModal = () => {
     setEditingCustomer(null);
@@ -40,7 +42,8 @@ export default function Customers() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
+    const confirmed = await confirm({ title: 'Delete Customer', message: 'Are you sure you want to delete this customer?', variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       await deleteCustomer(id);
     }
   };
@@ -111,6 +114,31 @@ export default function Customers() {
             )}
           </tbody>
         </table>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="text-sm text-muted">
+              Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalCustomers)} of {totalCustomers} customers
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => fetchCustomers(Math.max(1, page - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => fetchCustomers(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal

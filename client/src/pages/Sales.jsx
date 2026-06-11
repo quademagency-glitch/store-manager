@@ -12,9 +12,11 @@ import VerifyModal from '../features/sales/components/VerifyModal';
 import PaymentModal from '../features/sales/components/PaymentModal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
 import { addToOfflineQueue } from '../lib/idb';
+import { useToast } from '../hooks/useToast';
 
 export default function Sales() {
   const { user } = useAuthContext();
+  const toast = useToast();
   const { products, loading: productsLoading } = useProducts();
   const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
 
@@ -124,7 +126,7 @@ export default function Sales() {
       setSelectedCustomer(res.customer);
       setShowNewCustomerModal(false);
     } else {
-      alert(res.error || 'Failed to create customer');
+      toast.error(res.error || 'Failed to create customer');
     }
   };
 
@@ -134,7 +136,7 @@ export default function Sales() {
       setCustomerToVerify(customer);
       setShowVerifyModal(true);
     } else {
-      alert(res.error || 'Failed to send SMS');
+      toast.error(res.error || 'Failed to send SMS');
     }
   };
 
@@ -149,7 +151,7 @@ export default function Sales() {
         setSelectedCustomer({ ...selectedCustomer, is_verified: true });
       }
     } else {
-      alert(res.error || 'Invalid code');
+      toast.error(res.error || 'Invalid code');
     }
   };
 
@@ -161,13 +163,13 @@ export default function Sales() {
       : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
 
     if (localStock <= 0) {
-      alert('This product is out of stock.');
+      toast.error('This product is out of stock.');
       return;
     }
 
     if (saleType === 'new') {
       if (wizardItems.length > 0) {
-        alert('New Sale only supports a single item. Use Batch Sale for multiple items.');
+        toast.warning('New Sale only supports a single item. Use Batch Sale for multiple items.');
         return;
       }
       setWizardItems([{
@@ -190,11 +192,11 @@ export default function Sales() {
   const confirmBatchQuantity = () => {
     const qty = parseInt(batchQuantityInput, 10);
     if (isNaN(qty) || qty <= 0) {
-      alert('Please enter a valid quantity.');
+      toast.warning('Please enter a valid quantity.');
       return;
     }
     if (qty > selectedProductForBatch.stock) {
-      alert(`Only ${selectedProductForBatch.stock} available in stock.`);
+      toast.warning(`Only ${selectedProductForBatch.stock} available in stock.`);
       return;
     }
 
@@ -226,7 +228,7 @@ export default function Sales() {
       const unitRes = await api.get(`/units/lookup?qr=${encodeURIComponent(decodedText)}`);
       
       if (!unitRes || !unitRes.unit) {
-        alert('QR code exists but is not assigned to any item.');
+        toast.error('QR code exists but is not assigned to any item.');
         return;
       }
 
@@ -236,13 +238,13 @@ export default function Sales() {
       setWizardItems(prev => prev.map(item => {
         if (item.id === itemId) {
           if (unit.product_id !== item.product.id) {
-            alert(`Mismatched product! Scanned unit is ${unit.product.name}, but expected ${item.product.name}.`);
+            toast.error(`Mismatched product! Scanned unit is ${unit.product.name}, but expected ${item.product.name}.`);
             return item;
           }
           
           // Check for duplicate scan within same item
           if (item.scanned_units.includes(unit.id)) {
-            alert('This exact unit was already scanned for this item.');
+            toast.warning('This exact unit was already scanned for this item.');
             return item;
           }
 
@@ -258,7 +260,7 @@ export default function Sales() {
       }));
     } catch (err) {
       // Fallback or generic product
-      alert(`Could not verify specific physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
+      toast.error(`Could not verify specific physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
     }
   };
 
@@ -307,7 +309,7 @@ export default function Sales() {
     } catch (err) {
       if (err.message === 'Failed to fetch' || !navigator.onLine) {
         // Offline: hold the sale locally and proceed to payment
-        alert('You are offline. Proceeding to payment locally. The transaction will be synced later.');
+        toast.warning('You are offline. Proceeding to payment locally. The transaction will be synced later.');
         setPendingSale({
           id: `offline-${Date.now()}`,
           total_amount: totalAmount,

@@ -13,14 +13,19 @@ const router = express.Router();
  */
 router.get('/', authGuard, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
     let query = supabaseAdmin
       .from('stock_movements')
       .select(`
         *,
         product:products!product_id(id, name, sku),
         user:users!user_id(id, name, email)
-      `)
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
@@ -36,10 +41,15 @@ router.get('/', authGuard, async (req, res) => {
       }
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) throw error;
-    res.json(data);
+    res.json({
+      data,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (err) {
     console.error('Error fetching stock movements:', err);
     res.status(500).json({ error: 'Failed to fetch stock movements' });

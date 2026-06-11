@@ -1,0 +1,66 @@
+/* ============================================
+   Platform Admin — Revenue & Billing Stats
+   ============================================ */
+
+.pa-billing-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.pa-revenue-card {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.pa-revenue-card:hover {
+  border-color: rgba(148, 148, 184, 0.25);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.pa-revenue-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.pa-revenue-card.revenue::after { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.pa-revenue-card.mrr::after { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.pa-revenue-card.outstanding::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.pa-revenue-card.failed::after { background: linear-gradient(90deg, #ef4444, #f87171); }
+.pa-revenue-card.subs::after { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+
+.pa-revenue-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pa-revenue-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.pa-revenue-value.positive { color: #4ade80; }
+.pa-revenue-value.accent { color: var(--color-accent-primary); }
+.pa-revenue-value.warning { color: #fbbf24; }
+.pa-revenue-value.error { color: #f87171; }

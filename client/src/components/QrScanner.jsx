@@ -28,12 +28,12 @@ export default function QrScanner({ onScan, onClose, isOpen }) {
           onScan(data.qr_code);
         }
       } catch (err) {
-        console.error('Error parsing SSE scan event:', err);
+        if (import.meta.env.DEV) console.error('Error parsing SSE scan event:', err);
       }
     };
 
     eventSource.onerror = (err) => {
-      console.error('SSE connection error:', err);
+      if (import.meta.env.DEV) console.error('SSE connection error:', err);
       // EventSource automatically reconnects, but we can log it here.
     };
 

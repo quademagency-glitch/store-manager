@@ -1,0 +1,31 @@
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    width: 100%;
+    position: relative;
+    min-height: auto;
+  }
+
+  .dashboard-page {
+    flex-direction: column;
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+    padding: var(--space-lg);
+  }
+
+  .login-container {
+    padding: var(--space-md);
+  }
+
+  .login-card {
+    padding: var(--space-xl);
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -3,9 +3,11 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
 import { api } from '../lib/api';
+import { useConfirm } from '../hooks/useConfirm';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
+  const confirm = useConfirm();
   const { products, loading, error, addProduct, updateProduct, deleteProduct } = useProducts();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,7 +116,8 @@ export default function Products() {
 
   // Delete handler
   const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+    const confirmed = await confirm({ title: 'Delete Product', message: `Are you sure you want to delete ${name}? This action cannot be undone.`, variant: 'danger', confirmText: 'Delete' });
+    if (confirmed) {
       await deleteProduct(id);
     }
   };

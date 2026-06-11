@@ -36,7 +36,7 @@ export default function TillAccount() {
     fetchData();
   }, [startDate, endDate]);
 
-  const fmt = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+  const fmt = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
   if (error) return <div className="p-8 text-center text-red-500 bg-red-500/10 border border-red-500/20 max-w-2xl mx-auto mt-10 rounded">{error}</div>;
 
@@ -79,7 +79,7 @@ export default function TillAccount() {
       ) : !data ? null : data.view === 'basic' ? (
         /* BASIC VIEW FOR CASHIERS */
         <div className="max-w-md mx-auto mt-12 bg-slate-900 border border-slate-800 rounded-lg p-8 text-center">
-          <h2 className="text-slate-400 text-sm uppercase tracking-wider font-semibold mb-2">Expected Cash Deposit</h2>
+          <h2 className="text-slate-400 text-sm uppercase tracking-wider font-semibold mb-2">Expected Cash Deposit ($)</h2>
           <div className={`text-5xl font-mono mb-6 ${data.currentBalance >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
             {fmt(data.currentBalance)}
           </div>
@@ -99,10 +99,10 @@ export default function TillAccount() {
               <div key={branch.location_id} className="bg-[#0f1115] border border-slate-800 rounded-lg overflow-hidden shadow-sm">
                 
                 {/* Branch Ledger Header */}
-                <div className="flex justify-between items-center p-5 bg-slate-900 border-b border-slate-800">
+                <div className="flex justify-between items-center px-4 py-3 bg-slate-900 border-b border-slate-800">
                   <h2 className="text-lg font-medium text-slate-200">{branch.location_name}</h2>
                   <div className="text-right">
-                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Ending Balance</div>
+                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Ending Balance ($)</div>
                     <div className={`text-xl font-mono font-medium ${branch.current_balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {fmt(branch.current_balance)}
                     </div>
@@ -111,16 +111,16 @@ export default function TillAccount() {
 
                 {/* Ledger Summary Bar */}
                 <div className="grid grid-cols-3 divide-x divide-slate-800 border-b border-slate-800 bg-slate-900/50">
-                  <div className="p-4 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Cash Sales (In)</span>
+                  <div className="px-4 py-2 flex flex-col">
+                    <span className="text-xs text-slate-500 uppercase">Cash Sales (In) ($)</span>
                     <span className="text-base font-mono text-emerald-400">{fmt(branch.total_sales)}</span>
                   </div>
-                  <div className="p-4 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Expenses (Out)</span>
+                  <div className="px-4 py-2 flex flex-col">
+                    <span className="text-xs text-slate-500 uppercase">Expenses (Out) ($)</span>
                     <span className="text-base font-mono text-rose-400">{fmt(branch.total_expenses)}</span>
                   </div>
-                  <div className="p-4 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Deposited (Out)</span>
+                  <div className="px-4 py-2 flex flex-col">
+                    <span className="text-xs text-slate-500 uppercase">Deposited (Out) ($)</span>
                     <span className="text-base font-mono text-indigo-400">{fmt(branch.total_deposits)}</span>
                   </div>
                 </div>
@@ -131,12 +131,12 @@ export default function TillAccount() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-900/80 border-b border-slate-800">
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase w-40">Date</th>
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase w-32">Type</th>
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase">Description</th>
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase w-32">User</th>
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash In</th>
-                          <th className="px-5 py-3 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash Out</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-40">Date</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-32">Type</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase">Description</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-32">User</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash In ($)</th>
+                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash Out ($)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/60">
@@ -146,22 +146,22 @@ export default function TillAccount() {
                           
                           return (
                             <tr key={t.id} className="hover:bg-slate-800/30 transition-colors text-sm">
-                              <td className="px-5 py-3 text-slate-300 font-mono text-xs">
+                              <td className="px-4 py-2 text-slate-300 font-mono text-xs">
                                 {new Date(t.date).toLocaleDateString()} {new Date(t.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </td>
-                              <td className="px-5 py-3 text-slate-400 text-xs uppercase tracking-wider">
+                              <td className="px-4 py-2 text-slate-400 text-xs uppercase tracking-wider">
                                 {t.type.replace('_', ' ')}
                               </td>
-                              <td className="px-5 py-3 text-slate-300">
+                              <td className="px-4 py-2 text-slate-300 text-xs">
                                 {t.description}
                               </td>
-                              <td className="px-5 py-3 text-slate-400 text-xs">
+                              <td className="px-4 py-2 text-slate-400 text-xs">
                                 {t.user}
                               </td>
-                              <td className="px-5 py-3 text-right font-mono text-emerald-400/90">
+                              <td className="px-4 py-2 text-right font-mono text-emerald-400/90 text-xs">
                                 {isInflow ? fmt(t.amount) : '-'}
                               </td>
-                              <td className="px-5 py-3 text-right font-mono text-rose-400/90">
+                              <td className="px-4 py-2 text-right font-mono text-rose-400/90 text-xs">
                                 {isOutflow ? fmt(t.amount) : '-'}
                               </td>
                             </tr>

@@ -181,7 +181,7 @@ export default function AccountingSettings() {
       )}
 
       {isModalOpen && (
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTemplate ? "Edit Template" : "Create Template"}>
+        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTemplate ? "Edit Template" : "Create Template"} size="lg">
           <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto max-h-[80vh]">
             
             <div className="grid grid-cols-2 gap-5">
@@ -307,25 +307,28 @@ export default function AccountingSettings() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4 mt-2">
-                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={field.required} 
-                          onChange={e => handleUpdateField(index, 'required', e.target.checked)} 
-                          style={{ accentColor: 'var(--color-accent-primary)' }}
-                        />
-                        Required
-                      </label>
+                    <div className="flex flex-col gap-3 mt-3" style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '12px' }}>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={field.required} 
+                            onChange={e => handleUpdateField(index, 'required', e.target.checked)} 
+                            style={{ accentColor: 'var(--color-accent-primary)' }}
+                          />
+                          Required Field
+                        </label>
+                      </div>
 
-                      <div className="flex-1">
+                      <div>
+                        <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>Conditional Logic</label>
                         <input 
                           type="text" 
                           value={field.showIf || ''} 
                           onChange={e => handleUpdateField(index, 'showIf', e.target.value)} 
                           className="w-full rounded p-2 transition-colors focus:outline-none text-xs" 
-                          style={{ background: 'var(--color-bg-primary)', border: '1px dashed var(--color-border)', color: 'var(--color-text-primary)' }}
-                          placeholder="Conditional Logic (e.g. {field_label} == 'Yes')"
+                          style={{ background: 'var(--color-bg-primary)', border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}
+                          placeholder="e.g. {field_label} == 'Yes'"
                           title="Advanced: Enter basic logic condition. Currently experimental."
                         />
                       </div>

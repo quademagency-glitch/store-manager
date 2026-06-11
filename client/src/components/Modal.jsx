@@ -1,6 +1,12 @@
 import { useEffect } from 'react';
 
-export default function Modal({ isOpen, onClose, title, children }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+  const sizeClasses = {
+    sm: 'modal-sm',
+    md: 'modal-md',
+    lg: 'modal-lg',
+    xl: 'modal-xl',
+  };
   // Prevent body scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -18,7 +24,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div 
-        className="modal-content" 
+        className={`modal-content ${sizeClasses[size] || 'modal-md'}`} 
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

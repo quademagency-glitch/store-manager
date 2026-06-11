@@ -1707,6 +1707,11 @@ input {
   flex-direction: column;
 }
 
+.modal-content.modal-sm { max-width: 400px; }
+.modal-content.modal-md { max-width: 500px; }
+.modal-content.modal-lg { max-width: 640px; }
+.modal-content.modal-xl { max-width: 800px; }
+
 [data-theme="dark"] .modal-content {
   background: rgba(20, 20, 25, 0.75);
   border-color: rgba(255, 255, 255, 0.1);

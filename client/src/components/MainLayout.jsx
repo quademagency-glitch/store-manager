@@ -484,7 +484,7 @@ export default function MainLayout() {
             })}
           </nav>
 
-          <div className="mobile-drawer-footer" style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 'auto' }}>
+          <div className="mobile-drawer-footer" style={{ padding: '16px', borderTop: '1px solid var(--color-border)', marginTop: 'auto' }}>
             {availableLocations.length > 1 && (
               <div style={{ marginBottom: '16px' }}>
                 <select 
@@ -493,10 +493,10 @@ export default function MainLayout() {
                     switchLocation(e.target.value);
                     setIsMobileMenuOpen(false);
                   }}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                 >
                   {availableLocations.map(loc => (
-                    <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
                   ))}
                 </select>
               </div>
@@ -505,7 +505,7 @@ export default function MainLayout() {
               <button 
                 className="sidebar-signout" 
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', cursor: 'pointer', color: 'white' }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderRadius: '8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', color: 'var(--color-text-primary)' }}
               >
                 <div className="sidebar-avatar" style={{ width: '24px', height: '24px', fontSize: '0.8rem', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
                   {user?.email?.charAt(0)?.toUpperCase() || '?'}
@@ -646,7 +646,7 @@ export default function MainLayout() {
                 </div>
                 <div className="sidebar-user-details" style={{ textAlign: 'left' }}>
                   <span className="sidebar-user-name" style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600 }}>{user?.email?.split('@')[0] || 'User'}</span>
-                  <span className="sidebar-user-role" style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>{role || 'Unknown'}</span>
+                  <span className="sidebar-user-role" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{role || 'Unknown'}</span>
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">

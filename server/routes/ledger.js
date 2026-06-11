@@ -31,8 +31,9 @@ router.get('/till-balance', authGuard, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
 
-    // Check permissions manually since it's a dynamic custom permission
-    const hasHistoryPerm = req.user.permissions?.includes('view_till_history') || req.user.role === 'Business Admin';
+    // Check permissions manually or explicitly allow Admins and Managers
+    const hasHistoryPerm = req.user.permissions?.includes('view_till_history') || 
+                           ['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role);
 
     // Determine the date range
     let startD = new Date();

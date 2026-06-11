@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 
 export default function SalesRecord() {
   const { hasPermission } = useAuthContext();
+  const [searchParams] = useSearchParams();
   
-  // Date range state (default to today)
+  // Date range state (default to today or URL param)
   const today = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
+  const urlDate = searchParams.get('date');
+  const highlightId = searchParams.get('highlight');
+  
+  const [startDate, setStartDate] = useState(urlDate || today);
+  const [endDate, setEndDate] = useState(urlDate || today);
   
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -176,9 +181,17 @@ export default function SalesRecord() {
               </tr>
             </thead>
             <tbody>
-              {sales.map(sale => (
-                <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '16px' }}>{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
+              {sales.map(sale => {
+                const isHighlighted = highlightId && sale.id === highlightId;
+                return (
+                <tr key={sale.id} style={{ 
+                  borderBottom: '1px solid var(--color-border)',
+                  backgroundColor: isHighlighted ? 'rgba(79, 70, 229, 0.05)' : 'transparent'
+                }}>
+                  <td style={{ padding: '16px' }}>
+                    {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
+                    {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
+                  </td>
                   <td style={{ padding: '16px' }}>
                     {canReturn ? (
                       <button 
@@ -209,7 +222,7 @@ export default function SalesRecord() {
                   </td>
                   <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         )}

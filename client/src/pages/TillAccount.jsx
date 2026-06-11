@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuthContext } from '../lib/AuthContext';
 
 const Icons = {
   printer: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
@@ -7,6 +9,7 @@ const Icons = {
 };
 
 export default function TillAccount() {
+  const { role } = useAuthContext();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -151,7 +154,20 @@ export default function TillAccount() {
                                 {t.type.replace('_', ' ')}
                               </td>
                               <td className="px-4 py-2 text-slate-300 text-[13px] border-r border-slate-800/50">
-                                {t.description}
+                                <div>{t.description}</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  ID:{' '}
+                                  {t.type === 'sale' && (role === 'Business Admin' || role === 'Platform Admin') ? (
+                                    <Link 
+                                      to={`/sales-record?date=${t.date.split('T')[0]}&highlight=${t.id}`}
+                                      className="text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                                    >
+                                      {t.id.substring(0, 8)}
+                                    </Link>
+                                  ) : (
+                                    t.id.substring(0, 8)
+                                  )}
+                                </div>
                               </td>
                               <td className="px-4 py-2 text-right font-mono text-emerald-400 text-[13px] border-r border-slate-800/50">
                                 {isInflow ? fmt(t.amount) : ''}

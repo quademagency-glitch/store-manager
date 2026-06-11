@@ -18,6 +18,8 @@ router.get('/', authGuard, permissionCheck('manage_users'), async (req, res) => 
     if (req.user.role !== 'Platform Admin') {
       // Get Generic roles (business_id IS NULL) + their own custom roles
       query = query.or(`business_id.is.null,business_id.eq.${req.user.business_id}`);
+      // Exclude the Platform Admin role from the list
+      query = query.neq('name', 'Platform Admin');
     }
 
     const { data, error } = await query;

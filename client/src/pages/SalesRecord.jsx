@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
+import ReceiptModal from '../features/sales/components/ReceiptModal';
 
 export default function SalesRecord() {
   const { hasPermission } = useAuthContext();
@@ -25,6 +26,10 @@ export default function SalesRecord() {
   const [selectedSale, setSelectedSale] = useState(null);
   const [returnItems, setReturnItems] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Receipt Modal State
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [selectedReceiptSale, setSelectedReceiptSale] = useState(null);
 
   useEffect(() => {
     fetchHistory();
@@ -105,6 +110,48 @@ export default function SalesRecord() {
     } catch (err) {
       console.error(err);
       alert(err.message || 'Failed to process return');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const openReceiptModal = (sale) => {
+    setSelectedReceiptSale(sale);
+    setIsReceiptModalOpen(true);
+  };
+
+  const closeReceiptModal = () => {
+    setIsReceiptModalOpen(false);
+    setSelectedReceiptSale(null);
+  };
+
+  const handleVoidSale = async (sale) => {
+    if (!window.confirm(`Are you sure you want to void sale #${sale.receipt_number || sale.id.substring(0,8)}?`)) return;
+    setIsProcessing(true);
+    try {
+      await api.put(`/sales/${sale.id}/void`);
+      alert('Sale voided successfully!');
+      closeReceiptModal();
+      fetchHistory();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to void sale');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteSale = async (sale) => {
+    if (!window.confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete sale #${sale.receipt_number || sale.id.substring(0,8)}? This action cannot be undone.`)) return;
+    setIsProcessing(true);
+    try {
+      await api.delete(`/sales/${sale.id}`);
+      alert('Sale deleted successfully!');
+      closeReceiptModal();
+      fetchHistory();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to delete sale');
     } finally {
       setIsProcessing(false);
     }
@@ -193,19 +240,13 @@ export default function SalesRecord() {
                     {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
                   </td>
                   <td style={{ padding: '16px' }}>
-                    {canReturn ? (
-                      <button 
-                        onClick={() => openReturnModal(sale)}
-                        className="btn btn-sm"
-                        style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        {sale.receipt_number || sale.id.substring(0,8)}
-                      </button>
-                    ) : (
-                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                        {sale.receipt_number || sale.id.substring(0,8)}
-                      </span>
-                    )}
+                    <button 
+                      onClick={() => openReceiptModal(sale)}
+                      className="btn btn-sm"
+                      style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      {sale.receipt_number || sale.id.substring(0,8)}
+                    </button>
                   </td>
                   <td style={{ padding: '16px' }}>
                     {sale.customer ? (
@@ -312,6 +353,50 @@ export default function SalesRecord() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Receipt & Actions Modal */}
+      {selectedReceiptSale && (
+        <ReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={closeReceiptModal}
+          receiptData={selectedReceiptSale}
+          fmt={fmt}
+          actions={
+            <>
+              {canReturn && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.return_status !== 'full' && (
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-warning" 
+                  onClick={() => { closeReceiptModal(); openReturnModal(selectedReceiptSale); }}
+                >
+                  Process Return
+                </button>
+              )}
+              {canReturn && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.status !== 'void_pending' && (
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-secondary" 
+                  onClick={() => handleVoidSale(selectedReceiptSale)}
+                  disabled={isProcessing}
+                >
+                  Void Sale
+                </button>
+              )}
+              {hasPermission('manage_business') && (
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-error" 
+                  onClick={() => handleDeleteSale(selectedReceiptSale)}
+                  disabled={isProcessing}
+                  style={{ background: 'var(--color-error)', color: 'white', border: 'none' }}
+                >
+                  Delete Sale
+                </button>
+              )}
+            </>
+          }
+        />
       )}
     </div>
   );

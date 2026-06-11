@@ -1,6 +1,6 @@
 import Modal from '../../../components/Modal';
 
-export default function ReceiptModal({ isOpen, onClose, receiptData, fmt }) {
+export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, actions }) {
   if (!receiptData) return null;
 
   const handlePrint = () => {
@@ -55,9 +55,14 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt }) {
         </div>
       </div>
       
-      <div className="modal-footer" style={{ marginTop: '2rem' }}>
-        <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-        <button type="button" className="btn btn-primary" onClick={handlePrint}>Print Receipt</button>
+      <div className="modal-footer" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {actions}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button type="button" className="btn btn-primary" onClick={handlePrint}>Print Receipt</button>
+        </div>
       </div>
     </Modal>
   );

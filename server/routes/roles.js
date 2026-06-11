@@ -43,6 +43,10 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
       return res.status(400).json({ error: 'Name and permissions array are required' });
     }
 
+    if (name.toLowerCase() === 'platform admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'You cannot create a role named Platform Admin' });
+    }
+
     const business_id = req.user.role === 'Platform Admin' ? req.body.business_id || null : req.user.business_id;
 
     const { data, error } = await supabaseAdmin
@@ -77,6 +81,10 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
     if (!name || !Array.isArray(permissions)) {
       return res.status(400).json({ error: 'Name and permissions array are required' });
+    }
+
+    if (name.toLowerCase() === 'platform admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'You cannot rename a role to Platform Admin' });
     }
 
     // Check if the role exists and if it's generic

@@ -1069,6 +1069,7 @@ input {
 
 /* Welcome Banner */
 .dashboard-welcome-banner {
+  position: relative;
   background: var(--color-bg-card);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -1079,20 +1080,21 @@ input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: all var(--transition-normal);
+  overflow: hidden;
 }
 
 [data-theme="dark"] .dashboard-welcome-banner {
-  background: rgba(20, 20, 25, 0.6);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 40px rgba(99, 102, 241, 0.08);
+  background: rgba(18, 18, 24, 0.45);
+  border-color: rgba(99, 102, 241, 0.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="light"] .dashboard-welcome-banner {
-  background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(0, 0, 0, 0.05);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 4px 12px rgba(0, 0, 0, 0.02);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(99, 102, 241, 0.1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 8px 24px rgba(99, 102, 241, 0.05);
 }
 
 .banner-content {
@@ -1108,8 +1110,12 @@ input {
 }
 
 .highlight-text {
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-weight: 800;
+  background: linear-gradient(135deg, #818cf8, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.2));
 }
 
 .banner-subtitle {
@@ -1122,7 +1128,30 @@ input {
 }
 
 .banner-glow-1, .banner-glow-2 {
-  display: none;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.banner-glow-1 {
+  width: 250px;
+  height: 250px;
+  background: var(--color-accent-primary);
+  top: -80px;
+  right: -50px;
+  animation: float 12s ease-in-out infinite;
+}
+
+.banner-glow-2 {
+  width: 200px;
+  height: 200px;
+  background: #c084fc;
+  bottom: -60px;
+  left: 15%;
+  animation: float 16s ease-in-out infinite reverse;
 }
 
 /* Quick Actions */

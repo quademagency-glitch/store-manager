@@ -173,7 +173,7 @@ export default function MainLayout() {
       title: 'Accounting',
       icon: Icons.billing,
       items: [
-        { path: '/till-account', label: 'Till Account', icon: Icons.billing, visible: hasPermission('view_till_balance') || hasPermission('view_till_history') || role === 'Platform Admin' || role === 'Business Admin' },
+        { path: '/till-account', label: 'Till Account', icon: Icons.billing, visible: true },
         { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)

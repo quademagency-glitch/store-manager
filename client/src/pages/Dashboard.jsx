@@ -102,18 +102,16 @@ export default function Dashboard() {
               <span>View Reports</span>
             </Link>
           )}
-          {(hasPermission('view_till_balance') || hasPermission('view_till_history') || role === 'Platform Admin' || role === 'Business Admin') && (
-            <Link to="/till-account" className="action-btn">
-              <div className="action-icon action-icon-secondary">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
-                  <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
-                  <path d="M7 14H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-              <span>Till Account</span>
-            </Link>
-          )}
+          <Link to="/till-account" className="action-btn">
+            <div className="action-icon action-icon-secondary">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+                <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
+                <path d="M7 14H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <span>Till Account</span>
+          </Link>
           {(role === 'Business Admin' || role === 'Manager') && (
             <button onClick={handleResetDashboard} className="action-btn">
               <div className="action-icon action-icon-error" style={{ color: 'var(--color-error)' }}>

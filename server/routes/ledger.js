@@ -32,12 +32,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     const { start_date, end_date } = req.query;
 
     // Check permissions manually since it's a dynamic custom permission
-    const hasBalancePerm = req.user.permissions?.includes('view_till_balance');
-    const hasHistoryPerm = req.user.permissions?.includes('view_till_history');
-
-    if (!hasBalancePerm && !hasHistoryPerm && req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to view the till.' });
-    }
+    const hasHistoryPerm = req.user.permissions?.includes('view_till_history') || req.user.role === 'Business Admin';
 
     // Determine the date range
     let startD = new Date();
@@ -101,7 +96,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     const locMap = {};
     locations.forEach(l => locMap[l.id] = l.name);
 
-    // If the user only has view_till_balance (Basic view for cashiers)
+    // If the user does not have history permission (Basic view for cashiers)
     if (!hasHistoryPerm && req.user.role !== 'Platform Admin') {
       const totalCashSales = sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
       const totalExpenses = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + Number(e.amount), 0);

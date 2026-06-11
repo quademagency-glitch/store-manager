@@ -17,14 +17,7 @@ function permissionCheck(...requiredPermissions) {
       });
     }
 
-    if (requiredPermissions.includes('manage_platform')) {
-      if (req.user.role !== 'Platform Admin') {
-        return res.status(403).json({ error: 'Forbidden', message: 'Platform Admin required.' });
-      }
-      return next();
-    }
-
-    if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+    if (req.user.role === 'Platform Admin') {
       return next();
     }
 

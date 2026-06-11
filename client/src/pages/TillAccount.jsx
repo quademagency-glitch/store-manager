@@ -145,7 +145,7 @@ export default function TillAccount() {
                           return (
                             <tr key={t.id} className="hover:bg-[#16181d] transition-colors bg-[#0a0a0f]">
                               <td className="px-4 py-2 text-slate-300 font-mono text-[13px] border-r border-slate-800/50">
-                                {new Date(t.date).toLocaleDateString()} {new Date(t.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                {new Date(t.date).toLocaleDateString()}
                               </td>
                               <td className="px-4 py-2 text-slate-400 text-[11px] uppercase tracking-wider border-r border-slate-800/50 font-bold">
                                 {t.type.replace('_', ' ')}

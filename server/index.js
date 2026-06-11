@@ -20,6 +20,7 @@ const unitsRoutes = require('./routes/units');
 const stocktakeRoutes = require('./routes/stocktake');
 const scannerRoutes = require('./routes/scanner');
 const returnsRoutes = require('./routes/returns');
+const ledgerRoutes = require('./routes/ledger');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -131,6 +132,9 @@ app.use('/api/scanner', scannerRoutes);
 
 // Returns routes
 app.use('/api/returns', returnsRoutes);
+
+// Ledger routes
+app.use('/api/ledger', ledgerRoutes);
 
 // ============================================
 // Error handling

@@ -14,10 +14,12 @@ ALTER TABLE public.roles DROP CONSTRAINT IF EXISTS roles_name_key;
 
 -- Add a new composite unique constraint
 -- A role name must be unique within a business. If business_id is NULL, it's a platform generic role.
+ALTER TABLE public.roles DROP CONSTRAINT IF EXISTS roles_name_business_id_key;
 ALTER TABLE public.roles ADD CONSTRAINT roles_name_business_id_key UNIQUE NULLS NOT DISTINCT (name, business_id);
 
 -- Update RLS policies for Roles
 DROP POLICY IF EXISTS "Anyone can read roles" ON public.roles;
+DROP POLICY IF EXISTS "Authenticated users can read their roles" ON public.roles;
 CREATE POLICY "Authenticated users can read their roles"
   ON public.roles
   FOR SELECT
@@ -29,6 +31,7 @@ CREATE POLICY "Authenticated users can read their roles"
   );
 
 DROP POLICY IF EXISTS "Managers can insert roles" ON public.roles;
+DROP POLICY IF EXISTS "Managers can insert custom roles" ON public.roles;
 CREATE POLICY "Managers can insert custom roles"
   ON public.roles
   FOR INSERT
@@ -39,6 +42,7 @@ CREATE POLICY "Managers can insert custom roles"
   );
 
 DROP POLICY IF EXISTS "Managers can update roles" ON public.roles;
+DROP POLICY IF EXISTS "Managers can update custom roles" ON public.roles;
 CREATE POLICY "Managers can update custom roles"
   ON public.roles
   FOR UPDATE
@@ -49,6 +53,7 @@ CREATE POLICY "Managers can update custom roles"
   );
 
 DROP POLICY IF EXISTS "Managers can delete roles" ON public.roles;
+DROP POLICY IF EXISTS "Managers can delete custom roles" ON public.roles;
 CREATE POLICY "Managers can delete custom roles"
   ON public.roles
   FOR DELETE

@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import Customers from "./pages/Customers";
 import Returns from "./pages/Returns";
 import SalesRecord from "./pages/SalesRecord";
+import TillAccount from "./pages/TillAccount";
 import PlatformAdmin from "./pages/PlatformAdmin";
 import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from './pages/UpdatePassword';
@@ -60,6 +61,9 @@ export default function App() {
             } />
             <Route path="/sales-record" element={
               <ProtectedRoute><SalesRecord /></ProtectedRoute>
+            } />
+            <Route path="/till-account" element={
+              <ProtectedRoute><TillAccount /></ProtectedRoute>
             } />
             <Route path="/customers" element={
               <ProtectedRoute><Customers /></ProtectedRoute>

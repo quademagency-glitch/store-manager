@@ -29,9 +29,9 @@ export default function AccountingTemplates() {
     try {
       setLoading(true);
       const data = await api.get('/accounting/templates');
-      // Filter templates based on user role (Admins and Managers see all)
+      // Filter templates based on user role (Admins see all)
       const allowed = data.filter(t => {
-        if (['Business Admin', 'Platform Admin', 'Manager'].includes(role)) return true;
+        if (['Business Admin', 'Platform Admin'].includes(role)) return true;
         return t.assigned_roles?.includes(role);
       });
       setTemplates(allowed);

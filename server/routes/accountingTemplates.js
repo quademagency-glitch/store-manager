@@ -34,6 +34,10 @@ router.post('/', authGuard, async (req, res) => {
       return res.status(400).json({ error: 'Name and Type are required.' });
     }
 
+    // Ensure Business Admin is always assigned
+    const finalRoles = new Set(assigned_roles || []);
+    finalRoles.add('Business Admin');
+
     const { data, error } = await supabaseAdmin
       .from('accounting_templates')
       .insert([{
@@ -41,7 +45,7 @@ router.post('/', authGuard, async (req, res) => {
         name,
         description,
         type,
-        assigned_roles: assigned_roles || [],
+        assigned_roles: Array.from(finalRoles),
         fields_schema: fields_schema || [],
         conditional_logic: conditional_logic || []
       }])
@@ -65,13 +69,17 @@ router.put('/:id', authGuard, async (req, res) => {
 
     const { name, description, type, assigned_roles, fields_schema, conditional_logic } = req.body;
 
+    // Ensure Business Admin is always assigned
+    const finalRoles = new Set(assigned_roles || []);
+    finalRoles.add('Business Admin');
+
     const { data, error } = await supabaseAdmin
       .from('accounting_templates')
       .update({
         name,
         description,
         type,
-        assigned_roles: assigned_roles || [],
+        assigned_roles: Array.from(finalRoles),
         fields_schema: fields_schema || [],
         conditional_logic: conditional_logic || [],
         updated_at: new Date().toISOString()

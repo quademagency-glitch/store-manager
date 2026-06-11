@@ -38,36 +38,36 @@ export default function TillAccount() {
 
   const fmt = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
-  if (error) return <div className="p-8 text-center text-red-500 bg-red-500/10 border border-red-500/20 max-w-2xl mx-auto mt-10 rounded">{error}</div>;
+  if (error) return <div className="p-8 text-center text-red-500 bg-red-500/10 border border-red-500/20 max-w-2xl mx-auto mt-10 rounded-none">{error}</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full h-full flex flex-col p-4 md:p-6 bg-[#0a0a0f]">
       {/* Header Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8 border-b border-slate-800 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 border-b border-slate-800 pb-4 w-full">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-100">Till Account Ledger</h1>
-          <p className="text-sm text-slate-400 mt-1">Cash movements and vault balance.</p>
+          <h1 className="text-xl font-bold text-slate-100 uppercase tracking-wide">Till Account Ledger</h1>
+          <p className="text-xs text-slate-400 mt-1 uppercase">Cash movements and vault balance.</p>
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-slate-900 border border-slate-700 rounded-md p-1">
+          <div className="flex items-center bg-transparent border border-slate-700 p-0.5">
             <input 
               type="date" 
-              className="bg-transparent text-slate-200 text-sm px-3 py-1.5 outline-none"
+              className="bg-transparent text-slate-200 text-sm px-2 py-1 outline-none font-mono"
               value={startDate} 
               onChange={e => setStartDate(e.target.value)} 
             />
-            <span className="text-slate-500 px-2">to</span>
+            <span className="text-slate-500 px-2 font-mono">-</span>
             <input 
               type="date" 
-              className="bg-transparent text-slate-200 text-sm px-3 py-1.5 outline-none"
+              className="bg-transparent text-slate-200 text-sm px-2 py-1 outline-none font-mono"
               value={endDate} 
               onChange={e => setEndDate(e.target.value)} 
             />
           </div>
           <button 
             onClick={() => window.print()} 
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm border border-slate-700 transition-colors"
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-1.5 text-sm border border-slate-700 transition-colors uppercase font-medium"
           >
             {Icons.printer} Print
           </button>
@@ -78,91 +78,89 @@ export default function TillAccount() {
         <div className="flex justify-center py-20 text-indigo-400">{Icons.loader}</div>
       ) : !data ? null : data.view === 'basic' ? (
         /* BASIC VIEW FOR CASHIERS */
-        <div className="max-w-md mx-auto mt-12 bg-slate-900 border border-slate-800 rounded-lg p-8 text-center">
+        <div className="w-full max-w-lg mx-auto mt-12 bg-transparent border border-slate-800 p-8 text-center">
           <h2 className="text-slate-400 text-sm uppercase tracking-wider font-semibold mb-2">Expected Cash Deposit ($)</h2>
-          <div className={`text-5xl font-mono mb-6 ${data.currentBalance >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
+          <div className={`text-5xl font-mono font-bold mb-6 ${data.currentBalance >= 0 ? 'text-emerald-400' : 'text-rose-500'}`}>
             {fmt(data.currentBalance)}
           </div>
-          <div className="text-sm text-slate-400 text-left border-t border-slate-800 pt-4">
+          <div className="text-xs text-slate-400 text-left border-t border-slate-800 pt-4 uppercase">
             Total cash sales minus expenses during your shift. Ensure physical cash exactly matches this balance.
           </div>
         </div>
       ) : (
         /* ADVANCED LEDGER VIEW */
-        <div id="till-print-area" className="space-y-12">
+        <div id="till-print-area" className="flex-1 w-full space-y-12">
           {data.branches.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 bg-slate-900/50 rounded-lg border border-slate-800">
+            <div className="text-center py-12 text-slate-500 bg-transparent border border-slate-800 uppercase text-sm">
               No transactions found for the selected date range.
             </div>
           ) : (
             data.branches.map(branch => (
-              <div key={branch.location_id} className="bg-[#0f1115] border border-slate-800 rounded-lg overflow-hidden shadow-sm">
+              <div key={branch.location_id} className="w-full bg-[#0a0a0f] border border-slate-800 flex flex-col">
                 
                 {/* Branch Ledger Header */}
-                <div className="flex justify-between items-center px-4 py-3 bg-slate-900 border-b border-slate-800">
-                  <h2 className="text-lg font-medium text-slate-200">{branch.location_name}</h2>
-                  <div className="text-right">
-                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Ending Balance ($)</div>
-                    <div className={`text-xl font-mono font-medium ${branch.current_balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {fmt(branch.current_balance)}
+                <div className="flex justify-between items-center px-4 py-3 bg-[#111318] border-b border-slate-800">
+                  <h2 className="text-base font-bold text-slate-200 uppercase tracking-widest">{branch.location_name}</h2>
+                  <div className="flex gap-8 text-right">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">Cash Sales (In) ($)</span>
+                      <span className="text-sm font-mono text-emerald-400 font-bold">{fmt(branch.total_sales)}</span>
                     </div>
-                  </div>
-                </div>
-
-                {/* Ledger Summary Bar */}
-                <div className="grid grid-cols-3 divide-x divide-slate-800 border-b border-slate-800 bg-slate-900/50">
-                  <div className="px-4 py-2 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Cash Sales (In) ($)</span>
-                    <span className="text-base font-mono text-emerald-400">{fmt(branch.total_sales)}</span>
-                  </div>
-                  <div className="px-4 py-2 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Expenses (Out) ($)</span>
-                    <span className="text-base font-mono text-rose-400">{fmt(branch.total_expenses)}</span>
-                  </div>
-                  <div className="px-4 py-2 flex flex-col">
-                    <span className="text-xs text-slate-500 uppercase">Deposited (Out) ($)</span>
-                    <span className="text-base font-mono text-indigo-400">{fmt(branch.total_deposits)}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">Expenses (Out) ($)</span>
+                      <span className="text-sm font-mono text-rose-400 font-bold">{fmt(branch.total_expenses)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-500 uppercase tracking-widest">Deposited (Out) ($)</span>
+                      <span className="text-sm font-mono text-indigo-400 font-bold">{fmt(branch.total_deposits)}</span>
+                    </div>
+                    <div className="flex flex-col ml-4 pl-4 border-l border-slate-700">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-widest">Ending Balance ($)</span>
+                      <span className={`text-base font-mono font-bold ${branch.current_balance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {fmt(branch.current_balance)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Ledger Transactions Table */}
                 {branch.transactions.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  <div className="w-full overflow-x-auto">
+                    <table className="w-full text-left border-collapse whitespace-nowrap">
                       <thead>
-                        <tr className="bg-slate-900/80 border-b border-slate-800">
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-40">Date</th>
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-32">Type</th>
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase">Description</th>
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase w-32">User</th>
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash In ($)</th>
-                          <th className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase text-right w-32">Cash Out ($)</th>
+                        <tr className="bg-[#1a1c23] border-b border-slate-700">
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-40 border-r border-slate-800/50">Date</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-32 border-r border-slate-800/50">Type</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider border-r border-slate-800/50">Description</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-32 border-r border-slate-800/50">User</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32 border-r border-slate-800/50">Cash In ($)</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32">Cash Out ($)</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60">
+                      <tbody className="divide-y divide-slate-800">
                         {branch.transactions.map((t) => {
                           const isInflow = t.type === 'sale' || t.type === 'pay_in';
                           const isOutflow = t.type === 'expense' || t.type === 'deposit_to_bank';
                           
                           return (
-                            <tr key={t.id} className="hover:bg-slate-800/30 transition-colors text-sm">
-                              <td className="px-4 py-2 text-slate-300 font-mono text-xs">
+                            <tr key={t.id} className="hover:bg-[#16181d] transition-colors bg-[#0a0a0f]">
+                              <td className="px-4 py-2 text-slate-300 font-mono text-[13px] border-r border-slate-800/50">
                                 {new Date(t.date).toLocaleDateString()} {new Date(t.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                               </td>
-                              <td className="px-4 py-2 text-slate-400 text-xs uppercase tracking-wider">
+                              <td className="px-4 py-2 text-slate-400 text-[11px] uppercase tracking-wider border-r border-slate-800/50 font-bold">
                                 {t.type.replace('_', ' ')}
                               </td>
-                              <td className="px-4 py-2 text-slate-300 text-xs">
+                              <td className="px-4 py-2 text-slate-300 text-[13px] border-r border-slate-800/50">
                                 {t.description}
                               </td>
-                              <td className="px-4 py-2 text-slate-400 text-xs">
+                              <td className="px-4 py-2 text-slate-400 text-[13px] border-r border-slate-800/50">
                                 {t.user}
                               </td>
-                              <td className="px-4 py-2 text-right font-mono text-emerald-400/90 text-xs">
-                                {isInflow ? fmt(t.amount) : '-'}
+                              <td className="px-4 py-2 text-right font-mono text-emerald-400 text-[13px] border-r border-slate-800/50">
+                                {isInflow ? fmt(t.amount) : ''}
                               </td>
-                              <td className="px-4 py-2 text-right font-mono text-rose-400/90 text-xs">
-                                {isOutflow ? fmt(t.amount) : '-'}
+                              <td className="px-4 py-2 text-right font-mono text-rose-400 text-[13px]">
+                                {isOutflow ? fmt(t.amount) : ''}
                               </td>
                             </tr>
                           );
@@ -171,7 +169,7 @@ export default function TillAccount() {
                     </table>
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-slate-500 text-sm">
+                  <div className="p-8 text-center text-slate-500 text-[11px] uppercase tracking-widest font-bold">
                     No ledger transactions recorded.
                   </div>
                 )}

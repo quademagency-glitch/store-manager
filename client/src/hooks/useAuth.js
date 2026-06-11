@@ -183,8 +183,9 @@ export function useAuth() {
   }, []);
 
   const hasPermission = useCallback((perm) => {
+    if (role === 'Platform Admin') return true;
     return permissions.includes(perm);
-  }, [permissions]);
+  }, [permissions, role]);
 
   const switchLocation = useCallback((locationId) => {
     setActiveLocationId(locationId);

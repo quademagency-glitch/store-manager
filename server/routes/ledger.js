@@ -173,9 +173,20 @@ router.get('/till-balance', authGuard, async (req, res) => {
       }
     });
 
-    // Sort transactions by date descending
+    // Sort transactions by date descending and calculate running balance
     Object.values(branches).forEach(b => {
       b.transactions.sort((x, y) => new Date(y.date) - new Date(x.date));
+      
+      let runningBalance = 0;
+      for (let i = b.transactions.length - 1; i >= 0; i--) {
+        const t = b.transactions[i];
+        if (t.type === 'sale' || t.type === 'pay_in') {
+          runningBalance += t.amount;
+        } else if (t.type === 'expense' || t.type === 'deposit_to_bank') {
+          runningBalance -= t.amount;
+        }
+        t.balance = runningBalance;
+      }
     });
 
     // Convert object to array

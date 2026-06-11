@@ -132,9 +132,9 @@ export default function TillAccount() {
                           <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-40 border-r border-slate-800/50">Date</th>
                           <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-32 border-r border-slate-800/50">Type</th>
                           <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider border-r border-slate-800/50">Description</th>
-                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider w-32 border-r border-slate-800/50">User</th>
                           <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32 border-r border-slate-800/50">Cash In ($)</th>
-                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32">Cash Out ($)</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32 border-r border-slate-800/50">Cash Out ($)</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right w-32">Balance ($)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
@@ -153,14 +153,14 @@ export default function TillAccount() {
                               <td className="px-4 py-2 text-slate-300 text-[13px] border-r border-slate-800/50">
                                 {t.description}
                               </td>
-                              <td className="px-4 py-2 text-slate-400 text-[13px] border-r border-slate-800/50">
-                                {t.user}
-                              </td>
                               <td className="px-4 py-2 text-right font-mono text-emerald-400 text-[13px] border-r border-slate-800/50">
                                 {isInflow ? fmt(t.amount) : ''}
                               </td>
-                              <td className="px-4 py-2 text-right font-mono text-rose-400 text-[13px]">
+                              <td className="px-4 py-2 text-right font-mono text-rose-400 text-[13px] border-r border-slate-800/50">
                                 {isOutflow ? fmt(t.amount) : ''}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono text-slate-200 text-[13px] font-bold">
+                                {fmt(t.balance)}
                               </td>
                             </tr>
                           );

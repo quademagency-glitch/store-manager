@@ -17,6 +17,10 @@ function permissionCheck(...requiredPermissions) {
       });
     }
 
+    if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+      return next();
+    }
+
     const userPermissions = req.user.permissions || [];
     
     // Check if the user has AT LEAST ONE of the required permissions

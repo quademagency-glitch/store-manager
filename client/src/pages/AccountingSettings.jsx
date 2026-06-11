@@ -184,24 +184,26 @@ export default function AccountingSettings() {
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTemplate ? "Edit Template" : "Create Template"}>
           <form onSubmit={handleSave} className="p-6 space-y-6 overflow-y-auto max-h-[80vh]">
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-300">Template Name</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Template Name</label>
                 <input 
                   type="text" 
                   value={name} 
                   onChange={e => setName(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" 
+                  className="w-full rounded p-2.5 transition-colors focus:outline-none" 
+                  style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                   placeholder="e.g., POS Machine Deposit"
                   required 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-300">Type</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Type</label>
                 <select 
                   value={type} 
                   onChange={e => setType(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
+                  className="w-full rounded p-2.5 transition-colors focus:outline-none"
+                  style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                 >
                   <option value="expense">Expense</option>
                   <option value="deposit">Deposit (To Bank/Mobile)</option>
@@ -210,28 +212,30 @@ export default function AccountingSettings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 text-slate-300">Description</label>
+              <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
               <textarea 
                 value={description} 
                 onChange={e => setDescription(e.target.value)} 
-                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" 
+                className="w-full rounded p-2.5 transition-colors focus:outline-none" 
+                style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                 rows="2"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2 text-slate-300">Who can use this template?</label>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Who can use this template?</label>
               <div className="flex flex-wrap gap-2">
                 {availableRoles.map(r => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => toggleRole(r)}
-                    className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                      assignedRoles.includes(r) 
-                        ? 'bg-indigo-600 border-indigo-500 text-white' 
-                        : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-400'
-                    }`}
+                    className="px-4 py-1.5 text-xs font-semibold rounded-full border transition-colors"
+                    style={{
+                      background: assignedRoles.includes(r) ? 'var(--color-accent-primary)' : 'var(--color-bg-tertiary)',
+                      borderColor: assignedRoles.includes(r) ? 'var(--color-accent-primary)' : 'var(--color-border)',
+                      color: assignedRoles.includes(r) ? '#ffffff' : 'var(--color-text-secondary)'
+                    }}
                   >
                     {r}
                   </button>
@@ -239,45 +243,48 @@ export default function AccountingSettings() {
               </div>
             </div>
 
-            <div className="border-t border-slate-700 pt-6">
+            <div className="pt-6 mt-2" style={{ borderTop: '1px solid var(--color-border)' }}>
               <div className="flex justify-between items-center mb-4">
-                <label className="block text-lg font-bold text-slate-200">Custom Form Fields</label>
-                <button type="button" onClick={handleAddField} className="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded font-semibold">
+                <label className="block text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-primary)' }}>Custom Form Fields</label>
+                <button type="button" onClick={handleAddField} className="text-xs px-3 py-1.5 rounded font-semibold transition-colors" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>
                   + Add Field
                 </button>
               </div>
               
               <div className="space-y-4">
                 {fieldsSchema.map((field, index) => (
-                  <div key={field.id} className="p-4 bg-slate-900 border border-slate-700 rounded-lg relative">
+                  <div key={field.id} className="p-5 rounded-lg relative" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
                     <button 
                       type="button" 
                       onClick={() => handleRemoveField(index)}
-                      className="absolute top-2 right-2 text-slate-500 hover:text-red-400"
+                      className="absolute top-3 right-3 hover:opacity-70 transition-opacity"
+                      style={{ color: 'var(--color-error)' }}
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
                     
-                    <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div className="grid grid-cols-2 gap-4 mb-3 pr-8">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">Field Label</label>
+                        <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Field Label</label>
                         <input 
                           type="text" 
                           value={field.label} 
                           onChange={e => handleUpdateField(index, 'label', e.target.value)} 
-                          className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm" 
+                          className="w-full rounded p-2 transition-colors focus:outline-none" 
+                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                           placeholder="e.g. Bank Name"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">Input Type</label>
+                        <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Input Type</label>
                         <select 
                           value={field.type} 
                           onChange={e => handleUpdateField(index, 'type', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm"
+                          className="w-full rounded p-2 transition-colors focus:outline-none"
+                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                         >
                           <option value="text">Text</option>
                           <option value="number">Number</option>
@@ -288,26 +295,27 @@ export default function AccountingSettings() {
 
                     {field.type === 'dropdown' && (
                       <div className="mb-3">
-                        <label className="block text-xs text-slate-400 mb-1">Options (comma separated)</label>
+                        <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Options (comma separated)</label>
                         <input 
                           type="text" 
                           value={field.options} 
                           onChange={e => handleUpdateField(index, 'options', e.target.value)} 
-                          className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm" 
+                          className="w-full rounded p-2 transition-colors focus:outline-none" 
+                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                           placeholder="Chase, Bank of America, Wells Fargo"
                         />
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <div className="flex items-center gap-4 mt-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
                         <input 
                           type="checkbox" 
                           checked={field.required} 
                           onChange={e => handleUpdateField(index, 'required', e.target.checked)} 
-                          className="rounded bg-slate-800 border-slate-700"
+                          style={{ accentColor: 'var(--color-accent-primary)' }}
                         />
-                        Required Field
+                        Required
                       </label>
 
                       <div className="flex-1">
@@ -315,7 +323,8 @@ export default function AccountingSettings() {
                           type="text" 
                           value={field.showIf || ''} 
                           onChange={e => handleUpdateField(index, 'showIf', e.target.value)} 
-                          className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-sm" 
+                          className="w-full rounded p-2 transition-colors focus:outline-none text-xs" 
+                          style={{ background: 'var(--color-bg-primary)', border: '1px dashed var(--color-border)', color: 'var(--color-text-primary)' }}
                           placeholder="Conditional Logic (e.g. {field_label} == 'Yes')"
                           title="Advanced: Enter basic logic condition. Currently experimental."
                         />
@@ -325,16 +334,25 @@ export default function AccountingSettings() {
                 ))}
                 
                 {fieldsSchema.length === 0 && (
-                  <p className="text-sm text-slate-500 text-center py-4">No custom fields added. The form will only ask for Date, Amount, and Receipt Image.</p>
+                  <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-tertiary)' }}>No custom fields added. The form will only ask for Date, Amount, and Receipt Image.</p>
                 )}
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors">
+            <div className="flex justify-end gap-3 pt-6" style={{ borderTop: '1px solid var(--color-border)' }}>
+              <button 
+                type="button" 
+                onClick={() => setIsModalOpen(false)} 
+                className="px-5 py-2 rounded font-medium transition-colors"
+                style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+              >
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-semibold transition-colors shadow">
+              <button 
+                type="submit" 
+                className="px-6 py-2 rounded font-medium transition-transform active:scale-95 shadow"
+                style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
+              >
                 Save Template
               </button>
             </div>

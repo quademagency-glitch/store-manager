@@ -1,4 +1,5 @@
 const express = require('express');
+const archiver = require('archiver');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 
@@ -63,7 +64,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     // 2. Fetch Ledger Entries (Expenses, Deposits)
     let ledgerQuery = supabaseAdmin
       .from('business_ledger')
-      .select('id, type, amount, description, created_at, location_id, user:users!user_id(name)')
+      .select('id, type, amount, description, created_at, location_id, status, user:users!user_id(name)')
       .gte('created_at', startD.toISOString())
       .lte('created_at', endD.toISOString());
 
@@ -100,8 +101,8 @@ router.get('/till-balance', authGuard, async (req, res) => {
     // If the user does not have history permission (Basic view for cashiers)
     if (!hasHistoryPerm && req.user.role !== 'Platform Admin') {
       const totalCashSales = sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
-      const totalExpenses = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + Number(e.amount), 0);
-      const totalDeposits = entries.filter(e => e.type === 'deposit_to_bank').reduce((sum, e) => sum + Number(e.amount), 0);
+      const totalExpenses = entries.filter(e => e.type === 'expense' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
+      const totalDeposits = entries.filter(e => e.type === 'deposit_to_bank' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
       
       const currentBalance = totalCashSales - totalExpenses - totalDeposits;
 
@@ -151,15 +152,17 @@ router.get('/till-balance', authGuard, async (req, res) => {
     // Populate Ledger Entries
     entries.forEach(e => {
       const b = branches[e.location_id];
-      if (b) {
-        if (e.type === 'expense') {
-          b.total_expenses += Number(e.amount);
-          b.current_balance -= Number(e.amount);
-        } else if (e.type === 'deposit_to_bank') {
-          b.total_deposits += Number(e.amount);
-          b.current_balance -= Number(e.amount);
-        } else if (e.type === 'pay_in') {
-          b.current_balance += Number(e.amount);
+      if (b && e.status !== 'rejected') {
+        if (e.status === 'approved') {
+          if (e.type === 'expense') {
+            b.total_expenses += Number(e.amount);
+            b.current_balance -= Number(e.amount);
+          } else if (e.type === 'deposit_to_bank') {
+            b.total_deposits += Number(e.amount);
+            b.current_balance -= Number(e.amount);
+          } else if (e.type === 'pay_in') {
+            b.current_balance += Number(e.amount);
+          }
         }
 
         b.transactions.push({
@@ -168,6 +171,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
           type: e.type,
           description: e.description || e.type,
           amount: Number(e.amount),
+          status: e.status, // Add status
           user: e.user?.name || 'Unknown'
         });
       }
@@ -180,12 +184,17 @@ router.get('/till-balance', authGuard, async (req, res) => {
       let runningBalance = 0;
       for (let i = b.transactions.length - 1; i >= 0; i--) {
         const t = b.transactions[i];
-        if (t.type === 'sale' || t.type === 'pay_in') {
+        if (t.status === 'pending') {
+          t.balance = runningBalance; // Pending doesn't affect running balance
+        } else if (t.type === 'sale' || t.type === 'pay_in') {
           runningBalance += t.amount;
+          t.balance = runningBalance;
         } else if (t.type === 'expense' || t.type === 'deposit_to_bank') {
           runningBalance -= t.amount;
+          t.balance = runningBalance;
+        } else {
+          t.balance = runningBalance;
         }
-        t.balance = runningBalance;
       }
     });
 
@@ -200,6 +209,182 @@ router.get('/till-balance', authGuard, async (req, res) => {
   } catch (err) {
     console.error('Error fetching ledger:', err);
     res.status(500).json({ error: 'Failed to fetch ledger data' });
+  }
+});
+
+/**
+ * POST /api/ledger
+ * Create a new ledger entry (expense, deposit)
+ */
+router.post('/', authGuard, async (req, res) => {
+  try {
+    const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
+
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Amount must be greater than 0' });
+    if (!['expense', 'deposit_to_bank', 'pay_in'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid ledger type' });
+    }
+    if (!location_id) return res.status(400).json({ error: 'Location ID is required' });
+
+    // Permissions logic
+    // Admin & Managers = approved automatically
+    // Cashiers = pending
+    const isCashier = req.user.role === 'Salesperson' || req.user.role === 'Cashier';
+    const status = isCashier ? 'pending' : 'approved';
+
+    const insertData = {
+      business_id: req.user.business_id,
+      user_id: req.user.id,
+      type,
+      amount,
+      description,
+      location_id,
+      template_id: template_id || null,
+      receipt_url: receipt_url || null,
+      metadata: metadata || {},
+      status,
+      date: date || new Date().toISOString().split('T')[0]
+    };
+
+    if (status === 'approved') {
+      insertData.approved_by = req.user.id;
+      insertData.approved_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('business_ledger')
+      .insert([insertData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Error creating ledger entry:', err);
+    res.status(500).json({ error: 'Failed to create entry' });
+  }
+});
+
+/**
+ * PUT /api/ledger/:id/approve
+ * Approve a pending ledger entry
+ */
+router.put('/:id/approve', authGuard, async (req, res) => {
+  try {
+    const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!canApprove) return res.status(403).json({ error: 'Unauthorized to approve entries.' });
+
+    const { error } = await supabaseAdmin
+      .from('business_ledger')
+      .update({
+        status: 'approved',
+        approved_by: req.user.id,
+        approved_at: new Date().toISOString()
+      })
+      .eq('id', req.params.id)
+      .eq('business_id', req.user.business_id);
+
+    if (error) throw error;
+    res.json({ message: 'Approved successfully' });
+  } catch (err) {
+    console.error('Error approving entry:', err);
+    res.status(500).json({ error: 'Failed to approve entry' });
+  }
+});
+
+/**
+ * PUT /api/ledger/:id/reject
+ * Reject a pending ledger entry
+ */
+router.put('/:id/reject', authGuard, async (req, res) => {
+  try {
+    const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!canApprove) return res.status(403).json({ error: 'Unauthorized to reject entries.' });
+
+    const { error } = await supabaseAdmin
+      .from('business_ledger')
+      .update({
+        status: 'rejected'
+      })
+      .eq('id', req.params.id)
+      .eq('business_id', req.user.business_id);
+
+    if (error) throw error;
+    res.json({ message: 'Rejected successfully' });
+  } catch (err) {
+    console.error('Error rejecting entry:', err);
+    res.status(500).json({ error: 'Failed to reject entry' });
+  }
+});
+
+/**
+ * GET /api/ledger/download-receipts
+ * Download receipt images as a ZIP file
+ */
+router.get('/download-receipts', authGuard, async (req, res) => {
+  try {
+    const canDownload = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!canDownload) return res.status(403).json({ error: 'Unauthorized to download receipts.' });
+
+    const { start_date, end_date } = req.query;
+
+    let query = supabaseAdmin
+      .from('business_ledger')
+      .select('id, type, created_at, receipt_url')
+      .eq('business_id', req.user.business_id)
+      .not('receipt_url', 'is', null);
+
+    if (start_date) query = query.gte('created_at', new Date(start_date).toISOString());
+    if (end_date) query = query.lte('created_at', new Date(end_date).toISOString());
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'No receipts found in this date range.' });
+    }
+
+    res.attachment(`receipts_${new Date().toISOString().split('T')[0]}.zip`);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.on('error', (err) => { throw err; });
+    archive.pipe(res);
+
+    for (const entry of data) {
+      // The receipt_url should be the storage path or full public URL.
+      // If it's a full URL or a storage path, we need to fetch it.
+      // Assuming it's a storage path like 'folder/image.png' in the 'receipts' bucket.
+      const urlMatch = entry.receipt_url.match(/receipts\/(.+)$/);
+      const storagePath = urlMatch ? urlMatch[1] : entry.receipt_url;
+
+      try {
+        const { data: fileData, error: downloadError } = await supabaseAdmin
+          .storage
+          .from('receipts')
+          .download(storagePath);
+          
+        if (downloadError) {
+          console.error(`Failed to download ${storagePath}:`, downloadError);
+          continue;
+        }
+
+        const buffer = Buffer.from(await fileData.arrayBuffer());
+        // Use extension from the url
+        const ext = storagePath.split('.').pop() || 'jpg';
+        const filename = `${entry.type}_${entry.id.substring(0,8)}.${ext}`;
+        archive.append(buffer, { name: filename });
+      } catch (err) {
+        console.error(`Error processing ${storagePath}:`, err);
+      }
+    }
+
+    archive.finalize();
+
+  } catch (err) {
+    console.error('Error zipping receipts:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate ZIP file' });
+    }
   }
 });
 

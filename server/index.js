@@ -21,6 +21,7 @@ const stocktakeRoutes = require('./routes/stocktake');
 const scannerRoutes = require('./routes/scanner');
 const returnsRoutes = require('./routes/returns');
 const ledgerRoutes = require('./routes/ledger');
+const accountingTemplatesRoutes = require('./routes/accountingTemplates');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -135,6 +136,9 @@ app.use('/api/returns', returnsRoutes);
 
 // Ledger routes
 app.use('/api/ledger', ledgerRoutes);
+
+// Accounting Templates routes
+app.use('/api/accounting/templates', accountingTemplatesRoutes);
 
 // ============================================
 // Error handling

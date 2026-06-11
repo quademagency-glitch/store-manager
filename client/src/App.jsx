@@ -23,6 +23,11 @@ import UserProfile from './pages/UserProfile';
 
 import MainLayout from './components/MainLayout';
 
+// Accounting Pages
+import AccountingTemplates from './pages/AccountingTemplates';
+import AccountingSettings from './pages/AccountingSettings';
+import AccountingApprovals from './pages/AccountingApprovals';
+
 // Business Admin Pages
 import BusinessOverview from './pages/BusinessAdmin/Overview';
 import BusinessOrganization from './pages/BusinessAdmin/Organization';
@@ -82,6 +87,15 @@ export default function App() {
             <Route path="/invoice" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
             <Route path="/invoice/:id" element={
               <ProtectedRoute><InvoiceView /></ProtectedRoute>
+            } />
+            <Route path="/accounting-templates" element={
+              <ProtectedRoute><AccountingTemplates /></ProtectedRoute>
+            } />
+            <Route path="/accounting-settings" element={
+              <ProtectedRoute requiredPermission="manage_business"><AccountingSettings /></ProtectedRoute>
+            } />
+            <Route path="/accounting-approvals" element={
+              <ProtectedRoute><AccountingApprovals /></ProtectedRoute>
             } />
             <Route path="/settings" element={
               <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>

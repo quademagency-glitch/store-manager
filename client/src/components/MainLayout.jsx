@@ -174,6 +174,9 @@ export default function MainLayout() {
       icon: Icons.billing,
       items: [
         { path: '/till-account', label: 'Till Account', icon: Icons.billing, visible: true },
+        { path: '/accounting-templates', label: 'Templates', icon: Icons.invoice, visible: true },
+        { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' || role === 'Manager' },
+        { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)

@@ -1,0 +1,115 @@
+const express = require('express');
+const { supabaseAdmin } = require('../db/supabase');
+const authGuard = require('../middleware/authGuard');
+
+const router = express.Router();
+
+// Get all templates for the business
+router.get('/', authGuard, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('accounting_templates')
+      .select('*')
+      .eq('business_id', req.user.business_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching templates:', err);
+    res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// Create a new template (Admins only)
+router.post('/', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only admins can create templates.' });
+    }
+
+    const { name, description, type, assigned_roles, fields_schema, conditional_logic } = req.body;
+
+    if (!name || !type) {
+      return res.status(400).json({ error: 'Name and Type are required.' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('accounting_templates')
+      .insert([{
+        business_id: req.user.business_id,
+        name,
+        description,
+        type,
+        assigned_roles: assigned_roles || [],
+        fields_schema: fields_schema || [],
+        conditional_logic: conditional_logic || []
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Error creating template:', err);
+    res.status(500).json({ error: 'Failed to create template' });
+  }
+});
+
+// Update a template (Admins only)
+router.put('/:id', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only admins can edit templates.' });
+    }
+
+    const { name, description, type, assigned_roles, fields_schema, conditional_logic } = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('accounting_templates')
+      .update({
+        name,
+        description,
+        type,
+        assigned_roles: assigned_roles || [],
+        fields_schema: fields_schema || [],
+        conditional_logic: conditional_logic || [],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.params.id)
+      .eq('business_id', req.user.business_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Template not found' });
+    
+    res.json(data);
+  } catch (err) {
+    console.error('Error updating template:', err);
+    res.status(500).json({ error: 'Failed to update template' });
+  }
+});
+
+// Delete a template (Admins only)
+router.delete('/:id', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only admins can delete templates.' });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('accounting_templates')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('business_id', req.user.business_id);
+
+    if (error) throw error;
+    res.json({ message: 'Template deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting template:', err);
+    res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+module.exports = router;

@@ -14,6 +14,14 @@ export default function TillAccount() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Expense Modal State
+  const [selectedExpense, setSelectedExpense] = useState(null);
+
+  // Helper to generate a numeric ID from UUID
+  const getNumericId = (uuid) => {
+    return parseInt(uuid.replace(/-/g, '').substring(0, 7), 16).toString().padStart(8, '0');
+  };
+
   // Date filters
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -155,17 +163,30 @@ export default function TillAccount() {
                               </td>
                               <td className="px-4 py-2 text-slate-300 text-[13px] border-r border-slate-800/50">
                                 <div>{t.description}</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                <div className="text-[10px] text-slate-500 mt-0.5 font-mono">
                                   ID:{' '}
-                                  {t.type === 'sale' && (role === 'Business Admin' || role === 'Platform Admin') ? (
-                                    <Link 
-                                      to={`/sales-record?date=${t.date.split('T')[0]}&highlight=${t.id}`}
-                                      className="text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
-                                    >
-                                      {t.id.substring(0, 8)}
-                                    </Link>
+                                  {t.type === 'sale' ? (
+                                    (role === 'Business Admin' || role === 'Platform Admin') ? (
+                                      <Link 
+                                        to={`/sales-record?date=${t.date.split('T')[0]}&highlight=${t.id}`}
+                                        className="text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                                      >
+                                        {getNumericId(t.id)}
+                                      </Link>
+                                    ) : (
+                                      getNumericId(t.id)
+                                    )
                                   ) : (
-                                    t.id.substring(0, 8)
+                                    (role === 'Business Admin' || role === 'Platform Admin') ? (
+                                      <button 
+                                        onClick={() => setSelectedExpense(t)}
+                                        className="text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                                      >
+                                        {getNumericId(t.id)}
+                                      </button>
+                                    ) : (
+                                      getNumericId(t.id)
+                                    )
                                   )}
                                 </div>
                               </td>
@@ -192,6 +213,64 @@ export default function TillAccount() {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Expense/Transaction Details Modal */}
+      {selectedExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0f1115] border border-slate-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-800 bg-[#111318] flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-slate-100 uppercase tracking-wide">Transaction Details</h3>
+                <p className="text-xs text-slate-500 font-mono mt-1">Ref: {getNumericId(selectedExpense.id)}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedExpense(null)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400 uppercase tracking-wider">Type</span>
+                <span className="text-sm font-bold text-slate-200 uppercase tracking-wider px-3 py-1 bg-slate-800 rounded-md">
+                  {selectedExpense.type.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400 uppercase tracking-wider">Amount</span>
+                <span className={`text-2xl font-mono font-bold ${selectedExpense.type === 'expense' || selectedExpense.type === 'deposit_to_bank' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {fmt(selectedExpense.amount)}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Description</span>
+                <p className="text-sm text-slate-300 p-3 bg-[#0a0a0f] border border-slate-800/50 rounded-md">
+                  {selectedExpense.description}
+                </p>
+              </div>
+              <div className="flex justify-between items-center border-t border-slate-800/50 pt-4">
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Authorized By</span>
+                <span className="text-sm text-slate-300 font-medium">{selectedExpense.user}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Date & Time</span>
+                <span className="text-sm text-slate-300 font-mono">
+                  {new Date(selectedExpense.date).toLocaleDateString()} {new Date(selectedExpense.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </span>
+              </div>
+            </div>
+            <div className="p-4 bg-[#111318] border-t border-slate-800 flex justify-end">
+              <button 
+                onClick={() => window.print()}
+                className="text-xs uppercase tracking-wider font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-2 px-4 py-2"
+              >
+                {Icons.printer} Print Voucher
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

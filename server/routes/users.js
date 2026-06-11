@@ -61,10 +61,6 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    if (role_name === 'Platform Admin' && req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Only Platform Admins can create a Platform Admin account' });
-    }
-
     const assigned_business_id = req.user.role === 'Platform Admin' && business_id ? business_id : req.user.business_id;
 
     // Use Supabase Admin API to create the user securely without logging out the admin
@@ -110,13 +106,6 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
     if (!role_id) {
       return res.status(400).json({ error: 'role_id is required' });
-    }
-
-    if (req.user.role !== 'Platform Admin') {
-      const { data: requestedRole } = await supabaseAdmin.from('roles').select('name').eq('id', role_id).single();
-      if (requestedRole && requestedRole.name === 'Platform Admin') {
-        return res.status(403).json({ error: 'Only Platform Admins can assign the Platform Admin role' });
-      }
     }
 
     const updates = { name, role_id };

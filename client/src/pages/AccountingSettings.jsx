@@ -119,53 +119,61 @@ export default function AccountingSettings() {
   };
 
   return (
-    <div className="p-6 text-white max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto transition-colors duration-300">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Accounting Template Settings</h1>
-          <p className="text-gray-400">Build and manage your dynamic accounting templates (Forms).</p>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Accounting Template Settings</h1>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Build and manage your dynamic accounting templates (Forms).</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow font-semibold"
+          className="action-btn"
+          style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
         >
           + Create Template
         </button>
       </div>
       
-      {loading ? <p>Loading templates...</p> : (
+      {loading ? <p style={{ color: 'var(--color-text-secondary)' }}>Loading templates...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map(t => (
-            <div key={t.id} className="p-5 bg-slate-800 rounded-xl shadow border border-slate-700 hover:border-slate-500 transition-colors">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-lg">{t.name}</h3>
-                <span className={`px-2 py-1 text-xs rounded font-bold uppercase ${t.type === 'expense' ? 'bg-red-900/50 text-red-400' : 'bg-green-900/50 text-green-400'}`}>
+            <div key={t.id} className="glass-panel p-6 rounded-xl flex flex-col hover:-translate-y-1 transition-transform">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
+                <span 
+                  className="px-2 py-0.5 text-[10px] rounded uppercase font-bold tracking-wider" 
+                  style={{ 
+                    border: `1px solid ${t.type === 'expense' ? 'var(--color-error-border)' : 'var(--color-success)'}`,
+                    color: t.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)',
+                    background: 'transparent'
+                  }}
+                >
                   {t.type}
                 </span>
               </div>
-              <p className="text-sm text-gray-400 mb-4 h-10 overflow-hidden">{t.description}</p>
+              <p className="text-sm mb-4 h-10 overflow-hidden" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{t.description}</p>
               
               <div className="mb-4">
-                <div className="text-xs text-slate-400 font-semibold mb-1">Assigned Roles:</div>
+                <div className="text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>Assigned Roles</div>
                 <div className="flex flex-wrap gap-1">
                   {t.assigned_roles && t.assigned_roles.length > 0 ? t.assigned_roles.map(r => (
-                    <span key={r} className="text-[10px] bg-slate-700 px-2 py-0.5 rounded">{r}</span>
-                  )) : <span className="text-[10px] text-slate-500">None</span>}
+                    <span key={r} className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{r}</span>
+                  )) : <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>None</span>}
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4 pt-4 border-t border-slate-700">
-                <button onClick={() => handleOpenModal(t)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-1.5 rounded text-sm font-semibold transition-colors">
+              <div className="flex gap-3 mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <button onClick={() => handleOpenModal(t)} className="flex-1 py-1.5 rounded text-sm font-semibold transition-colors hover:opacity-80" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
                   Edit
                 </button>
-                <button onClick={() => handleDelete(t.id)} className="flex-1 bg-red-900/30 hover:bg-red-900/50 text-red-400 py-1.5 rounded text-sm font-semibold transition-colors">
+                <button onClick={() => handleDelete(t.id)} className="flex-1 py-1.5 rounded text-sm font-semibold transition-colors hover:opacity-80" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)' }}>
                   Delete
                 </button>
               </div>
             </div>
           ))}
           {templates.length === 0 && (
-            <div className="col-span-full text-center py-12 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+            <div className="col-span-full text-center py-12 rounded-xl" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}>
               No templates created yet. Click "Create Template" to get started.
             </div>
           )}

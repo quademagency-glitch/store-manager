@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
+import { useTheme } from '../lib/ThemeContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import OfflineStatus from './OfflineStatus';
@@ -107,6 +108,7 @@ const Icons = {
 
 export default function MainLayout() {
   const { user, role, signOut, hasPermission, locationIds, activeLocationId, switchLocation } = useAuthContext();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -361,14 +363,37 @@ export default function MainLayout() {
           </div>
 
           <div className="top-nav-right">
+            <button 
+              onClick={toggleTheme}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '8px' }}
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+            >
+              {theme === 'light' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+              )}
+            </button>
             {availableLocations.length > 1 && (
               <select 
                 value={activeLocationId || ''} 
                 onChange={(e) => switchLocation(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               >
                 {availableLocations.map(loc => (
-                  <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
             )}
@@ -581,15 +606,29 @@ export default function MainLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '0 16px' }}>
+            <button 
+              onClick={toggleTheme}
+              style={{ flex: 1, background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+            >
+              {theme === 'light' ? (
+                <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> <span style={{fontSize: '0.8rem'}}>Dark Mode</span></>
+              ) : (
+                <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> <span style={{fontSize: '0.8rem'}}>Light Mode</span></>
+              )}
+            </button>
+          </div>
+
           {availableLocations.length > 1 && (
             <div style={{ padding: '0 16px', marginBottom: '16px' }}>
               <select 
                 value={activeLocationId || ''} 
                 onChange={(e) => switchLocation(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: 'white', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               >
                 {availableLocations.map(loc => (
-                  <option key={loc.id} value={loc.id} style={{ color: 'black' }}>{loc.name}</option>
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
             </div>
@@ -599,7 +638,7 @@ export default function MainLayout() {
             <button 
               className="sidebar-signout" 
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', cursor: 'pointer', color: 'white' }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', color: 'var(--color-text-primary)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div className="sidebar-avatar" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>

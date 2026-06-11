@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
+import { ThemeProvider } from './lib/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -39,8 +40,9 @@ import ShrinkageReport from './pages/BusinessAdmin/ShrinkageReport';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -133,5 +135,6 @@ export default function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </ThemeProvider>
   );
 }

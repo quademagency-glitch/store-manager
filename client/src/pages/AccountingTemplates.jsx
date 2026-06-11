@@ -138,29 +138,37 @@ export default function AccountingTemplates() {
   };
 
   return (
-    <div className="p-6 text-white max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Accounting Entries</h1>
-      <p className="mb-6 text-gray-400">Select a template below to record an expense, deposit, or other accounting entry.</p>
+    <div className="p-6 max-w-6xl mx-auto transition-colors duration-300">
+      <h1 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Accounting Entries</h1>
+      <p className="mb-8" style={{ color: 'var(--color-text-secondary)' }}>Select a template below to record an expense, deposit, or other accounting entry.</p>
       
-      {loading ? <p>Loading templates...</p> : (
+      {loading ? <p style={{ color: 'var(--color-text-secondary)' }}>Loading templates...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map(t => (
             <button 
               key={t.id} 
               onClick={() => handleTemplateSelect(t)}
-              className="p-6 bg-slate-800 border border-slate-700 hover:border-indigo-500 transition-colors rounded-xl shadow-lg text-left group"
+              className="glass-panel p-6 rounded-xl text-left hover:-translate-y-1 transition-transform"
+              style={{ display: 'flex', flexDirection: 'column' }}
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-lg group-hover:text-indigo-400 transition-colors">{t.name}</h3>
-                <span className={`px-2 py-1 text-[10px] rounded font-bold uppercase ${t.type === 'expense' ? 'bg-red-900/50 text-red-400' : 'bg-green-900/50 text-green-400'}`}>
+              <div className="flex justify-between items-start w-full mb-3">
+                <h3 className="font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
+                <span 
+                  className="px-2 py-0.5 text-[10px] rounded uppercase font-bold tracking-wider" 
+                  style={{ 
+                    border: `1px solid ${t.type === 'expense' ? 'var(--color-error-border)' : 'var(--color-success)'}`,
+                    color: t.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)',
+                    background: 'transparent'
+                  }}
+                >
                   {t.type}
                 </span>
               </div>
-              <p className="text-sm text-gray-400">{t.description}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{t.description}</p>
             </button>
           ))}
           {templates.length === 0 && (
-            <div className="col-span-full text-center py-12 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+            <div className="col-span-full text-center py-12 rounded-xl" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}>
               No templates assigned to your role. Contact your manager.
             </div>
           )}
@@ -169,28 +177,30 @@ export default function AccountingTemplates() {
 
       {selectedTemplate && (
         <Modal isOpen={!!selectedTemplate} onClose={() => setSelectedTemplate(null)} title={selectedTemplate.name}>
-          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
             
-            <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 space-y-4 mb-6">
-              <h4 className="text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider">Standard Details</h4>
+            <div className="p-5 rounded-lg space-y-4 mb-6" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+              <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Standard Details</h4>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-300">Date</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Date</label>
                   <input 
                     type="date" 
                     value={date} 
                     onChange={e => setDate(e.target.value)} 
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white" 
+                    className="w-full rounded p-2.5 transition-colors focus:outline-none" 
+                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                     required 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-300">Branch / Location</label>
+                  <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Branch / Location</label>
                   <select 
                     value={selectedLocation} 
                     onChange={e => setSelectedLocation(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                    className="w-full rounded p-2.5 transition-colors focus:outline-none"
+                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                     required
                     disabled={locations.length === 1}
                   >
@@ -201,16 +211,17 @@ export default function AccountingTemplates() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-300">Amount</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Amount</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-slate-400">$</span>
+                  <span className="absolute left-3 top-2.5 font-medium" style={{ color: 'var(--color-text-tertiary)' }}>$</span>
                   <input 
                     type="number" 
                     step="0.01"
                     min="0.01"
                     value={amount} 
                     onChange={e => setAmount(e.target.value)} 
-                    className="w-full pl-8 bg-slate-800 border border-slate-600 rounded p-2 text-white text-lg font-bold" 
+                    className="w-full pl-8 rounded p-2.5 text-lg font-bold transition-colors focus:outline-none" 
+                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                     placeholder="0.00"
                     required 
                   />
@@ -218,11 +229,12 @@ export default function AccountingTemplates() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-300">Description / Notes</label>
+                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Description / Notes</label>
                 <textarea 
                   value={description} 
                   onChange={e => setDescription(e.target.value)} 
-                  className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white" 
+                  className="w-full rounded p-2.5 transition-colors focus:outline-none" 
+                  style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                   rows="2"
                   placeholder="Optional notes..."
                 />
@@ -230,8 +242,8 @@ export default function AccountingTemplates() {
             </div>
 
             {selectedTemplate.fields_schema && selectedTemplate.fields_schema.length > 0 && (
-              <div className="bg-indigo-900/10 p-4 rounded-lg border border-indigo-900/30 space-y-4 mb-6">
-                <h4 className="text-sm font-semibold text-indigo-300 mb-2 uppercase tracking-wider">Template Specific Fields</h4>
+              <div className="p-5 rounded-lg space-y-4 mb-6" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-accent-glow)' }}>
+                <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-accent-primary)' }}>Template Specific Fields</h4>
                 
                 {selectedTemplate.fields_schema.map(field => {
                   const isVisible = evaluateCondition(field.showIf);
@@ -239,15 +251,16 @@ export default function AccountingTemplates() {
 
                   return (
                     <div key={field.id}>
-                      <label className="block text-sm font-medium mb-1 text-slate-300">
-                        {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+                        {field.label} {field.required && <span style={{ color: 'var(--color-error)' }}>*</span>}
                       </label>
                       
                       {field.type === 'dropdown' ? (
                         <select
                           value={metadata[field.label] || ''}
                           onChange={e => handleMetadataChange(field.label, e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                          className="w-full rounded p-2.5 transition-colors focus:outline-none"
+                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                           required={field.required}
                         >
                           <option value="">Select...</option>
@@ -260,7 +273,8 @@ export default function AccountingTemplates() {
                           type={field.type === 'number' ? 'number' : 'text'}
                           value={metadata[field.label] || ''}
                           onChange={e => handleMetadataChange(field.label, e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                          className="w-full rounded p-2.5 transition-colors focus:outline-none"
+                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                           required={field.required}
                         />
                       )}
@@ -270,18 +284,14 @@ export default function AccountingTemplates() {
               </div>
             )}
 
-            <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-              <label className="block text-sm font-medium mb-2 text-slate-300">Upload Receipt / Deposit Slip</label>
+            <div className="p-5 rounded-lg" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Upload Receipt / Deposit Slip</label>
               <input 
                 type="file" 
                 accept="image/*,.pdf"
                 onChange={e => setReceiptFile(e.target.files[0])}
-                className="block w-full text-sm text-slate-400
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-full file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-indigo-600 file:text-white
-                  hover:file:bg-indigo-700 cursor-pointer"
+                className="block w-full text-sm cursor-pointer"
+                style={{ color: 'var(--color-text-muted)' }}
               />
             </div>
 
@@ -289,14 +299,16 @@ export default function AccountingTemplates() {
               <button 
                 type="button" 
                 onClick={() => setSelectedTemplate(null)} 
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors"
+                className="px-5 py-2 rounded font-medium transition-colors"
+                style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
                 disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-semibold transition-colors shadow flex items-center gap-2"
+                className="px-6 py-2 rounded font-medium transition-transform active:scale-95 shadow flex items-center gap-2"
+                style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
                 disabled={isSubmitting}
               >
                 {isSubmitting && (

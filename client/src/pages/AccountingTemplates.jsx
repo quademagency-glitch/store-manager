@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { api, supabase } from '../lib/api';
+import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 

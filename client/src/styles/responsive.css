@@ -192,3 +192,147 @@
     padding: 0;
   }
 }
+
+/* ─── Extra Small Mobile (≤390px) — 360px phones ─── */
+@media (max-width: 390px) {
+  /* ── Layout padding ── */
+  .dashboard-main {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .admin-main-content {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  /* ── Page headers ── */
+  .page-title,
+  .dashboard-title {
+    font-size: 1.1rem;
+  }
+
+  .page-header {
+    margin-bottom: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  /* ── Toolbar — stack search above action buttons ── */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+
+  .search-bar {
+    max-width: 100%;
+  }
+
+  /* ── Data table — tight cell padding ── */
+  .data-table th {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .data-table td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* ── Modal — bottom sheet pattern ── */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Modal footer buttons stack full-width */
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: var(--space-sm);
+  }
+
+  .modal-footer > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Login ── */
+  .login-container {
+    padding: var(--space-xs);
+  }
+
+  .login-card {
+    padding: var(--space-lg);
+  }
+
+  .login-title {
+    font-size: 1.4rem;
+  }
+
+  /* ── Stat cards ── */
+  .stat-card {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  /* ── Welcome banner ── */
+  .dashboard-welcome-banner {
+    padding: var(--space-md);
+  }
+
+  .banner-title {
+    font-size: 1.1rem;
+  }
+
+  .banner-subtitle {
+    font-size: 0.85rem;
+  }
+
+  /* ── Quick actions — 2 columns ── */
+  .dashboard-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ── Mobile topbar ── */
+  .top-nav-brand {
+    font-size: 1rem;
+  }
+
+  /* ── Sales POS ── */
+  .sales-catalog {
+    padding: var(--space-md);
+  }
+
+  .catalog-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .cart-checkout {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .cart-item-name {
+    font-size: 0.75rem;
+  }
+
+  .cart-item-price {
+    min-width: 44px;
+    font-size: 0.75rem;
+  }
+}

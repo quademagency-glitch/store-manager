@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
 
 ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "suppliers_tenant_isolation" ON public.suppliers;
 CREATE POLICY "suppliers_tenant_isolation" ON public.suppliers
   FOR ALL
   USING (business_id IN (
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.purchase_orders (
 
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "purchase_orders_tenant_isolation" ON public.purchase_orders;
 CREATE POLICY "purchase_orders_tenant_isolation" ON public.purchase_orders
   FOR ALL
   USING (business_id IN (

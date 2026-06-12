@@ -123,6 +123,7 @@ export default function MainLayout() {
   const [availableLocations, setAvailableLocations] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
   useEffect(() => {
     // Only fetch locations if they have assigned locationIds OR if they are an admin
@@ -287,6 +288,59 @@ export default function MainLayout() {
     </div>
   );
 
+  const renderBranchSelector = (positionStyle, isMobileDrawer = false) => (
+    <div style={{ position: 'relative', width: isMobileDrawer ? '100%' : 'auto', ...positionStyle }}>
+      <button 
+        className="branch-selector"
+        onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-tertiary)', paddingRight: '1rem' }}
+      >
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobileDrawer ? '100%' : '150px' }}>
+          {availableLocations.find(l => l.id === activeLocationId)?.name || 'Select Branch'}
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginLeft: '8px', flexShrink: 0 }}>
+          <path d={isBranchMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      
+      <div style={{
+        position: 'absolute',
+        top: isMobileDrawer ? 'auto' : '100%',
+        bottom: isMobileDrawer ? '100%' : 'auto',
+        left: 0,
+        right: 0,
+        minWidth: '200px',
+        marginTop: isMobileDrawer ? '0' : '4px',
+        marginBottom: isMobileDrawer ? '4px' : '0',
+        background: 'var(--color-bg-secondary)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-xl)',
+        zIndex: 200,
+        maxHeight: '300px',
+        overflowY: 'auto',
+        display: isBranchMenuOpen ? 'block' : 'none'
+      }}>
+        {availableLocations.map(loc => (
+          <button
+            key={loc.id}
+            className={`dropdown-link ${loc.id === activeLocationId ? 'active' : ''}`}
+            style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', color: loc.id === activeLocationId ? 'var(--color-accent-primary)' : 'var(--color-text-primary)' }}
+            onClick={() => {
+              setIsBranchMenuOpen(false);
+              setIsMobileMenuOpen(false);
+              if (loc.id !== activeLocationId) {
+                switchLocation(loc.id);
+              }
+            }}
+          >
+            {loc.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (isAdminView) {
     return (
       <div className="admin-dashboard-page">
@@ -397,17 +451,7 @@ export default function MainLayout() {
                 </svg>
               )}
             </button>
-            {availableLocations.length > 1 && (
-              <select 
-                className="branch-selector"
-                value={activeLocationId || ''} 
-                onChange={(e) => switchLocation(e.target.value)}
-              >
-                {availableLocations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
-            )}
+            {availableLocations.length > 1 && renderBranchSelector({ marginRight: '16px' }, false)}
             
             <div style={{ position: 'relative' }}>
               <div 
@@ -498,18 +542,7 @@ export default function MainLayout() {
           <div className="mobile-drawer-footer" style={{ padding: '16px', borderTop: '1px solid var(--color-border)', marginTop: 'auto' }}>
             {availableLocations.length > 1 && (
               <div style={{ marginBottom: '16px' }}>
-                <select 
-                  className="branch-selector"
-                  value={activeLocationId || ''} 
-                  onChange={(e) => {
-                    switchLocation(e.target.value);
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  {availableLocations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
-                </select>
+                {renderBranchSelector({}, true)}
               </div>
             )}
             <div style={{ width: '100%' }}>
@@ -695,15 +728,7 @@ export default function MainLayout() {
 
           {availableLocations.length > 1 && (
             <div style={{ padding: '0 16px', marginBottom: '16px' }}>
-              <select 
-                className="branch-selector"
-                value={activeLocationId || ''} 
-                onChange={(e) => switchLocation(e.target.value)}
-              >
-                {availableLocations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
+              {renderBranchSelector({}, true)}
             </div>
           )}
           

@@ -6,7 +6,7 @@ import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 
 export default function SalesHistory() {
-  const { sales, fetchSales, voidSale, approveVoid, rejectVoid, deleteSale, loading } = useSales();
+  const { sales, fetchSales, voidSale, approveVoid, rejectVoid, deleteSale, loading, page, totalPages, totalSales } = useSales();
   const { user } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
@@ -176,6 +176,30 @@ export default function SalesHistory() {
           )}
         </tbody>
       </table>
+
+      {totalPages > 1 && (
+        <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="text-sm text-muted">
+            Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalSales)} of {totalSales} sales
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={() => fetchSales(Math.max(1, page - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={() => fetchSales(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <Modal isOpen={pinModal.isOpen} onClose={() => setPinModal({ isOpen: false, saleId: null, pin: '' })} title="Authorize Void">
         <form onSubmit={handlePinSubmit} className="form-layout">

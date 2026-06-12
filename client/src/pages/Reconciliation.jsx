@@ -88,20 +88,20 @@ export default function Reconciliation() {
       {/* Analytics Bento Grid */}
       <div className="bento-grid mb-xl">
         <div className="pos-glass-card" style={{ minHeight: '350px', padding: 'var(--space-xl)' }}>
-          <h3 className="bento-title mb-lg" style={{ fontSize: '1.25rem', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>Net Contribution by Staff</h3>
+          <h3 className="bento-title mb-lg" style={{ fontSize: '1.25rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Net Contribution by Staff</h3>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
                 <Tooltip 
-                  cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                  contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', padding: '12px' }}
+                  cursor={{ fill: 'var(--color-bg-tertiary)' }}
+                  contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}
                   itemStyle={{ color: 'var(--color-text-primary)' }}
                 />
-                <Bar dataKey="Sales" fill="#00a4ef" radius={[6, 6, 0, 0]} barSize={32} />
-                <Bar dataKey="Shrinkage" fill="#f87171" radius={[6, 6, 0, 0]} barSize={32} />
+                <Bar dataKey="Sales" fill="var(--color-accent-primary)" radius={[6, 6, 0, 0]} barSize={32} />
+                <Bar dataKey="Shrinkage" fill="var(--color-error)" radius={[6, 6, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -117,7 +117,7 @@ export default function Reconciliation() {
         <div style={{ overflowX: 'auto' }}>
           <table className="glass-table w-full" style={{ borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+              <tr style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-tertiary)' }}>
                 <th style={{ padding: '1rem var(--space-xl)', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Staff Member</th>
                 <th style={{ padding: '1rem', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</th>
                 <th style={{ padding: '1rem', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sales (Rev/Cnt)</th>
@@ -146,7 +146,7 @@ export default function Reconciliation() {
                 reconciliationData.map(row => {
                   const net = row.totalSalesRevenue - row.totalShrinkageValue;
                   return (
-                    <tr key={row.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', transition: 'background-color 0.2s' }}>
+                    <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s' }}>
                       <td style={{ padding: '1rem var(--space-xl)' }}>
                         <div className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{row.name || 'Unknown'}</div>
                         <div className="text-sm text-muted">{row.email}</div>

@@ -122,12 +122,19 @@ export function useSales() {
     }
   }, [cart, cartTotal]);
 
-  const fetchSales = useCallback(async () => {
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSales, setTotalSales] = useState(0);
+
+  const fetchSales = useCallback(async (pageNum = 1) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get('/sales');
-      setSales(data);
+      const data = await api.get(`/sales?page=${pageNum}&limit=50`);
+      setSales(data.data || []);
+      setPage(data.page || 1);
+      setTotalPages(data.totalPages || 1);
+      setTotalSales(data.total || 0);
       return data;
     } catch (err) {
       setError(err.message || 'Failed to fetch sales');
@@ -219,5 +226,8 @@ export function useSales() {
     loading,
     error,
     setError,
+    page,
+    totalPages,
+    totalSales,
   };
 }

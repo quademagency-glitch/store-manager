@@ -133,15 +133,15 @@ Some `.map()` calls use array index as the `key` prop, which can cause subtle re
 
 | Priority | Item | Effort |
 |----------|------|--------|
-| 1 | Fix hardcoded colors in 4 pages (Light Mode broken) | ~1 hour |
-| 2 | Replace `alert()`/`confirm()` with Toast + ConfirmDialog | ~2 hours |
-| 3 | Fix `new Function()` security issue | ~30 min |
-| 4 | Clean up junk/backup files | ~10 min |
-| 5 | Fix Service Worker caching (skipWaiting) | ~30 min |
-| 6 | Add rate limiting to auth routes | ~15 min |
-| 7 | Split PlatformAdmin.jsx into sub-pages | ~3 hours |
-| 8 | Add pagination to list views | ~4 hours |
-| 9 | Add loading skeletons + ErrorBoundary | ~2 hours |
-| 10 | Cache authGuard DB lookups | ~1 hour |
-| 11 | Add Zod/Joi request validation | ~3 hours |
-| 12 | Split index.css into modules | ~2 hours |
+| ~~1~~ | ~~Fix hardcoded colors in 4 pages (Light Mode broken)~~ | ✅ Done |
+| ~~2~~ | ~~Replace `alert()`/`confirm()` with Toast + ConfirmDialog~~ | ✅ Done |
+| ~~3~~ | ~~Fix `new Function()` security issue~~ | ✅ Done |
+| ~~4~~ | ~~Clean up junk/backup files~~ | ✅ Done |
+| ~~5~~ | ~~Fix Service Worker caching (skipWaiting)~~ | ✅ Done |
+| ~~6~~ | ~~Add rate limiting to auth routes~~ | ✅ Done |
+| ~~7~~ | ~~Split PlatformAdmin.jsx into sub-pages~~ | ✅ Done |
+| ~~8~~ | ~~Add pagination to list views~~ | ✅ Done |
+| ~~9~~ | ~~Add loading skeletons + ErrorBoundary~~ | ✅ Done |
+| ~~10~~ | ~~Cache authGuard DB lookups~~ | ✅ Done |
+| ~~11~~ | ~~Add Zod/Joi request validation~~ | ✅ Done |
+| ~~12~~ | ~~Split index.css into modules~~ | ✅ Done |

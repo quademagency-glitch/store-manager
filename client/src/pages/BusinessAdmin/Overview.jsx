@@ -83,7 +83,7 @@ export default function Overview() {
         <div className="content-card" style={{ padding: '24px', background: 'var(--color-bg-secondary)', borderRadius: '8px' }}>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', fontWeight: '600' }}>7-Day Revenue Trend</h2>
           <div style={{ height: '300px', width: '100%', minWidth: 0, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <LineChart data={trendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />

@@ -63,7 +63,7 @@ export default function ShrinkageReport() {
           
           {pieData.length > 0 ? (
             <div style={{ height: '250px', width: '100%', minWidth: 0, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <PieChart>
                   <Pie
                     data={pieData}

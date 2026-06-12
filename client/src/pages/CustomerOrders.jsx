@@ -54,12 +54,29 @@ function formatCurrency(amount) {
   return parseFloat(amount || 0).toFixed(2);
 }
 
+const SectionLabel = ({ children }) => (
+  <div style={{
+    fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em',
+    textTransform: 'uppercase', color: 'var(--color-text-secondary)',
+    borderBottom: '1px solid var(--color-border)', paddingBottom: '4px',
+    marginBottom: '12px', marginTop: '20px',
+  }}>
+    {children}
+  </div>
+);
+
 // ─── Order Form (Create / Edit) ────────────────────────────────────────────────
 function OrderForm({ order, onSave, onClose, loading }) {
   const [customerId, setCustomerId] = useState(order?.customer_id || '');
   const [customerSearch, setCustomerSearch] = useState(order?.customer?.name || '');
   const [customerResults, setCustomerResults] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(order?.customer || null);
+  const [showNewCust, setShowNewCust] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustSaving, setNewCustSaving] = useState(false);
+  const [newCustError, setNewCustError] = useState('');
+
   const [items, setItems] = useState(
     order?.items?.map(i => ({
       product_id:         i.product_id || '',
@@ -76,7 +93,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
   const [productSearch, setProductSearch] = useState({});
   const [productResults, setProductResults] = useState({});
 
-  const { searchCustomers } = useCustomers();
+  const { searchCustomers, createCustomer } = useCustomers();
 
   const searchCustomer = useCallback(async (q) => {
     if (!q || q.length < 2) { setCustomerResults([]); return; }
@@ -102,6 +119,40 @@ function OrderForm({ order, onSave, onClose, loading }) {
     setCustomerId(c.id);
     setCustomerSearch(c.name);
     setCustomerResults([]);
+    setShowNewCust(false);
+  };
+
+  const openNewCustForm = () => {
+    setCustomerResults([]);
+    setShowNewCust(true);
+    setNewCustName(customerSearch.trim());
+    setNewCustPhone('');
+    setNewCustError('');
+  };
+
+  const handleNewCustSave = async () => {
+    if (!newCustName.trim() || !newCustPhone.trim()) {
+      setNewCustError('Name and phone are required.');
+      return;
+    }
+    setNewCustSaving(true);
+    setNewCustError('');
+    const res = await createCustomer({ name: newCustName.trim(), phone: newCustPhone.trim() });
+    setNewCustSaving(false);
+    if (res.success) {
+      selectCustomer(res.customer);
+      setNewCustName('');
+      setNewCustPhone('');
+    } else {
+      setNewCustError(res.error || 'Failed to create customer.');
+    }
+  };
+
+  const cancelNewCust = () => {
+    setShowNewCust(false);
+    setNewCustName('');
+    setNewCustPhone('');
+    setNewCustError('');
   };
 
   const selectProduct = (idx, product) => {
@@ -155,31 +206,40 @@ function OrderForm({ order, onSave, onClose, loading }) {
   };
 
   const isEditingActiveOrder = order && order.status !== 'draft';
+  const showCustomerDropdown = !customerId && (customerResults.length > 0 || (customerSearch.length >= 2 && !showNewCust));
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Customer */}
+      {/* ── Customer ── */}
+      <SectionLabel>Customer</SectionLabel>
       <div className="form-group" style={{ position: 'relative' }}>
-        <label>Customer <span style={{ color: 'var(--color-error)' }}>*</span></label>
         <input
           type="text"
           className="input"
           placeholder="Search by name or phone..."
           value={customerSearch}
-          onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(''); setSelectedCustomer(null); }}
+          onChange={(e) => { setCustomerSearch(e.target.value); setCustomerId(''); setSelectedCustomer(null); setShowNewCust(false); }}
           required={!customerId}
           disabled={!!order}
         />
         {customerId && (
           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '4px', display: 'block' }}>
-            {selectedCustomer?.phone} &middot; {selectedCustomer?.customer_code}
+            {selectedCustomer?.phone}
+            {selectedCustomer?.customer_code && <> &middot; {selectedCustomer.customer_code}</>}
+            {!order && (
+              <button type="button" onClick={() => { setCustomerId(''); setSelectedCustomer(null); setCustomerSearch(''); }}
+                style={{ marginLeft: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: '0.75rem', textDecoration: 'underline' }}>
+                Change
+              </button>
+            )}
           </span>
         )}
-        {customerResults.length > 0 && (
+
+        {showCustomerDropdown && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
             background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', maxHeight: '200px', overflowY: 'auto'
+            borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', maxHeight: '220px', overflowY: 'auto',
           }}>
             {customerResults.map(c => (
               <button key={c.id} type="button" onClick={() => selectCustomer(c)}
@@ -189,61 +249,105 @@ function OrderForm({ order, onSave, onClose, loading }) {
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{c.phone}</div>
               </button>
             ))}
+            <button type="button" onClick={openNewCustForm}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--color-accent-primary)', fontWeight: 600, fontSize: '0.875rem' }}>
+              + Add New Customer
+            </button>
+          </div>
+        )}
+
+        {showNewCust && (
+          <div style={{
+            border: '1px dashed var(--color-border-focus)', borderRadius: 'var(--radius-md)',
+            padding: '12px', marginTop: '8px', background: 'var(--color-bg-secondary)',
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text-secondary)' }}>
+              New Customer
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input
+                type="text"
+                className="input"
+                placeholder="Full name *"
+                value={newCustName}
+                onChange={(e) => setNewCustName(e.target.value)}
+                autoFocus
+              />
+              <input
+                type="tel"
+                className="input"
+                placeholder="Phone number (e.g. +1234567890) *"
+                value={newCustPhone}
+                onChange={(e) => setNewCustPhone(e.target.value)}
+              />
+              {newCustError && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-error)' }}>{newCustError}</div>
+              )}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-sm btn-outline" onClick={cancelNewCust}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-sm btn-primary" onClick={handleNewCustSave} disabled={newCustSaving}>
+                  {newCustSaving ? 'Saving...' : 'Save Customer'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Line Items */}
+      {/* ── Order Items ── */}
+      <SectionLabel>
+        <span>Order Items</span>
+      </SectionLabel>
       <div className="form-group">
-        <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Items
-          {!isEditingActiveOrder && (
+        {!isEditingActiveOrder && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
             <button type="button" className="btn btn-sm btn-outline" onClick={addItem}>+ Add Item</button>
-          )}
-        </label>
+          </div>
+        )}
 
         {items.map((item, idx) => (
           <div key={idx} style={{
             border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-            padding: '12px', marginBottom: '8px', position: 'relative'
+            padding: '12px', marginBottom: '8px',
           }}>
-            {/* Product or Custom description */}
             {!isEditingActiveOrder && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="Search catalog product..."
-                    value={productSearch[idx] ?? item._productName}
-                    onChange={(e) => {
-                      setProductSearch(prev => ({ ...prev, [idx]: e.target.value }));
-                      updateItem(idx, 'product_id', '');
-                      updateItem(idx, '_productName', '');
-                      searchProduct(idx, e.target.value);
-                    }}
-                  />
-                  {(productResults[idx] || []).length > 0 && (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                      background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', maxHeight: '160px', overflowY: 'auto'
-                    }}>
-                      {productResults[idx].map(p => (
-                        <button key={p.id} type="button" onClick={() => selectProduct(idx, p)}
-                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
-                            background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
-                          <div style={{ fontWeight: 600 }}>{p.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{p.sku} &mdash; {formatCurrency(p.price)}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div style={{ marginBottom: '8px', position: 'relative' }}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Search catalog product..."
+                  value={productSearch[idx] ?? item._productName}
+                  onChange={(e) => {
+                    setProductSearch(prev => ({ ...prev, [idx]: e.target.value }));
+                    updateItem(idx, 'product_id', '');
+                    updateItem(idx, '_productName', '');
+                    searchProduct(idx, e.target.value);
+                  }}
+                />
+                {(productResults[idx] || []).length > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                    background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', maxHeight: '160px', overflowY: 'auto',
+                  }}>
+                    {productResults[idx].map(p => (
+                      <button key={p.id} type="button" onClick={() => selectProduct(idx, p)}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
+                          background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
+                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{p.sku} &mdash; {formatCurrency(p.price)}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="form-group" style={{ marginBottom: '8px' }}>
+            <div style={{ marginBottom: '8px' }}>
               <input
                 type="text"
                 className="input"
@@ -254,26 +358,28 @@ function OrderForm({ order, onSave, onClose, loading }) {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ flex: '0 0 100px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Qty</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 120px 1fr auto', gap: '8px', alignItems: 'end' }}>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Qty</label>
                 <input type="number" className="input" min="1" value={item.quantity}
                   onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)}
                   disabled={isEditingActiveOrder} />
               </div>
-              <div style={{ flex: '0 0 130px' }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Unit Price</label>
+              <div>
+                <label style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Unit Price</label>
                 <input type="number" className="input" min="0" step="0.01" value={item.unit_price}
                   onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
                   disabled={isEditingActiveOrder} />
               </div>
-              <div style={{ flex: 1, textAlign: 'right', paddingTop: '18px', fontWeight: 600 }}>
+              <div style={{ textAlign: 'right', fontWeight: 600, paddingBottom: '6px' }}>
                 {formatCurrency(item.quantity * (parseFloat(item.unit_price) || 0))}
               </div>
-              {!isEditingActiveOrder && items.length > 1 && (
+              {!isEditingActiveOrder && (
                 <button type="button" onClick={() => removeItem(idx)}
-                  style={{ paddingTop: '18px', background: 'transparent', border: 'none', cursor: 'pointer',
-                    color: 'var(--color-error)', fontSize: '1.2rem', lineHeight: 1 }}>
+                  disabled={items.length === 1}
+                  style={{ background: 'transparent', border: 'none', cursor: items.length === 1 ? 'not-allowed' : 'pointer',
+                    color: items.length === 1 ? 'var(--color-text-muted)' : 'var(--color-error)',
+                    fontSize: '1.2rem', lineHeight: 1, paddingBottom: '4px' }}>
                   &times;
                 </button>
               )}
@@ -281,41 +387,46 @@ function OrderForm({ order, onSave, onClose, loading }) {
           </div>
         ))}
 
-        <div style={{ textAlign: 'right', fontWeight: 700, fontSize: '1rem', marginTop: '8px' }}>
-          Total: {formatCurrency(total)}
+        <div style={{
+          background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-md)', padding: '10px 14px',
+          display: 'flex', justifyContent: 'space-between', marginTop: '4px',
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Order Total</span>
+          <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{formatCurrency(total)}</span>
         </div>
       </div>
 
-      {/* Deposit */}
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <div className="form-group" style={{ flex: 1 }}>
-          <label>Deposit Amount</label>
+      {/* ── Payment ── */}
+      <SectionLabel>Payment</SectionLabel>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
+        <div className="form-group">
+          <label style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Deposit Amount</label>
           <input type="number" className="input" min="0" step="0.01"
             value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />
         </div>
-        <div className="form-group" style={{ flex: '0 0 auto', display: 'flex', alignItems: 'flex-end', paddingBottom: '4px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+        <div className="form-group" style={{ paddingBottom: '4px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={depositPaid} onChange={(e) => setDepositPaid(e.target.checked)} />
             Deposit Paid
           </label>
         </div>
       </div>
 
-      {/* Due Date */}
+      {/* ── Details ── */}
+      <SectionLabel>Details</SectionLabel>
       <div className="form-group">
-        <label>Due Date</label>
+        <label style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Due Date</label>
         <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       </div>
-
-      {/* Notes */}
       <div className="form-group">
-        <label>Notes</label>
+        <label style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Notes</label>
         <textarea className="input" rows={3} style={{ resize: 'vertical' }}
           value={notes} onChange={(e) => setNotes(e.target.value)}
           placeholder="Special instructions, sourcing notes..." />
       </div>
 
-      <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+      <div className="modal-footer">
         <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={loading || !customerId}>
           {loading ? 'Saving...' : (order ? 'Save Changes' : 'Create Order')}

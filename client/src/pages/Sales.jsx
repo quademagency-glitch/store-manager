@@ -266,9 +266,6 @@ export default function Sales() {
     } catch (err) {
       toast.error(`Could not verify physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
     }
-      // Fallback or generic product
-      toast.error(`Could not verify specific physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
-    }
   };
 
   const removeWizardItem = (itemId) => {

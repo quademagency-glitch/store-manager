@@ -32,7 +32,6 @@ export default function Returns() {
   // Security Check: Only Admins
   const role = user?.user_metadata?.role || '';
   const isDoubleMode = business?.qr_tracking_mode === 'double';
-  const role = user?.user_metadata?.role || '';
   const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
 
   if (!isAdmin) {

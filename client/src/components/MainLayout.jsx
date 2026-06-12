@@ -249,7 +249,7 @@ export default function MainLayout() {
   const isAdminView = role && !role.toLowerCase().includes('sales');
 
   const renderUserMenu = (isMobile = false) => (
-    <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={isMobile ? { position: 'static', width: '100%', background: 'transparent', boxShadow: 'none', border: 'none', marginTop: '8px' } : {
+    <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={isMobile ? { position: 'static', width: '100%', background: 'transparent', boxShadow: 'none', border: 'none', marginTop: '8px', display: isUserMenuOpen ? 'block' : 'none' } : {
       position: 'absolute', bottom: isAdminView ? 'auto' : '80px', top: isAdminView ? '60px' : 'auto', right: isAdminView ? '16px' : 'auto', left: isAdminView ? 'auto' : '16px',
       width: '240px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
       boxShadow: 'var(--shadow-xl)', zIndex: 100, padding: '8px 0',

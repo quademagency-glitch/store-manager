@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useProducts } from '../../../hooks/useProducts';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';

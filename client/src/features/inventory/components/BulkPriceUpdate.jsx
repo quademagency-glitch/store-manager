@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../../lib/api';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';

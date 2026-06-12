@@ -24,7 +24,6 @@ export default function TillAccount() {
 
   // Financial Summary State
   const [finSummary, setFinSummary] = useState(null);
-  const [finLoading, setFinLoading] = useState(false);
   const [finExpanded, setFinExpanded] = useState(false);
 
   const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
@@ -57,20 +56,18 @@ export default function TillAccount() {
 
   const fetchFinSummary = async () => {
     if (!isAdmin) return;
-    setFinLoading(true);
     try {
       const res = await api.get(`/ledger/financial-summary?start_date=${startDate}&end_date=${endDate}`);
       setFinSummary(res);
     } catch (err) {
       if (import.meta.env.DEV) console.error('Financial summary error:', err);
-    } finally {
-      setFinLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
     if (isAdmin) fetchFinSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const fmt = (val) => fmtCurrency(val);

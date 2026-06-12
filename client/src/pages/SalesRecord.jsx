@@ -42,10 +42,6 @@ export default function SalesRecord() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedReceiptSale, setSelectedReceiptSale] = useState(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [startDate, endDate, page]);
-
   const fetchHistory = async () => {
     if (!startDate || !endDate) return;
     setLoading(true);
@@ -67,6 +63,11 @@ export default function SalesRecord() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, page]);
 
   // Currency formatting handled by useCurrency hook above
 

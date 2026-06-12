@@ -4,6 +4,7 @@ import { useProducts } from '../hooks/useProducts';
 import { useCustomers } from '../hooks/useCustomers';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
+import QrScanner from '../components/QrScanner';
 import { api } from '../lib/api';
 
 import NewCustomerModal from '../features/sales/components/NewCustomerModal';
@@ -133,7 +134,7 @@ export default function Sales() {
     }
   };
 
-  // const handleSendVerification = async (customer) => {
+  const handleSendVerification = async (customer) => {
     const res = await sendVerificationCode(customer.id);
     if (res.success) {
       setCustomerToVerify(customer);
@@ -178,7 +179,7 @@ export default function Sales() {
         return;
       }
       setWizardItems([{
-        id: crypto.randomUUID(),
+        id: Date.now().toString(),
         product,
         quantity: 1,
         scans: isDoubleMode ? [{ pack_code: '', serial_number: '', item_code: '' }] : [{ item_code: '', unit_id: null }],
@@ -207,7 +208,7 @@ export default function Sales() {
     const isDoubleMode = business?.qr_tracking_mode === 'double';
 
     setWizardItems(prev => [...prev, {
-      id: crypto.randomUUID(),
+      id: Date.now().toString(),
       product: selectedProductForBatch.product,
       quantity: qty,
       scans: isDoubleMode 
@@ -226,7 +227,7 @@ export default function Sales() {
     setShowScanner(true);
   };
 
-  // const onScanComplete = async (decodedText) => {
+  const onScanComplete = async (decodedText) => {
     setShowScanner(false);
     if (!activeScanTarget) return;
 
@@ -262,7 +263,7 @@ export default function Sales() {
         }
         return item;
       }));
-    } catch {
+    } catch (err) {
       toast.error(`Could not verify physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
     }
   };
@@ -305,9 +306,8 @@ export default function Sales() {
     setSaleError('');
     setIsProcessing(true);
 
-    let payload;
     try {
-      payload = {
+      const payload = {
         items: wizardItems.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -327,12 +327,12 @@ export default function Sales() {
 
       setPendingSale(saleData);
       setShowPaymentModal(true);
-    } catch {
+    } catch (err) {
       if (err.message === 'Failed to fetch' || !navigator.onLine) {
         // Offline: hold the sale locally and proceed to payment
         toast.warning('You are offline. Proceeding to payment locally. The transaction will be synced later.');
         setPendingSale({
-          id: `offline-${crypto.randomUUID()}`,
+          id: `offline-${Date.now()}`,
           total_amount: totalAmount,
           status: 'pending',
           _isOffline: true,
@@ -347,7 +347,7 @@ export default function Sales() {
     }
   };
 
-  // const handleCancelSale = async () => {
+  const handleCancelSale = async () => {
     if (!pendingSale) return;
     setIsProcessing(true);
     try {
@@ -356,7 +356,7 @@ export default function Sales() {
       setPendingSale(null);
       setSaleError('Transaction was cancelled. Items have been removed from your batch.');
       setWizardItems([]);
-    } catch {
+    } catch (err) {
       setSaleError(err.message || 'Failed to cancel sale');
     } finally {
       setIsProcessing(false);
@@ -421,7 +421,7 @@ export default function Sales() {
       setWizardItems([]);
       setAmountPaid('');
       setPendingSale(null);
-    } catch {
+    } catch (err) {
       setSaleError(err.message || 'Failed to finalize sale');
     } finally {
       setIsProcessing(false);

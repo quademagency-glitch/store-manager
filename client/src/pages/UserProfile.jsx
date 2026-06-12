@@ -18,6 +18,7 @@ export default function UserProfile() {
     if (tabParam && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
 
   const handleTabChange = (tab) => {

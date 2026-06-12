@@ -77,10 +77,10 @@ export default function Overview() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginTop: '24px' }}>
+      <div className="overview-bento">
         
         {/* Trend Chart */}
-        <div className="content-card" style={{ padding: '24px', background: 'var(--color-bg-secondary)', borderRadius: '8px' }}>
+        <div className="content-card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', fontWeight: '600' }}>7-Day Revenue Trend</h2>
           <div style={{ height: '300px', width: '100%', minWidth: 0, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
@@ -99,7 +99,7 @@ export default function Overview() {
         </div>
 
         {/* Recent Activity */}
-        <div className="content-card" style={{ padding: '24px', background: 'var(--color-bg-secondary)', borderRadius: '8px' }}>
+        <div className="content-card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', fontWeight: '600' }}>Recent Activity</h2>
           {recentActivity.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

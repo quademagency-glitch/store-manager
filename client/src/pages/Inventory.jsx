@@ -15,10 +15,15 @@ import TransferModal from '../features/inventory/components/TransferModal';
 import BatchModal from '../features/inventory/components/BatchModal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
+import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
+  const { business, printElement } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
 
@@ -79,6 +84,10 @@ export default function Inventory() {
   // Sold Units Modal
   const [isSoldUnitsModalOpen, setIsSoldUnitsModalOpen] = useState(false);
   const [selectedSoldProduct, setSelectedSoldProduct] = useState(null);
+
+  // GRN State
+  const [showGrnModal, setShowGrnModal] = useState(false);
+  const [grnData, setGrnData] = useState(null);
 
   useEffect(() => {
     fetchMovements(stockPage);
@@ -157,6 +166,21 @@ export default function Inventory() {
     );
     if (result.success) {
       setIsAdjustModalOpen(false);
+      // If RECEIPT, offer GRN print
+      if (adjustData.movementType === 'RECEIPT') {
+        const product = products.find(p => p.id === adjustData.productId);
+        setGrnData({
+          items: [{
+            product_name: product?.name || 'Unknown',
+            sku: product?.sku || '',
+            quantity: Math.abs(finalQtyChange),
+            unit_cost: product?.price || 0,
+          }],
+          notes: adjustData.notes,
+          date: new Date().toISOString(),
+        });
+        setShowGrnModal(true);
+      }
     }
     setAdjusting(false);
   };
@@ -875,6 +899,30 @@ export default function Inventory() {
         }}
         product={selectedSoldProduct}
       />
+
+      {/* GRN Print Modal */}
+      <Modal isOpen={showGrnModal} onClose={() => setShowGrnModal(false)} title="Goods Received Note" size="large">
+        {grnData && (
+          <div style={{ padding: '0.5rem' }}>
+            <PurchaseOrderDocument
+              business={business}
+              items={grnData.items}
+              notes={grnData.notes}
+              date={grnData.date}
+              purchaseOrder={grnData.purchaseOrder || null}
+              fmt={fmt}
+              documentType="grn"
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button className="btn btn-outline" onClick={() => setShowGrnModal(false)}>Close</button>
+              <button className="btn btn-primary" onClick={() => printElement('printable-grn', 'a4')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print GRN
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
     </div>
   );

@@ -5,8 +5,14 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
   if (!receiptData) return null;
 
   const handlePrint = () => {
-    // In a real app, this would generate a PDF or trigger ESC/POS bluetooth printing
-    window.print();
+    const el = document.getElementById('printable-receipt');
+    if (el) {
+      // Add printable classes
+      el.classList.add('printable-area', 'print-format-thermal');
+      window.print();
+      // Clean up
+      el.classList.remove('printable-area', 'print-format-thermal');
+    }
   };
 
   return (
@@ -29,7 +35,7 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
             position: 'relative'
           }}
         >
-          {/* Jagged Edge effect top & bottom using CSS gradients (optional, we'll keep it clean) */}
+          {/* Header: Letterhead or fallback */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <LetterheadRenderer
               letterhead={business?.letterhead}
@@ -44,6 +50,7 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
           
           <div style={{ borderBottom: '2px dashed #cbd5e1', margin: '16px 0' }}></div>
           
+          {/* Items Table */}
           <table style={{ width: '100%', marginBottom: '16px', textAlign: 'left', fontSize: '0.95rem' }}>
             <thead>
               <tr>
@@ -68,16 +75,29 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
 
           <div style={{ borderBottom: '2px dashed #cbd5e1', margin: '16px 0' }}></div>
 
+          {/* Total */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.4rem', color: '#0f172a' }}>
             <span>TOTAL:</span>
             <span>{fmt(receiptData.total_amount)}</span>
           </div>
           
+          {/* Payment Method */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.9rem', color: '#475569' }}>
             <span style={{ textTransform: 'capitalize' }}>Paid via {receiptData.payment_method}:</span>
             <span style={{ fontWeight: 600 }}>{fmt(receiptData.total_amount)}</span>
           </div>
 
+          {/* Return Policy (if business has one) */}
+          {business?.return_policy && (
+            <>
+              <div style={{ borderBottom: '1px dashed #e2e8f0', margin: '16px 0' }}></div>
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center', lineHeight: 1.5 }}>
+                <strong>Return Policy:</strong> {business.return_policy}
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
           <div style={{ textAlign: 'center', marginTop: '32px', color: '#64748b', fontSize: '0.85rem' }}>
             {business?.letterhead?.footer_text ? (
               <LetterheadFooter letterhead={business.letterhead} />

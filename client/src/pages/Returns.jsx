@@ -3,10 +3,15 @@ import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
+import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 
 export default function Returns() {
   const { user } = useAuthContext();
   const toast = useToast();
+  const { business, printElement } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const [searchType, setSearchType] = useState('receipt');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -52,10 +57,6 @@ export default function Returns() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fmt = (val) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
   };
 
   const openReturnModal = (sale) => {
@@ -125,6 +126,7 @@ export default function Returns() {
           const original = selectedSale.sale_items.find(si => si.id === rtnItem.sale_item_id);
           return {
             name: original?.product?.name || 'Unknown',
+            sku: original?.product?.sku || '',
             qty: rtnItem.quantity,
             price: rtnItem.unit_price,
             total: rtnItem.quantity * rtnItem.unit_price
@@ -132,7 +134,8 @@ export default function Returns() {
         }),
         totalRefund: calculateTotalRefund(),
         reason: returnReason,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        processedBy: user?.user_metadata?.name || user?.email?.split('@')[0] || 'Staff'
       };
 
       setRefundReceiptData(refundData);
@@ -146,6 +149,10 @@ export default function Returns() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePrintRefund = () => {
+    printElement('refund-receipt-print-area', 'a4');
   };
 
   return (
@@ -336,55 +343,85 @@ export default function Returns() {
       <Modal isOpen={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Refund Receipt">
         {refundReceiptData && (
           <div style={{ padding: '0.5rem' }}>
-            <div id="refund-receipt-print-area" style={{ padding: '24px', background: 'white', color: 'black', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'monospace' }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px dashed #ccc', paddingBottom: '16px' }}>
-                <h2 style={{ margin: '0 0 8px 0' }}>STORE REFUND</h2>
-                <div>Receipt #: {refundReceiptData.receiptNumber}</div>
-                <div>Date: {new Date(refundReceiptData.date).toLocaleString()}</div>
-                <div>Customer: {refundReceiptData.customerName}</div>
+            <div id="refund-receipt-print-area" className="printable-area" style={{ padding: '32px', background: 'white', color: '#1e293b', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: '"Inter", -apple-system, sans-serif' }}>
+              
+              {/* Letterhead */}
+              <LetterheadRenderer
+                letterhead={business?.letterhead}
+                logoUrl={business?.logo_url}
+                businessName={business?.name}
+              />
+
+              {/* Document Title */}
+              <div style={{ textAlign: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '2px dashed #cbd5e1' }}>
+                <h2 style={{ margin: '12px 0 8px 0', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#dc2626' }}>
+                  REFUND NOTE
+                </h2>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Original Receipt #: {refundReceiptData.receiptNumber}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Date: {new Date(refundReceiptData.date).toLocaleString()}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Customer: {refundReceiptData.customerName}
+                </div>
               </div>
               
+              {/* Items Table */}
               <table style={{ width: '100%', marginBottom: '24px', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px dashed #ccc' }}>
-                    <th style={{ textAlign: 'left', padding: '8px 0' }}>Item</th>
-                    <th style={{ textAlign: 'center', padding: '8px 0' }}>Qty</th>
-                    <th style={{ textAlign: 'right', padding: '8px 0' }}>Total</th>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Item</th>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>SKU</th>
+                    <th style={{ textAlign: 'center', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Unit Price</th>
+                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {refundReceiptData.items.map((item, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '8px 0' }}>{item.name}</td>
-                      <td style={{ textAlign: 'center', padding: '8px 0' }}>{item.qty}</td>
-                      <td style={{ textAlign: 'right', padding: '8px 0' }}>{fmt(item.total)}</td>
+                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px 8px', fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{item.sku || '—'}</td>
+                      <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600 }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right', padding: '10px 8px', fontFamily: 'monospace' }}>{fmt(item.price)}</td>
+                      <td style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, fontFamily: 'monospace' }}>{fmt(item.total)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px dashed #ccc', paddingTop: '16px', fontWeight: 'bold', fontSize: '1.2rem' }}>
+              {/* Total Refund */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #334155', paddingTop: '16px', fontWeight: 800, fontSize: '1.2rem', color: '#dc2626' }}>
                 <span>TOTAL REFUND</span>
                 <span>{fmt(refundReceiptData.totalRefund)}</span>
               </div>
               
+              {/* Reason */}
               {refundReceiptData.reason && (
-                <div style={{ marginTop: '24px', fontStyle: 'italic', color: '#666' }}>
-                  Reason: {refundReceiptData.reason}
+                <div style={{ marginTop: '20px', padding: '12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#991b1b', marginBottom: '4px' }}>Reason for Return</div>
+                  <div style={{ fontSize: '0.9rem', color: '#475569' }}>{refundReceiptData.reason}</div>
                 </div>
               )}
+
+              {/* Processed By */}
+              <div style={{ marginTop: '20px', fontSize: '0.82rem', color: '#64748b' }}>
+                Processed by: <strong>{refundReceiptData.processedBy}</strong>
+              </div>
+
+              {/* Footer */}
+              <LetterheadFooter letterhead={business?.letterhead} />
             </div>
 
+            {/* Action Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '24px' }}>
               <button className="btn btn-outline" onClick={() => setShowReceiptModal(false)}>Close</button>
-              <button className="btn btn-primary" onClick={() => {
-                const printContent = document.getElementById('refund-receipt-print-area').innerHTML;
-                const originalContent = document.body.innerHTML;
-                document.body.innerHTML = printContent;
-                window.print();
-                document.body.innerHTML = originalContent;
-                window.location.reload();
-              }}>Print Receipt</button>
+              <button className="btn btn-primary" onClick={handlePrintRefund} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print Refund Note
+              </button>
             </div>
           </div>
         )}

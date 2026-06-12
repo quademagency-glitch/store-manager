@@ -6,11 +6,15 @@ import Modal from '../components/Modal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 
 export default function SalesRecord() {
   const { hasPermission } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const [searchParams] = useSearchParams();
   
   // Date range state (default to today or URL param)
@@ -64,7 +68,7 @@ export default function SalesRecord() {
     }
   };
 
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
+  // Currency formatting handled by useCurrency hook above
 
   // --- Returns Logic ---
   const openReturnModal = (sale) => {
@@ -400,6 +404,7 @@ export default function SalesRecord() {
           onClose={closeReceiptModal}
           receiptData={selectedReceiptSale}
           fmt={fmt}
+          business={business}
           actions={
             <>
               {canReturn && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.return_status !== 'full' && (

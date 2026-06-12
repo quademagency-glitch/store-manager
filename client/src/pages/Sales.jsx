@@ -13,10 +13,14 @@ import PaymentModal from '../features/sales/components/PaymentModal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
 import { addToOfflineQueue } from '../lib/idb';
 import { useToast } from '../hooks/useToast';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 
 export default function Sales() {
   const { user } = useAuthContext();
   const toast = useToast();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const { products, loading: productsLoading } = useProducts();
   const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
 
@@ -93,7 +97,7 @@ export default function Sales() {
     );
   }, [products, productSearchTerm]);
 
-  const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
+  // Currency formatting handled by useCurrency hook above
 
   const totalAmount = wizardItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
@@ -851,6 +855,7 @@ export default function Sales() {
         onClose={closeReceipt}
         receiptData={receiptData}
         fmt={fmt}
+        business={business}
       />
 
     </div>

@@ -43,6 +43,7 @@ export default function Organization() {
         region: business.region,
         tax_rate: business.tax_rate,
         return_policy: business.return_policy,
+        currency: business.currency,
       });
       setBusiness(updated);
       toast.success('Organization profile saved!');
@@ -238,6 +239,26 @@ export default function Organization() {
                     onChange={e => updateField('tax_rate', parseFloat(e.target.value) || 0)}
                   />
                   <p className="org-form-hint">Applied to all sales unless overridden per product.</p>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="org-currency">Operating Currency</label>
+                  <select
+                    id="org-currency"
+                    className="form-input"
+                    value={business.currency || 'GHS'}
+                    onChange={e => updateField('currency', e.target.value)}
+                  >
+                    <option value="GHS">🇬🇭 GHS — Ghanaian Cedi</option>
+                    <option value="NGN">🇳🇬 NGN — Nigerian Naira</option>
+                    <option value="KES">🇰🇪 KES — Kenyan Shilling</option>
+                    <option value="ZAR">🇿🇦 ZAR — South African Rand</option>
+                    <option value="XOF">🇸🇳 XOF — West African CFA</option>
+                    <option value="XAF">🇨🇲 XAF — Central African CFA</option>
+                    <option value="USD">🇺🇸 USD — US Dollar</option>
+                    <option value="EUR">🇪🇺 EUR — Euro</option>
+                    <option value="GBP">🇬🇧 GBP — British Pound</option>
+                  </select>
+                  <p className="org-form-hint">Used on receipts, invoices, and all printed documents.</p>
                 </div>
                 <div className="form-group full-width">
                   <label htmlFor="org-return-policy">Return Policy</label>

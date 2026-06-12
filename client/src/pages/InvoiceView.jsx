@@ -91,7 +91,14 @@ export default function InvoiceView() {
           <button className="btn btn-secondary" onClick={() => navigate('/business-admin/billing')}>
             Back to Billing
           </button>
-          <button className="btn btn-primary" onClick={() => window.print()}>
+          <button className="btn btn-primary" onClick={() => {
+            const el = document.getElementById('invoice-print-preview');
+            if (el) {
+              el.classList.add('printable-area', 'print-format-a4');
+              window.print();
+              el.classList.remove('printable-area', 'print-format-a4');
+            }
+          }}>
             Print / Save PDF
           </button>
         </div>
@@ -100,7 +107,7 @@ export default function InvoiceView() {
       <div className="invoice-layout" style={{ display: 'flex', justifyContent: 'center' }}>
         
         {/* Invoice Preview */}
-        <div className="invoice-preview" style={{ 
+        <div id="invoice-print-preview" className="invoice-preview" style={{ 
           background: 'var(--color-bg-secondary)', 
           border: '1px solid var(--color-border)', 
           borderRadius: '16px', 
@@ -192,31 +199,6 @@ export default function InvoiceView() {
         </div>
 
       </div>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .invoice-preview, .invoice-preview * {
-            visibility: visible;
-          }
-          .invoice-preview {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            border: none !important;
-            padding: 0 !important;
-            background: white !important;
-            color: black !important;
-            box-shadow: none !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}} />
     </div>
   );
 }

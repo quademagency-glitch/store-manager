@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
+import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
 
 const Icons = {
   printer: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
@@ -10,6 +13,8 @@ const Icons = {
 
 export default function TillAccount() {
   const { role } = useAuthContext();
+  const { business, printElement } = usePrintDocument();
+  const { fmt: fmtCurrency } = useCurrency(business);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,7 +73,7 @@ export default function TillAccount() {
     if (isAdmin) fetchFinSummary();
   }, [startDate, endDate]);
 
-  const fmt = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
+  const fmt = (val) => fmtCurrency(val);
 
   if (error) return <div className="p-8 text-center max-w-2xl mx-auto mt-10 rounded-none" style={{ color: 'var(--color-error)', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)' }}>{error}</div>;
 
@@ -205,7 +210,7 @@ export default function TillAccount() {
             />
           </div>
           <button 
-            onClick={() => window.print()} 
+            onClick={() => printElement('till-print-area', 'a4')} 
             className="flex items-center gap-2 px-4 py-1.5 text-sm transition-colors uppercase font-medium"
             style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
           >
@@ -230,6 +235,18 @@ export default function TillAccount() {
       ) : (
         /* ADVANCED LEDGER VIEW */
         <div id="till-print-area" className="flex-1 w-full space-y-12">
+          {/* Letterhead — visible only in print */}
+          <div className="print-only">
+            <LetterheadRenderer
+              letterhead={business?.letterhead}
+              logoUrl={business?.logo_url}
+              businessName={business?.name}
+            />
+            <div style={{ textAlign: 'center', margin: '12px 0 24px 0' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#334155' }}>TILL ACCOUNT LEDGER</h2>
+              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Period: {startDate} — {endDate}</div>
+            </div>
+          </div>
           {/* Financial Summary for Admins */}
           {renderFinancialSummary()}
           {data.branches.length === 0 ? (
@@ -346,6 +363,10 @@ export default function TillAccount() {
               </div>
             ))
           )}
+          {/* Print Footer */}
+          <div className="print-only">
+            <LetterheadFooter letterhead={business?.letterhead} />
+          </div>
         </div>
       )}
 
@@ -398,7 +419,7 @@ export default function TillAccount() {
             </div>
             <div className="p-4 flex justify-end" style={{ background: 'var(--color-bg-tertiary)', borderTop: '1px solid var(--color-border)' }}>
               <button 
-                onClick={() => window.print()}
+                onClick={() => printElement('expense-voucher-print', 'a4')}
                 className="text-xs uppercase tracking-wider font-bold flex items-center gap-2 px-4 py-2"
                 style={{ color: 'var(--color-accent-primary)' }}
               >

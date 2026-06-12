@@ -13,19 +13,13 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
 
   const isBusinessAdmin = role === 'Business Admin' || role === 'Platform Admin';
 
-  useEffect(() => {
-    if (isOpen && product) {
-      fetchSoldUnits();
-    }
-  }, [isOpen, product, activeLocationId]);
-
   const fetchSoldUnits = async () => {
     try {
       setLoading(true);
-      const url = activeLocationId 
+      const url = activeLocationId
         ? `/units/sold/${product.id}?location_id=${activeLocationId}`
         : `/units/sold/${product.id}`;
-        
+
       const data = await api.get(url);
       setUnits(data);
     } catch (err) {
@@ -34,6 +28,12 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && product) {
+      fetchSoldUnits();
+    }
+  }, [isOpen, product, activeLocationId]);
 
   const handleReceiptClick = (receiptNumber) => {
     if (isBusinessAdmin && receiptNumber) {

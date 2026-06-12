@@ -601,13 +601,30 @@ export function PlatformAdminProvider({ children }) {
     assignForm, setAssignForm,
     businessSubscription, setBusinessSubscription,
     ALL_PERMISSIONS,
-    fetchData, fetchPricingData, fetchBillingData,
-    handleAddBusiness, handleEditBusiness, handleBanBusiness, handleUnbanBusiness, handleViewBusiness,
-    handleAddUser, handleEditUser, handleBanUser, handleUnbanUser,
-    handleAddRole, handleEditRole, handleDeleteRole,
-    handleSavePlan, handleSaveGateway, handleSendInvoice, handleRecordPayment, handleAssignPlan,
+    fetchData,
+    // Business CRUD
+    handleCreateBusiness, handleUpdateBusiness, handleToggleBusinessBan, handleDeleteBusiness, handleViewBusiness, openEditBusiness,
+    // Aliases used by tab components
+    handleAddBusiness: handleCreateBusiness, handleEditBusiness: handleUpdateBusiness,
+    handleBanBusiness: handleToggleBusinessBan, handleUnbanBusiness: handleToggleBusinessBan,
+    // User CRUD
+    handleCreateUser, handleUpdateUser, handleToggleUserBan, handleDeleteUser, openEditUser,
+    handleAddUser: handleCreateUser, handleEditUser: handleUpdateUser,
+    handleBanUser: handleToggleUserBan, handleUnbanUser: handleToggleUserBan,
+    // Role CRUD
+    handleCreateRole, handleUpdateRole, handleDeleteRole, openEditRole,
+    handleAddRole: handleCreateRole, handleEditRole: openEditRole,
+    // Plan CRUD
+    handleSavePlan, handleDeletePlan, openPlanModal,
+    // Gateway CRUD
+    handleSaveGateway, handleDeleteGateway, openGatewayModal,
+    // Billing
+    handleSendInvoice, handleRecordPayment, handleAssignPlan,
+    // Helpers
+    togglePermission, formatCurrency, FEATURE_LABELS,
     activeBusinesses, recentBusinesses, activeUsers, businessAdmins,
-    filteredBusinesses, filteredUsers
+    filteredBusinesses, filteredUsers,
+    users
   };
 
   return (

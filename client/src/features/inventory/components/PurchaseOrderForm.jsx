@@ -6,7 +6,6 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
   const [expectedDate, setExpectedDate] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState([{ product_id: '', quantity: '', unit_cost: '', notes: '' }]);
-  const [productSearch, setProductSearch] = useState('');
 
   useEffect(() => {
     if (editingOrder) {
@@ -76,11 +75,6 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
         notes: item.notes
       }))
     });
-  };
-
-  const getProductName = (id) => {
-    const p = products.find(p => p.id === id);
-    return p ? `${p.name} (${p.sku})` : '';
   };
 
   return (

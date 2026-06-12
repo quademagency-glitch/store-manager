@@ -7,7 +7,6 @@ export default function InventoryAnalytics() {
   const { summary, valuation, turnover, deadStock, reorderSuggestions, loading, fetchAll } = useInventoryAnalytics();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const [turnoverDays, setTurnoverDays] = useState(30);
   const [activeSection, setActiveSection] = useState('overview');
 
   useEffect(() => {

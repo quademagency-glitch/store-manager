@@ -1,15 +1,14 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function BusinessDetailTab() {
-  const { 
-    selectedBusiness, setActiveTab, businessDetails, detailsLoading, businessSubscription, setShowAssignPlanModal, handleBanBusiness, handleUnbanBusiness 
+  const {
+    selectedBusiness, setActiveTab, businessDetails, detailsLoading, businessSubscription,
+    setShowAssignPlanModal, setAssignForm, setPaymentForm, setShowRecordPaymentModal,
+    formatCurrency,
   } = usePlatformAdmin();
 
   const handleBackFromDetail = () => setActiveTab('businesses');
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

@@ -27,17 +27,11 @@ export default function InventoryCount({ locations, products }) {
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState('instock'); // 'instock' | 'returns' | 'damaged'
   const [scanFeedback, setScanFeedback] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
 
   // View state
   const [viewSession, setViewSession] = useState(null);
   const [viewSessionLoading, setViewSessionLoading] = useState(false);
-
-  // Load sessions on mount
-  useEffect(() => {
-    fetchSessions();
-  }, []);
 
   const fetchSessions = async () => {
     setSessionsLoading(true);
@@ -47,6 +41,10 @@ export default function InventoryCount({ locations, products }) {
     } catch { setSessions([]); }
     setSessionsLoading(false);
   };
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
 
   // Get products at selected location with stock info
   const locationProducts = useMemo(() => {

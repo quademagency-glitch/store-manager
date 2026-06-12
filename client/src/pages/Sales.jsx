@@ -280,7 +280,7 @@ export default function Sales() {
 
       setPendingSale(saleData);
       setShowPaymentModal(true);
-    } catch {
+    } catch (err) {
       if (err.message === 'Failed to fetch' || !navigator.onLine) {
         // Offline: hold the sale locally and proceed to payment
         toast.warning('You are offline. Proceeding to payment locally. The transaction will be synced later.');
@@ -360,7 +360,7 @@ export default function Sales() {
       setWizardItems([]);
       setAmountPaid('');
       setPendingSale(null);
-    } catch {
+    } catch (err) {
       setSaleError(err.message || 'Failed to finalize sale');
     } finally {
       setIsProcessing(false);
@@ -675,28 +675,40 @@ export default function Sales() {
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Unit {idx + 1} of {item.quantity}</div>
                             
                             {isDoubleMode ? (
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                                <input 
-                                  type="text" 
-                                  className="form-input" 
-                                  placeholder="Pack Code *" 
-                                  value={scan.pack_code || ''}
-                                  onChange={(e) => handleManualScanInput(item.id, idx, 'pack_code', e.target.value)}
-                                />
-                                <input 
-                                  type="text" 
-                                  className="form-input" 
-                                  placeholder="Serial Number *" 
-                                  value={scan.serial_number || ''}
-                                  onChange={(e) => handleManualScanInput(item.id, idx, 'serial_number', e.target.value)}
-                                />
-                                <input 
-                                  type="text" 
-                                  className="form-input" 
-                                  placeholder="Item QR Code *" 
-                                  value={scan.item_code || ''}
-                                  onChange={(e) => handleManualScanInput(item.id, idx, 'item_code', e.target.value)}
-                                />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    placeholder="Pack Code *" 
+                                    value={scan.pack_code || ''}
+                                    onChange={(e) => handleManualScanInput(item.id, idx, 'pack_code', e.target.value)}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan</button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    placeholder="Serial Number *" 
+                                    value={scan.serial_number || ''}
+                                    onChange={(e) => handleManualScanInput(item.id, idx, 'serial_number', e.target.value)}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan</button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    placeholder="Item QR Code *" 
+                                    value={scan.item_code || ''}
+                                    onChange={(e) => handleManualScanInput(item.id, idx, 'item_code', e.target.value)}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan</button>
+                                </div>
                               </div>
                             ) : (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

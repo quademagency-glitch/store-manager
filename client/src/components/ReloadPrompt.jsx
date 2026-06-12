@@ -1,4 +1,3 @@
-import React from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function ReloadPrompt() {
@@ -6,7 +5,7 @@ export default function ReloadPrompt() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r) {
+    onRegistered() {
       if (import.meta.env.DEV) console.log('SW Registered');
     },
     onRegisterError(error) {

@@ -56,7 +56,7 @@ export default function OfflineStatus() {
         try {
           if (item.endpoint === '/sales/offline-sync') {
             // Replay the two stages
-            const { stage1, stage2, paymentMethod } = item.payload;
+            const { stage1, stage2 } = item.payload;
             const res = await api.post('/sales', stage1);
             const saleId = res.sale?.id || res.id;
             await api.post(`/sales/${saleId}/finalize`, stage2);

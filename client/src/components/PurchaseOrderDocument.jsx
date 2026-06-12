@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import LetterheadRenderer, { LetterheadFooter } from './LetterheadRenderer';
 
 /**
@@ -32,7 +33,9 @@ export default function PurchaseOrderDocument({
   const isGRN = documentType === 'grn';
   const title = isGRN ? 'GOODS RECEIVED NOTE' : 'PURCHASE ORDER';
   const refLabel = isGRN ? 'GRN No' : 'PO No';
-  const refNumber = referenceNumber || purchaseOrder?.po_number || `GRN-${Date.now().toString(36).toUpperCase()}`;
+  const poNumber = purchaseOrder?.po_number;
+  const fallbackRef = useRef(`GRN-${Date.now().toString(36).toUpperCase()}`);
+  const refNumber = referenceNumber || poNumber || fallbackRef.current;
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + ((item.unit_cost || 0) * (item.quantity || 0)), 0);

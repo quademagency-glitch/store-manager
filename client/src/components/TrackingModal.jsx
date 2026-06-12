@@ -86,13 +86,14 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
     setUntrackedSlots(newSlots);
   };
 
-  const simulateScan = (index) => {
+  const simulateScan = (index, field = null) => {
     // Placeholder for Scanner Integration as per user request
-    toast.info('Scanner Integration Placeholder: In the future, this will send a command to the Scanner App or open the camera.');
+    const msg = field ? `Scanner Placeholder: Ready to scan for ${field.replace('_', ' ')}...` : 'Scanner Integration Placeholder: In the future, this will send a command to the Scanner App or open the camera.';
+    toast.info(msg);
   };
 
   const handleSave = async () => {
-    let itemsToAssign = [];
+    let itemsToAssign;
     if (isDoubleMode) {
       itemsToAssign = untrackedSlots.filter(s => s.pack_code.trim() !== '' && s.serial_number.trim() !== '');
       if (itemsToAssign.length === 0) {
@@ -234,28 +235,40 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                         </div>
                         
                         {isDoubleMode ? (
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                            <input 
-                              type="text" 
-                              className="form-input" 
-                              placeholder="Pack Code *" 
-                              value={slot.pack_code}
-                              onChange={(e) => handleSlotChange(index, 'pack_code', e.target.value)}
-                            />
-                            <input 
-                              type="text" 
-                              className="form-input" 
-                              placeholder="Serial Number *" 
-                              value={slot.serial_number}
-                              onChange={(e) => handleSlotChange(index, 'serial_number', e.target.value)}
-                            />
-                            <input 
-                              type="text" 
-                              className="form-input" 
-                              placeholder="Item Code (Optional)" 
-                              value={slot.item_code}
-                              onChange={(e) => handleSlotChange(index, 'item_code', e.target.value)}
-                            />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Pack Code *" 
+                                value={slot.pack_code}
+                                onChange={(e) => handleSlotChange(index, 'pack_code', e.target.value)}
+                                style={{ flex: 1 }}
+                              />
+                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'pack_code')} title="Scan Pack Code">Scan</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Serial Number *" 
+                                value={slot.serial_number}
+                                onChange={(e) => handleSlotChange(index, 'serial_number', e.target.value)}
+                                style={{ flex: 1 }}
+                              />
+                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'serial_number')} title="Scan QR as Serial">Scan</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Item Code (Optional)" 
+                                value={slot.item_code}
+                                onChange={(e) => handleSlotChange(index, 'item_code', e.target.value)}
+                                style={{ flex: 1 }}
+                              />
+                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'item_code')} title="Scan Item Code">Scan</button>
+                            </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

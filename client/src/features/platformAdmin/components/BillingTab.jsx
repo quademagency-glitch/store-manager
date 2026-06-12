@@ -1,21 +1,14 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function BillingTab() {
-  const { 
-    billingStats, subscriptions, gateways, invoices, setShowGatewayModal, setEditingGateway, setGatewayForm, setShowSendInvoiceModal, setSelectedInvoiceId, setShowRecordPaymentModal 
+  const {
+    billingStats, gateways, invoices,
+    openGatewayModal, handleDeleteGateway,
+    setShowSendInvoiceModal, setSelectedInvoiceId, setShowRecordPaymentModal,
+    setShowAssignPlanModal, setAssignForm,
+    formatCurrency,
   } = usePlatformAdmin();
-
-  const handleEditGateway = (gw) => {
-    setEditingGateway(gw);
-    setGatewayForm({
-      provider: gw.provider, display_name: gw.display_name, public_key: gw.public_key || '', secret_key: '', webhook_secret: gw.webhook_secret || '', is_active: gw.is_active, is_default: gw.is_default, supported_currencies: gw.supported_currencies || ['GHS']
-    });
-    setShowGatewayModal(true);
-  };
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

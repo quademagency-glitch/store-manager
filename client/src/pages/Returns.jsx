@@ -349,11 +349,20 @@ export default function Returns() {
                                 <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', width: '60px' }}>Unit #{idx + 1}</span>
                                   {isDoubleMode ? (
-                                    <>
-                                      <input type="text" className="input form-input" placeholder="Pack Code *" value={scan.pack_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'pack_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
-                                      <input type="text" className="input form-input" placeholder="Serial Number *" value={scan.serial_number} onChange={(e) => handleReturnScanChange(item.id, idx, 'serial_number', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
-                                      <input type="text" className="input form-input" placeholder="Item Code *" value={scan.item_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'item_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
-                                    </>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input type="text" className="input form-input" placeholder="Pack Code *" value={scan.pack_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'pack_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', flex: 1 }} />
+                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan</button>
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input type="text" className="input form-input" placeholder="Serial Number *" value={scan.serial_number} onChange={(e) => handleReturnScanChange(item.id, idx, 'serial_number', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', flex: 1 }} />
+                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan</button>
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input type="text" className="input form-input" placeholder="Item Code *" value={scan.item_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'item_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', flex: 1 }} />
+                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan</button>
+                                      </div>
+                                    </div>
                                   ) : (
                                     <input type="text" className="input form-input" placeholder="Item QR Code *" value={scan.item_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'item_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', flex: 1 }} />
                                   )}

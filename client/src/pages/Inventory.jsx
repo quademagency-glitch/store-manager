@@ -61,7 +61,7 @@ export default function Inventory() {
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
 
   const [locations, setLocations] = useState([]);
@@ -872,7 +872,7 @@ export default function Inventory() {
 
       {/* ═══ PRICING TAB ═══ */}
       {activeTab === 'pricing' && (
-        <PricingTabContent refreshProducts={refreshProducts} />
+        <PricingTabContent refreshProducts={fetchProducts} />
       )}
 
       {/* ═══ MODALS ═══ */}

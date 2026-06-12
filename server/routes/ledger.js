@@ -233,11 +233,38 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
   try {
     const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
 
+    // If a template is specified, enforce receipt requirement and pull account category
+    let accountCategory = null;
+    let glCode = null;
+    if (template_id) {
+      const { data: template, error: tplErr } = await supabaseAdmin
+        .from('accounting_templates')
+        .select('require_receipt, account_category, gl_code')
+        .eq('id', template_id)
+        .single();
+
+      if (!tplErr && template) {
+        // Enforce receipt requirement
+        if (template.require_receipt !== false && !receipt_url) {
+          return res.status(400).json({ error: 'This template requires a receipt/evidence document.' });
+        }
+        accountCategory = template.account_category || null;
+        glCode = template.gl_code || null;
+      }
+    }
+
     // Permissions logic
     // Admin & Managers = approved automatically
     // Cashiers = pending
     const isCashier = req.user.role === 'Salesperson' || req.user.role === 'Cashier';
     const status = isCashier ? 'pending' : 'approved';
+
+    // Merge account category into metadata
+    const enrichedMetadata = {
+      ...(metadata || {}),
+      ...(accountCategory ? { account_category: accountCategory } : {}),
+      ...(glCode ? { gl_code: glCode } : {})
+    };
 
     const insertData = {
       business_id: req.user.business_id,
@@ -248,7 +275,7 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
       location_id,
       template_id: template_id || null,
       receipt_url: receipt_url || null,
-      metadata: metadata || {},
+      metadata: enrichedMetadata,
       status,
       date: date || new Date().toISOString().split('T')[0]
     };
@@ -392,6 +419,115 @@ router.get('/download-receipts', authGuard, async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: 'Failed to generate ZIP file' });
     }
+  }
+});
+
+/**
+ * GET /api/ledger/financial-summary
+ * Aggregates approved ledger entries by account_category for financial reporting.
+ * Query params: start_date, end_date
+ */
+router.get('/financial-summary', authGuard, async (req, res) => {
+  try {
+    const canView = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!canView) return res.status(403).json({ error: 'Unauthorized to view financial summary.' });
+
+    const { start_date, end_date } = req.query;
+
+    let startD = new Date();
+    startD.setDate(1);
+    startD.setHours(0, 0, 0, 0);
+    let endD = new Date();
+    endD.setHours(23, 59, 59, 999);
+
+    if (start_date) startD = new Date(start_date);
+    if (end_date) endD = new Date(end_date);
+
+    // Fetch approved ledger entries with metadata
+    let ledgerQuery = supabaseAdmin
+      .from('business_ledger')
+      .select('id, type, amount, description, metadata, created_at')
+      .eq('status', 'approved')
+      .gte('created_at', startD.toISOString())
+      .lte('created_at', endD.toISOString());
+
+    if (req.user.role !== 'Platform Admin') {
+      ledgerQuery = ledgerQuery.eq('business_id', req.user.business_id);
+    }
+
+    // Fetch cash sales for the period
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id, total_amount, created_at')
+      .neq('status', 'voided')
+      .gte('created_at', startD.toISOString())
+      .lte('created_at', endD.toISOString());
+
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+
+    const [ledgerRes, salesRes] = await Promise.all([ledgerQuery, salesQuery]);
+
+    if (ledgerRes.error) throw ledgerRes.error;
+    if (salesRes.error) throw salesRes.error;
+
+    const entries = ledgerRes.data || [];
+    const sales = salesRes.data || [];
+
+    // Calculate total sales revenue
+    const totalSales = sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+
+    // Categorize ledger entries
+    const expenseCategories = {};
+    const depositCategories = {};
+    let totalExpenses = 0;
+    let totalDeposits = 0;
+    let totalOtherIncome = 0;
+
+    entries.forEach(entry => {
+      const category = entry.metadata?.account_category || 'Uncategorized';
+      const amt = Number(entry.amount);
+
+      if (entry.type === 'expense') {
+        totalExpenses += amt;
+        expenseCategories[category] = (expenseCategories[category] || 0) + amt;
+      } else if (entry.type === 'deposit_to_bank') {
+        totalDeposits += amt;
+        depositCategories[category] = (depositCategories[category] || 0) + amt;
+      } else if (entry.type === 'pay_in') {
+        totalOtherIncome += amt;
+      }
+    });
+
+    const totalIncome = totalSales + totalOtherIncome;
+    const netPosition = totalIncome - totalExpenses;
+
+    res.json({
+      period: {
+        start: startD.toISOString().split('T')[0],
+        end: endD.toISOString().split('T')[0]
+      },
+      income: {
+        total_sales: totalSales,
+        other_income: totalOtherIncome,
+        total: totalIncome
+      },
+      expenses: {
+        categories: expenseCategories,
+        total: totalExpenses
+      },
+      deposits: {
+        categories: depositCategories,
+        total: totalDeposits
+      },
+      net_position: netPosition,
+      entry_count: entries.length
+    });
+
+  } catch (err) {
+    console.error('Error fetching financial summary:', err);
+    res.status(500).json({ error: 'Failed to fetch financial summary' });
   }
 });
 

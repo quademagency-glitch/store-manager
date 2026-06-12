@@ -146,6 +146,13 @@ export default function AccountingTemplates() {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) { toast.warning('Enter a valid amount'); return; }
     if (!selectedLocation) { toast.warning('Select a branch/location'); return; }
+    
+    // Enforce receipt requirement
+    const needsReceipt = selectedTemplate.require_receipt !== false;
+    if (needsReceipt && !receiptFile) {
+      toast.warning('A receipt or evidence document is required for this template.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -452,8 +459,8 @@ export default function AccountingTemplates() {
 
                 <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
                   <label htmlFor="entry-amount">Amount</label>
-                  <div className="input-prefix-wrapper">
-                    <span className="input-prefix">GH₵</span>
+                  <div className="acct-amount-input">
+                    <span className="acct-amount-currency">GH₵</span>
                     <input 
                       id="entry-amount"
                       type="number" 
@@ -462,8 +469,6 @@ export default function AccountingTemplates() {
                       inputMode="decimal"
                       value={amount} 
                       onChange={e => setAmount(e.target.value)} 
-                      className="form-input with-prefix"
-                      style={{ fontSize: '1.1rem', fontWeight: 600 }}
                       placeholder="0.00"
                       required 
                     />
@@ -529,68 +534,87 @@ export default function AccountingTemplates() {
               )}
 
               {/* File Upload */}
-              <div className="acct-form-section">
-                <h4 className="acct-form-section-title">Upload Receipt / Deposit Slip</h4>
-                {receiptFile ? (
-                  <div className="acct-file-preview">
-                    <div className="acct-file-thumb">
-                      {filePreview ? (
-                        <img src={filePreview} alt="Receipt preview" />
-                      ) : (
-                        '📄'
-                      )}
-                    </div>
-                    <div className="acct-file-info">
-                      <div className="acct-file-name">{receiptFile.name}</div>
-                      <div className="acct-file-size">{formatFileSize(receiptFile.size)}</div>
-                    </div>
-                    <button type="button" className="acct-file-remove" onClick={clearFile}>
-                      Remove
-                    </button>
+              {(() => {
+                const needsReceipt = selectedTemplate.require_receipt !== false;
+                return (
+                  <div className="acct-form-section">
+                    <h4 className="acct-form-section-title">
+                      Upload Receipt / Evidence{needsReceipt && <span style={{ color: 'var(--color-error)', marginLeft: '4px' }}>*</span>}
+                    </h4>
+                    {receiptFile ? (
+                      <div className="acct-file-preview">
+                        <div className="acct-file-thumb">
+                          {filePreview ? (
+                            <img src={filePreview} alt="Receipt preview" />
+                          ) : (
+                            '📄'
+                          )}
+                        </div>
+                        <div className="acct-file-info">
+                          <div className="acct-file-name">{receiptFile.name}</div>
+                          <div className="acct-file-size">{formatFileSize(receiptFile.size)}</div>
+                        </div>
+                        <button type="button" className="acct-file-remove" onClick={clearFile}>
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        ref={dropzoneRef}
+                        className={`acct-dropzone ${isDragging ? 'drag-over' : ''}`}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                      >
+                        <div className="acct-dropzone-icon">📎</div>
+                        <p className="acct-dropzone-text">Drag & drop a file here, or click to browse</p>
+                        <p className="acct-dropzone-hint">Images or PDFs up to 5MB</p>
+                        <input 
+                          type="file" 
+                          accept="image/*,.pdf"
+                          onChange={e => handleFileSelect(e.target.files[0])}
+                        />
+                      </div>
+                    )}
+                    {needsReceipt && (
+                      <div className={`acct-receipt-required-hint ${receiptFile ? 'satisfied' : ''}`}>
+                        {receiptFile ? '✓ Evidence document attached' : '⚠ A receipt or evidence document is required to submit this entry.'}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div
-                    ref={dropzoneRef}
-                    className={`acct-dropzone ${isDragging ? 'drag-over' : ''}`}
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                  >
-                    <div className="acct-dropzone-icon">📎</div>
-                    <p className="acct-dropzone-text">Drag & drop a file here, or click to browse</p>
-                    <p className="acct-dropzone-hint">Images or PDFs up to 5MB</p>
-                    <input 
-                      type="file" 
-                      accept="image/*,.pdf"
-                      onChange={e => handleFileSelect(e.target.files[0])}
-                    />
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Submit */}
-              <div className="acct-form-footer">
-                <button 
-                  type="button" 
-                  onClick={handleCloseModal} 
-                  className="btn btn-secondary"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting && (
-                    <svg className="acct-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <circle cx="12" cy="12" r="10" opacity="0.25" /><path d="M4 12a8 8 0 018-8" opacity="0.75" />
-                    </svg>
-                  )}
-                  Submit Entry
-                </button>
-              </div>
+              {(() => {
+                const needsReceipt = selectedTemplate.require_receipt !== false;
+                const receiptBlocked = needsReceipt && !receiptFile;
+                return (
+                  <div className="acct-form-footer">
+                    <button 
+                      type="button" 
+                      onClick={handleCloseModal} 
+                      className="btn btn-secondary"
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary"
+                      disabled={isSubmitting || receiptBlocked}
+                      title={receiptBlocked ? 'Attach a receipt to enable submission' : ''}
+                    >
+                      {isSubmitting && (
+                        <svg className="acct-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="12" cy="12" r="10" opacity="0.25" /><path d="M4 12a8 8 0 018-8" opacity="0.75" />
+                        </svg>
+                      )}
+                      Submit Entry
+                    </button>
+                  </div>
+                );
+              })()}
             </form>
           )}
         </Modal>

@@ -17,6 +17,13 @@ export default function TillAccount() {
   // Expense Modal State
   const [selectedExpense, setSelectedExpense] = useState(null);
 
+  // Financial Summary State
+  const [finSummary, setFinSummary] = useState(null);
+  const [finLoading, setFinLoading] = useState(false);
+  const [finExpanded, setFinExpanded] = useState(false);
+
+  const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
+
   // Helper to generate a numeric ID from UUID
   const getNumericId = (uuid) => {
     return parseInt(uuid.replace(/-/g, '').substring(0, 7), 16).toString().padStart(8, '0');
@@ -43,13 +50,132 @@ export default function TillAccount() {
     }
   };
 
+  const fetchFinSummary = async () => {
+    if (!isAdmin) return;
+    setFinLoading(true);
+    try {
+      const res = await api.get(`/ledger/financial-summary?start_date=${startDate}&end_date=${endDate}`);
+      setFinSummary(res);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Financial summary error:', err);
+    } finally {
+      setFinLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    if (isAdmin) fetchFinSummary();
   }, [startDate, endDate]);
 
   const fmt = (val) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
   if (error) return <div className="p-8 text-center max-w-2xl mx-auto mt-10 rounded-none" style={{ color: 'var(--color-error)', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)' }}>{error}</div>;
+
+  // Render Financial Summary Section
+  const renderFinancialSummary = () => {
+    if (!isAdmin || !finSummary) return null;
+
+    const maxExpense = Math.max(...Object.values(finSummary.expenses?.categories || { _: 1 }), 1);
+
+    return (
+      <div className="fin-summary-section">
+        <div className="fin-summary-header" onClick={() => setFinExpanded(!finExpanded)}>
+          <h2>📊 Financial Summary</h2>
+          <span className="fin-summary-toggle" style={{ transform: finExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+        {finExpanded && (
+          <div className="fin-summary-body">
+            {/* Top-level KPIs */}
+            <div className="fin-summary-grid">
+              <div className="fin-summary-stat">
+                <div className="fin-summary-stat-label">Total Income</div>
+                <div className="fin-summary-stat-value positive">{fmt(finSummary.income?.total)}</div>
+              </div>
+              <div className="fin-summary-stat">
+                <div className="fin-summary-stat-label">Total Expenses</div>
+                <div className="fin-summary-stat-value negative">{fmt(finSummary.expenses?.total)}</div>
+              </div>
+              <div className="fin-summary-stat">
+                <div className="fin-summary-stat-label">Net Position</div>
+                <div className={`fin-summary-stat-value ${finSummary.net_position >= 0 ? 'positive' : 'negative'}`}>
+                  {finSummary.net_position >= 0 ? '+' : ''}{fmt(finSummary.net_position)}
+                </div>
+              </div>
+              <div className="fin-summary-stat">
+                <div className="fin-summary-stat-label">Total Deposited</div>
+                <div className="fin-summary-stat-value">{fmt(finSummary.deposits?.total)}</div>
+              </div>
+            </div>
+
+            {/* Income Breakdown */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                Income Breakdown
+              </h3>
+              <div className="fin-category-row">
+                <span className="fin-category-name">Sales Revenue</span>
+                <span className="fin-category-amount" style={{ color: 'var(--color-success)' }}>{fmt(finSummary.income?.total_sales)}</span>
+              </div>
+              {finSummary.income?.other_income > 0 && (
+                <div className="fin-category-row">
+                  <span className="fin-category-name">Other Income</span>
+                  <span className="fin-category-amount" style={{ color: 'var(--color-success)' }}>{fmt(finSummary.income.other_income)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Expense Breakdown by Category */}
+            {Object.keys(finSummary.expenses?.categories || {}).length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  Expense Breakdown
+                </h3>
+                {Object.entries(finSummary.expenses.categories)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([cat, amt]) => (
+                    <div key={cat}>
+                      <div className="fin-category-row">
+                        <span className="fin-category-name">{cat}</span>
+                        <span className="fin-category-amount" style={{ color: 'var(--color-error)' }}>{fmt(amt)}</span>
+                      </div>
+                      <div className="fin-category-bar">
+                        <div className="fin-category-bar-fill" style={{ width: `${(amt / maxExpense) * 100}%`, background: 'var(--color-error)' }} />
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+
+            {/* Deposits Breakdown */}
+            {Object.keys(finSummary.deposits?.categories || {}).length > 0 && (
+              <div>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  Deposits Breakdown
+                </h3>
+                {Object.entries(finSummary.deposits.categories)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([cat, amt]) => (
+                    <div key={cat} className="fin-category-row">
+                      <span className="fin-category-name">{cat}</span>
+                      <span className="fin-category-amount" style={{ color: 'var(--color-accent-primary)' }}>{fmt(amt)}</span>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+
+            {finSummary.entry_count === 0 && (
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                No categorized entries found for this period.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="w-full h-full flex flex-col p-4 md:p-6" style={{ background: 'var(--color-bg-primary)' }}>
@@ -104,6 +230,8 @@ export default function TillAccount() {
       ) : (
         /* ADVANCED LEDGER VIEW */
         <div id="till-print-area" className="flex-1 w-full space-y-12">
+          {/* Financial Summary for Admins */}
+          {renderFinancialSummary()}
           {data.branches.length === 0 ? (
             <div className="text-center py-12 bg-transparent uppercase text-sm" style={{ color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
               No transactions found for the selected date range.

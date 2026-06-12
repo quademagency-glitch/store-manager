@@ -25,6 +25,9 @@ export default function AccountingSettings() {
   const [type, setType] = useState('expense');
   const [assignedRoles, setAssignedRoles] = useState([]);
   const [fieldsSchema, setFieldsSchema] = useState([]);
+  const [requireReceipt, setRequireReceipt] = useState(true);
+  const [accountCategory, setAccountCategory] = useState('');
+  const [glCode, setGlCode] = useState('');
 
   // Dirty tracking for unsaved changes protection
   const [isDirty, setIsDirty] = useState(false);
@@ -72,6 +75,9 @@ export default function AccountingSettings() {
       setType(template.type);
       setAssignedRoles(template.assigned_roles || []);
       setFieldsSchema((template.fields_schema || []).map(f => ({ ...f })));
+      setRequireReceipt(template.require_receipt !== false);
+      setAccountCategory(template.account_category || '');
+      setGlCode(template.gl_code || '');
     } else {
       setEditingTemplate(null);
       setName('');
@@ -79,6 +85,9 @@ export default function AccountingSettings() {
       setType('expense');
       setAssignedRoles([]);
       setFieldsSchema([]);
+      setRequireReceipt(true);
+      setAccountCategory('');
+      setGlCode('');
     }
     setIsDirty(false);
     initialFormRef.current = JSON.stringify({
@@ -87,6 +96,9 @@ export default function AccountingSettings() {
       type: template?.type || 'expense',
       assignedRoles: template?.assigned_roles || [],
       fieldsSchema: template?.fields_schema || [],
+      requireReceipt: template?.require_receipt !== false,
+      accountCategory: template?.account_category || '',
+      glCode: template?.gl_code || '',
     });
     setIsModalOpen(true);
   };
@@ -168,7 +180,10 @@ export default function AccountingSettings() {
         description,
         type,
         assigned_roles: assignedRoles,
-        fields_schema: fieldsSchema
+        fields_schema: fieldsSchema,
+        require_receipt: requireReceipt,
+        account_category: accountCategory || null,
+        gl_code: glCode || null
       };
 
       if (editingTemplate) {
@@ -393,7 +408,74 @@ export default function AccountingSettings() {
               </div>
             </div>
 
-            {/* Section 2: Role Assignment */}
+            {/* Section 2: Receipt & Account Category */}
+            <div className="acct-form-section">
+              <h4 className="acct-form-section-title">Evidence & Classification</h4>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)', padding: '0.6rem 0.8rem', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                <label htmlFor="tpl-require-receipt" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-primary)', flex: 1 }}>
+                  <input 
+                    id="tpl-require-receipt"
+                    type="checkbox" 
+                    checked={requireReceipt} 
+                    onChange={e => { setRequireReceipt(e.target.checked); markDirty(); }}
+                    style={{ accentColor: 'var(--color-accent-primary)' }}
+                  />
+                  Require Receipt / Evidence
+                </label>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  {requireReceipt ? 'Users must attach a document to submit' : 'Evidence is optional'}
+                </span>
+              </div>
+
+              <div className="form-row" style={{ marginBottom: 'var(--space-md)' }}>
+                <div className="form-group">
+                  <label htmlFor="tpl-account-category">Account Category</label>
+                  <select 
+                    id="tpl-account-category"
+                    value={accountCategory} 
+                    onChange={e => { setAccountCategory(e.target.value); markDirty(); }}
+                    className="form-input"
+                  >
+                    <option value="">None (Uncategorized)</option>
+                    <optgroup label="Expenses">
+                      <option value="Operating Expense">Operating Expense</option>
+                      <option value="Capital Expense">Capital Expense</option>
+                      <option value="Utilities">Utilities</option>
+                      <option value="Salaries">Salaries & Wages</option>
+                      <option value="Rent">Rent & Lease</option>
+                      <option value="Transport">Transport & Logistics</option>
+                      <option value="Marketing">Marketing & Advertising</option>
+                      <option value="Maintenance">Repairs & Maintenance</option>
+                      <option value="Supplies">Office Supplies</option>
+                      <option value="Miscellaneous Expense">Miscellaneous Expense</option>
+                    </optgroup>
+                    <optgroup label="Income / Revenue">
+                      <option value="Revenue">Revenue</option>
+                      <option value="Other Income">Other Income</option>
+                    </optgroup>
+                    <optgroup label="Banking">
+                      <option value="Bank Deposit">Bank Deposit</option>
+                      <option value="Mobile Money Deposit">Mobile Money Deposit</option>
+                      <option value="Petty Cash">Petty Cash</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="tpl-gl-code">GL Code <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
+                  <input 
+                    id="tpl-gl-code"
+                    type="text" 
+                    value={glCode} 
+                    onChange={e => { setGlCode(e.target.value); markDirty(); }}
+                    className="form-input"
+                    placeholder="e.g. 5200, 4100"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Role Assignment */}
             <div className="acct-form-section">
               <h4 className="acct-form-section-title">Role Assignment</h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>Select which roles can use this template.</p>

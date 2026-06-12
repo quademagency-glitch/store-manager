@@ -28,7 +28,7 @@ router.post('/', authGuard, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can create templates.' });
     }
 
-    const { name, description, type, assigned_roles, fields_schema, conditional_logic } = req.body;
+    const { name, description, type, assigned_roles, fields_schema, conditional_logic, require_receipt, account_category, gl_code } = req.body;
 
     if (!name || !type) {
       return res.status(400).json({ error: 'Name and Type are required.' });
@@ -47,7 +47,10 @@ router.post('/', authGuard, async (req, res) => {
         type,
         assigned_roles: Array.from(finalRoles),
         fields_schema: fields_schema || [],
-        conditional_logic: conditional_logic || []
+        conditional_logic: conditional_logic || [],
+        require_receipt: require_receipt !== false,
+        account_category: account_category || null,
+        gl_code: gl_code || null
       }])
       .select()
       .single();
@@ -67,7 +70,7 @@ router.put('/:id', authGuard, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can edit templates.' });
     }
 
-    const { name, description, type, assigned_roles, fields_schema, conditional_logic } = req.body;
+    const { name, description, type, assigned_roles, fields_schema, conditional_logic, require_receipt, account_category, gl_code } = req.body;
 
     // Ensure Business Admin is always assigned
     const finalRoles = new Set(assigned_roles || []);
@@ -82,6 +85,9 @@ router.put('/:id', authGuard, async (req, res) => {
         assigned_roles: Array.from(finalRoles),
         fields_schema: fields_schema || [],
         conditional_logic: conditional_logic || [],
+        require_receipt: require_receipt !== false,
+        account_category: account_category || null,
+        gl_code: gl_code || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', req.params.id)
@@ -154,6 +160,9 @@ router.post('/:id/duplicate', authGuard, async (req, res) => {
         assigned_roles: source.assigned_roles || [],
         fields_schema: newFieldsSchema,
         conditional_logic: source.conditional_logic || [],
+        require_receipt: source.require_receipt !== false,
+        account_category: source.account_category || null,
+        gl_code: source.gl_code || null,
       }])
       .select()
       .single();

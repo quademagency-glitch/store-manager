@@ -1082,6 +1082,7 @@ export default function Inventory() {
         }}
         product={selectedTrackingProduct}
         locations={locations}
+        isDoubleMode={business?.qr_tracking_mode === 'double'}
       />
       
       <SoldUnitsModal

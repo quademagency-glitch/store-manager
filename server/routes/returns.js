@@ -91,13 +91,68 @@ router.post('/', authGuard, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
+    // 2. Fetch business tracking mode
+    const { data: business } = await supabaseAdmin
+      .from('businesses')
+      .select('qr_tracking_mode')
+      .eq('id', req.user.business_id)
+      .single();
+
+    const isDoubleMode = business?.qr_tracking_mode === 'double';
+
+    // 3. Resolve and validate scans to unit_ids
+    for (const item of items) {
+      if (!item.unit_ids) item.unit_ids = [];
+
+      if (item.scans && Array.isArray(item.scans)) {
+        for (const scan of item.scans) {
+           if (isDoubleMode) {
+             if (!scan.pack_code || !scan.item_code || !scan.serial_number) {
+               return res.status(400).json({ error: 'In double mode, you must scan Pack Code, Item Code, and Serial Number for returns.' });
+             }
+             // Find unit by all three that was sold in this sale
+             const { data: unit } = await supabaseAdmin
+               .from('inventory_units')
+               .select(`
+                 id,
+                 pack_qr:qr_code_pool!pack_code_id(code),
+                 item_qr:qr_code_pool!qr_code_id(code)
+               `)
+               .eq('serial_number', scan.serial_number)
+               .eq('sold_in_sale_id', sale_id)
+               .single();
+
+             if (!unit || unit.pack_qr?.code !== scan.pack_code || unit.item_qr?.code !== scan.item_code) {
+               return res.status(400).json({ error: `Unit not found in this sale for the scanned codes (Serial: ${scan.serial_number}).` });
+             }
+             item.unit_ids.push(unit.id);
+           } else {
+             if (!scan.item_code) return res.status(400).json({ error: 'Item code is required for returns in single tracking mode.' });
+             
+             const { data: itemQr } = await supabaseAdmin.from('qr_code_pool').select('id').eq('code', scan.item_code).single();
+             if (!itemQr) return res.status(400).json({ error: `Invalid item code: ${scan.item_code}` });
+
+             const { data: unit } = await supabaseAdmin
+               .from('inventory_units')
+               .select('id')
+               .eq('qr_code_id', itemQr.id)
+               .eq('sold_in_sale_id', sale_id)
+               .single();
+
+             if (!unit) return res.status(400).json({ error: `Item ${scan.item_code} was not sold in this sale.` });
+             item.unit_ids.push(unit.id);
+           }
+        }
+      }
+    }
+
     // Calculate total refund
     let total_refund_amount = 0;
     for (const item of items) {
       total_refund_amount += item.quantity * item.unit_price;
     }
 
-    // 2. Create the return transaction
+    // 4. Create the return transaction
     const { data: returnData, error: returnError } = await supabaseAdmin
       .from('returns')
       .insert([{
@@ -114,7 +169,7 @@ router.post('/', authGuard, async (req, res) => {
 
     if (returnError) throw returnError;
 
-    // 3. Insert return items & update inventory
+    // 5. Insert return items & update inventory
     for (const item of items) {
       // Insert return item
       await supabaseAdmin.from('return_items').insert([{

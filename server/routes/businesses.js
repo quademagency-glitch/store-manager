@@ -39,7 +39,7 @@ router.get('/me', authGuard, async (req, res) => {
  */
 router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, contact_email, logo_url, tax_rate, return_policy, phone, address_line1, city, region, letterhead, currency } = req.body;
+    const { name, contact_email, logo_url, tax_rate, return_policy, phone, address_line1, city, region, letterhead, currency, qr_tracking_mode } = req.body;
 
     // Verify tenant isolation
     if (req.user.role !== 'Platform Admin' && req.user.business_id !== req.params.id) {
@@ -59,6 +59,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
     if (region !== undefined) updatePayload.region = region;
     if (letterhead !== undefined) updatePayload.letterhead = letterhead;
     if (currency !== undefined) updatePayload.currency = currency;
+    if (qr_tracking_mode !== undefined) updatePayload.qr_tracking_mode = qr_tracking_mode;
 
     const { data, error } = await supabaseAdmin
       .from('businesses')

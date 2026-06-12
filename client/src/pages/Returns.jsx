@@ -21,7 +21,7 @@ export default function Returns() {
   // Return Processing State
   const [selectedSale, setSelectedSale] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnItems, setReturnItems] = useState({}); // { sale_item_id: quantity_to_return }
+  const [returnItems, setReturnItems] = useState({}); // { sale_item_id: [ {pack_code, serial_number, item_code} ] }
   const [returnReason, setReturnReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -30,6 +30,8 @@ export default function Returns() {
   const [refundReceiptData, setRefundReceiptData] = useState(null);
 
   // Security Check: Only Admins
+  const role = user?.user_metadata?.role || '';
+  const isDoubleMode = business?.qr_tracking_mode === 'double';
   const role = user?.user_metadata?.role || '';
   const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
 
@@ -68,24 +70,40 @@ export default function Returns() {
 
   const handleQuantityChange = (itemId, maxQty, value) => {
     if (value === '') {
-      setReturnItems(prev => ({ ...prev, [itemId]: '' }));
+      setReturnItems(prev => ({ ...prev, [itemId]: [] }));
       return;
     }
     const qty = parseInt(value, 10);
     if (isNaN(qty) || qty < 0) return;
     if (qty > maxQty) return;
 
-    setReturnItems(prev => ({
-      ...prev,
-      [itemId]: qty
-    }));
+    setReturnItems(prev => {
+      const currentList = prev[itemId] || [];
+      if (qty > currentList.length) {
+        // Add empty slots
+        const newSlots = Array.from({ length: qty - currentList.length }, () => ({ pack_code: '', serial_number: '', item_code: '' }));
+        return { ...prev, [itemId]: [...currentList, ...newSlots] };
+      } else if (qty < currentList.length) {
+        // Remove slots
+        return { ...prev, [itemId]: currentList.slice(0, qty) };
+      }
+      return prev;
+    });
+  };
+
+  const handleReturnScanChange = (itemId, index, field, value) => {
+    setReturnItems(prev => {
+      const currentList = [...(prev[itemId] || [])];
+      currentList[index] = { ...currentList[index], [field]: value };
+      return { ...prev, [itemId]: currentList };
+    });
   };
 
   const calculateTotalRefund = () => {
     if (!selectedSale) return 0;
     let total = 0;
     selectedSale.sale_items.forEach(item => {
-      const returnQty = parseInt(returnItems[item.id], 10) || 0;
+      const returnQty = returnItems[item.id]?.length || 0;
       total += returnQty * item.unit_price;
     });
     return total;
@@ -94,14 +112,14 @@ export default function Returns() {
   const processReturn = async () => {
     const itemsToReturn = [];
     selectedSale.sale_items.forEach(item => {
-      const qty = parseInt(returnItems[item.id], 10) || 0;
-      if (qty > 0) {
+      const scans = returnItems[item.id] || [];
+      if (scans.length > 0) {
         itemsToReturn.push({
           sale_item_id: item.id,
           product_id: item.product_id,
-          quantity: qty,
+          quantity: scans.length,
           unit_price: item.unit_price,
-          unit_ids: []
+          scans: scans
         });
       }
     });
@@ -282,7 +300,8 @@ export default function Returns() {
               </thead>
               <tbody>
                 {selectedSale.sale_items.map(item => {
-                  const currentQty = returnItems[item.id] !== undefined ? returnItems[item.id] : 0;
+                  const scansList = returnItems[item.id] || [];
+                  const currentQty = scansList.length;
                   const isChecked = currentQty > 0;
                   
                   const handleCheck = () => {
@@ -294,33 +313,58 @@ export default function Returns() {
                   };
 
                   return (
-                    <tr key={item.id} style={{ background: isChecked ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
-                      <td style={{ textAlign: 'center' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={handleCheck}
-                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                        />
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: {item.product?.sku}</div>
-                      </td>
-                      <td style={{ fontWeight: 500 }}>{fmt(item.unit_price)}</td>
-                      <td style={{ fontWeight: 500 }}>{item.quantity}</td>
-                      <td style={{ width: '120px' }}>
-                        <input 
-                          type="number" 
-                          className="input" 
-                          min="0" 
-                          max={item.quantity}
-                          value={currentQty}
-                          onChange={(e) => handleQuantityChange(item.id, item.quantity, e.target.value)}
-                          style={{ width: '100%', padding: '10px', fontSize: '1.1rem', textAlign: 'center', background: isChecked ? 'white' : 'var(--color-bg-tertiary)' }}
-                        />
-                      </td>
-                    </tr>
+                    <React.Fragment key={item.id}>
+                      <tr style={{ background: isChecked ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={isChecked}
+                            onChange={handleCheck}
+                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: {item.product?.sku}</div>
+                        </td>
+                        <td style={{ fontWeight: 500 }}>{fmt(item.unit_price)}</td>
+                        <td style={{ fontWeight: 500 }}>{item.quantity}</td>
+                        <td style={{ width: '120px' }}>
+                          <input 
+                            type="number" 
+                            className="input" 
+                            min="0" 
+                            max={item.quantity}
+                            value={currentQty}
+                            onChange={(e) => handleQuantityChange(item.id, item.quantity, e.target.value)}
+                            style={{ width: '100%', padding: '10px', fontSize: '1.1rem', textAlign: 'center', background: isChecked ? 'white' : 'var(--color-bg-tertiary)' }}
+                          />
+                        </td>
+                      </tr>
+                      {isChecked && (
+                        <tr style={{ background: 'rgba(239, 68, 68, 0.02)' }}>
+                          <td colSpan="5" style={{ padding: '12px 24px' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-error)', marginBottom: '8px' }}>Scan Items to Return</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {scansList.map((scan, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', width: '60px' }}>Unit #{idx + 1}</span>
+                                  {isDoubleMode ? (
+                                    <>
+                                      <input type="text" className="input form-input" placeholder="Pack Code *" value={scan.pack_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'pack_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
+                                      <input type="text" className="input form-input" placeholder="Serial Number *" value={scan.serial_number} onChange={(e) => handleReturnScanChange(item.id, idx, 'serial_number', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
+                                      <input type="text" className="input form-input" placeholder="Item Code *" value={scan.item_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'item_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem' }} />
+                                    </>
+                                  ) : (
+                                    <input type="text" className="input form-input" placeholder="Item QR Code *" value={scan.item_code} onChange={(e) => handleReturnScanChange(item.id, idx, 'item_code', e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', flex: 1 }} />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

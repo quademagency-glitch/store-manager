@@ -171,6 +171,8 @@ export default function Sales() {
       return;
     }
 
+    const isDoubleMode = business?.qr_tracking_mode === 'double';
+
     if (saleType === 'new') {
       if (wizardItems.length > 0) {
         toast.warning('New Sale only supports a single item. Use Batch Sale for multiple items.');
@@ -180,8 +182,7 @@ export default function Sales() {
         id: Date.now().toString(),
         product,
         quantity: 1,
-        scanned_units: [],
-        scanned_codes: [],
+        scans: isDoubleMode ? [{ pack_code: '', serial_number: '', item_code: '' }] : [{ item_code: '', unit_id: null }],
         stock: localStock
       }]);
       setShowProductModal(false);
@@ -204,12 +205,15 @@ export default function Sales() {
       return;
     }
 
+    const isDoubleMode = business?.qr_tracking_mode === 'double';
+
     setWizardItems(prev => [...prev, {
       id: Date.now().toString(),
       product: selectedProductForBatch.product,
       quantity: qty,
-      scanned_units: Array(qty).fill(null), // array of nulls for unit IDs
-      scanned_codes: Array(qty).fill(null), // array of nulls for QR string display
+      scans: isDoubleMode 
+        ? Array.from({ length: qty }, () => ({ pack_code: '', serial_number: '', item_code: '' }))
+        : Array.from({ length: qty }, () => ({ item_code: '', unit_id: null })),
       stock: selectedProductForBatch.stock
     }]);
     
@@ -228,7 +232,7 @@ export default function Sales() {
     if (!activeScanTarget) return;
 
     try {
-      // Look up unit
+      // Look up unit (Single mode UX enhancement)
       const unitRes = await api.get(`/units/lookup?qr=${encodeURIComponent(decodedText)}`);
       
       if (!unitRes || !unitRes.unit) {
@@ -247,22 +251,21 @@ export default function Sales() {
           }
           
           // Check for duplicate scan within same item
-          if (item.scanned_units.includes(unit.id)) {
+          if (item.scans.some(s => s.unit_id === unit.id)) {
             toast.warning('This exact unit was already scanned for this item.');
             return item;
           }
 
-          const newUnits = [...item.scanned_units];
-          newUnits[unitIndex] = unit.id;
-          
-          const newCodes = [...item.scanned_codes];
-          newCodes[unitIndex] = decodedText;
+          const newScans = [...item.scans];
+          newScans[unitIndex] = { ...newScans[unitIndex], item_code: decodedText, unit_id: unit.id };
 
-          return { ...item, scanned_units: newUnits, scanned_codes: newCodes };
+          return { ...item, scans: newScans };
         }
         return item;
       }));
     } catch (err) {
+      toast.error(`Could not verify physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
+    }
       // Fallback or generic product
       toast.error(`Could not verify specific physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
     }
@@ -273,15 +276,32 @@ export default function Sales() {
   };
 
   // ─── Checkout ───
+  const isDoubleMode = business?.qr_tracking_mode === 'double';
+
   const isCheckoutReady = () => {
     if (wizardItems.length === 0) return false;
     
     // Ensure all required QR boxes are filled
     for (const item of wizardItems) {
-      if (item.scanned_units.length !== item.quantity) return false;
-      if (item.scanned_units.some(u => u === null)) return false;
+      if (item.scans.length !== item.quantity) return false;
+      if (isDoubleMode) {
+        if (item.scans.some(s => !s.pack_code || !s.serial_number || !s.item_code)) return false;
+      } else {
+        if (item.scans.some(s => !s.item_code)) return false;
+      }
     }
     return true;
+  };
+
+  const handleManualScanInput = (itemId, unitIndex, field, value) => {
+    setWizardItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const newScans = [...item.scans];
+        newScans[unitIndex] = { ...newScans[unitIndex], [field]: value };
+        return { ...item, scans: newScans };
+      }
+      return item;
+    }));
   };
 
   const handleHoldSale = async () => {
@@ -295,7 +315,7 @@ export default function Sales() {
           product_id: item.product.id,
           quantity: item.quantity,
           unit_price: item.product.price,
-          unit_ids: item.scanned_units,
+          scans: item.scans,
         })),
         payment_method: paymentMethod || 'cash', // Default fallback for stage 1
         total_amount: totalAmount,
@@ -709,24 +729,57 @@ export default function Sales() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Scan Physical Units</h4>
                       {Array.from({ length: item.quantity }).map((_, idx) => {
-                        const scannedCode = item.scanned_codes[idx];
+                        const scan = item.scans[idx] || {};
+                        const isComplete = isDoubleMode 
+                          ? (scan.pack_code && scan.serial_number && scan.item_code)
+                          : !!scan.item_code;
+                        
                         return (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: scannedCode ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.2)', border: `1px solid ${scannedCode ? '#10b981' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Unit {idx + 1} of {item.quantity}</div>
-                              {scannedCode ? (
-                                <code style={{ fontSize: '0.9rem', color: '#10b981', background: 'transparent', padding: 0 }}>QR: {scannedCode}</code>
-                              ) : (
-                                <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Waiting for scan...</span>
-                              )}
-                            </div>
-                            <button 
-                              className={`btn ${scannedCode ? 'btn-outline' : 'btn-secondary'}`} 
-                              style={{ padding: '0.5rem 1rem' }}
-                              onClick={() => openScanner(item.id, idx)}
-                            >
-                              {scannedCode ? 'Rescan' : '📷 Scan QR'}
-                            </button>
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: isComplete ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isComplete ? '#10b981' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Unit {idx + 1} of {item.quantity}</div>
+                            
+                            {isDoubleMode ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                                <input 
+                                  type="text" 
+                                  className="form-input" 
+                                  placeholder="Pack Code *" 
+                                  value={scan.pack_code || ''}
+                                  onChange={(e) => handleManualScanInput(item.id, idx, 'pack_code', e.target.value)}
+                                />
+                                <input 
+                                  type="text" 
+                                  className="form-input" 
+                                  placeholder="Serial Number *" 
+                                  value={scan.serial_number || ''}
+                                  onChange={(e) => handleManualScanInput(item.id, idx, 'serial_number', e.target.value)}
+                                />
+                                <input 
+                                  type="text" 
+                                  className="form-input" 
+                                  placeholder="Item QR Code *" 
+                                  value={scan.item_code || ''}
+                                  onChange={(e) => handleManualScanInput(item.id, idx, 'item_code', e.target.value)}
+                                />
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ flex: 1 }}>
+                                  {scan.item_code ? (
+                                    <code style={{ fontSize: '0.9rem', color: '#10b981', background: 'transparent', padding: 0 }}>QR: {scan.item_code}</code>
+                                  ) : (
+                                    <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Waiting for scan...</span>
+                                  )}
+                                </div>
+                                <button 
+                                  className={`btn ${scan.item_code ? 'btn-outline' : 'btn-secondary'}`} 
+                                  style={{ padding: '0.5rem 1rem' }}
+                                  onClick={() => openScanner(item.id, idx)}
+                                >
+                                  {scan.item_code ? 'Rescan' : '📷 Scan QR'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

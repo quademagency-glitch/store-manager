@@ -31,7 +31,8 @@ export default function Products() {
     price: '',
     initialQuantity: '',
     locationId: '',
-    qr_code_data: ''
+    qr_code_data: '',
+    product_code: ''
   });
 
   // Filter products based on search term
@@ -55,7 +56,8 @@ export default function Products() {
       price: '',
       initialQuantity: '',
       locationId: locations.length > 0 ? locations[0].id : '',
-      qr_code_data: ''
+      qr_code_data: '',
+      product_code: ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -70,7 +72,8 @@ export default function Products() {
       price: product.price,
       initialQuantity: '',
       locationId: '',
-      qr_code_data: product.qr_code_data || ''
+      qr_code_data: product.qr_code_data || '',
+      product_code: product.product_code || ''
     });
     setFormError('');
     setIsModalOpen(true);
@@ -95,7 +98,8 @@ export default function Products() {
       price: parseFloat(formData.price) || 0,
       initialQuantity: formData.initialQuantity,
       locationId: formData.locationId,
-      qr_code_data: formData.qr_code_data || formData.sku
+      qr_code_data: formData.qr_code_data || formData.sku,
+      product_code: formData.product_code || null
     };
 
     let result;
@@ -347,6 +351,18 @@ export default function Products() {
                 placeholder="Electronics"
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="product_code">Manufacturer Serial/Model Number (Optional)</label>
+            <input 
+              type="text" 
+              id="product_code" 
+              className="form-input" 
+              value={formData.product_code}
+              onChange={(e) => setFormData({...formData, product_code: e.target.value})}
+              placeholder="e.g. SN-123456789"
+            />
           </div>
 
           <div className="form-group">

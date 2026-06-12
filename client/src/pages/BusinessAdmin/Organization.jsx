@@ -44,6 +44,7 @@ export default function Organization() {
         tax_rate: business.tax_rate,
         return_policy: business.return_policy,
         currency: business.currency,
+        qr_tracking_mode: business.qr_tracking_mode,
       });
       setBusiness(updated);
       toast.success('Organization profile saved!');
@@ -259,6 +260,19 @@ export default function Organization() {
                     <option value="GBP">🇬🇧 GBP — British Pound</option>
                   </select>
                   <p className="org-form-hint">Used on receipts, invoices, and all printed documents.</p>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="org-qr-mode">QR Tracking Mode</label>
+                  <select
+                    id="org-qr-mode"
+                    className="form-input"
+                    value={business.qr_tracking_mode || 'single'}
+                    onChange={e => updateField('qr_tracking_mode', e.target.value)}
+                  >
+                    <option value="single">Single (Item Code only)</option>
+                    <option value="double">Double (Pack Code + Item Code)</option>
+                  </select>
+                  <p className="org-form-hint">Requires double scanning and serial numbers to prevent theft.</p>
                 </div>
                 <div className="form-group full-width">
                   <label htmlFor="org-return-policy">Return Policy</label>

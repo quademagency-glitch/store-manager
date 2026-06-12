@@ -15,13 +15,19 @@ const createSaleSchema = z.object({
     product_id: z.string().uuid(),
     quantity: z.number().int().positive(),
     unit_ids: z.array(z.string().uuid()).optional(),
+    scans: z.array(z.object({
+      pack_code: z.string().optional(),
+      item_code: z.string().optional(),
+      serial_number: z.string().optional(),
+      unit_id: z.string().uuid().optional(),
+    })).optional()
   })).min(1, 'A sale must contain at least one item.'),
   payment_method: z.enum(['cash', 'card', 'mobile']),
   total_amount: z.number().min(0),
   subtotal: z.number().min(0).optional(),
   tax: z.number().min(0).optional(),
   discount: z.number().min(0).optional(),
-  customer_id: z.string().uuid('A customer must be selected for the sale.'),
+  customer_id: z.string().uuid('A customer must be selected for the sale.').optional().nullable(),
 });
 
 const verifyPinSchema = z.object({
@@ -223,13 +229,87 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
        return res.status(400).json({ error: 'Bad request', message: 'Active location not set. Please select a branch to process sales.' });
     }
 
+    // Fetch business settings to know QR tracking mode
+    const { data: business } = await supabaseAdmin
+      .from('businesses')
+      .select('qr_tracking_mode, max_discount_percent')
+      .eq('id', req.user.business_id)
+      .single();
+
+    const isDoubleMode = business?.qr_tracking_mode === 'double';
+
     const receipt_number = 'RCPT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-    // Collect all unique unit_ids to pass to the RPC
+    // Process unit validation and assignment
     const allUnitIds = [];
+    
     for (const item of items) {
       if (item.unit_ids && Array.isArray(item.unit_ids)) {
         allUnitIds.push(...item.unit_ids);
+      }
+      
+      if (item.scans && Array.isArray(item.scans)) {
+        for (const scan of item.scans) {
+          if (scan.unit_id) {
+             allUnitIds.push(scan.unit_id);
+             continue;
+          }
+          
+          if (isDoubleMode) {
+             if (!scan.pack_code || !scan.item_code || !scan.serial_number) {
+               return res.status(400).json({ error: 'In double QR tracking mode, all scans must include pack_code, item_code, and serial_number.' });
+             }
+
+             // Find the pack code in qr pool
+             const { data: packQr } = await supabaseAdmin.from('qr_code_pool').select('id').eq('code', scan.pack_code).single();
+             if (!packQr) return res.status(400).json({ error: `Invalid pack code: ${scan.pack_code}` });
+
+             // Find the inventory unit by pack code and serial
+             const { data: unit } = await supabaseAdmin
+               .from('inventory_units')
+               .select('id, qr_code_id, status')
+               .eq('pack_code_id', packQr.id)
+               .eq('serial_number', scan.serial_number)
+               .eq('product_id', item.product_id)
+               .single();
+
+             if (!unit) return res.status(400).json({ error: `Unit not found for Pack Code: ${scan.pack_code} and Serial: ${scan.serial_number}` });
+             if (unit.status !== 'in_stock') return res.status(400).json({ error: `Unit with Pack Code ${scan.pack_code} is ${unit.status}, not in stock.` });
+
+             // Check item code
+             const { data: itemQr } = await supabaseAdmin.from('qr_code_pool').select('id, status').eq('code', scan.item_code).single();
+             if (!itemQr) return res.status(400).json({ error: `Invalid item code: ${scan.item_code}` });
+
+             if (!unit.qr_code_id) {
+               // Assign item code to unit
+               if (itemQr.status !== 'unassigned') return res.status(400).json({ error: `Item code ${scan.item_code} is already assigned.` });
+               await supabaseAdmin.from('inventory_units').update({ qr_code_id: itemQr.id }).eq('id', unit.id);
+               await supabaseAdmin.from('qr_code_pool').update({ status: 'assigned' }).eq('id', itemQr.id);
+             } else if (unit.qr_code_id !== itemQr.id) {
+               return res.status(400).json({ error: `Scanned item code does not match the unit's assigned item code.` });
+             }
+
+             allUnitIds.push(unit.id);
+          } else {
+             // Single mode
+             if (!scan.item_code) return res.status(400).json({ error: 'Item code is required in single QR tracking mode.' });
+             
+             const { data: itemQr } = await supabaseAdmin.from('qr_code_pool').select('id').eq('code', scan.item_code).single();
+             if (!itemQr) return res.status(400).json({ error: `Invalid item code: ${scan.item_code}` });
+
+             const { data: unit } = await supabaseAdmin
+               .from('inventory_units')
+               .select('id, status')
+               .eq('qr_code_id', itemQr.id)
+               .eq('product_id', item.product_id)
+               .single();
+
+             if (!unit) return res.status(400).json({ error: `Unit not found for Item Code: ${scan.item_code}` });
+             if (unit.status !== 'in_stock') return res.status(400).json({ error: `Unit with Item Code ${scan.item_code} is ${unit.status}.` });
+
+             allUnitIds.push(unit.id);
+          }
+        }
       }
     }
 
@@ -238,7 +318,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       p_business_id: req.user.business_id,
       p_location_id: location_id,
       p_salesperson_id: req.user.id,
-      p_customer_id: customer_id,
+      p_customer_id: customer_id || null,
       p_total_amount: total_amount || 0,
       p_discount_amount: discount || 0,
       p_payment_method: payment_method,

@@ -19,6 +19,7 @@ const createSaleSchema = z.object({
       pack_code: z.string().optional(),
       item_code: z.string().optional(),
       serial_number: z.string().optional(),
+      product_code: z.string().optional(),
       unit_id: z.string().uuid().optional(),
     })).optional()
   })).min(1, 'A sale must contain at least one item.'),

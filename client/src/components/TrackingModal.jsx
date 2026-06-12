@@ -51,7 +51,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
       
       // Initialize slots
       if (isDoubleMode) {
-        setUntrackedSlots(Array.from({ length: untrackedCount }, () => ({ pack_code: '', item_code: '', serial_number: '' })));
+        setUntrackedSlots(Array.from({ length: untrackedCount }, () => ({ pack_code: '', item_code: '', serial_number: '', product_code: '' })));
       } else {
         setUntrackedSlots(Array(untrackedCount).fill(''));
       }
@@ -123,6 +123,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
               location_id: selectedLocationId,
               pack_code: item.pack_code,
               serial_number: item.serial_number,
+              product_code: item.product_code || undefined,
               qr_code: item.item_code || undefined
             });
             assignedCount++;
@@ -235,27 +236,29 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                         </div>
                         
                         {isDoubleMode ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Pack Code *</span>
-                                <span style={{ fontSize: '14px', color: slot.pack_code ? '#0f172a' : '#94a3b8', fontWeight: slot.pack_code ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.pack_code || 'Awaiting scan...'}</span>
-                              </div>
-                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'pack_code')} title="Scan Pack Code">Scan</button>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', background: slot.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Pack Code *</div>
+                              <div style={{ fontSize: '14px', color: slot.pack_code ? '#0f172a' : '#94a3b8', fontWeight: slot.pack_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{slot.pack_code || 'Awaiting scan...'}</div>
+                              <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => simulateScan(index, 'pack_code')} title="Scan Pack Code">Scan QR</button>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${slot.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Serial Number *</span>
-                                <span style={{ fontSize: '14px', color: slot.serial_number ? '#0f172a' : '#94a3b8', fontWeight: slot.serial_number ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.serial_number || 'Awaiting scan...'}</span>
-                              </div>
-                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'serial_number')} title="Scan QR as Serial">Scan</button>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', background: slot.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${slot.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Serial Number *</div>
+                              <div style={{ fontSize: '14px', color: slot.serial_number ? '#0f172a' : '#94a3b8', fontWeight: slot.serial_number ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{slot.serial_number || 'Awaiting scan...'}</div>
+                              <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => simulateScan(index, 'serial_number')} title="Scan QR as Serial">Scan QR</button>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Item Code (Optional)</span>
-                                <span style={{ fontSize: '14px', color: slot.item_code ? '#0f172a' : '#94a3b8', fontWeight: slot.item_code ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.item_code || 'Awaiting scan...'}</span>
-                              </div>
-                              <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'item_code')} title="Scan Item Code">Scan</button>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', background: slot.product_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.product_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Product Code (Opt)</div>
+                              <div style={{ fontSize: '14px', color: slot.product_code ? '#0f172a' : '#94a3b8', fontWeight: slot.product_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{slot.product_code || 'Awaiting scan...'}</div>
+                              <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => simulateScan(index, 'product_code')} title="Scan Product Code">Scan QR</button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', background: slot.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                              <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Item Code (Opt)</div>
+                              <div style={{ fontSize: '14px', color: slot.item_code ? '#0f172a' : '#94a3b8', fontWeight: slot.item_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{slot.item_code || 'Awaiting scan...'}</div>
+                              <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => simulateScan(index, 'item_code')} title="Scan Item Code">Scan QR</button>
                             </div>
                           </div>
                         ) : (
@@ -304,6 +307,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                           <>
                             <div><strong>Pack:</strong> {unit.pack_qr?.code || 'None'}</div>
                             <div><strong>Serial:</strong> {unit.serial_number || 'None'}</div>
+                            <div><strong>Product:</strong> {unit.product_code || 'None'}</div>
                             <div><strong>Item:</strong> {unit.qr?.code || <span className="text-muted italic">Unassigned</span>}</div>
                           </>
                         ) : (

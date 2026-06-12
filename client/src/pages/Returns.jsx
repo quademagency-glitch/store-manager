@@ -80,7 +80,7 @@ export default function Returns() {
       const currentList = prev[itemId] || [];
       if (qty > currentList.length) {
         // Add empty slots
-        const newSlots = Array.from({ length: qty - currentList.length }, () => ({ pack_code: '', serial_number: '', item_code: '' }));
+        const newSlots = Array.from({ length: qty - currentList.length }, () => ({ pack_code: '', serial_number: '', item_code: '', product_code: '' }));
         return { ...prev, [itemId]: [...currentList, ...newSlots] };
       } else if (qty < currentList.length) {
         // Remove slots
@@ -349,27 +349,29 @@ export default function Returns() {
                                 <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', width: '60px' }}>Unit #{idx + 1}</span>
                                   {isDoubleMode ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Pack Code *</span>
-                                          <span style={{ fontSize: '14px', color: scan.pack_code ? '#0f172a' : '#94a3b8', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.pack_code || 'Awaiting scan...'}</span>
-                                        </div>
-                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan</button>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', flex: 1 }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Pack Code *</div>
+                                        <div style={{ fontSize: '14px', color: scan.pack_code ? '#0f172a' : '#94a3b8', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.pack_code || 'Awaiting scan...'}</div>
+                                        <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan QR</button>
                                       </div>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Serial Number *</span>
-                                          <span style={{ fontSize: '14px', color: scan.serial_number ? '#0f172a' : '#94a3b8', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.serial_number || 'Awaiting scan...'}</span>
-                                        </div>
-                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan</button>
+                                      
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Serial Number *</div>
+                                        <div style={{ fontSize: '14px', color: scan.serial_number ? '#0f172a' : '#94a3b8', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.serial_number || 'Awaiting scan...'}</div>
+                                        <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan QR</button>
                                       </div>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Item Code *</span>
-                                          <span style={{ fontSize: '14px', color: scan.item_code ? '#0f172a' : '#94a3b8', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.item_code || 'Awaiting scan...'}</span>
-                                        </div>
-                                        <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan</button>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.product_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.product_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Product Code (Opt)</div>
+                                        <div style={{ fontSize: '14px', color: scan.product_code ? '#0f172a' : '#94a3b8', fontWeight: scan.product_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.product_code || 'Awaiting scan...'}</div>
+                                        <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for product code...')} title="Scan Product Code">Scan QR</button>
+                                      </div>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Item Code *</div>
+                                        <div style={{ fontSize: '14px', color: scan.item_code ? '#0f172a' : '#94a3b8', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.item_code || 'Awaiting scan...'}</div>
+                                        <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan QR</button>
                                       </div>
                                     </div>
                                   ) : (

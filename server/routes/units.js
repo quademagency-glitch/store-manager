@@ -100,7 +100,7 @@ router.get('/lookup', authGuard, async (req, res) => {
  */
 router.post('/assign', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
-    const { qr_code, pack_code, serial_number, product_id, location_id, batch_id, notes } = req.body;
+    const { qr_code, pack_code, serial_number, product_code, product_id, location_id, batch_id, notes } = req.body;
 
     if (!product_id || !location_id) {
       return res.status(400).json({ error: 'Bad request', message: 'product_id and location_id are required.' });
@@ -165,6 +165,7 @@ router.post('/assign', authGuard, permissionCheck('manage_inventory'), async (re
         qr_code_id: qrRecordId,
         pack_code_id: packRecordId,
         serial_number: serial_number || null,
+        product_code: product_code || null,
         status: 'in_stock',
         batch_id: batch_id || null,
         assigned_by: req.user.id,

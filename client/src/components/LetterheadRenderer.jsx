@@ -2,6 +2,10 @@
  * LetterheadRenderer — Shared component for rendering letterhead header/footer
  * on receipts, invoices, and other printable documents.
  * 
+ * Supports two modes:
+ *   1. "build" — renders structured header from letterhead fields
+ *   2. "upload" — renders an uploaded letterhead image
+ * 
  * Usage:
  *   <LetterheadRenderer 
  *     letterhead={business.letterhead}
@@ -22,6 +26,58 @@ export default function LetterheadRenderer({ letterhead, logoUrl, businessName, 
     );
   }
 
+  // ─── UPLOAD MODE: render the uploaded image ───
+  if (letterhead.mode === 'upload' && letterhead.uploaded_header_url) {
+    return (
+      <>
+        <div style={{ marginBottom: '16px' }}>
+          <img
+            src={letterhead.uploaded_header_url}
+            alt="Letterhead"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block',
+              maxHeight: '180px',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+
+        {/* Footer for upload mode */}
+        {showFooter && (
+          letterhead.uploaded_footer_url ? (
+            <div style={{ marginTop: '24px', paddingTop: '8px' }}>
+              <img
+                src={letterhead.uploaded_footer_url}
+                alt="Footer"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  maxHeight: '100px',
+                  objectFit: 'contain',
+                }}
+              />
+            </div>
+          ) : letterhead.footer_text ? (
+            <div style={{
+              textAlign: 'center',
+              paddingTop: '12px',
+              marginTop: '24px',
+              borderTop: '1px solid #e2e8f040',
+              fontSize: '0.75rem',
+              color: '#94a3b8'
+            }}>
+              {letterhead.footer_text}
+            </div>
+          ) : null
+        )}
+      </>
+    );
+  }
+
+  // ─── BUILD MODE: render structured header ───
   const displayName = letterhead.company_name || businessName || 'Store App';
   const accentColor = letterhead.accent_color || '#4338ca';
   const showBorder = letterhead.show_border !== false;
@@ -87,7 +143,29 @@ export default function LetterheadRenderer({ letterhead, logoUrl, businessName, 
  * when the header and footer need to be separate (e.g., wrapping receipt content).
  */
 export function LetterheadFooter({ letterhead }) {
-  if (!letterhead?.footer_text) return null;
+  if (!letterhead) return null;
+
+  // Upload mode with uploaded footer
+  if (letterhead.mode === 'upload' && letterhead.uploaded_footer_url) {
+    return (
+      <div style={{ marginTop: '24px', paddingTop: '8px' }}>
+        <img
+          src={letterhead.uploaded_footer_url}
+          alt="Footer"
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            maxHeight: '100px',
+            objectFit: 'contain',
+          }}
+        />
+      </div>
+    );
+  }
+  
+  // Fallback to text footer
+  if (!letterhead.footer_text) return null;
   
   const accentColor = letterhead.accent_color || '#4338ca';
   const showBorder = letterhead.show_border !== false;

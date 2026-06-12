@@ -64,7 +64,8 @@ export default function Customers() {
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
-      <div className="glass-panel mt-xl">
+      {/* Desktop table */}
+      <div className="glass-panel mt-xl cust-desktop-panel">
         <table className="glass-table">
           <thead>
             <tr>
@@ -114,28 +115,57 @@ export default function Customers() {
             )}
           </tbody>
         </table>
-        
-        {/* Pagination Controls */}
+
         {totalPages > 1 && (
           <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="text-sm text-muted">
-              Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalCustomers)} of {totalCustomers} customers
+              Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, totalCustomers)} of {totalCustomers}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                className="btn btn-secondary btn-sm" 
-                onClick={() => fetchCustomers(Math.max(1, page - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </button>
-              <button 
-                className="btn btn-secondary btn-sm" 
-                onClick={() => fetchCustomers(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => fetchCustomers(Math.max(1, page - 1))} disabled={page === 1}>Previous</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => fetchCustomers(Math.min(totalPages, page + 1))} disabled={page === totalPages}>Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile card list — shown on ≤640px */}
+      <div className="glass-panel mt-xl cust-mobile-cards">
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div className="spinner mx-auto" />
+            <p className="mt-sm text-muted">Loading customers...</p>
+          </div>
+        ) : customers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+            No customers found.
+          </div>
+        ) : (
+          customers.map(customer => (
+            <div key={customer.id} className="cust-card">
+              <div className="cust-card-header">
+                <span className="cust-card-name">{customer.name}</span>
+                {customer.is_verified && (
+                  <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>✓ Verified</span>
+                )}
+              </div>
+              <div className="cust-card-phone">{customer.phone}</div>
+              <div className="cust-card-date">Joined {new Date(customer.created_at).toLocaleDateString()}</div>
+              {canEdit && (
+                <div className="cust-card-actions">
+                  <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => openEditModal(customer)}>Edit</button>
+                  <button className="btn btn-sm btn-outline text-error" style={{ flex: 1 }} onClick={() => handleDelete(customer.id)}>Delete</button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        {totalPages > 1 && (
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="text-sm text-muted">Page {page} of {totalPages}</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => fetchCustomers(Math.max(1, page - 1))} disabled={page === 1}>Prev</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => fetchCustomers(Math.min(totalPages, page + 1))} disabled={page === totalPages}>Next</button>
             </div>
           </div>
         )}

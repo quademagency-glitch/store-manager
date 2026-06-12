@@ -1,0 +1,330 @@
+/* ================================================
+   Mobile Overrides
+   Imported LAST in index.css so these rules win
+   the cascade over all component-level styles.
+   ================================================ */
+
+/* ─── ≤768px — Standard mobile ─── */
+@media (max-width: 768px) {
+  /* Page header stacks title above action button */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  /* Action buttons in page header go full width */
+  .page-header > .btn,
+  .page-header > button {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  /* Titles */
+  .page-title,
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+
+  /* Toolbar wraps onto next line */
+  .toolbar {
+    flex-wrap: wrap;
+  }
+  .search-bar {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Modal — tighter padding */
+  .modal-overlay {
+    padding: var(--space-sm);
+    align-items: center;
+  }
+  .modal-content {
+    max-height: 95vh;
+  }
+}
+
+/* ─── ≤640px — Small phones, tablets ─── */
+@media (max-width: 640px) {
+  /* Glass panels: allow horizontal scroll so wide tables
+     don't get clipped, and reduce padding */
+  .glass-panel {
+    padding: var(--space-md);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Suppress the decorative top-line pseudo-element so it
+     doesn't stretch with scrollable content width */
+  .glass-panel::before {
+    display: none;
+  }
+
+  /* Tighter table cells */
+  .glass-table th {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+  }
+  .glass-table td {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* Customer page: show cards, hide desktop table */
+  .cust-desktop-panel { display: none !important; }
+  .cust-mobile-cards  { display: block !important; }
+}
+
+/* ─── ≤480px — Most small Android/iPhone SE ─── */
+@media (max-width: 480px) {
+  /* Titles */
+  .page-title,
+  .dashboard-title {
+    font-size: 1.25rem;
+  }
+  .page-subtitle,
+  .dashboard-subtitle {
+    font-size: 0.85rem;
+  }
+
+  /* Glass panel */
+  .glass-panel {
+    padding: 0.75rem;
+  }
+  .glass-table th {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.65rem;
+  }
+  .glass-table td {
+    padding: 0.55rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  /* Modal padding */
+  .modal-header {
+    padding: var(--space-md);
+  }
+  .modal-body {
+    padding: var(--space-md);
+  }
+  .modal-title {
+    font-size: 1.05rem;
+  }
+
+  /* Layout content areas */
+  .admin-main-content {
+    padding: var(--space-sm);
+  }
+  .dashboard-main {
+    padding: var(--space-sm);
+  }
+
+  /* Banner */
+  .banner-title {
+    font-size: 1.25rem;
+  }
+
+  /* Stats */
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  /* Sales catalog */
+  .catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+/* ─── ≤390px — 360px / iPhone 12-mini and smaller ─── */
+@media (max-width: 390px) {
+  /* Layout padding — very tight */
+  .admin-main-content {
+    padding: var(--space-xs) var(--space-sm);
+  }
+  .dashboard-main {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  /* Page headers */
+  .page-title,
+  .dashboard-title {
+    font-size: 1.1rem;
+  }
+  .page-header {
+    margin-bottom: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  /* Glass panel — minimum breathing room */
+  .glass-panel {
+    padding: var(--space-sm);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Glass table — very tight cells */
+  .glass-table th {
+    padding: 0.4rem 0.4rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+  .glass-table td {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  /* Standard data table */
+  .data-table th {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  .data-table td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* Modal — bottom sheet on tiny screens */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-content {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+  }
+  .modal-header {
+    padding: var(--space-md);
+  }
+  .modal-body {
+    padding: var(--space-sm) var(--space-md);
+  }
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: var(--space-sm);
+  }
+  .modal-footer > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Toolbar — full stack */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+  .search-bar {
+    max-width: 100%;
+  }
+
+  /* Stat cards */
+  .stat-card {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  /* Dashboard welcome banner */
+  .dashboard-welcome-banner {
+    padding: var(--space-md);
+  }
+  .banner-title {
+    font-size: 1.1rem;
+  }
+  .banner-subtitle {
+    font-size: 0.85rem;
+  }
+
+  /* Quick actions — force 2-col grid */
+  .dashboard-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Top nav brand text */
+  .top-nav-brand {
+    font-size: 1rem;
+  }
+
+  /* Login */
+  .login-container {
+    padding: var(--space-xs);
+  }
+  .login-card {
+    padding: var(--space-lg);
+  }
+  .login-title {
+    font-size: 1.4rem;
+  }
+
+  /* Sales POS */
+  .sales-catalog {
+    padding: var(--space-md);
+  }
+  .catalog-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+  .cart-checkout {
+    padding: var(--space-sm) var(--space-md);
+  }
+  .cart-item-name {
+    font-size: 0.75rem;
+  }
+  .cart-item-price {
+    min-width: 44px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ─── Customer page mobile cards ─── */
+.cust-desktop-panel { display: block; }
+.cust-mobile-cards  { display: none; padding: 0 !important; }
+
+.cust-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+}
+.cust-card:last-of-type { border-bottom: none; }
+.cust-card:active { background: rgba(99, 102, 241, 0.05); }
+
+.cust-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.cust-card-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.cust-card-phone {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+
+.cust-card-date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.cust-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}

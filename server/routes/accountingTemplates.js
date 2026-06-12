@@ -120,4 +120,50 @@ router.delete('/:id', authGuard, async (req, res) => {
   }
 });
 
+// Duplicate a template (Admins only)
+router.post('/:id/duplicate', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only admins can duplicate templates.' });
+    }
+
+    // Fetch the source template
+    const { data: source, error: fetchError } = await supabaseAdmin
+      .from('accounting_templates')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('business_id', req.user.business_id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!source) return res.status(404).json({ error: 'Template not found' });
+
+    // Create the duplicate with regenerated field IDs
+    const newFieldsSchema = (source.fields_schema || []).map(field => ({
+      ...field,
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+    }));
+
+    const { data, error } = await supabaseAdmin
+      .from('accounting_templates')
+      .insert([{
+        business_id: req.user.business_id,
+        name: `${source.name} (Copy)`,
+        description: source.description,
+        type: source.type,
+        assigned_roles: source.assigned_roles || [],
+        fields_schema: newFieldsSchema,
+        conditional_logic: source.conditional_logic || [],
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error('Error duplicating template:', err);
+    res.status(500).json({ error: 'Failed to duplicate template' });
+  }
+});
+
 module.exports = router;

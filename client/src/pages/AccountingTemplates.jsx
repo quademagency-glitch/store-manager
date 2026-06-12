@@ -1,9 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(amount || 0);
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
 
 export default function AccountingTemplates() {
   const { user, role, locationIds, activeLocationId } = useAuthContext();
@@ -13,6 +25,10 @@ export default function AccountingTemplates() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [locations, setLocations] = useState([]);
 
+  // Search + Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+
   // Form State
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [amount, setAmount] = useState('');
@@ -20,12 +36,26 @@ export default function AccountingTemplates() {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [metadata, setMetadata] = useState({});
   const [receiptFile, setReceiptFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Success state
+  const [submissionResult, setSubmissionResult] = useState(null);
+
+  const dropzoneRef = useRef(null);
 
   useEffect(() => {
     fetchTemplates();
     fetchLocations();
   }, [role, activeLocationId]);
+
+  // Clean up file preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [filePreview]);
 
   const fetchTemplates = async () => {
     try {
@@ -60,18 +90,58 @@ export default function AccountingTemplates() {
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
+    setSubmissionResult(null);
     // Reset form
     setDate(new Date().toISOString().split('T')[0]);
     setAmount('');
     setDescription('');
     setMetadata({});
-    setReceiptFile(null);
+    clearFile();
   };
 
   const handleMetadataChange = (label, value) => {
     setMetadata(prev => ({ ...prev, [label]: value }));
   };
 
+  // ---- File handling ----
+  const handleFileSelect = (file) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.warning(`File too large (${formatFileSize(file.size)}). Maximum is 5MB.`);
+      return;
+    }
+    setReceiptFile(file);
+    if (file.type.startsWith('image/')) {
+      setFilePreview(URL.createObjectURL(file));
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    setReceiptFile(null);
+    setFilePreview(null);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  // ---- Submission ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) { toast.warning('Enter a valid amount'); return; }
@@ -105,14 +175,35 @@ export default function AccountingTemplates() {
       };
 
       await api.post('/ledger', payload);
-      toast.success('Entry submitted successfully!');
-      setSelectedTemplate(null);
+
+      // Show success state instead of closing
+      const loc = locations.find(l => l.id === selectedLocation);
+      setSubmissionResult({
+        templateName: selectedTemplate.name,
+        amount: formatCurrency(Number(amount)),
+        date,
+        location: loc?.name || 'Unknown',
+      });
     } catch (err) {
       if (import.meta.env.DEV) console.error('Submit error:', err);
       toast.error('Failed to submit entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmitAnother = () => {
+    setSubmissionResult(null);
+    setDate(new Date().toISOString().split('T')[0]);
+    setAmount('');
+    setDescription('');
+    setMetadata({});
+    clearFile();
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTemplate(null);
+    setSubmissionResult(null);
   };
 
   // Safe conditional logic evaluator — no eval/new Function
@@ -186,190 +277,322 @@ export default function AccountingTemplates() {
     }
   };
 
+  // ---- Filtered templates ----
+  const filteredTemplates = templates.filter(t => {
+    if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
   return (
-    <div className="p-6 max-w-6xl mx-auto transition-colors duration-300">
-      <h1 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Accounting Entries</h1>
-      <p className="mb-8" style={{ color: 'var(--color-text-secondary)' }}>Select a template below to record an expense, deposit, or other accounting entry.</p>
-      
-      {loading ? <p style={{ color: 'var(--color-text-secondary)' }}>Loading templates...</p> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map(t => (
-            <button 
-              key={t.id} 
-              onClick={() => handleTemplateSelect(t)}
-              className="glass-panel p-6 rounded-xl text-left hover:-translate-y-1 transition-transform"
-              style={{ display: 'flex', flexDirection: 'column' }}
-            >
-              <div className="flex justify-between items-start w-full mb-3">
-                <h3 className="font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
-                <span 
-                  className="px-2 py-0.5 text-[10px] rounded uppercase font-bold tracking-wider" 
-                  style={{ 
-                    border: `1px solid ${t.type === 'expense' ? 'var(--color-error-border)' : 'var(--color-success)'}`,
-                    color: t.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)',
-                    background: 'transparent'
-                  }}
-                >
-                  {t.type}
-                </span>
-              </div>
-              <p className="text-sm" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{t.description}</p>
-            </button>
-          ))}
-          {templates.length === 0 && (
-            <div className="col-span-full text-center py-12 rounded-xl" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}>
-              No templates assigned to your role. Contact your manager.
-            </div>
-          )}
+    <div className="page-container">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Accounting Entries</h1>
+          <p className="page-subtitle">Select a template below to record an expense, deposit, or other accounting entry.</p>
         </div>
-      )}
-
-      {selectedTemplate && (
-        <Modal isOpen={!!selectedTemplate} onClose={() => setSelectedTemplate(null)} title={selectedTemplate.name}>
-          <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
-            
-            <div className="p-5 rounded-lg space-y-4 mb-6" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-              <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Standard Details</h4>
-              
-              <div className="grid grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Date</label>
-                  <input 
-                    type="date" 
-                    value={date} 
-                    onChange={e => setDate(e.target.value)} 
-                    className="w-full rounded p-2.5 transition-colors focus:outline-none" 
-                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Branch / Location</label>
-                  <select 
-                    value={selectedLocation} 
-                    onChange={e => setSelectedLocation(e.target.value)}
-                    className="w-full rounded p-2.5 transition-colors focus:outline-none"
-                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                    required
-                    disabled={locations.length === 1}
-                  >
-                    <option value="">Select Branch...</option>
-                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 font-medium" style={{ color: 'var(--color-text-tertiary)' }}>$</span>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    min="0.01"
-                    value={amount} 
-                    onChange={e => setAmount(e.target.value)} 
-                    className="w-full pl-8 rounded p-2.5 text-lg font-bold transition-colors focus:outline-none" 
-                    style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                    placeholder="0.00"
-                    required 
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Description / Notes</label>
-                <textarea 
-                  value={description} 
-                  onChange={e => setDescription(e.target.value)} 
-                  className="w-full rounded p-2.5 transition-colors focus:outline-none" 
-                  style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                  rows="2"
-                  placeholder="Optional notes..."
+      </header>
+      
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--color-text-secondary)' }}>Loading templates...</div>
+      ) : (
+        <>
+          {/* Search + Filter Toolbar */}
+          {templates.length > 0 && (
+            <div className="acct-toolbar">
+              <div className="acct-search">
+                <svg className="acct-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+                <input
+                  id="template-search"
+                  type="text"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
                 />
               </div>
+              <div className="acct-filter-pills">
+                {['all', 'expense', 'deposit'].map(f => (
+                  <button
+                    key={f}
+                    className={`acct-filter-pill ${typeFilter === f ? 'active' : ''}`}
+                    onClick={() => setTypeFilter(f)}
+                    aria-pressed={typeFilter === f}
+                  >
+                    {f === 'all' ? 'All' : f === 'expense' ? 'Expenses' : 'Deposits'}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
 
-            {selectedTemplate.fields_schema && selectedTemplate.fields_schema.length > 0 && (
-              <div className="p-5 rounded-lg space-y-4 mb-6" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-accent-glow)' }}>
-                <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-accent-primary)' }}>Template Specific Fields</h4>
-                
-                {selectedTemplate.fields_schema.map(field => {
-                  const isVisible = evaluateCondition(field.showIf);
-                  if (!isVisible) return null;
-
-                  return (
-                    <div key={field.id}>
-                      <label className="block text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
-                        {field.label} {field.required && <span style={{ color: 'var(--color-error)' }}>*</span>}
-                      </label>
-                      
-                      {field.type === 'dropdown' ? (
-                        <select
-                          value={metadata[field.label] || ''}
-                          onChange={e => handleMetadataChange(field.label, e.target.value)}
-                          className="w-full rounded p-2.5 transition-colors focus:outline-none"
-                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                          required={field.required}
-                        >
-                          <option value="">Select...</option>
-                          {field.options?.split(',').map(opt => (
-                            <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={field.type === 'number' ? 'number' : 'text'}
-                          value={metadata[field.label] || ''}
-                          onChange={e => handleMetadataChange(field.label, e.target.value)}
-                          className="w-full rounded p-2.5 transition-colors focus:outline-none"
-                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                          required={field.required}
-                        />
-                      )}
+          {/* Template Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTemplates.map(t => {
+              const fieldCount = t.fields_schema?.length || 0;
+              return (
+                <button 
+                  key={t.id} 
+                  onClick={() => handleTemplateSelect(t)}
+                  className={`acct-card type-${t.type}`}
+                  aria-label={`${t.name} — ${t.type} template`}
+                >
+                  <div className="acct-card-header">
+                    <div className={`acct-card-icon type-${t.type}`}>
+                      {t.type === 'expense' ? '💸' : '🏦'}
                     </div>
-                  );
-                })}
+                    <div className="acct-card-title-group">
+                      <h3 className="acct-card-title">{t.name}</h3>
+                      <span className={`acct-type-badge type-${t.type}`}>{t.type}</span>
+                    </div>
+                  </div>
+                  <p className="acct-card-desc">{t.description}</p>
+                  <div className="acct-card-footer">
+                    <span className="acct-card-meta">
+                      {fieldCount > 0 ? `${fieldCount} custom field${fieldCount !== 1 ? 's' : ''}` : 'Standard fields only'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {templates.length > 0 && filteredTemplates.length === 0 && (
+              <div className="acct-empty">
+                <div className="acct-empty-icon">🔍</div>
+                <p className="acct-empty-title">No matching templates</p>
+                <p className="acct-empty-subtitle">Try adjusting your search or filter criteria.</p>
               </div>
             )}
 
-            <div className="p-5 rounded-lg" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
-              <label className="block text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>Upload Receipt / Deposit Slip</label>
-              <input 
-                type="file" 
-                accept="image/*,.pdf"
-                onChange={e => setReceiptFile(e.target.files[0])}
-                className="block w-full text-sm cursor-pointer"
-                style={{ color: 'var(--color-text-muted)' }}
-              />
-            </div>
+            {templates.length === 0 && (
+              <div className="acct-empty">
+                <div className="acct-empty-icon">📋</div>
+                <p className="acct-empty-title">No templates available</p>
+                <p className="acct-empty-subtitle">No accounting templates have been assigned to your role. Contact your manager to get started.</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
-            <div className="flex justify-end gap-3 pt-4">
-              <button 
-                type="button" 
-                onClick={() => setSelectedTemplate(null)} 
-                className="px-5 py-2 rounded font-medium transition-colors"
-                style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                className="px-6 py-2 rounded font-medium transition-transform active:scale-95 shadow flex items-center gap-2"
-                style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
-                disabled={isSubmitting}
-              >
-                {isSubmitting && (
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style={{ color: 'currentColor' }}>
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                Submit Entry
-              </button>
+      {/* Entry Form Modal */}
+      {selectedTemplate && (
+        <Modal isOpen={!!selectedTemplate} onClose={handleCloseModal} title={selectedTemplate.name}>
+          {submissionResult ? (
+            /* ---- Success State ---- */
+            <div className="acct-success">
+              <div className="acct-success-icon">✓</div>
+              <h3 className="acct-success-title">Entry Submitted</h3>
+              <div className="acct-success-summary">
+                <div className="acct-success-row">
+                  <span className="acct-success-label">Template</span>
+                  <span className="acct-success-value">{submissionResult.templateName}</span>
+                </div>
+                <div className="acct-success-row">
+                  <span className="acct-success-label">Amount</span>
+                  <span className="acct-success-value">{submissionResult.amount}</span>
+                </div>
+                <div className="acct-success-row">
+                  <span className="acct-success-label">Date</span>
+                  <span className="acct-success-value">{submissionResult.date}</span>
+                </div>
+                <div className="acct-success-row">
+                  <span className="acct-success-label">Branch</span>
+                  <span className="acct-success-value">{submissionResult.location}</span>
+                </div>
+              </div>
+              <div className="acct-success-actions">
+                <button type="button" className="btn btn-secondary" onClick={handleSubmitAnother}>
+                  Submit Another
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleCloseModal}>
+                  Done
+                </button>
+              </div>
             </div>
-          </form>
+          ) : (
+            /* ---- Entry Form ---- */
+            <form onSubmit={handleSubmit} className="form-layout" style={{ padding: 'var(--space-lg)', maxHeight: '85vh', overflowY: 'auto' }}>
+              
+              {/* Standard Details */}
+              <div className="acct-form-section">
+                <h4 className="acct-form-section-title">Standard Details</h4>
+                
+                <div className="form-row" style={{ marginBottom: 'var(--space-md)' }}>
+                  <div className="form-group">
+                    <label htmlFor="entry-date">Date</label>
+                    <input 
+                      id="entry-date"
+                      type="date" 
+                      value={date} 
+                      onChange={e => setDate(e.target.value)} 
+                      className="form-input"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="entry-location">Branch / Location</label>
+                    <select 
+                      id="entry-location"
+                      value={selectedLocation} 
+                      onChange={e => setSelectedLocation(e.target.value)}
+                      className="form-input"
+                      required
+                      disabled={locations.length === 1}
+                    >
+                      <option value="">Select Branch...</option>
+                      {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
+                  <label htmlFor="entry-amount">Amount</label>
+                  <div className="input-prefix-wrapper">
+                    <span className="input-prefix">GH₵</span>
+                    <input 
+                      id="entry-amount"
+                      type="number" 
+                      step="0.01"
+                      min="0.01"
+                      inputMode="decimal"
+                      value={amount} 
+                      onChange={e => setAmount(e.target.value)} 
+                      className="form-input with-prefix"
+                      style={{ fontSize: '1.1rem', fontWeight: 600 }}
+                      placeholder="0.00"
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="entry-description">Description / Notes</label>
+                  <textarea 
+                    id="entry-description"
+                    value={description} 
+                    onChange={e => setDescription(e.target.value)} 
+                    className="form-input"
+                    rows="2"
+                    placeholder="Optional notes..."
+                  />
+                </div>
+              </div>
+
+              {/* Template Specific Fields */}
+              {selectedTemplate.fields_schema && selectedTemplate.fields_schema.length > 0 && (
+                <div className="acct-form-section accent">
+                  <h4 className="acct-form-section-title">Template Specific Fields</h4>
+                  
+                  {selectedTemplate.fields_schema.map(field => {
+                    const isVisible = evaluateCondition(field.showIf);
+                    if (!isVisible) return null;
+
+                    const fieldId = `custom-field-${field.id}`;
+                    return (
+                      <div key={field.id} className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
+                        <label htmlFor={fieldId}>
+                          {field.label} {field.required && <span style={{ color: 'var(--color-error)' }}>*</span>}
+                        </label>
+                        
+                        {field.type === 'dropdown' ? (
+                          <select
+                            id={fieldId}
+                            value={metadata[field.label] || ''}
+                            onChange={e => handleMetadataChange(field.label, e.target.value)}
+                            className="form-input"
+                            required={field.required}
+                          >
+                            <option value="">Select...</option>
+                            {field.options?.split(',').map(opt => (
+                              <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            id={fieldId}
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            value={metadata[field.label] || ''}
+                            onChange={e => handleMetadataChange(field.label, e.target.value)}
+                            className="form-input"
+                            required={field.required}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* File Upload */}
+              <div className="acct-form-section">
+                <h4 className="acct-form-section-title">Upload Receipt / Deposit Slip</h4>
+                {receiptFile ? (
+                  <div className="acct-file-preview">
+                    <div className="acct-file-thumb">
+                      {filePreview ? (
+                        <img src={filePreview} alt="Receipt preview" />
+                      ) : (
+                        '📄'
+                      )}
+                    </div>
+                    <div className="acct-file-info">
+                      <div className="acct-file-name">{receiptFile.name}</div>
+                      <div className="acct-file-size">{formatFileSize(receiptFile.size)}</div>
+                    </div>
+                    <button type="button" className="acct-file-remove" onClick={clearFile}>
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    ref={dropzoneRef}
+                    className={`acct-dropzone ${isDragging ? 'drag-over' : ''}`}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                  >
+                    <div className="acct-dropzone-icon">📎</div>
+                    <p className="acct-dropzone-text">Drag & drop a file here, or click to browse</p>
+                    <p className="acct-dropzone-hint">Images or PDFs up to 5MB</p>
+                    <input 
+                      type="file" 
+                      accept="image/*,.pdf"
+                      onChange={e => handleFileSelect(e.target.files[0])}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Submit */}
+              <div className="acct-form-footer">
+                <button 
+                  type="button" 
+                  onClick={handleCloseModal} 
+                  className="btn btn-secondary"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting && (
+                    <svg className="acct-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="10" opacity="0.25" /><path d="M4 12a8 8 0 018-8" opacity="0.75" />
+                    </svg>
+                  )}
+                  Submit Entry
+                </button>
+              </div>
+            </form>
+          )}
         </Modal>
       )}
     </div>

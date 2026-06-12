@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
@@ -12,6 +12,13 @@ export default function AccountingSettings() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
+  // Search + Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+
+  // Available Roles (fetched from API)
+  const [availableRoles, setAvailableRoles] = useState([]);
+
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -19,11 +26,13 @@ export default function AccountingSettings() {
   const [assignedRoles, setAssignedRoles] = useState([]);
   const [fieldsSchema, setFieldsSchema] = useState([]);
 
-  // Available Roles (Mocked, should fetch from API in real implementation)
-  const availableRoles = ['Salesperson', 'Cashier', 'Manager', 'Business Admin'];
+  // Dirty tracking for unsaved changes protection
+  const [isDirty, setIsDirty] = useState(false);
+  const initialFormRef = useRef(null);
 
   useEffect(() => {
     fetchTemplates();
+    fetchRoles();
   }, []);
 
   const fetchTemplates = async () => {
@@ -38,6 +47,23 @@ export default function AccountingSettings() {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const data = await api.get('/roles');
+      // Map to role names, exclude Platform Admin
+      const roleNames = data
+        .map(r => r.name)
+        .filter(n => n !== 'Platform Admin');
+      setAvailableRoles(roleNames);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Failed to fetch roles:', err);
+      // Fallback to defaults if roles endpoint fails
+      setAvailableRoles(['Salesperson', 'Cashier', 'Manager', 'Business Admin']);
+    }
+  };
+
+  const markDirty = () => setIsDirty(true);
+
   const handleOpenModal = (template = null) => {
     if (template) {
       setEditingTemplate(template);
@@ -45,7 +71,7 @@ export default function AccountingSettings() {
       setDescription(template.description || '');
       setType(template.type);
       setAssignedRoles(template.assigned_roles || []);
-      setFieldsSchema(template.fields_schema || []);
+      setFieldsSchema((template.fields_schema || []).map(f => ({ ...f })));
     } else {
       setEditingTemplate(null);
       setName('');
@@ -54,30 +80,75 @@ export default function AccountingSettings() {
       setAssignedRoles([]);
       setFieldsSchema([]);
     }
+    setIsDirty(false);
+    initialFormRef.current = JSON.stringify({
+      name: template?.name || '',
+      description: template?.description || '',
+      type: template?.type || 'expense',
+      assignedRoles: template?.assigned_roles || [],
+      fieldsSchema: template?.fields_schema || [],
+    });
     setIsModalOpen(true);
   };
 
+  const handleCloseModal = async () => {
+    if (isDirty) {
+      const confirmed = await confirm({
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Are you sure you want to close?',
+        variant: 'warning',
+        confirmText: 'Discard',
+      });
+      if (!confirmed) return;
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDuplicate = async (template) => {
+    try {
+      const data = await api.post(`/accounting/templates/${template.id}/duplicate`);
+      toast.success(`"${data.name}" created!`);
+      fetchTemplates();
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Duplicate failed:', err);
+      toast.error('Failed to duplicate template.');
+    }
+  };
+
+  // ---- Field management ----
   const handleAddField = () => {
     setFieldsSchema([...fieldsSchema, { 
       id: Date.now().toString(), 
       label: '', 
       type: 'text', 
       required: false,
-      options: '', // For dropdowns, comma separated
-      showIf: '' // basic conditional logic string e.g. "payment_method == 'mobile'"
+      options: '',
+      showIf: ''
     }]);
+    markDirty();
   };
 
   const handleUpdateField = (index, key, value) => {
     const newFields = [...fieldsSchema];
-    newFields[index][key] = value;
+    newFields[index] = { ...newFields[index], [key]: value };
     setFieldsSchema(newFields);
+    markDirty();
   };
 
   const handleRemoveField = (index) => {
     const newFields = [...fieldsSchema];
     newFields.splice(index, 1);
     setFieldsSchema(newFields);
+    markDirty();
+  };
+
+  const handleMoveField = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= fieldsSchema.length) return;
+    const newFields = [...fieldsSchema];
+    [newFields[index], newFields[newIndex]] = [newFields[newIndex], newFields[index]];
+    setFieldsSchema(newFields);
+    markDirty();
   };
 
   const toggleRole = (role) => {
@@ -86,6 +157,7 @@ export default function AccountingSettings() {
     } else {
       setAssignedRoles([...assignedRoles, role]);
     }
+    markDirty();
   };
 
   const handleSave = async (e) => {
@@ -101,10 +173,13 @@ export default function AccountingSettings() {
 
       if (editingTemplate) {
         await api.put(`/accounting/templates/${editingTemplate.id}`, payload);
+        toast.success('Template updated!');
       } else {
         await api.post('/accounting/templates', payload);
+        toast.success('Template created!');
       }
       setIsModalOpen(false);
+      setIsDirty(false);
       fetchTemplates();
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to save template', err);
@@ -117,102 +192,187 @@ export default function AccountingSettings() {
     if (!confirmed) return;
     try {
       await api.delete(`/accounting/templates/${id}`);
+      toast.success('Template deleted.');
       fetchTemplates();
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to delete template', err);
+      toast.error('Failed to delete template.');
     }
   };
 
+  // ---- Filtered templates ----
+  const filteredTemplates = templates.filter(t => {
+    if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
   return (
-    <div className="p-6 max-w-6xl mx-auto transition-colors duration-300">
-      <div className="flex justify-between items-center mb-6">
+    <div className="page-container">
+      <header className="page-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Accounting Template Settings</h1>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Build and manage your dynamic accounting templates (Forms).</p>
+          <h1 className="page-title">Accounting Template Settings</h1>
+          <p className="page-subtitle">Build and manage your dynamic accounting templates (Forms).</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
-          className="action-btn"
-          style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
+          className="btn btn-primary"
+          aria-label="Create a new template"
         >
           + Create Template
         </button>
-      </div>
+      </header>
       
-      {loading ? <p style={{ color: 'var(--color-text-secondary)' }}>Loading templates...</p> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map(t => (
-            <div key={t.id} className="glass-panel p-6 rounded-xl flex flex-col hover:-translate-y-1 transition-transform">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>{t.name}</h3>
-                <span 
-                  className="px-2 py-0.5 text-[10px] rounded uppercase font-bold tracking-wider" 
-                  style={{ 
-                    border: `1px solid ${t.type === 'expense' ? 'var(--color-error-border)' : 'var(--color-success)'}`,
-                    color: t.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)',
-                    background: 'transparent'
-                  }}
-                >
-                  {t.type}
-                </span>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--color-text-secondary)' }}>Loading templates...</div>
+      ) : (
+        <>
+          {/* Search + Filter Toolbar */}
+          {templates.length > 0 && (
+            <div className="acct-toolbar">
+              <div className="acct-search">
+                <svg className="acct-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+                <input
+                  id="settings-template-search"
+                  type="text"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
               </div>
-              <p className="text-sm mb-4 h-10 overflow-hidden" style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{t.description}</p>
-              
-              <div className="mb-4">
-                <div className="text-xs font-semibold mb-1 uppercase tracking-wide" style={{ color: 'var(--color-text-tertiary)' }}>Assigned Roles</div>
-                <div className="flex flex-wrap gap-1">
-                  {t.assigned_roles && t.assigned_roles.length > 0 ? t.assigned_roles.map(r => (
-                    <span key={r} className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>{r}</span>
-                  )) : <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>None</span>}
-                </div>
+              <div className="acct-filter-pills">
+                {['all', 'expense', 'deposit'].map(f => (
+                  <button
+                    key={f}
+                    className={`acct-filter-pill ${typeFilter === f ? 'active' : ''}`}
+                    onClick={() => setTypeFilter(f)}
+                    aria-pressed={typeFilter === f}
+                  >
+                    {f === 'all' ? 'All' : f === 'expense' ? 'Expenses' : 'Deposits'}
+                  </button>
+                ))}
               </div>
-
-              <div className="flex gap-3 mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <button onClick={() => handleOpenModal(t)} className="flex-1 py-1.5 rounded text-sm font-semibold transition-colors hover:opacity-80" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(t.id)} className="flex-1 py-1.5 rounded text-sm font-semibold transition-colors hover:opacity-80" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)' }}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-          {templates.length === 0 && (
-            <div className="col-span-full text-center py-12 rounded-xl" style={{ border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}>
-              No templates created yet. Click "Create Template" to get started.
             </div>
           )}
-        </div>
+
+          {/* Template Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTemplates.map(t => {
+              const fieldCount = t.fields_schema?.length || 0;
+              return (
+                <div key={t.id} className={`acct-card type-${t.type}`} style={{ cursor: 'default' }}>
+                  <div className="acct-card-header">
+                    <div className={`acct-card-icon type-${t.type}`}>
+                      {t.type === 'expense' ? '💸' : '🏦'}
+                    </div>
+                    <div className="acct-card-title-group">
+                      <h3 className="acct-card-title">{t.name}</h3>
+                      <span className={`acct-type-badge type-${t.type}`}>{t.type}</span>
+                    </div>
+                  </div>
+                  <p className="acct-card-desc">{t.description}</p>
+
+                  {/* Roles Section */}
+                  <div className="acct-roles-section">
+                    <div className="acct-roles-label">Assigned Roles</div>
+                    <div className="acct-roles-list">
+                      {t.assigned_roles && t.assigned_roles.length > 0 ? t.assigned_roles.map(r => (
+                        <span key={r} className="acct-role-tag">{r}</span>
+                      )) : <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>None</span>}
+                    </div>
+                  </div>
+
+                  {/* Footer with field count */}
+                  <div className="acct-card-footer" style={{ borderTop: 'none', paddingTop: 'var(--space-sm)' }}>
+                    <span className="acct-card-meta">
+                      {fieldCount > 0 ? `${fieldCount} custom field${fieldCount !== 1 ? 's' : ''}` : 'Standard fields only'}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="acct-card-actions">
+                    <button 
+                      onClick={() => handleOpenModal(t)} 
+                      className="acct-action-edit"
+                      aria-label={`Edit ${t.name}`}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDuplicate(t)} 
+                      className="acct-action-duplicate"
+                      aria-label={`Duplicate ${t.name}`}
+                    >
+                      Duplicate
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(t.id)} 
+                      className="acct-action-delete"
+                      aria-label={`Delete ${t.name}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {templates.length > 0 && filteredTemplates.length === 0 && (
+              <div className="acct-empty">
+                <div className="acct-empty-icon">🔍</div>
+                <p className="acct-empty-title">No matching templates</p>
+                <p className="acct-empty-subtitle">Try adjusting your search or filter criteria.</p>
+              </div>
+            )}
+
+            {templates.length === 0 && (
+              <div className="acct-empty">
+                <div className="acct-empty-icon">📋</div>
+                <p className="acct-empty-title">No templates yet</p>
+                <p className="acct-empty-subtitle">Create your first accounting template to enable your team to record expenses and deposits.</p>
+                <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                  + Create Your First Template
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
+      {/* Create / Edit Modal */}
       {isModalOpen && (
-        <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTemplate ? "Edit Template" : "Create Template"} size="lg">
-          <form onSubmit={handleSave} className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
+        <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingTemplate ? "Edit Template" : "Create Template"} size="lg">
+          <form onSubmit={handleSave} className="form-layout" style={{ padding: 'var(--space-lg)', overflowY: 'auto', maxHeight: '80vh' }}>
             
             {/* Section 1: Basic Info */}
-            <div className="rounded-lg p-5" style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)' }}>
-              <h4 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--color-text-tertiary)' }}>Template Details</h4>
+            <div className="acct-form-section">
+              <h4 className="acct-form-section-title">Template Details</h4>
               
-              <div className="grid grid-cols-2 gap-5 mb-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Template Name</label>
+              <div className="form-row" style={{ marginBottom: 'var(--space-md)' }}>
+                <div className="form-group">
+                  <label htmlFor="tpl-name">Template Name</label>
                   <input 
+                    id="tpl-name"
                     type="text" 
                     value={name} 
-                    onChange={e => setName(e.target.value)} 
-                    className="w-full rounded-md p-2.5 transition-colors focus:outline-none text-sm" 
-                    style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                    onChange={e => { setName(e.target.value); markDirty(); }}
+                    className="form-input"
                     placeholder="e.g., POS Machine Deposit"
                     required 
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Type</label>
+                <div className="form-group">
+                  <label htmlFor="tpl-type">Type</label>
                   <select 
+                    id="tpl-type"
                     value={type} 
-                    onChange={e => setType(e.target.value)}
-                    className="w-full rounded-md p-2.5 transition-colors focus:outline-none text-sm"
-                    style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                    onChange={e => { setType(e.target.value); markDirty(); }}
+                    className="form-input"
                   >
                     <option value="expense">Expense</option>
                     <option value="deposit">Deposit (To Bank/Mobile)</option>
@@ -220,13 +380,13 @@ export default function AccountingSettings() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Description</label>
+              <div className="form-group">
+                <label htmlFor="tpl-description">Description</label>
                 <textarea 
+                  id="tpl-description"
                   value={description} 
-                  onChange={e => setDescription(e.target.value)} 
-                  className="w-full rounded-md p-2.5 transition-colors focus:outline-none text-sm" 
-                  style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                  onChange={e => { setDescription(e.target.value); markDirty(); }}
+                  className="form-input"
                   rows="2"
                   placeholder="Briefly describe what this template is for..."
                 />
@@ -234,92 +394,104 @@ export default function AccountingSettings() {
             </div>
 
             {/* Section 2: Role Assignment */}
-            <div className="rounded-lg p-5" style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)' }}>
-              <h4 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-tertiary)' }}>Role Assignment</h4>
-              <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Select which roles can use this template.</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="acct-form-section">
+              <h4 className="acct-form-section-title">Role Assignment</h4>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>Select which roles can use this template.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {availableRoles.map(r => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => toggleRole(r)}
-                    className="px-4 py-1.5 text-xs font-semibold rounded-md transition-all"
-                    style={{
-                      background: assignedRoles.includes(r) ? 'var(--color-accent-primary)' : 'transparent',
-                      border: `1px solid ${assignedRoles.includes(r) ? 'var(--color-accent-primary)' : 'var(--color-border)'}`,
-                      color: assignedRoles.includes(r) ? '#ffffff' : 'var(--color-text-secondary)',
-                      boxShadow: assignedRoles.includes(r) ? '0 2px 8px rgba(99, 102, 241, 0.25)' : 'none'
-                    }}
+                    className={`acct-filter-pill ${assignedRoles.includes(r) ? 'active' : ''}`}
+                    aria-pressed={assignedRoles.includes(r)}
+                    style={{ fontSize: '0.78rem' }}
                   >
                     {r}
                   </button>
                 ))}
+                {availableRoles.length === 0 && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Loading roles...</span>
+                )}
               </div>
             </div>
 
             {/* Section 3: Custom Fields */}
-            <div className="rounded-lg p-5" style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)' }}>
-              <div className="flex justify-between items-center mb-4">
+            <div className="acct-form-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-tertiary)' }}>Custom Form Fields</h4>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Add extra fields beyond Date, Amount, and Receipt.</p>
+                  <h4 className="acct-form-section-title" style={{ marginBottom: '2px' }}>Custom Form Fields</h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>Add extra fields beyond Date, Amount, and Receipt.</p>
                 </div>
                 <button 
                   type="button" 
                   onClick={handleAddField} 
-                  className="text-xs px-4 py-2 rounded-md font-semibold transition-colors"
-                  style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none' }}
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.78rem', padding: '0.4rem 0.8rem' }}
                 >
                   + Add Field
                 </button>
               </div>
               
-              <div className="space-y-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                 {fieldsSchema.map((field, index) => (
-                  <div 
-                    key={field.id} 
-                    className="rounded-lg relative" 
-                    style={{ 
-                      background: 'var(--color-bg-secondary)', 
-                      border: '1px solid var(--color-border)',
-                      padding: '16px 16px 16px 16px'
-                    }}
-                  >
-                    {/* Field number badge + remove button */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-tertiary)', border: '1px solid var(--color-border)' }}>
-                        Field {index + 1}
-                      </span>
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveField(index)}
-                        className="text-xs font-semibold px-2 py-1 rounded transition-colors hover:opacity-80"
-                        style={{ color: 'var(--color-error)', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)' }}
-                      >
-                        Remove
-                      </button>
+                  <div key={field.id} className="acct-field-card">
+                    {/* Field header: badge + controls */}
+                    <div className="acct-field-header">
+                      <span className="acct-field-badge">Field {index + 1}</span>
+                      <div className="acct-field-controls">
+                        <button 
+                          type="button"
+                          className="acct-field-move-btn"
+                          onClick={() => handleMoveField(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Move field up"
+                          title="Move Up"
+                        >
+                          ↑
+                        </button>
+                        <button 
+                          type="button"
+                          className="acct-field-move-btn"
+                          onClick={() => handleMoveField(index, 1)}
+                          disabled={index === fieldsSchema.length - 1}
+                          aria-label="Move field down"
+                          title="Move Down"
+                        >
+                          ↓
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveField(index)}
+                          className="acct-field-remove-btn"
+                          aria-label={`Remove field ${index + 1}`}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 mb-3">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Field Label</label>
+                    {/* Field inputs */}
+                    <div className="form-row" style={{ marginBottom: 'var(--space-sm)' }}>
+                      <div className="form-group">
+                        <label htmlFor={`field-label-${field.id}`}>Field Label</label>
                         <input 
+                          id={`field-label-${field.id}`}
                           type="text" 
                           value={field.label} 
                           onChange={e => handleUpdateField(index, 'label', e.target.value)} 
-                          className="w-full rounded-md p-2 transition-colors focus:outline-none text-sm" 
-                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                          className="form-input"
                           placeholder="e.g. Bank Name"
                           required
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Input Type</label>
+                      <div className="form-group">
+                        <label htmlFor={`field-type-${field.id}`}>Input Type</label>
                         <select 
+                          id={`field-type-${field.id}`}
                           value={field.type} 
                           onChange={e => handleUpdateField(index, 'type', e.target.value)}
-                          className="w-full rounded-md p-2 transition-colors focus:outline-none text-sm"
-                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                          className="form-input"
                         >
                           <option value="text">Text</option>
                           <option value="number">Number</option>
@@ -329,39 +501,38 @@ export default function AccountingSettings() {
                     </div>
 
                     {field.type === 'dropdown' && (
-                      <div className="mb-3">
-                        <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>Dropdown Options</label>
+                      <div className="form-group" style={{ marginBottom: 'var(--space-sm)' }}>
+                        <label htmlFor={`field-options-${field.id}`}>Dropdown Options</label>
                         <input 
+                          id={`field-options-${field.id}`}
                           type="text" 
                           value={field.options} 
                           onChange={e => handleUpdateField(index, 'options', e.target.value)} 
-                          className="w-full rounded-md p-2 transition-colors focus:outline-none text-sm" 
-                          style={{ background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                          className="form-input"
                           placeholder="Comma separated: Chase, Bank of America, Wells Fargo"
                         />
                       </div>
                     )}
 
-                    {/* Footer row: Required toggle + Conditional Logic */}
-                    <div className="flex items-center gap-6 pt-3" style={{ borderTop: '1px solid var(--color-border)' }}>
-                      <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
+                    {/* Footer: Required toggle + Conditional Logic */}
+                    <div className="acct-field-footer">
+                      <label htmlFor={`field-required-${field.id}`}>
                         <input 
+                          id={`field-required-${field.id}`}
                           type="checkbox" 
                           checked={field.required} 
                           onChange={e => handleUpdateField(index, 'required', e.target.checked)} 
-                          style={{ accentColor: 'var(--color-accent-primary)' }}
                         />
                         Required
                       </label>
 
-                      <div className="flex-1">
+                      <div className="acct-field-condition">
                         <input 
                           type="text" 
                           value={field.showIf || ''} 
                           onChange={e => handleUpdateField(index, 'showIf', e.target.value)} 
-                          className="w-full rounded-md p-1.5 transition-colors focus:outline-none text-xs" 
-                          style={{ background: 'var(--color-bg-primary)', border: '1px dashed var(--color-border)', color: 'var(--color-text-tertiary)' }}
                           placeholder="Conditional: {field_label} == 'Yes'"
+                          aria-label={`Conditional logic for field ${index + 1}`}
                         />
                       </div>
                     </div>
@@ -369,30 +540,28 @@ export default function AccountingSettings() {
                 ))}
                 
                 {fieldsSchema.length === 0 && (
-                  <div className="text-center py-8 rounded-lg" style={{ border: '1px dashed var(--color-border)' }}>
-                    <p className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>No custom fields added yet.</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>The form will only ask for Date, Amount, and Receipt.</p>
+                  <div className="acct-fields-empty">
+                    <p>No custom fields added yet.</p>
+                    <p>The form will only ask for Date, Amount, and Receipt.</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="acct-form-footer">
               <button 
                 type="button" 
-                onClick={() => setIsModalOpen(false)} 
-                className="px-5 py-2.5 rounded-md font-medium transition-colors text-sm"
-                style={{ background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}
+                onClick={handleCloseModal} 
+                className="btn btn-secondary"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                className="px-6 py-2.5 rounded-md font-semibold transition-transform active:scale-95 text-sm"
-                style={{ background: 'var(--color-accent-primary)', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)' }}
+                className="btn btn-primary"
               >
-                Save Template
+                {editingTemplate ? 'Save Changes' : 'Create Template'}
               </button>
             </div>
           </form>

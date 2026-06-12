@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -27,12 +27,12 @@ export function ToastProvider({ children }) {
     return id;
   }, [removeToast]);
 
-  const toast = useCallback({
+  const toast = useMemo(() => ({
     success: (msg, duration) => addToast(msg, 'success', duration),
     error: (msg, duration) => addToast(msg, 'error', duration),
     warning: (msg, duration) => addToast(msg, 'warning', duration),
     info: (msg, duration) => addToast(msg, 'info', duration),
-  }, [addToast]);
+  }), [addToast]);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -49,6 +49,7 @@ export function ToastProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used within a ToastProvider');

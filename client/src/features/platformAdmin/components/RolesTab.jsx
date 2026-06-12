@@ -1,13 +1,10 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function RolesTab() {
-  const { 
-    roles, setShowAddRoleModal, handleEditRole, handleDeleteRole 
+  const {
+    roles, users, setShowAddRoleModal, openEditRole, handleDeleteRole,
   } = usePlatformAdmin();
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

@@ -1,13 +1,10 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function OverviewTab() {
-  const { 
-    user, activeBusinesses, activeUsers, businessAdmins, recentBusinesses, uptimeStats, businesses, handleViewBusiness 
+  const {
+    user, activeBusinesses, activeUsers, businessAdmins, recentBusinesses, uptimeStats, businesses, handleViewBusiness,
   } = usePlatformAdmin();
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

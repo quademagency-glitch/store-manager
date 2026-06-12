@@ -1,10 +1,9 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import Modal from '../../../components/Modal';
 import { Icons } from '../Icons';
 
 export default function PlatformAdminModals() {
-  const { 
+  const {
     businesses, roles, plans, ALL_PERMISSIONS,
     showAddBusinessModal, setShowAddBusinessModal,
     newBusinessName, setNewBusinessName,
@@ -38,10 +37,11 @@ export default function PlatformAdminModals() {
     paymentForm, setPaymentForm,
     showAssignPlanModal, setShowAssignPlanModal,
     assignForm, setAssignForm,
-    handleAddBusiness, handleEditBusiness,
-    handleAddUser, handleEditUser,
-    handleAddRole, handleEditRole,
-    handleSavePlan, handleSaveGateway, handleSendInvoice, handleRecordPayment, handleAssignPlan
+    handleCreateBusiness, handleUpdateBusiness,
+    handleCreateUser, handleUpdateUser,
+    handleCreateRole, handleUpdateRole, togglePermission,
+    handleSavePlan, handleSaveGateway, handleSendInvoice, handleRecordPayment, handleAssignPlan,
+    FEATURE_LABELS, formatCurrency,
   } = usePlatformAdmin();
 
   return (

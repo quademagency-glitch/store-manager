@@ -1,21 +1,12 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function PricingTab() {
-  const { 
-    plans, billingCycle, setBillingCycle, setShowPlanModal, setEditingPlan, setPlanForm 
+  const {
+    plans, billingCycle, setBillingCycle,
+    openPlanModal, handleDeletePlan,
+    subscriptions, FEATURE_LABELS,
   } = usePlatformAdmin();
-
-  const handleEditPlan = (plan) => {
-    setEditingPlan(plan);
-    setPlanForm({
-      name: plan.name, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly, currency: plan.currency, max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products, trial_days: plan.trial_days, sort_order: plan.sort_order, features: plan.features || { analytics: false, multi_location: false, priority_support: false, api_access: false }
-    });
-    setShowPlanModal(true);
-  };
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

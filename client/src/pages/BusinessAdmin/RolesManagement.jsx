@@ -24,10 +24,6 @@ export default function RolesManagement() {
   const [editingRole, setEditingRole] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    fetchRoles();
-  }, []);
-
   const fetchRoles = async () => {
     try {
       const data = await api.get('/roles');
@@ -38,6 +34,10 @@ export default function RolesManagement() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEdit = (role) => {
     if (role.business_id === null && user.role !== 'Platform Admin') {

@@ -1,13 +1,11 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function UsersTab() {
-  const { 
-    filteredUsers, userSearchTerm, setUserSearchTerm, setShowAddUserModal, handleEditUser, handleBanUser, handleUnbanUser 
+  const {
+    filteredUsers, userSearchTerm, setUserSearchTerm, setShowAddUserModal,
+    openEditUser, handleToggleUserBan, handleDeleteUser,
   } = usePlatformAdmin();
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

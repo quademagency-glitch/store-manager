@@ -18,7 +18,7 @@ const formatFileSize = (bytes) => {
 };
 
 export default function AccountingTemplates() {
-  const { user, role, locationIds, activeLocationId } = useAuthContext();
+  const { user, role, activeLocationId } = useAuthContext();
   const toast = useToast();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,18 +44,6 @@ export default function AccountingTemplates() {
   const [submissionResult, setSubmissionResult] = useState(null);
 
   const dropzoneRef = useRef(null);
-
-  useEffect(() => {
-    fetchTemplates();
-    fetchLocations();
-  }, [role, activeLocationId]);
-
-  // Clean up file preview URL on unmount
-  useEffect(() => {
-    return () => {
-      if (filePreview) URL.revokeObjectURL(filePreview);
-    };
-  }, [filePreview]);
 
   const fetchTemplates = async () => {
     try {
@@ -87,6 +75,18 @@ export default function AccountingTemplates() {
       if (import.meta.env.DEV) console.error(err);
     }
   };
+
+  useEffect(() => {
+    fetchTemplates();
+    fetchLocations();
+  }, [role, activeLocationId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clean up file preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [filePreview]);
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);

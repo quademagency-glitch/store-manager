@@ -164,7 +164,7 @@ export function useSales() {
   const approveVoid = useCallback(async (saleId) => {
     setLoading(true);
     try {
-      const res = await api.put(`/sales/${saleId}/approve-void`);
+      await api.put(`/sales/${saleId}/approve-void`);
       setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'voided' } : s));
       return { success: true };
     } catch (err) {
@@ -177,7 +177,7 @@ export function useSales() {
   const rejectVoid = useCallback(async (saleId) => {
     setLoading(true);
     try {
-      const res = await api.put(`/sales/${saleId}/reject-void`);
+      await api.put(`/sales/${saleId}/reject-void`);
       setSales(prev => prev.map(s => s.id === saleId ? { ...s, status: 'completed' } : s));
       return { success: true };
     } catch (err) {

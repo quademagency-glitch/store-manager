@@ -683,7 +683,8 @@ export default function Sales() {
                                     placeholder="Pack Code *" 
                                     value={scan.pack_code || ''}
                                     onChange={(e) => handleManualScanInput(item.id, idx, 'pack_code', e.target.value)}
-                                    style={{ flex: 1 }}
+                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                    readOnly
                                   />
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan</button>
                                 </div>
@@ -694,7 +695,8 @@ export default function Sales() {
                                     placeholder="Serial Number *" 
                                     value={scan.serial_number || ''}
                                     onChange={(e) => handleManualScanInput(item.id, idx, 'serial_number', e.target.value)}
-                                    style={{ flex: 1 }}
+                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                    readOnly
                                   />
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan</button>
                                 </div>
@@ -705,7 +707,8 @@ export default function Sales() {
                                     placeholder="Item QR Code *" 
                                     value={scan.item_code || ''}
                                     onChange={(e) => handleManualScanInput(item.id, idx, 'item_code', e.target.value)}
-                                    style={{ flex: 1 }}
+                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                    readOnly
                                   />
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan</button>
                                 </div>

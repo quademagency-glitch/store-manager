@@ -243,7 +243,8 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                                 placeholder="Pack Code *" 
                                 value={slot.pack_code}
                                 onChange={(e) => handleSlotChange(index, 'pack_code', e.target.value)}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                readOnly
                               />
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'pack_code')} title="Scan Pack Code">Scan</button>
                             </div>
@@ -254,7 +255,8 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                                 placeholder="Serial Number *" 
                                 value={slot.serial_number}
                                 onChange={(e) => handleSlotChange(index, 'serial_number', e.target.value)}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                readOnly
                               />
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'serial_number')} title="Scan QR as Serial">Scan</button>
                             </div>
@@ -265,7 +267,8 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                                 placeholder="Item Code (Optional)" 
                                 value={slot.item_code}
                                 onChange={(e) => handleSlotChange(index, 'item_code', e.target.value)}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                                readOnly
                               />
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'item_code')} title="Scan Item Code">Scan</button>
                             </div>
@@ -278,7 +281,8 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                               placeholder="Enter or paste QR code..." 
                               value={slot}
                               onChange={(e) => handleSlotChange(index, null, e.target.value)}
-                              style={{ flex: 1 }}
+                              style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
+                              readOnly
                             />
                             <button 
                               className="btn btn-secondary btn-sm" 

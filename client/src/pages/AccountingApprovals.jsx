@@ -7,23 +7,19 @@ import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 
 export default function AccountingApprovals() {
-  const { user, role, businessId } = useAuthContext();
+  const { role, businessId } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const [pendingEntries, setPendingEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
-  useEffect(() => {
-    fetchPendingEntries();
-  }, []);
-
   const fetchPendingEntries = async () => {
     try {
       setLoading(true);
-      // We don't have a specific API endpoint for ONLY pending in backend, 
+      // We don't have a specific API endpoint for ONLY pending in backend,
       // but we can query it via supabase directly since it's a simple filter,
-      // or we can fetch till-balance and filter. 
+      // or we can fetch till-balance and filter.
       // Best to query via supabase client if RLS allows it, or we create a small api call.
       // Wait, we have RLS on business_ledger! We can query directly.
       const { data, error } = await supabase
@@ -45,6 +41,10 @@ export default function AccountingApprovals() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPendingEntries();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApprove = async (id) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useStock } from '../hooks/useStock';
@@ -60,8 +60,8 @@ export default function Inventory() {
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const { products, loading: productsLoading, error: productsError, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
-  const { movements, loading: stockLoading, fetchMovements, adjustStock, error: stockError, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
+  const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
 
   const [locations, setLocations] = useState([]);
   const [activeTab, setActiveTab] = useState('products');
@@ -72,10 +72,6 @@ export default function Inventory() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormError, setProductFormError] = useState('');
   const [isProductSubmitting, setIsProductSubmitting] = useState(false);
-  const [productFormData, setProductFormData] = useState({
-    name: '', sku: '', category: '', price: '', initialQuantity: '', locationId: '', qr_code_data: ''
-  });
-
   // Adjust Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
@@ -157,8 +153,7 @@ export default function Inventory() {
     if (activeTab === 'transfers') fetchTransfers();
     if (activeTab === 'audits') fetchAudits();
     if (activeTab === 'batches') fetchBatches();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Low stock products
   const lowStockProducts = useMemo(() => {

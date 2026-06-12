@@ -33,11 +33,6 @@ export default function AccountingSettings() {
   const [isDirty, setIsDirty] = useState(false);
   const initialFormRef = useRef(null);
 
-  useEffect(() => {
-    fetchTemplates();
-    fetchRoles();
-  }, []);
-
   const fetchTemplates = async () => {
     try {
       setLoading(true);
@@ -64,6 +59,11 @@ export default function AccountingSettings() {
       setAvailableRoles(['Salesperson', 'Cashier', 'Manager', 'Business Admin']);
     }
   };
+
+  useEffect(() => {
+    fetchTemplates();
+    fetchRoles();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const markDirty = () => setIsDirty(true);
 

@@ -1,13 +1,12 @@
-import React from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../Icons';
 
 export default function BusinessesTab() {
-  const { 
-    filteredBusinesses, businessSearchTerm, setBusinessSearchTerm, setShowAddBusinessModal, handleViewBusiness, handleBanBusiness, handleUnbanBusiness 
+  const {
+    filteredBusinesses, businessSearchTerm, setBusinessSearchTerm, setShowAddBusinessModal,
+    handleViewBusiness, openEditBusiness, handleToggleBusinessBan, handleDeleteBusiness,
+    users,
   } = usePlatformAdmin();
-
-  const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
 
   return (
     <>

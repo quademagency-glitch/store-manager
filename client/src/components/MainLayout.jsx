@@ -171,8 +171,8 @@ export default function MainLayout() {
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
-        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_inventory') },
-        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.invoice, visible: hasPermission('manage_inventory') },
+        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: true },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.invoice, visible: true },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },

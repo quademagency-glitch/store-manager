@@ -134,11 +134,11 @@ export default function Products() {
           <p className="page-subtitle">Manage products, pricing, and stock levels.</p>
         </div>
         {hasPermission('manage_products') && (
-          <button className="btn btn-primary" onClick={openAddModal}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <button className="btn btn-primary fab-mobile" onClick={openAddModal}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="fab-icon">
               <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            Add Product
+            <span className="fab-text">Add Product</span>
           </button>
         )}
       </header>

@@ -52,3 +52,9 @@
   background: var(--color-error-bg);
   color: #fca5a5;
 }
+
+/* FAB specific icon logic */
+.fab-icon { display: none; }
+@media (max-width: 768px) {
+  .fab-icon { display: block; }
+}

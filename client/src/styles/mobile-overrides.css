@@ -472,3 +472,70 @@
     gap: 4px;
   }
 }
+
+/* ─── Seamless Mobile Additions (FABs, Bottom Sheets, Sticky Headers) ─── */
+@media (max-width: 768px) {
+  /* Bottom Sheet Modals */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal-content {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+    /* Add slide-up animation */
+    animation: bottomSheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes bottomSheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* Sticky Headers for tables and content */
+  .page-header, .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-bg-primary);
+  }
+  /* Remove top margin if page-header is sticky to prevent gaps */
+  .page-header {
+    margin-top: 0;
+    padding-top: var(--space-md);
+  }
+
+  .glass-table th, .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--color-bg-tertiary);
+    box-shadow: 0 1px 0 var(--color-border);
+  }
+
+  /* Floating Action Buttons (FAB) */
+  .fab-mobile {
+    position: fixed !important;
+    bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
+    right: var(--space-md);
+    z-index: 90;
+    border-radius: 50% !important;
+    width: 56px !important;
+    height: 56px !important;
+    padding: 0 !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3) !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Hide the text label inside the FAB, only show SVG icon */
+  .fab-mobile span.fab-text {
+    display: none !important;
+  }
+  .fab-mobile svg {
+    margin: 0 !important;
+    width: 24px;
+    height: 24px;
+  }
+}

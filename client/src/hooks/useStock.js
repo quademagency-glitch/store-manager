@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 export function useStock() {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalMovements, setTotalMovements] = useState(0);

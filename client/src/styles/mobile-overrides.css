@@ -85,6 +85,7 @@
 
   /* TillAccount branch header stats wrap */
   .till-branch-stats { gap: 12px; justify-content: flex-start; }
+  .till-ending-balance { border-left: none; }
 }
 
 /* ─── ≤480px — Most small Android/iPhone SE ─── */
@@ -362,6 +363,9 @@
   text-align: right;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+.till-ending-balance {
+  border-left: 1px solid var(--color-border);
 }
 
 /* ─── Customer page mobile cards ─── */

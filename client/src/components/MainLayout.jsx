@@ -399,9 +399,9 @@ export default function MainLayout() {
             </button>
             {availableLocations.length > 1 && (
               <select 
+                className="branch-selector"
                 value={activeLocationId || ''} 
                 onChange={(e) => switchLocation(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               >
                 {availableLocations.map(loc => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
@@ -499,12 +499,12 @@ export default function MainLayout() {
             {availableLocations.length > 1 && (
               <div style={{ marginBottom: '16px' }}>
                 <select 
+                  className="branch-selector"
                   value={activeLocationId || ''} 
                   onChange={(e) => {
                     switchLocation(e.target.value);
                     setIsMobileMenuOpen(false);
                   }}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                 >
                   {availableLocations.map(loc => (
                     <option key={loc.id} value={loc.id}>{loc.name}</option>
@@ -696,9 +696,9 @@ export default function MainLayout() {
           {availableLocations.length > 1 && (
             <div style={{ padding: '0 16px', marginBottom: '16px' }}>
               <select 
+                className="branch-selector"
                 value={activeLocationId || ''} 
                 onChange={(e) => switchLocation(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               >
                 {availableLocations.map(loc => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>

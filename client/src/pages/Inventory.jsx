@@ -4,7 +4,6 @@ import { useProducts } from '../hooks/useProducts';
 import { useStock } from '../hooks/useStock';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
-import QrScanner from '../components/QrScanner';
 import InventoryCount from '../components/InventoryCount';
 import TrackingModal from '../components/TrackingModal';
 import SoldUnitsModal from '../components/SoldUnitsModal';
@@ -79,7 +78,6 @@ export default function Inventory() {
 
   // Adjust Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
-  const [scannedProductId, setScannedProductId] = useState('');
   const [adjusting, setAdjusting] = useState(false);
 
   // Threshold Modal
@@ -108,9 +106,6 @@ export default function Inventory() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
   const [batchError, setBatchError] = useState('');
-
-  // QR Scanner
-  const [showScanner, setShowScanner] = useState(false);
 
   // Tracking Modal
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
@@ -316,20 +311,6 @@ export default function Inventory() {
       setBatchError(err.message || 'Failed to create batch');
     } finally {
       setBatchSubmitting(false);
-    }
-  };
-
-  // QR Scanner handler
-  const handleQrScan = async (decodedText) => {
-    setShowScanner(false);
-    try {
-      const product = await api.get(`/products/lookup?qr=${encodeURIComponent(decodedText)}`);
-      if (product) {
-        setScannedProductId(product.id);
-        setIsAdjustModalOpen(true);
-      }
-    } catch {
-      toast.warning(`No product found for QR code: ${decodedText}`);
     }
   };
 
@@ -1029,7 +1010,6 @@ export default function Inventory() {
         locations={locations} 
         products={products} 
         adjusting={adjusting} 
-        initialProductId={scannedProductId}
       />
 
       <ThresholdModal 
@@ -1072,8 +1052,6 @@ export default function Inventory() {
         error={productFormError} 
       />
 
-      {/* QR Scanner */}
-      <QrScanner isOpen={showScanner} onClose={() => setShowScanner(false)} onScan={handleQrScan} />
 
       <TrackingModal 
         isOpen={isTrackingModalOpen} 

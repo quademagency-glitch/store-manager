@@ -201,6 +201,7 @@ export default function MainLayout() {
       icon: Icons.team,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('create_sales') },
+        { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('create_sales') },
       ].filter(i => i.visible)
     };
     if (crm.items.length > 0) groups.push(crm);

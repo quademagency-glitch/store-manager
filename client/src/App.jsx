@@ -25,6 +25,7 @@ import SmartRedirect from './components/SmartRedirect';
 import UserProfile from './pages/UserProfile';
 import Suppliers from './pages/Suppliers';
 import PurchaseOrders from './pages/PurchaseOrders';
+import CustomerOrders from './pages/CustomerOrders';
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
@@ -84,6 +85,9 @@ export default function App() {
                     } />
                     <Route path="/customers" element={
                       <ProtectedRoute><Customers /></ProtectedRoute>
+                    } />
+                    <Route path="/customer-orders" element={
+                      <ProtectedRoute><CustomerOrders /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
                       <ProtectedRoute><Inventory /></ProtectedRoute>

@@ -26,6 +26,7 @@ const suppliersRoutes = require('./routes/suppliers');
 const purchaseOrdersRoutes = require('./routes/purchaseOrders');
 const inventoryAnalyticsRoutes = require('./routes/inventoryAnalytics');
 const pricingRoutes = require('./routes/pricing');
+const customerOrdersRoutes = require('./routes/customerOrders');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -153,6 +154,9 @@ app.use('/api/purchase-orders', purchaseOrdersRoutes);
 // Inventory Analytics routes
 app.use('/api/inventory-analytics', inventoryAnalyticsRoutes);
 app.use('/api/pricing', pricingRoutes);
+
+// Customer Orders routes (CRM)
+app.use('/api/customer-orders', customerOrdersRoutes);
 
 // ============================================
 // Error handling

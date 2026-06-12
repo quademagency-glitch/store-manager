@@ -79,9 +79,7 @@ export default function Inventory() {
 
   // Adjust Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
-  const [adjustData, setAdjustData] = useState({
-    productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: ''
-  });
+  const [scannedProductId, setScannedProductId] = useState('');
   const [adjusting, setAdjusting] = useState(false);
 
   // Threshold Modal
@@ -131,12 +129,6 @@ export default function Inventory() {
     api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
   }, [fetchMovements, stockPage]);
 
-  // Fetch tab data on tab change
-  useEffect(() => {
-    if (activeTab === 'transfers') fetchTransfers();
-    if (activeTab === 'audits') fetchAudits();
-    if (activeTab === 'batches') fetchBatches();
-  }, [activeTab]);
 
   const fetchTransfers = async () => {
     setTransfersLoading(true);
@@ -164,6 +156,14 @@ export default function Inventory() {
     } catch { setBatches([]); }
     finally { setBatchesLoading(false); }
   };
+
+  // Fetch tab data on tab change
+  useEffect(() => {
+    if (activeTab === 'transfers') fetchTransfers();
+    if (activeTab === 'audits') fetchAudits();
+    if (activeTab === 'batches') fetchBatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Low stock products
   const lowStockProducts = useMemo(() => {
@@ -325,7 +325,7 @@ export default function Inventory() {
     try {
       const product = await api.get(`/products/lookup?qr=${encodeURIComponent(decodedText)}`);
       if (product) {
-        setAdjustData(prev => ({ ...prev, productId: product.id }));
+        setScannedProductId(product.id);
         setIsAdjustModalOpen(true);
       }
     } catch {
@@ -1029,6 +1029,7 @@ export default function Inventory() {
         locations={locations} 
         products={products} 
         adjusting={adjusting} 
+        initialProductId={scannedProductId}
       />
 
       <ThresholdModal 

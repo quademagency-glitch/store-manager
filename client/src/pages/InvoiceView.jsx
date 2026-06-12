@@ -39,13 +39,13 @@ export default function InvoiceView() {
                  ...found,
                  business: subRes?.businesses || found.businesses || { name: 'Business Account', contact_email: user.email }
                });
-            } catch (e) {
+            } catch {
                setInvoice({
                  ...found,
                  business: found.businesses || { name: 'Business Account', contact_email: user.email }
                });
             }
-          } catch (e) {
+          } catch {
             setInvoice({
               ...found,
               business: found.businesses || { name: 'Business Account', contact_email: user.email }
@@ -61,6 +61,7 @@ export default function InvoiceView() {
     if (id && user?.id) {
       fetchInvoice();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id, role, businessId]);
 
   const formatCurrency = (amount, currency = 'GHS') => {

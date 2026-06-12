@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { PlatformAdminProvider, usePlatformAdmin } from '../features/platformAdmin/PlatformAdminContext';
 import { Icons } from '../features/platformAdmin/Icons';
@@ -17,6 +17,12 @@ function PlatformAdminShell() {
   const { hasPermission } = useAuthContext();
   const { activeTab, setActiveTab, loading, error, fetchData, fetchPricingData, fetchBillingData } = usePlatformAdmin();
 
+  useEffect(() => {
+    fetchData();
+    fetchPricingData();
+    fetchBillingData();
+  }, [fetchData, fetchPricingData, fetchBillingData]);
+
   // Validate access
   if (!hasPermission('manage_platform')) {
     return (
@@ -26,12 +32,6 @@ function PlatformAdminShell() {
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchData();
-    fetchPricingData();
-    fetchBillingData();
-  }, [fetchData, fetchPricingData, fetchBillingData]);
 
   if (loading) {
     return (

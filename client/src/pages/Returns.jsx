@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
@@ -12,7 +12,7 @@ export default function Returns() {
   const toast = useToast();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const [searchType, setSearchType] = useState('receipt');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);

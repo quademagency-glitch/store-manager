@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 
-export default function AdjustStockModal({ isOpen, onClose, onSubmit, locations, products, adjusting }) {
+export default function AdjustStockModal({ isOpen, onClose, onSubmit, locations, products, adjusting, initialProductId }) {
   const [adjustData, setAdjustData] = useState({
-    productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: ''
+    productId: initialProductId || '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: ''
   });
 
   const handleSubmit = (e) => {
@@ -13,6 +13,12 @@ export default function AdjustStockModal({ isOpen, onClose, onSubmit, locations,
       setAdjustData({ productId: '', locationId: '', quantityChange: '', movementType: 'RECEIPT', notes: '', shrinkageReason: '' });
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      setAdjustData(prev => ({ ...prev, productId: initialProductId || '' }));
+    }
+  }, [isOpen, initialProductId]);
 
   return (
     <Modal isOpen={isOpen} onClose={() => !adjusting && onClose()} title="Adjust Stock">

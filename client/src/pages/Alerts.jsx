@@ -16,7 +16,7 @@ export default function Alerts() {
     try {
       setLoading(true);
       setError('');
-      let url = '/api/alerts';
+      let url = '/alerts';
       if (filter !== 'all') {
         url += `?status=${filter}`;
       }
@@ -36,7 +36,7 @@ export default function Alerts() {
 
   const handleResolve = async (id) => {
     try {
-      await api.put(`/api/alerts/${id}/resolve`);
+      await api.put(`/alerts/${id}/resolve`);
       if (filter === 'pending') {
         setAlerts(prev => prev.filter(a => a.id !== id));
       } else {
@@ -52,7 +52,7 @@ export default function Alerts() {
     const saleId = alertObj.reference_id;
     if (!saleId) return;
     try {
-      await api.put(`/api/sales/${saleId}/approve-void`);
+      await api.put(`/sales/${saleId}/approve-void`);
       toast.success('Void approved. Sale voided and stock restored.');
       fetchAlerts();
     } catch (err) {
@@ -64,7 +64,7 @@ export default function Alerts() {
     const saleId = alertObj.reference_id;
     if (!saleId) return;
     try {
-      await api.put(`/api/sales/${saleId}/reject-void`);
+      await api.put(`/sales/${saleId}/reject-void`);
       toast.info('Void rejected. Sale remains completed.');
       fetchAlerts();
     } catch (err) {

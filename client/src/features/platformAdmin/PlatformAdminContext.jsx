@@ -7,6 +7,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 
 const PlatformAdminContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function usePlatformAdmin() {
   const context = useContext(PlatformAdminContext);
   if (!context) throw new Error("usePlatformAdmin must be used within PlatformAdminProvider");
@@ -192,11 +193,6 @@ export function PlatformAdminProvider({ children }) {
     } finally {
       setDetailsLoading(false);
     }
-  };
-
-  const handleBackFromDetail = () => {
-    setSelectedBusiness(null);
-    setActiveTab('businesses');
   };
 
   /* ============================
@@ -539,8 +535,6 @@ export function PlatformAdminProvider({ children }) {
     return businesses.filter(b => b.name !== 'Pending Assignment' && new Date(b.created_at) >= sevenDaysAgo);
   }, [businesses]);
 
-  const handleSignOut = async () => { await signOut(); };
-
   /* ============================
      SIDEBAR NAV ITEMS
      ============================ */
@@ -624,7 +618,6 @@ export function PlatformAdminProvider({ children }) {
     togglePermission, formatCurrency, FEATURE_LABELS,
     activeBusinesses, recentBusinesses, activeUsers, businessAdmins,
     filteredBusinesses, filteredUsers,
-    users
   };
 
   return (

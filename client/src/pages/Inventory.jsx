@@ -347,20 +347,12 @@ export default function Inventory() {
 
   const openAddProductModal = () => {
     setEditingProduct(null);
-    setProductFormData({
-      name: '', sku: '', category: 'General', price: '',
-      initialQuantity: '', locationId: locations.length > 0 ? locations[0].id : '', qr_code_data: ''
-    });
     setProductFormError('');
     setIsProductModalOpen(true);
   };
 
   const openEditProductModal = (product) => {
     setEditingProduct(product);
-    setProductFormData({
-      name: product.name, sku: product.sku, category: product.category, price: product.price,
-      initialQuantity: '', locationId: '', qr_code_data: product.qr_code_data || ''
-    });
     setProductFormError('');
     setIsProductModalOpen(true);
   };

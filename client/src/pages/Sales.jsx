@@ -20,8 +20,8 @@ export default function Sales() {
   const toast = useToast();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const { products, loading: productsLoading } = useProducts();
-  const { searchCustomers, createCustomer, sendVerificationCode, verifyCustomerCode, loading: customerLoading } = useCustomers();
+  const { products } = useProducts();
+  const { searchCustomers, createCustomer, verifyCustomerCode } = useCustomers();
 
   // Wizard state
   const [saleType, setSaleType] = useState(null); // 'new', 'batch', 'history'
@@ -33,7 +33,6 @@ export default function Sales() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
-  const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '' });
 
   // Verification state
   const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -52,9 +51,9 @@ export default function Sales() {
   const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
   const [batchQuantityInput, setBatchQuantityInput] = useState('1');
 
-  // Scanner state
-  const [showScanner, setShowScanner] = useState(false);
-  const [activeScanTarget, setActiveScanTarget] = useState(null); // { itemId, unitIndex }
+  // Scanner state (values read by child components via props not shown here)
+  const [, setShowScanner] = useState(false);
+  const [, setActiveScanTarget] = useState(null);
 
   // Checkout state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -676,40 +675,25 @@ export default function Sales() {
                             
                             {isDoubleMode ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    placeholder="Pack Code *" 
-                                    value={scan.pack_code || ''}
-                                    onChange={(e) => handleManualScanInput(item.id, idx, 'pack_code', e.target.value)}
-                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                    readOnly
-                                  />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Pack Code *</span>
+                                    <span style={{ fontSize: '14px', color: scan.pack_code ? '#0f172a' : '#94a3b8', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.pack_code || 'Awaiting scan...'}</span>
+                                  </div>
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan</button>
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    placeholder="Serial Number *" 
-                                    value={scan.serial_number || ''}
-                                    onChange={(e) => handleManualScanInput(item.id, idx, 'serial_number', e.target.value)}
-                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                    readOnly
-                                  />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Serial Number *</span>
+                                    <span style={{ fontSize: '14px', color: scan.serial_number ? '#0f172a' : '#94a3b8', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.serial_number || 'Awaiting scan...'}</span>
+                                  </div>
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan</button>
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                  <input 
-                                    type="text" 
-                                    className="form-input" 
-                                    placeholder="Item QR Code *" 
-                                    value={scan.item_code || ''}
-                                    onChange={(e) => handleManualScanInput(item.id, idx, 'item_code', e.target.value)}
-                                    style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                    readOnly
-                                  />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Item Code *</span>
+                                    <span style={{ fontSize: '14px', color: scan.item_code ? '#0f172a' : '#94a3b8', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all' }}>{scan.item_code || 'Awaiting scan...'}</span>
+                                  </div>
                                   <button className="btn btn-secondary btn-sm" onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan</button>
                                 </div>
                               </div>

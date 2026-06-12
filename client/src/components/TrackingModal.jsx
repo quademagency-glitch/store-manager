@@ -236,40 +236,25 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                         
                         {isDoubleMode ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <input 
-                                type="text" 
-                                className="form-input" 
-                                placeholder="Pack Code *" 
-                                value={slot.pack_code}
-                                onChange={(e) => handleSlotChange(index, 'pack_code', e.target.value)}
-                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                readOnly
-                              />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Pack Code *</span>
+                                <span style={{ fontSize: '14px', color: slot.pack_code ? '#0f172a' : '#94a3b8', fontWeight: slot.pack_code ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.pack_code || 'Awaiting scan...'}</span>
+                              </div>
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'pack_code')} title="Scan Pack Code">Scan</button>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <input 
-                                type="text" 
-                                className="form-input" 
-                                placeholder="Serial Number *" 
-                                value={slot.serial_number}
-                                onChange={(e) => handleSlotChange(index, 'serial_number', e.target.value)}
-                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                readOnly
-                              />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${slot.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Serial Number *</span>
+                                <span style={{ fontSize: '14px', color: slot.serial_number ? '#0f172a' : '#94a3b8', fontWeight: slot.serial_number ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.serial_number || 'Awaiting scan...'}</span>
+                              </div>
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'serial_number')} title="Scan QR as Serial">Scan</button>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <input 
-                                type="text" 
-                                className="form-input" 
-                                placeholder="Item Code (Optional)" 
-                                value={slot.item_code}
-                                onChange={(e) => handleSlotChange(index, 'item_code', e.target.value)}
-                                style={{ flex: 1, backgroundColor: '#f1f5f9', cursor: 'not-allowed' }}
-                                readOnly
-                              />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: slot.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${slot.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '8px 12px', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>Item Code (Optional)</span>
+                                <span style={{ fontSize: '14px', color: slot.item_code ? '#0f172a' : '#94a3b8', fontWeight: slot.item_code ? '600' : 'normal', wordBreak: 'break-all' }}>{slot.item_code || 'Awaiting scan...'}</span>
+                              </div>
                               <button className="btn btn-secondary btn-sm" onClick={() => simulateScan(index, 'item_code')} title="Scan Item Code">Scan</button>
                             </div>
                           </div>

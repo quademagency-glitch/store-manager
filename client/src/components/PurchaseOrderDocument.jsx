@@ -1,5 +1,7 @@
-import { useRef } from 'react';
+import { useMemo } from 'react';
 import LetterheadRenderer, { LetterheadFooter } from './LetterheadRenderer';
+
+const _defaultFallbackRef = `GRN-${Date.now().toString(36).toUpperCase()}`;
 
 /**
  * PurchaseOrderDocument — Printable Goods Received Note / Purchase Order document.
@@ -34,8 +36,10 @@ export default function PurchaseOrderDocument({
   const title = isGRN ? 'GOODS RECEIVED NOTE' : 'PURCHASE ORDER';
   const refLabel = isGRN ? 'GRN No' : 'PO No';
   const poNumber = purchaseOrder?.po_number;
-  const fallbackRef = useRef(`GRN-${Date.now().toString(36).toUpperCase()}`);
-  const refNumber = referenceNumber || poNumber || fallbackRef.current;
+  const refNumber = useMemo(
+    () => referenceNumber || poNumber || _defaultFallbackRef,
+    [referenceNumber, poNumber]
+  );
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + ((item.unit_cost || 0) * (item.quantity || 0)), 0);

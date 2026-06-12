@@ -32,7 +32,7 @@ export function useCustomers() {
         } else {
           setError('Offline and no cached customers available.');
         }
-      } catch (_idbErr) {
+      } catch {
         setError('Offline and failed to load cache.');
       }
       return [];

@@ -24,7 +24,7 @@ export function useProducts() {
         } else {
           setError('Offline and no cached products available.');
         }
-      } catch (_idbErr) {
+      } catch {
         setError('Offline and failed to load cache.');
       }
     } finally {

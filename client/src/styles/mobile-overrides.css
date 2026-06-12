@@ -410,3 +410,65 @@
   padding-top: 10px;
   border-top: 1px solid var(--color-border);
 }
+
+/* ─── Global Mobile Touch Targets & Scrolling (Seamless UI Additions) ─── */
+@media (max-width: 768px) {
+  /* Prevent accidental horizontal scrolling globally */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Increase touch targets for buttons, inputs, and links */
+  .btn,
+  .form-input,
+  select,
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  input[type="email"],
+  .dropdown-link,
+  .sidebar-link,
+  .top-nav-button {
+    min-height: 44px;
+    /* Ensure text is centered if height increases */
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  /* Inputs need block-level adjustments if flex */
+  .form-input, select, input {
+    display: block;
+    line-height: normal;
+  }
+
+  /* Main content bottom padding for safe area (e.g. iPhone home bar) */
+  .dashboard-main,
+  .admin-main-content {
+    padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
+  }
+
+  /* Modal touch targets */
+  .modal-close,
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ─── Extra Small Mobile Overrides ─── */
+@media (max-width: 390px) {
+  /* Prevent labels from breaking layout */
+  .form-group label {
+    font-size: 0.85rem;
+  }
+
+  /* Reduce gap on tight action buttons */
+  .m-card-actions {
+    gap: 4px;
+  }
+}

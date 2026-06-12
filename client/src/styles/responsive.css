@@ -336,3 +336,64 @@
     font-size: 0.75rem;
   }
 }
+
+/* ─── Customer Orders page ─── */
+.co-status-tabs {
+  scrollbar-width: none;
+}
+.co-status-tabs::-webkit-scrollbar { display: none; }
+
+.co-mobile-cards { display: none; }
+
+.co-order-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.co-order-card:last-of-type { border-bottom: none; }
+.co-order-card:active { background: rgba(99, 102, 241, 0.06); }
+
+.co-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.co-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+}
+
+.co-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .co-status-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .co-desktop-table { display: none !important; }
+  .co-mobile-cards { display: block !important; }
+
+  .co-detail-actions {
+    flex-direction: column;
+  }
+
+  .co-detail-actions > button {
+    width: 100%;
+    justify-content: center;
+  }
+}

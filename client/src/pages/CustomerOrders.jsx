@@ -358,7 +358,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 120px 1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) 1fr auto', gap: '8px', alignItems: 'end' }}>
               <div>
                 <label style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Qty</label>
                 <input type="number" className="input" min="1" value={item.quantity}
@@ -531,7 +531,7 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
       )}
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      <div className="co-detail-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button className="btn btn-outline" onClick={onClose}>Close</button>
 
         {order.status === 'draft' && canAdmin && (
@@ -643,7 +643,7 @@ export default function CustomerOrders() {
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
       {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="co-status-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {[{ value: '', label: `All (${total})` }, ...STATUS_ORDER.map(s => ({ value: s, label: STATUS_LABELS[s].label }))].map(tab => (
           <button key={tab.value} onClick={() => setStatusFilter(tab.value)}
             className={statusFilter === tab.value ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm'}>
@@ -652,7 +652,8 @@ export default function CustomerOrders() {
         ))}
       </div>
 
-      <div className="glass-panel mt-xl">
+      {/* Desktop table */}
+      <div className="glass-panel mt-xl co-desktop-table">
         <table className="glass-table">
           <thead>
             <tr>
@@ -724,6 +725,76 @@ export default function CustomerOrders() {
               <button className="btn btn-secondary btn-sm"
                 onClick={() => fetchOrders(Math.max(1, page - 1), { status: statusFilter })}
                 disabled={page === 1}>Previous</button>
+              <button className="btn btn-secondary btn-sm"
+                onClick={() => fetchOrders(Math.min(totalPages, page + 1), { status: statusFilter })}
+                disabled={page === totalPages}>Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile card list — shown on ≤640px */}
+      <div className="glass-panel mt-xl co-mobile-cards" style={{ padding: 0 }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div className="spinner mx-auto" />
+            <p className="mt-sm text-muted">Loading orders...</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+            No customer orders found.
+            {statusFilter && <span> Try clearing the filter.</span>}
+          </div>
+        ) : (
+          orders.map(order => (
+            <div key={order.id} className="co-order-card" onClick={() => openDetail(order)}>
+              <div className="co-card-header">
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{order.order_number}</span>
+                <StatusBadge status={order.status} />
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                {order.customer?.name}
+                {order.customer?.phone && <span> &middot; {order.customer.phone}</span>}
+              </div>
+              <div className="co-card-row">
+                <span>{order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>
+                  {formatCurrency(order.total_amount)}
+                </span>
+              </div>
+              {(order.due_date || parseFloat(order.deposit_amount) > 0) && (
+                <div className="co-card-row">
+                  <span>{order.due_date ? `Due ${new Date(order.due_date).toLocaleDateString()}` : ''}</span>
+                  {parseFloat(order.deposit_amount) > 0 && (
+                    <span>
+                      Dep: {formatCurrency(order.deposit_amount)}
+                      <span style={{ marginLeft: '3px', color: order.deposit_paid ? '#059669' : '#dc2626' }}>
+                        {order.deposit_paid ? '✓' : '!'}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="co-card-actions" onClick={e => e.stopPropagation()}>
+                <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => openDetail(order)}>
+                  View
+                </button>
+                {canAdmin && ['draft', 'cancelled'].includes(order.status) && (
+                  <button className="btn btn-sm btn-outline text-error" style={{ flex: 1 }} onClick={() => handleDelete(order)}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+        {totalPages > 1 && (
+          <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="text-sm text-muted">Page {page} of {totalPages}</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary btn-sm"
+                onClick={() => fetchOrders(Math.max(1, page - 1), { status: statusFilter })}
+                disabled={page === 1}>Prev</button>
               <button className="btn btn-secondary btn-sm"
                 onClick={() => fetchOrders(Math.min(totalPages, page + 1), { status: statusFilter })}
                 disabled={page === totalPages}>Next</button>

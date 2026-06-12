@@ -224,13 +224,14 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Two-column: list + detail */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedPO ? '1fr 1fr' : '1fr', gap: '16px' }}>
+      <div className="po-grid" style={{ display: 'grid', gridTemplateColumns: selectedPO ? '1fr 1fr' : '1fr', gap: '16px' }}>
         {/* PO Table */}
         <div className="glass-panel">
           {loading ? (
             <div className="table-loading"><div className="spinner"></div><p>Loading purchase orders...</p></div>
           ) : (
             <>
+              <div className="desktop-table-view">
               <table className="glass-table">
                 <thead>
                   <tr>
@@ -279,6 +280,39 @@ export default function PurchaseOrders() {
                   )}
                 </tbody>
               </table>
+              </div>
+
+              <div className="mobile-card-view">
+                {orders.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No purchase orders found.</div>
+                ) : orders.map(po => (
+                  <div key={po.id} className="m-card" style={{ background: selectedPO?.id === po.id ? 'rgba(99,102,241,0.06)' : undefined, cursor: 'pointer' }} onClick={() => viewPODetail(po)}>
+                    <div className="m-card-top">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="m-card-title" style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{po.po_number}</div>
+                        <div className="m-card-sub">{po.supplier?.name || '—'}</div>
+                        <div className="m-card-meta">{formatDate(po.created_at)}</div>
+                      </div>
+                      <span className={`badge ${getStatusBadgeClass(po.status)}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase', flexShrink: 0 }}>{po.status}</span>
+                    </div>
+                    <div className="m-card-row">
+                      <span className="m-card-amount">{fmt(po.total_amount)}</span>
+                    </div>
+                    <div className="m-card-actions" onClick={e => e.stopPropagation()}>
+                      {po.status === 'draft' && (<>
+                        <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)}>Edit</button>
+                        <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none' }}>Send</button>
+                      </>)}
+                      {(po.status === 'sent' || po.status === 'partial') && (
+                        <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none' }}>Receive</button>
+                      )}
+                      {['draft', 'sent'].includes(po.status) && (
+                        <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none' }}>Cancel</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (

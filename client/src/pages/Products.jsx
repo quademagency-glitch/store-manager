@@ -167,8 +167,8 @@ export default function Products() {
           </div>
         )}
 
-        {/* Data Table */}
-        <div className="table-container">
+        {/* Desktop table */}
+        <div className="table-container desktop-table-view">
           {loading ? (
             <div className="table-loading">
               <div className="spinner"></div>
@@ -196,7 +196,6 @@ export default function Products() {
                 ) : (
                   filteredProducts.map(product => {
                     const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-                    // For UI purposes, we'll mark it low stock if total is <= 5, though ideally it's per location now
                     const isLowStock = totalStock <= 5;
                     return (
                       <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
@@ -229,23 +228,13 @@ export default function Products() {
                           {hasPermission('manage_products') && (
                           <td className="text-right">
                             <div className="action-buttons">
-                              <button 
-                                className="btn-icon" 
-                                onClick={() => openEditModal(product)}
-                                aria-label="Edit product"
-                                title="Edit"
-                              >
+                              <button className="btn-icon" onClick={() => openEditModal(product)} title="Edit">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
                               </button>
-                              <button 
-                                className="btn-icon text-error hover-bg-error" 
-                                onClick={() => handleDelete(product.id, product.name)}
-                                aria-label="Delete product"
-                                title="Delete"
-                              >
+                              <button className="btn-icon text-error hover-bg-error" onClick={() => handleDelete(product.id, product.name)} title="Delete">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                   <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -261,6 +250,50 @@ export default function Products() {
               </tbody>
             </table>
           )}
+        </div>
+
+        {/* Mobile cards */}
+        <div className="mobile-card-view">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <div className="spinner mx-auto" />
+              <p className="mt-sm text-muted">Loading inventory...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+              No products found matching your search.
+            </div>
+          ) : filteredProducts.map(product => {
+            const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
+            const isLowStock = totalStock <= 5;
+            return (
+              <div key={product.id} className="m-card" style={isLowStock ? { borderLeft: '3px solid var(--color-warning)' } : {}}>
+                <div className="m-card-top">
+                  <div className="product-avatar" style={{ flexShrink: 0 }}>{product.name.charAt(0).toUpperCase()}</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="m-card-title">
+                      {product.name}
+                      {isLowStock && <span className="badge badge-warning badge-sm" style={{ marginLeft: '6px' }}>Low Stock</span>}
+                    </div>
+                    <div className="m-card-sub"><code>{product.sku}</code></div>
+                  </div>
+                  <span className="badge badge-neutral" style={{ flexShrink: 0 }}>{product.category}</span>
+                </div>
+                <div className="m-card-row">
+                  <span>Price: <strong>${Number(product.price).toFixed(2)}</strong></span>
+                  <span style={{ color: isLowStock ? 'var(--color-warning)' : undefined, fontWeight: isLowStock ? 700 : undefined }}>
+                    Stock: {totalStock}
+                  </span>
+                </div>
+                {hasPermission('manage_products') && (
+                  <div className="m-card-actions">
+                    <button className="btn btn-sm btn-outline" onClick={() => openEditModal(product)}>Edit</button>
+                    <button className="btn btn-sm btn-outline text-error" onClick={() => handleDelete(product.id, product.name)}>Delete</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -398,8 +431,6 @@ export default function Products() {
             </button>
           </div>
         </form>
-      </Modal>
-
       </Modal>
     </div>
   );

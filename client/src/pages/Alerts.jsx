@@ -183,108 +183,112 @@ export default function Alerts() {
       )}
 
       <div className="glass-panel" style={{ marginTop: '0.5rem' }}>
-        <table className="glass-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Severity</th>
-              <th>Type</th>
-              <th>User / Staff</th>
-              <th>Details</th>
-              <th>Status</th>
-              {canResolve && filter !== 'resolved' && <th>Action</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+        {/* Desktop table */}
+        <div className="desktop-table-view">
+          <table className="glass-table">
+            <thead>
               <tr>
-                <td colSpan={canResolve && filter !== 'resolved' ? "7" : "6"} className="text-center py-xl text-muted">
-                  <div className="spinner mx-auto mb-sm"></div>
-                  <p>Loading alerts...</p>
-                </td>
+                <th>Date</th><th>Severity</th><th>Type</th><th>User / Staff</th>
+                <th>Details</th><th>Status</th>
+                {canResolve && filter !== 'resolved' && <th>Action</th>}
               </tr>
-            ) : filteredAlerts.length === 0 ? (
-              <tr>
-                <td colSpan={canResolve && filter !== 'resolved' ? "7" : "6"} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🛡️</div>
-                  <p>No {filter !== 'all' ? filter : ''} alerts found.</p>
-                </td>
-              </tr>
-            ) : (
-              filteredAlerts.map(alertItem => (
-                <tr key={alertItem.id} style={{
-                  borderLeft: alertItem.severity === 'critical' ? '3px solid #ef4444' :
-                              alertItem.severity === 'high' ? '3px solid #f97316' : 'none'
-                }}>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm"></div><p>Loading alerts...</p></td></tr>
+              ) : filteredAlerts.length === 0 ? (
+                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🛡️</div><p>No {filter !== 'all' ? filter : ''} alerts found.</p></td></tr>
+              ) : filteredAlerts.map(alertItem => (
+                <tr key={alertItem.id} style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid #ef4444' : alertItem.severity === 'high' ? '3px solid #f97316' : 'none' }}>
                   <td className="text-muted">{formatDate(alertItem.created_at)}</td>
                   <td>{getSeverityBadge(alertItem.severity)}</td>
                   <td>{getTypeBadge(alertItem.type)}</td>
                   <td>{alertItem.user?.name || alertItem.user?.email || 'System'}</td>
                   <td className="text-sm" style={{ maxWidth: '300px' }}>
                     <div>{alertItem.note}</div>
-                    {/* Expandable metadata for suspicious patterns */}
-                    {alertItem.metadata && alertItem.type === 'SUSPICIOUS_PATTERN' && alertItem.metadata.pattern && (
+                    {alertItem.metadata?.pattern && alertItem.type === 'SUSPICIOUS_PATTERN' && (
                       <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
                         Pattern: <strong>{alertItem.metadata.pattern.replace(/_/g, ' ')}</strong>
                         {alertItem.metadata.void_count && <> · {alertItem.metadata.void_count} voids</>}
                         {alertItem.metadata.total_value && <> · ${alertItem.metadata.total_value.toFixed(2)}</>}
                       </div>
                     )}
-                    {/* Missing items from stock take */}
-                    {alertItem.metadata && alertItem.type === 'STOCK_TAKE_MISSING' && alertItem.metadata.missing_items && (
+                    {alertItem.metadata?.missing_items && alertItem.type === 'STOCK_TAKE_MISSING' && (
                       <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
-                        Missing: {alertItem.metadata.missing_items.slice(0, 5).map((m, i) => (
-                          <span key={i}>{m.product} ({m.qr_code}){i < Math.min(alertItem.metadata.missing_items.length, 5) - 1 ? ', ' : ''}</span>
-                        ))}
+                        Missing: {alertItem.metadata.missing_items.slice(0, 5).map((m, i) => <span key={i}>{m.product} ({m.qr_code}){i < Math.min(alertItem.metadata.missing_items.length, 5) - 1 ? ', ' : ''}</span>)}
                         {alertItem.metadata.missing_items.length > 5 && <span> +{alertItem.metadata.missing_items.length - 5} more</span>}
                       </div>
                     )}
                   </td>
-                  <td>
-                    {alertItem.status === 'resolved' ? (
-                      <span className="text-success text-sm">Resolved</span>
-                    ) : (
-                      <span className="text-warning text-sm">Pending</span>
-                    )}
-                  </td>
+                  <td>{alertItem.status === 'resolved' ? <span className="text-success text-sm">Resolved</span> : <span className="text-warning text-sm">Pending</span>}</td>
                   {canResolve && filter !== 'resolved' && (
                     <td>
                       {alertItem.status === 'pending' && (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                           {alertItem.type === 'VOID_REQUEST' ? (
                             <>
-                              <button 
-                                className="btn btn-sm" 
-                                style={{ background: '#22c55e', color: 'white', fontSize: '0.75rem' }}
-                                onClick={() => handleApproveVoid(alertItem)}
-                              >
-                                ✅ Approve
-                              </button>
-                              <button 
-                                className="btn btn-sm"
-                                style={{ background: '#ef4444', color: 'white', fontSize: '0.75rem' }}
-                                onClick={() => handleRejectVoid(alertItem)}
-                              >
-                                ❌ Reject
-                              </button>
+                              <button className="btn btn-sm" style={{ background: '#22c55e', color: 'white', fontSize: '0.75rem' }} onClick={() => handleApproveVoid(alertItem)}>✅ Approve</button>
+                              <button className="btn btn-sm" style={{ background: '#ef4444', color: 'white', fontSize: '0.75rem' }} onClick={() => handleRejectVoid(alertItem)}>❌ Reject</button>
                             </>
                           ) : (
-                            <button 
-                              className="btn btn-sm btn-outline"
-                              onClick={() => handleResolve(alertItem.id)}
-                            >
-                              Resolve
-                            </button>
+                            <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>
                           )}
                         </div>
                       )}
                     </td>
                   )}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="mobile-card-view">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading alerts...</p></div>
+          ) : filteredAlerts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🛡️</div>
+              <p>No {filter !== 'all' ? filter : ''} alerts found.</p>
+            </div>
+          ) : filteredAlerts.map(alertItem => (
+            <div key={alertItem.id} className="m-card" style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid #ef4444' : alertItem.severity === 'high' ? '3px solid #f97316' : undefined }}>
+              <div className="m-card-top">
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                    {getSeverityBadge(alertItem.severity)}
+                    {getTypeBadge(alertItem.type)}
+                  </div>
+                  <div className="m-card-sub">{alertItem.user?.name || alertItem.user?.email || 'System'}</div>
+                  <div className="m-card-meta">{formatDate(alertItem.created_at)}</div>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: alertItem.status === 'resolved' ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: 600, flexShrink: 0 }}>
+                  {alertItem.status === 'resolved' ? 'Resolved' : 'Pending'}
+                </span>
+              </div>
+              {alertItem.note && <div className="m-card-sub" style={{ marginTop: '6px' }}>{alertItem.note}</div>}
+              {alertItem.metadata?.pattern && alertItem.type === 'SUSPICIOUS_PATTERN' && (
+                <div style={{ marginTop: '6px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
+                  Pattern: <strong>{alertItem.metadata.pattern.replace(/_/g, ' ')}</strong>
+                  {alertItem.metadata.void_count && <> · {alertItem.metadata.void_count} voids</>}
+                </div>
+              )}
+              {canResolve && filter !== 'resolved' && alertItem.status === 'pending' && (
+                <div className="m-card-actions">
+                  {alertItem.type === 'VOID_REQUEST' ? (
+                    <>
+                      <button className="btn btn-sm" style={{ background: '#22c55e', color: 'white' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
+                      <button className="btn btn-sm" style={{ background: '#ef4444', color: 'white' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
+                    </>
+                  ) : (
+                    <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

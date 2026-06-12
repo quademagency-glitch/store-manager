@@ -138,8 +138,9 @@ export default function AccountingApprovals() {
               <p className="text-lg">No pending entries to review.</p>
               <p className="text-sm mt-1">You're all caught up!</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
+          ) : (<>
+            {/* Desktop table */}
+            <div className="desktop-table-view">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-sm uppercase tracking-wider" style={{ background: 'var(--color-bg-tertiary)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-tertiary)' }}>
@@ -163,61 +164,30 @@ export default function AccountingApprovals() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2 mb-1">
-                          <span 
-                            className="px-2 py-0.5 text-[10px] rounded font-bold uppercase"
-                            style={{ 
-                              background: entry.type === 'expense' ? 'var(--color-error-bg)' : 'rgba(34, 197, 94, 0.1)',
-                              color: entry.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)'
-                            }}
-                          >
+                          <span className="px-2 py-0.5 text-[10px] rounded font-bold uppercase" style={{ background: entry.type === 'expense' ? 'var(--color-error-bg)' : 'rgba(34,197,94,0.1)', color: entry.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)' }}>
                             {entry.type.replace(/_/g, ' ')}
                           </span>
                         </div>
                         <div className="text-sm">{entry.description}</div>
                         {entry.metadata && Object.keys(entry.metadata).length > 0 && (
                           <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
-                            {Object.entries(entry.metadata).map(([k, v]) => (
-                              <div key={k}><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{k}:</span> {v}</div>
-                            ))}
+                            {Object.entries(entry.metadata).map(([k, v]) => (<div key={k}><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{k}:</span> {v}</div>))}
                           </div>
                         )}
                       </td>
-                      <td className="p-4 text-right font-bold text-lg">
-                        ${Number(entry.amount).toFixed(2)}
-                      </td>
+                      <td className="p-4 text-right font-bold text-lg">${Number(entry.amount).toFixed(2)}</td>
                       <td className="p-4 text-center">
                         {entry.receipt_url ? (
-                          <button 
-                            onClick={() => viewReceipt(entry.receipt_url)}
-                            className="text-sm font-semibold flex items-center justify-center gap-1 mx-auto"
-                            style={{ color: 'var(--color-accent-primary)' }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
+                          <button onClick={() => viewReceipt(entry.receipt_url)} className="text-sm font-semibold flex items-center justify-center gap-1 mx-auto" style={{ color: 'var(--color-accent-primary)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             View
                           </button>
-                        ) : (
-                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>None</span>
-                        )}
+                        ) : <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>None</span>}
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => handleReject(entry.id)}
-                            className="px-3 py-1.5 rounded text-sm font-semibold transition-colors"
-                            style={{ background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)' }}
-                          >
-                            Reject
-                          </button>
-                          <button 
-                            onClick={() => handleApprove(entry.id)}
-                            className="px-4 py-1.5 rounded text-sm font-semibold transition-colors shadow"
-                            style={{ background: 'var(--color-success)', color: '#ffffff' }}
-                          >
-                            Approve
-                          </button>
+                          <button onClick={() => handleReject(entry.id)} className="px-3 py-1.5 rounded text-sm font-semibold" style={{ background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)' }}>Reject</button>
+                          <button onClick={() => handleApprove(entry.id)} className="px-4 py-1.5 rounded text-sm font-semibold shadow" style={{ background: 'var(--color-success)', color: '#ffffff' }}>Approve</button>
                         </div>
                       </td>
                     </tr>
@@ -225,7 +195,35 @@ export default function AccountingApprovals() {
                 </tbody>
               </table>
             </div>
-          )}
+
+            {/* Mobile cards */}
+            <div className="mobile-card-view">
+              {pendingEntries.map(entry => (
+                <div key={entry.id} className="m-card">
+                  <div className="m-card-top">
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                        <span className="m-card-title" style={{ fontSize: '0.9rem' }}>{entry.users?.name || 'Unknown'}</span>
+                        <span className="px-2 py-0.5 rounded font-bold uppercase" style={{ fontSize: '0.65rem', background: entry.type === 'expense' ? 'var(--color-error-bg)' : 'rgba(34,197,94,0.1)', color: entry.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)', flexShrink: 0 }}>
+                          {entry.type.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <div className="m-card-sub">{entry.description}</div>
+                      <div className="m-card-meta">{entry.date} · {entry.locations?.name || 'Unknown'}</div>
+                    </div>
+                    <span className="m-card-amount" style={{ flexShrink: 0, fontSize: '1.1rem' }}>${Number(entry.amount).toFixed(2)}</span>
+                  </div>
+                  <div className="m-card-actions">
+                    {entry.receipt_url && (
+                      <button className="btn btn-sm btn-outline" onClick={() => viewReceipt(entry.receipt_url)}>Receipt</button>
+                    )}
+                    <button className="btn btn-sm" onClick={() => handleReject(entry.id)} style={{ background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)' }}>Reject</button>
+                    <button className="btn btn-sm" onClick={() => handleApprove(entry.id)} style={{ background: 'var(--color-success)', color: '#fff', border: 'none' }}>Approve</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>)}
         </div>
       )}
 

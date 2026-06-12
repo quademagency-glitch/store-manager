@@ -232,7 +232,9 @@ export default function SalesRecord() {
         ) : sales.length === 0 ? (
           <div className="text-center py-xl text-muted">No sales found for this date range.</div>
         ) : (
-          <div className="glass-table-wrapper">
+          <>
+          {/* Desktop table */}
+          <div className="desktop-table-view">
             <table className="glass-table">
               <thead>
                 <tr>
@@ -247,67 +249,70 @@ export default function SalesRecord() {
                 {sales.map(sale => {
                   const isHighlighted = highlightId && sale.id === highlightId;
                   return (
-                  <tr key={sale.id} style={{ 
-                    borderBottom: '1px solid var(--color-border)',
-                    backgroundColor: isHighlighted ? 'rgba(79, 70, 229, 0.05)' : 'transparent'
-                  }}>
-                    <td style={{ padding: '16px' }}>
-                      {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
-                      {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <button 
-                        onClick={() => openReceiptModal(sale)}
-                        className="btn btn-sm"
-                        style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        {sale.receipt_number || sale.id.substring(0,8)}
-                      </button>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      {sale.customer ? (
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{sale.customer.name}</div>
-                          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div>
-                        </div>
-                      ) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
-                        {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
-                  </tr>
-                )})}
+                    <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: isHighlighted ? 'rgba(79,70,229,0.05)' : 'transparent' }}>
+                      <td style={{ padding: '16px' }}>
+                        {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
+                        {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <button onClick={() => openReceiptModal(sale)} className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                          {sale.receipt_number || sale.id.substring(0, 8)}
+                        </button>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        {sale.customer ? (<div><div style={{ fontWeight: 600 }}>{sale.customer.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div></div>) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
+                          {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="text-sm text-muted">
-                  Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalSales)} of {totalSales} sales
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    className="btn btn-secondary btn-sm" 
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    className="btn btn-secondary btn-sm" 
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Mobile cards */}
+          <div className="mobile-card-view">
+            {sales.map(sale => {
+              const isHighlighted = highlightId && sale.id === highlightId;
+              return (
+                <div key={sale.id} className="m-card" style={isHighlighted ? { background: 'rgba(79,70,229,0.05)' } : {}}>
+                  <div className="m-card-top">
+                    <div style={{ flex: 1 }}>
+                      <button onClick={() => openReceiptModal(sale)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                        #{sale.receipt_number || sale.id.substring(0, 8)}
+                      </button>
+                      <div className="m-card-meta">{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</div>
+                      <div className="m-card-sub">{sale.customer ? `${sale.customer.name}${sale.customer.phone ? ' · ' + sale.customer.phone : ''}` : 'Walk-in Customer'}</div>
+                    </div>
+                    <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`} style={{ flexShrink: 0, fontSize: '0.7rem' }}>
+                      {sale.return_status === 'partial' ? 'Partial' : sale.return_status === 'full' ? 'Returned' : 'Completed'}
+                    </span>
+                  </div>
+                  <div className="m-card-row">
+                    <span className="m-card-amount">{fmt(sale.total_amount)}</span>
+                    <button className="btn btn-sm btn-outline" onClick={() => openReceiptModal(sale)}>View Receipt</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="text-sm text-muted">Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, totalSales)} of {totalSales}</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 

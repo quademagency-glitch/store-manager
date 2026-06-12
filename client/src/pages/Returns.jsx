@@ -201,47 +201,64 @@ export default function Returns() {
 
       {searchResults.length > 0 && (
         <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: 'var(--color-bg-secondary)' }}>
-              <tr>
-                <th style={{ padding: '16px' }}>Date</th>
-                <th style={{ padding: '16px' }}>Receipt #</th>
-                <th style={{ padding: '16px' }}>Customer</th>
-                <th style={{ padding: '16px' }}>Status</th>
-                <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {searchResults.map(sale => (
-                <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '16px' }}>{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
-                  <td style={{ padding: '16px' }}>
-                    <button 
-                      onClick={() => openReturnModal(sale)}
-                      className="btn btn-sm"
-                      style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      {sale.receipt_number || sale.id.substring(0,8)}
-                    </button>
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    {sale.customers ? (
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{sale.customers.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customers.phone}</div>
-                      </div>
-                    ) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
-                      {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
+          {/* Desktop table */}
+          <div className="desktop-table-view">
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: 'var(--color-bg-secondary)' }}>
+                <tr>
+                  <th style={{ padding: '16px' }}>Date</th>
+                  <th style={{ padding: '16px' }}>Receipt #</th>
+                  <th style={{ padding: '16px' }}>Customer</th>
+                  <th style={{ padding: '16px' }}>Status</th>
+                  <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {searchResults.map(sale => (
+                  <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '16px' }}>{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
+                    <td style={{ padding: '16px' }}>
+                      <button onClick={() => openReturnModal(sale)} className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                        {sale.receipt_number || sale.id.substring(0, 8)}
+                      </button>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      {sale.customers ? (<div><div style={{ fontWeight: 600 }}>{sale.customers.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customers.phone}</div></div>) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
+                        {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right', fontWeight: 600, fontSize: '1.1rem' }}>{fmt(sale.total_amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile cards */}
+          <div className="mobile-card-view">
+            {searchResults.map(sale => (
+              <div key={sale.id} className="m-card">
+                <div className="m-card-top">
+                  <div style={{ flex: 1 }}>
+                    <div className="m-card-title">{sale.customers ? sale.customers.name : 'Walk-in Customer'}</div>
+                    {sale.customers?.phone && <div className="m-card-sub">{sale.customers.phone}</div>}
+                    <div className="m-card-meta">{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })} · #{sale.receipt_number || sale.id.substring(0, 8)}</div>
+                  </div>
+                  <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`} style={{ flexShrink: 0, fontSize: '0.7rem' }}>
+                    {sale.return_status === 'partial' ? 'Partial' : sale.return_status === 'full' ? 'Returned' : 'Completed'}
+                  </span>
+                </div>
+                <div className="m-card-row">
+                  <span className="m-card-amount">{fmt(sale.total_amount)}</span>
+                </div>
+                <div className="m-card-actions">
+                  <button className="btn btn-sm btn-primary" onClick={() => openReturnModal(sale)}>Process Return</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

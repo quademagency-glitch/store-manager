@@ -539,7 +539,8 @@ export default function Inventory() {
           <div className="glass-panel">
             {productsLoading ? (
               <div className="table-loading"><div className="spinner"></div><p>Loading products...</p></div>
-            ) : (
+            ) : (<>
+              <div className="desktop-table-view">
               <table className="glass-table">
                 <thead>
                   <tr>
@@ -611,7 +612,40 @@ export default function Inventory() {
                   )}
                 </tbody>
               </table>
-            )}
+              </div>
+              <div className="mobile-card-view">
+                {filteredProducts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No products found.</div>
+                ) : filteredProducts.map(product => {
+                  const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
+                  const isLowStock = totalStock <= 5;
+                  return (
+                    <div key={product.id} className="m-card">
+                      <div className="m-card-top">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                          <div className="product-avatar" style={{ flexShrink: 0 }}>{product.name.charAt(0).toUpperCase()}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="m-card-title">{product.name}</div>
+                            {isLowStock && <span className="badge badge-warning badge-sm">Low Stock</span>}
+                            <div className="m-card-meta"><code>{product.sku}</code> · <span className="badge badge-neutral" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>{product.category}</span></div>
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                          <div className="m-card-amount">${Number(product.price).toFixed(2)}</div>
+                          <div className="m-card-meta">{totalStock} in stock</div>
+                        </div>
+                      </div>
+                      {hasPermission('manage_products') && (
+                        <div className="m-card-actions">
+                          <button className="btn btn-sm btn-secondary" onClick={() => openEditProductModal(product)}>Edit</button>
+                          <button className="btn btn-sm" onClick={() => handleDeleteProduct(product.id, product.name)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none' }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>)}
           </div>
         </div>
       )}
@@ -619,6 +653,7 @@ export default function Inventory() {
       {/* ═══ LEDGER TAB ═══ */}
       {activeTab === 'ledger' && (
         <div className="glass-panel" style={{ marginTop: '1rem' }}>
+          <div className="desktop-table-view">
           <table className="glass-table">
             <thead>
               <tr>
@@ -655,7 +690,32 @@ export default function Inventory() {
               )}
             </tbody>
           </table>
-          
+          </div>
+          <div className="mobile-card-view">
+            {stockLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+            ) : movements.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No stock movements found.</div>
+            ) : movements.map(m => (
+              <div key={m.id} className="m-card">
+                <div className="m-card-top">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="m-card-title">{m.product?.name || 'Unknown'}</div>
+                    <div className="m-card-meta"><code>{m.product?.sku}</code> · {m.user?.email?.split('@')[0] || 'Unknown'}</div>
+                    <div className="m-card-meta">{formatDate(m.created_at)}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                    <span className={`role-badge ${getTypeBadgeClass(m.movement_type)}`} style={{ fontSize: '11px', padding: '3px 6px' }}>{m.movement_type}</span>
+                    <div className="m-card-amount" style={{ color: m.quantity_change > 0 ? 'var(--color-success)' : 'var(--color-error)', marginTop: '4px' }}>
+                      {m.quantity_change > 0 ? '+' : ''}{m.quantity_change}
+                    </div>
+                  </div>
+                </div>
+                {m.notes && m.notes !== '-' && <div className="m-card-sub" style={{ marginTop: '6px' }}>{m.notes}</div>}
+              </div>
+            ))}
+          </div>
+
           {/* Pagination Controls */}
           {stockTotalPages > 1 && (
             <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -692,6 +752,7 @@ export default function Inventory() {
             </div>
           )}
           <div className="glass-panel">
+            <div className="desktop-table-view">
             <table className="glass-table">
               <thead>
                 <tr>
@@ -724,6 +785,35 @@ export default function Inventory() {
                 )}
               </tbody>
             </table>
+            </div>
+            <div className="mobile-card-view">
+              {transfersLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+              ) : transfers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No transfers found.</div>
+              ) : transfers.map(t => (
+                <div key={t.id} className="m-card">
+                  <div className="m-card-top">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="m-card-title">{t.product?.name}</div>
+                      <div className="m-card-meta"><code>{t.product?.sku}</code></div>
+                      <div className="m-card-sub">{t.from_location?.name} → {t.to_location?.name}</div>
+                      <div className="m-card-meta">{formatDate(t.created_at)}</div>
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      <span className={`transfer-status ${t.status.toLowerCase()}`}>{t.status}</span>
+                      <div className="m-card-amount" style={{ marginTop: '4px', fontSize: '1rem' }}>{t.quantity} units</div>
+                    </div>
+                  </div>
+                  {t.status === 'PENDING' && hasPermission('manage_inventory') && (
+                    <div className="m-card-actions">
+                      <button className="btn btn-sm btn-primary" onClick={() => handleTransferAction(t.id, 'complete')}>Receive</button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => handleTransferAction(t.id, 'cancel')}>Cancel</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -794,6 +884,7 @@ export default function Inventory() {
           {/* Audit History */}
           <div className="glass-panel">
             <h3 style={{ padding: '1rem 1.5rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>Audit History</h3>
+            <div className="desktop-table-view">
             <table className="glass-table">
               <thead>
                 <tr><th>Date</th><th>Product</th><th>Location</th><th>Expected</th><th>Counted</th><th>Discrepancy</th><th>By</th></tr>
@@ -822,6 +913,29 @@ export default function Inventory() {
                 )}
               </tbody>
             </table>
+            </div>
+            <div className="mobile-card-view">
+              {auditsLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+              ) : audits.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No audits yet.</div>
+              ) : audits.map(a => (
+                <div key={a.id} className="m-card">
+                  <div className="m-card-top">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="m-card-title">{a.product?.name}</div>
+                      <div className="m-card-sub">{a.location?.name}</div>
+                      <div className="m-card-meta">{formatDate(a.created_at)} · {a.auditor?.email?.split('@')[0]}</div>
+                    </div>
+                    <span className={a.discrepancy > 0 ? 'discrepancy-positive' : a.discrepancy < 0 ? 'discrepancy-negative' : 'discrepancy-zero'} style={{ fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}>
+                      {a.discrepancy > 0 ? '+' : ''}{a.discrepancy}
+                    </span>
+                  </div>
+                  <div className="m-card-row"><span>Expected</span><span>{a.expected_quantity}</span></div>
+                  <div className="m-card-row"><span>Counted</span><span>{a.counted_quantity}</span></div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -835,6 +949,7 @@ export default function Inventory() {
             </div>
           )}
           <div className="glass-panel">
+            <div className="desktop-table-view">
             <table className="glass-table">
               <thead>
                 <tr><th>Product</th><th>Batch #</th><th>Location</th><th>Qty</th><th>Expiry</th><th>Status</th></tr>
@@ -861,6 +976,35 @@ export default function Inventory() {
                 )}
               </tbody>
             </table>
+            </div>
+            <div className="mobile-card-view">
+              {batchesLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+              ) : batches.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No batches registered.</div>
+              ) : batches.map(b => {
+                const status = getExpiryStatus(b.expiry_date);
+                return (
+                  <div key={b.id} className={`m-card${status.rowClass ? ' ' + status.rowClass : ''}`}>
+                    <div className="m-card-top">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="m-card-title">{b.product?.name}</div>
+                        <div className="m-card-meta"><code>{b.product?.sku}</code> · <code>{b.batch_number}</code></div>
+                        <div className="m-card-sub">{b.location?.name}</div>
+                      </div>
+                      <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                        <span className={`expiry-badge ${status.class}`}>{status.label}</span>
+                        <div className="m-card-amount" style={{ fontSize: '1rem', marginTop: '4px' }}>{b.quantity} units</div>
+                      </div>
+                    </div>
+                    <div className="m-card-row">
+                      <span>Expiry</span>
+                      <span>{new Date(b.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

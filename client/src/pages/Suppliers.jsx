@@ -142,6 +142,8 @@ export default function Suppliers() {
           {loading ? (
             <div className="table-loading"><div className="spinner"></div><p>Loading suppliers...</p></div>
           ) : (
+            <>
+            <div className="desktop-table-view">
             <table className="glass-table">
               <thead>
                 <tr>
@@ -199,6 +201,39 @@ export default function Suppliers() {
                 )}
               </tbody>
             </table>
+            </div>
+            <div className="mobile-card-view">
+              {filteredSuppliers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No suppliers found.</div>
+              ) : filteredSuppliers.map(supplier => (
+                <div key={supplier.id} className="m-card" style={{ opacity: supplier.is_active ? 1 : 0.6, cursor: 'pointer', background: selectedSupplier?.id === supplier.id ? 'rgba(99,102,241,0.06)' : undefined }} onClick={() => viewSupplierDetail(supplier)}>
+                  <div className="m-card-top">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                      <div className="product-avatar" style={{ background: supplier.is_active ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#94a3b8', flexShrink: 0 }}>
+                        {supplier.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="m-card-title">{supplier.name}</div>
+                        {!supplier.is_active && <span className="badge badge-neutral badge-sm">Archived</span>}
+                        <div className="m-card-sub">{supplier.contact_person || '—'}</div>
+                        <div className="m-card-meta">{supplier.phone || supplier.email || ''}</div>
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      <span className="badge badge-neutral">{supplier.payment_terms || 'Net 30'}</span>
+                      <div className="m-card-meta" style={{ marginTop: '4px' }}>{supplier.po_count || 0} POs</div>
+                    </div>
+                  </div>
+                  <div className="m-card-actions" onClick={e => e.stopPropagation()}>
+                    <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(supplier)}>Edit</button>
+                    <button className="btn btn-sm" onClick={() => handleArchive(supplier)} style={supplier.is_active ? { background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)', border: 'none' } : { background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none' }}>
+                      {supplier.is_active ? 'Archive' : 'Reactivate'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
 

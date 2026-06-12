@@ -44,52 +44,60 @@ export default function InvoiceList() {
           <p className="text-muted">You have not received any invoices from Quadem ERP yet.</p>
         </div>
       ) : (
-        <div className="glass-panel" style={{ overflowX: 'auto' }}>
-          <table className="glass-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Invoice #</th>
-                <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Date</th>
-                <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Description</th>
-                <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Amount</th>
-                <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Status</th>
-                <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-text-secondary)' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id} style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.2s' }} 
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg-tertiary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    onClick={() => navigate(`/invoice/${inv.id}`)}
-                >
-                  <td style={{ padding: '1rem', fontFamily: 'monospace', fontWeight: 600 }}>{inv.invoice_number}</td>
-                  <td style={{ padding: '1rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
-                  <td style={{ padding: '1rem' }}>{inv.description || 'Subscription Payment'}</td>
-                  <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--color-primary)' }}>{formatCurrency(inv.amount, inv.currency)}</td>
-                  <td style={{ padding: '1rem' }}>
-                    <span className={`pa-invoice-badge ${inv.status}`} style={{
-                      display: 'inline-block',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      background: inv.status === 'paid' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                      color: inv.status === 'paid' ? '#10b981' : '#f59e0b'
-                    }}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${inv.id}`); }}>
-                      View Invoice
-                    </button>
-                  </td>
+        <div className="glass-panel">
+          {/* Desktop table */}
+          <div className="desktop-table-view">
+            <table className="glass-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Invoice #</th>
+                  <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Date</th>
+                  <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Description</th>
+                  <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Amount</th>
+                  <th style={{ padding: '1rem', color: 'var(--color-text-secondary)' }}>Status</th>
+                  <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--color-text-secondary)' }}>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.id} style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg-tertiary)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      onClick={() => navigate(`/invoice/${inv.id}`)}>
+                    <td style={{ padding: '1rem', fontFamily: 'monospace', fontWeight: 600 }}>{inv.invoice_number}</td>
+                    <td style={{ padding: '1rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
+                    <td style={{ padding: '1rem' }}>{inv.description || 'Subscription Payment'}</td>
+                    <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--color-primary)' }}>{formatCurrency(inv.amount, inv.currency)}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: inv.status === 'paid' ? '#10b981' : '#f59e0b' }}>{inv.status}</span>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${inv.id}`); }}>View Invoice</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile cards */}
+          <div className="mobile-card-view">
+            {invoices.map((inv) => (
+              <div key={inv.id} className="m-card" onClick={() => navigate(`/invoice/${inv.id}`)} style={{ cursor: 'pointer' }}>
+                <div className="m-card-top">
+                  <div>
+                    <div className="m-card-title" style={{ fontFamily: 'monospace' }}>{inv.invoice_number}</div>
+                    <div className="m-card-sub">{inv.description || 'Subscription Payment'}</div>
+                    <div className="m-card-meta">{new Date(inv.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: inv.status === 'paid' ? '#10b981' : '#f59e0b', flexShrink: 0 }}>{inv.status}</span>
+                </div>
+                <div className="m-card-row">
+                  <span className="m-card-amount" style={{ color: 'var(--color-primary)' }}>{formatCurrency(inv.amount, inv.currency)}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${inv.id}`); }}>View</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

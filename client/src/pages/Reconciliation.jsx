@@ -114,7 +114,9 @@ export default function Reconciliation() {
         <div style={{ padding: 'var(--space-xl) var(--space-xl) var(--space-md)' }}>
           <h3 className="bento-title m-0" style={{ fontSize: '1.25rem', fontWeight: 600 }}>Detailed Ledger</h3>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+
+        {/* Desktop table */}
+        <div className="desktop-table-view">
           <table className="glass-table w-full" style={{ borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-tertiary)' }}>
@@ -129,57 +131,67 @@ export default function Reconciliation() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-xl text-muted">
-                    <div className="spinner mb-sm mx-auto"></div>
-                    <p>Loading reconciliation data...</p>
-                  </td>
-                </tr>
+                <tr><td colSpan="7" className="text-center py-xl text-muted"><div className="spinner mb-sm mx-auto"></div><p>Loading...</p></td></tr>
               ) : reconciliationData.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📊</div>
-                    <p>No activity found for this date.</p>
-                  </td>
-                </tr>
-              ) : (
-                reconciliationData.map(row => {
-                  const net = row.totalSalesRevenue - row.totalShrinkageValue;
-                  return (
-                    <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s' }}>
-                      <td style={{ padding: '1rem var(--space-xl)' }}>
-                        <div className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{row.name || 'Unknown'}</div>
-                        <div className="text-sm text-muted">{row.email}</div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`}>
-                          {row.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div>
-                        <div className="text-sm text-muted">{row.salesCount} trans.</div>
-                      </td>
-                      <td style={{ padding: '1rem' }} className="font-medium text-warning">{fmt(row.totalDiscounts)}</td>
-                      <td style={{ padding: '1rem' }}>
-                        <div className="font-medium text-error">{fmt(row.totalVoidValue)}</div>
-                        <div className="text-sm text-muted">{row.voidCount} void(s)</div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div className="font-medium text-error">{fmt(row.totalShrinkageValue)}</div>
-                        <div className="text-sm text-muted">{row.shrinkageCount} item(s)</div>
-                      </td>
-                      <td style={{ padding: '1rem var(--space-xl)' }}>
-                        <div className="font-bold" style={{ color: net >= 0 ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem' }}>
-                          {fmt(net)}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                <tr><td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📊</div><p>No activity found for this date.</p></td></tr>
+              ) : reconciliationData.map(row => {
+                const net = row.totalSalesRevenue - row.totalShrinkageValue;
+                return (
+                  <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '1rem var(--space-xl)' }}><div className="font-medium">{row.name || 'Unknown'}</div><div className="text-sm text-muted">{row.email}</div></td>
+                    <td style={{ padding: '1rem' }}><span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`}>{row.role}</span></td>
+                    <td style={{ padding: '1rem' }}><div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div><div className="text-sm text-muted">{row.salesCount} trans.</div></td>
+                    <td style={{ padding: '1rem' }} className="font-medium text-warning">{fmt(row.totalDiscounts)}</td>
+                    <td style={{ padding: '1rem' }}><div className="font-medium text-error">{fmt(row.totalVoidValue)}</div><div className="text-sm text-muted">{row.voidCount} void(s)</div></td>
+                    <td style={{ padding: '1rem' }}><div className="font-medium text-error">{fmt(row.totalShrinkageValue)}</div><div className="text-sm text-muted">{row.shrinkageCount} item(s)</div></td>
+                    <td style={{ padding: '1rem var(--space-xl)' }}><div className="font-bold" style={{ color: net >= 0 ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem' }}>{fmt(net)}</div></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="mobile-card-view">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+          ) : reconciliationData.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📊</div><p>No activity found for this date.</p></div>
+          ) : reconciliationData.map(row => {
+            const net = row.totalSalesRevenue - row.totalShrinkageValue;
+            return (
+              <div key={row.id} className="m-card">
+                <div className="m-card-top">
+                  <div style={{ flex: 1 }}>
+                    <div className="m-card-title">{row.name || 'Unknown'}</div>
+                    <div className="m-card-meta">{row.email}</div>
+                  </div>
+                  <span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`} style={{ flexShrink: 0 }}>{row.role}</span>
+                </div>
+                <div className="m-card-row">
+                  <span>Sales</span>
+                  <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{fmt(row.totalSalesRevenue)} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({row.salesCount})</span></span>
+                </div>
+                <div className="m-card-row">
+                  <span>Discounts</span>
+                  <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>{fmt(row.totalDiscounts)}</span>
+                </div>
+                <div className="m-card-row">
+                  <span>Voids</span>
+                  <span style={{ color: 'var(--color-error)', fontWeight: 600 }}>{fmt(row.totalVoidValue)} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({row.voidCount})</span></span>
+                </div>
+                <div className="m-card-row">
+                  <span>Shrinkage</span>
+                  <span style={{ color: 'var(--color-error)', fontWeight: 600 }}>{fmt(row.totalShrinkageValue)} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({row.shrinkageCount})</span></span>
+                </div>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Net</span>
+                  <span style={{ fontWeight: 700, fontSize: '1.05rem', color: net >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>{fmt(net)}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

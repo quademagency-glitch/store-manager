@@ -260,7 +260,7 @@ export default function TillAccount() {
                 {/* Branch Ledger Header */}
                 <div className="flex justify-between items-center px-4 py-3" style={{ background: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)' }}>
                   <h2 className="text-base font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-primary)' }}>{branch.location_name}</h2>
-                  <div className="flex gap-8 text-right">
+                  <div className="till-branch-stats flex gap-8 text-right">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Cash Sales (In) ($)</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_sales)}</span>
@@ -284,7 +284,7 @@ export default function TillAccount() {
 
                 {/* Ledger Transactions Table */}
                 {branch.transactions.length > 0 ? (
-                  <div className="w-full overflow-x-auto">
+                  <><div className="desktop-table-view">
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                       <thead>
                         <tr style={{ background: 'var(--color-bg-tertiary)', borderBottom: '1px solid var(--color-border)' }}>
@@ -355,6 +355,28 @@ export default function TillAccount() {
                       </tbody>
                     </table>
                   </div>
+                  <div className="mobile-card-view">
+                    {branch.transactions.map((t) => {
+                      const isInflow = t.type === 'sale' || t.type === 'pay_in';
+                      const isOutflow = t.type === 'expense' || t.type === 'deposit_to_bank';
+                      return (
+                        <div key={t.id} className="m-card">
+                          <div className="m-card-top">
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="m-card-title" style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.type.replace('_', ' ')}</div>
+                              <div className="m-card-sub">{t.description}</div>
+                              <div className="m-card-meta">{new Date(t.date).toLocaleDateString()} · ID: {getNumericId(t.id)}</div>
+                            </div>
+                            <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                              {isInflow && <div style={{ color: 'var(--color-success)', fontWeight: 700, fontFamily: 'monospace' }}>{fmt(t.amount)}</div>}
+                              {isOutflow && <div style={{ color: 'var(--color-error)', fontWeight: 700, fontFamily: 'monospace' }}>-{fmt(t.amount)}</div>}
+                              <div className="m-card-meta" style={{ marginTop: '2px' }}>Bal: {fmt(t.balance)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div></>
                 ) : (
                   <div className="p-8 text-center text-[11px] uppercase tracking-widest font-bold" style={{ color: 'var(--color-text-muted)' }}>
                     No ledger transactions recorded.

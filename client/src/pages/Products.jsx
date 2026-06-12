@@ -12,6 +12,8 @@ export default function Products() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [locations, setLocations] = useState([]);
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
 
   useEffect(() => {
     api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
@@ -35,16 +37,35 @@ export default function Products() {
     product_code: ''
   });
 
-  // Filter products based on search term
+  // Filter products based on search term and stock filter
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return products;
-    const lower = searchTerm.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(lower) || 
-      p.sku.toLowerCase().includes(lower) ||
-      p.category.toLowerCase().includes(lower)
-    );
-  }, [products, searchTerm]);
+    let result = products;
+
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      result = result.filter(p => 
+        p.name.toLowerCase().includes(lower) || 
+        p.sku.toLowerCase().includes(lower) ||
+        p.category.toLowerCase().includes(lower) ||
+        (p.product_code && p.product_code.toLowerCase().includes(lower))
+      );
+    }
+
+    if (stockFilter !== 'all') {
+      result = result.filter(p => {
+        const total = locationFilter === 'all' 
+          ? (p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+          : (p.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+          
+        if (stockFilter === 'in_stock') return total > 0;
+        if (stockFilter === 'low_stock') return total > 0 && total <= 5;
+        if (stockFilter === 'out_of_stock') return total === 0;
+        return true;
+      });
+    }
+
+    return result;
+  }, [products, searchTerm, stockFilter, locationFilter]);
 
   // Handlers for modal
   const openAddModal = () => {
@@ -123,6 +144,7 @@ export default function Products() {
     const confirmed = await confirm({ title: 'Delete Product', message: `Are you sure you want to delete ${name}? This action cannot be undone.`, variant: 'danger', confirmText: 'Delete' });
     if (confirmed) {
       await deleteProduct(id);
+      setIsModalOpen(false);
     }
   };
 
@@ -153,11 +175,35 @@ export default function Products() {
             </svg>
             <input 
               type="text" 
-              placeholder="Search by name, SKU, or category..." 
+              placeholder="Search by name, SKU..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
             />
+          </div>
+          <div className="filter-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <select 
+              className="form-input" 
+              value={locationFilter} 
+              onChange={(e) => setLocationFilter(e.target.value)}
+              style={{ minWidth: '150px' }}
+            >
+              <option value="all">All Locations</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+            <select 
+              className="form-input" 
+              value={stockFilter} 
+              onChange={(e) => setStockFilter(e.target.value)}
+              style={{ minWidth: '150px' }}
+            >
+              <option value="all">All Stock Levels</option>
+              <option value="in_stock">In Stock</option>
+              <option value="low_stock">Low Stock (≤5)</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
           </div>
           <div className="toolbar-stats">
             <span className="badge badge-neutral">{filteredProducts.length} items</span>
@@ -182,27 +228,32 @@ export default function Products() {
             <table className="glass-table">
               <thead>
                 <tr>
-                  <th>Product Details</th>
                   <th>SKU</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Stock</th>
-                  {hasPermission('manage_products') && <th className="text-right">Actions</th>}
+                  <th>Model</th>
+                  <th>Quantity available</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={hasPermission('manage_products') ? 6 : 5} className="text-center py-xl text-muted">
+                    <td colSpan={3} className="text-center py-xl text-muted">
                       No products found matching your search.
                     </td>
                   </tr>
                 ) : (
                   filteredProducts.map(product => {
-                    const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-                    const isLowStock = totalStock <= 5;
+                    const displayStock = locationFilter === 'all'
+                      ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+                      : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+                    const isLowStock = displayStock <= 5;
                     return (
-                      <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
+                      <tr 
+                        key={product.id} 
+                        className={isLowStock ? 'row-warning' : ''}
+                        style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
+                        onClick={() => hasPermission('manage_products') && openEditModal(product)}
+                      >
+                        <td><code className="text-mono">{product.sku}</code></td>
                         <td>
                           <div className="product-cell">
                             <div className="product-avatar">
@@ -210,43 +261,25 @@ export default function Products() {
                             </div>
                             <div className="product-info">
                               <span className="product-name">{product.name}</span>
+                              {product.product_code && (
+                                <span className="text-muted text-sm" style={{display: 'block'}}>{product.product_code}</span>
+                              )}
                               {isLowStock && (
                                 <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td><code className="text-mono">{product.sku}</code></td>
-                        <td>
-                          <span className="badge badge-neutral">{product.category}</span>
-                        </td>
-                        <td className="font-medium">${Number(product.price).toFixed(2)}</td>
                         <td>
                           <div className="stock-cell">
                             <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>
-                              {totalStock}
+                              {displayStock}
                             </span>
-                            <span className="stock-threshold text-muted text-sm">/ across locs</span>
+                            {locationFilter === 'all' && (
+                              <span className="stock-threshold text-muted text-sm">/ across locs</span>
+                            )}
                           </div>
                         </td>
-                          {hasPermission('manage_products') && (
-                          <td className="text-right">
-                            <div className="action-buttons">
-                              <button className="btn-icon" onClick={() => openEditModal(product)} title="Edit">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              </button>
-                              <button className="btn-icon text-error hover-bg-error" onClick={() => handleDelete(product.id, product.name)} title="Delete">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                  <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        )}
                       </tr>
                     );
                   })
@@ -268,10 +301,17 @@ export default function Products() {
               No products found matching your search.
             </div>
           ) : filteredProducts.map(product => {
-            const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-            const isLowStock = totalStock <= 5;
+            const displayStock = locationFilter === 'all'
+              ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+              : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+            const isLowStock = displayStock <= 5;
             return (
-              <div key={product.id} className="m-card" style={isLowStock ? { borderLeft: '3px solid var(--color-warning)' } : {}}>
+              <div 
+                key={product.id} 
+                className="m-card" 
+                style={{ ...(isLowStock ? { borderLeft: '3px solid var(--color-warning)' } : {}), cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
+                onClick={() => hasPermission('manage_products') && openEditModal(product)}
+              >
                 <div className="m-card-top">
                   <div className="product-avatar" style={{ flexShrink: 0 }}>{product.name.charAt(0).toUpperCase()}</div>
                   <div style={{ flex: 1 }}>
@@ -279,22 +319,17 @@ export default function Products() {
                       {product.name}
                       {isLowStock && <span className="badge badge-warning badge-sm" style={{ marginLeft: '6px' }}>Low Stock</span>}
                     </div>
-                    <div className="m-card-sub"><code>{product.sku}</code></div>
+                    <div className="m-card-sub">
+                      <code>{product.sku}</code>
+                      {product.product_code && <span style={{marginLeft: '8px', color: 'var(--color-text-secondary)'}}>{product.product_code}</span>}
+                    </div>
                   </div>
-                  <span className="badge badge-neutral" style={{ flexShrink: 0 }}>{product.category}</span>
                 </div>
                 <div className="m-card-row">
-                  <span>Price: <strong>${Number(product.price).toFixed(2)}</strong></span>
                   <span style={{ color: isLowStock ? 'var(--color-warning)' : undefined, fontWeight: isLowStock ? 700 : undefined }}>
-                    Stock: {totalStock}
+                    Quantity available: {displayStock}
                   </span>
                 </div>
-                {hasPermission('manage_products') && (
-                  <div className="m-card-actions">
-                    <button className="btn btn-sm btn-outline" onClick={() => openEditModal(product)}>Edit</button>
-                    <button className="btn btn-sm btn-outline text-error" onClick={() => handleDelete(product.id, product.name)}>Delete</button>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -429,22 +464,34 @@ export default function Products() {
             </small>
           </div>
 
-          <div className="modal-footer">
-            <button 
-              type="button" 
-              className="btn btn-secondary" 
-              onClick={closeAndResetModal}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save Product'}
-            </button>
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: editingProduct ? 'space-between' : 'flex-end', width: '100%' }}>
+            {editingProduct && (
+              <button 
+                type="button" 
+                className="btn btn-outline text-error" 
+                onClick={() => handleDelete(editingProduct.id, editingProduct.name)}
+                disabled={isSubmitting}
+              >
+                Delete Product
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={closeAndResetModal}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Saving...' : 'Save Product'}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

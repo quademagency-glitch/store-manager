@@ -174,7 +174,7 @@ export default function MainLayout() {
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
         { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: true },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.invoice, visible: true },
-        { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)
@@ -190,7 +190,7 @@ export default function MainLayout() {
         { path: '/accounting-templates', label: 'Templates', icon: Icons.invoice, visible: true },
         { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' || role === 'Manager' },
         { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: role === 'Business Admin' || role === 'Platform Admin' },
-        { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('create_sales') },
+        { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('manage_sales') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)
     };
@@ -201,8 +201,8 @@ export default function MainLayout() {
       title: 'CRM',
       icon: Icons.team,
       items: [
-        { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('create_sales') },
-        { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('create_sales') },
+        { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales') },
+        { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
       ].filter(i => i.visible)
     };
     if (crm.items.length > 0) groups.push(crm);

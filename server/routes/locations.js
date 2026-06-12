@@ -25,6 +25,19 @@ router.get('/', authGuard, async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
+    if (!['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role)) {
+       const { data: userLocs, error: locErr } = await supabaseAdmin
+         .from('user_locations')
+         .select('location_id')
+         .eq('user_id', req.user.id);
+       
+       if (locErr) throw locErr;
+       
+       const allowedIds = userLocs.map(ul => ul.location_id);
+       const filteredData = data.filter(loc => allowedIds.includes(loc.id));
+       return res.json(filteredData);
+    }
+
     res.json(data);
   } catch (err) {
     console.error('Error fetching locations:', err);

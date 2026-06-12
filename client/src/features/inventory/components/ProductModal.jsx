@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Modal from '../../../components/Modal';
 
-export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct, locations, isSubmitting, error }) {
+export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, editingProduct, locations, isSubmitting, error }) {
   const {
     register,
     handleSubmit,
@@ -166,11 +166,23 @@ export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct
           </small>
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Product'}
-          </button>
+        <div className="modal-footer" style={{ display: 'flex', justifyContent: editingProduct && onDelete ? 'space-between' : 'flex-end', width: '100%' }}>
+          {editingProduct && onDelete && (
+            <button 
+              type="button" 
+              className="btn btn-outline text-error" 
+              onClick={() => onDelete(editingProduct.id, editingProduct.name)}
+              disabled={isSubmitting}
+            >
+              Delete Product
+            </button>
+          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Product'}
+            </button>
+          </div>
         </div>
       </form>
     </Modal>

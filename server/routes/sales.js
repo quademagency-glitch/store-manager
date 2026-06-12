@@ -44,7 +44,7 @@ const finalizeSaleSchema = z.object({
  * Fetch all sales with line items and product names.
  * Access: All authenticated staff
  */
-router.get('/', authGuard, async (req, res) => {
+router.get('/', authGuard, permissionCheck('view_sales'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
@@ -100,7 +100,7 @@ router.get('/', authGuard, async (req, res) => {
  * Fetch historical sales with date range filtering.
  * Access: All authenticated staff (scoped to their location)
  */
-router.get('/history', authGuard, async (req, res) => {
+router.get('/history', authGuard, permissionCheck('view_sales'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const page = parseInt(req.query.page) || 1;

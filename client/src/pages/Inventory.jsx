@@ -62,12 +62,16 @@ export default function Inventory() {
   const { fmt } = useCurrency(business);
   const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
+  const { role, locationIds } = useAuthContext();
+  const isManagerOrAdmin = ['Business Admin', 'Manager', 'Platform Admin'].includes(role);
 
   const [locations, setLocations] = useState([]);
   const [activeTab, setActiveTab] = useState('products');
 
   // ─── Products Tab State ───
   const [productSearch, setProductSearch] = useState('');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormError, setProductFormError] = useState('');
@@ -117,8 +121,16 @@ export default function Inventory() {
 
   useEffect(() => {
     fetchMovements(stockPage);
-    api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
-  }, [fetchMovements, stockPage]);
+    api.get('/locations').then(res => {
+      setLocations(res);
+      if (!isManagerOrAdmin && res.length > 0) {
+        const userLocs = res.filter(loc => locationIds.includes(loc.id));
+        if (userLocs.length > 0 && locationFilter === 'all') {
+          setLocationFilter(userLocs[0].id);
+        }
+      }
+    }).catch(() => setLocations([]));
+  }, [fetchMovements, stockPage, isManagerOrAdmin, locationIds]);
 
 
   const fetchTransfers = async () => {
@@ -335,15 +347,46 @@ export default function Inventory() {
   };
 
   // ─── Products Tab Handlers ───
+  const visibleLocations = isManagerOrAdmin ? locations : locations.filter(loc => locationIds.includes(loc.id));
+
   const filteredProducts = useMemo(() => {
-    if (!productSearch) return products;
-    const lower = productSearch.toLowerCase();
-    return products.filter(p =>
-      p.name.toLowerCase().includes(lower) ||
-      p.sku.toLowerCase().includes(lower) ||
-      p.category?.toLowerCase().includes(lower)
-    );
-  }, [products, productSearch]);
+    let result = products;
+
+    if (productSearch) {
+      const lower = productSearch.toLowerCase();
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(lower) ||
+        p.sku.toLowerCase().includes(lower) ||
+        (p.product_code && p.product_code.toLowerCase().includes(lower)) ||
+        p.category?.toLowerCase().includes(lower)
+      );
+    }
+
+    if (!isManagerOrAdmin && locationFilter === 'all' && visibleLocations.length > 0) {
+      // Force filter to first assigned location if non-admin tries to view all
+      const forcedLocation = visibleLocations[0].id;
+      result = result.filter(p => {
+        const total = p.product_inventory?.find(inv => inv.location_id === forcedLocation)?.quantity || 0;
+        if (stockFilter === 'in_stock') return total > 0;
+        if (stockFilter === 'low_stock') return total > 0 && total <= 5;
+        if (stockFilter === 'out_of_stock') return total === 0;
+        return true;
+      });
+    } else if (stockFilter !== 'all' || locationFilter !== 'all') {
+      result = result.filter(p => {
+        const total = locationFilter === 'all' 
+          ? (p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+          : (p.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+          
+        if (stockFilter === 'in_stock') return total > 0;
+        if (stockFilter === 'low_stock') return total > 0 && total <= 5;
+        if (stockFilter === 'out_of_stock') return total === 0;
+        return true;
+      });
+    }
+
+    return result;
+  }, [products, productSearch, stockFilter, locationFilter, isManagerOrAdmin, visibleLocations]);
 
   const openAddProductModal = () => {
     setEditingProduct(null);
@@ -400,6 +443,7 @@ export default function Inventory() {
     const confirmed = await confirm({ title: 'Delete Product', message: `Delete ${name}? This cannot be undone.`, variant: 'danger', confirmText: 'Delete' });
     if (confirmed) {
       await deleteProduct(id);
+      closeProductModal();
     }
   };
 
@@ -485,11 +529,35 @@ export default function Inventory() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name, SKU, or category..."
+                placeholder="Search by name, SKU..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 className="search-input"
               />
+            </div>
+            <div className="filter-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1, margin: '0 10px' }}>
+              <select 
+                className="form-input" 
+                value={locationFilter} 
+                onChange={(e) => setLocationFilter(e.target.value)}
+                style={{ minWidth: '150px' }}
+              >
+                {isManagerOrAdmin && <option value="all">All Locations</option>}
+                {visibleLocations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+              <select  
+                className="form-input" 
+                value={stockFilter} 
+                onChange={(e) => setStockFilter(e.target.value)}
+                style={{ minWidth: '150px' }}
+              >
+                <option value="all">All Stock Levels</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock (≤5)</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <span className="badge badge-neutral">{filteredProducts.length} items</span>
@@ -512,68 +580,47 @@ export default function Inventory() {
               <table className="glass-table">
                 <thead>
                   <tr>
-                    <th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th>
-                    {hasPermission('manage_inventory') && <th>Sold</th>}
-                    {hasPermission('manage_products') && <th className="text-right">Actions</th>}
+                    <th>SKU</th>
+                    <th>Model</th>
+                    <th>Quantity available</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProducts.length === 0 ? (
-                    <tr><td colSpan={hasPermission('manage_products') ? 7 : 6} className="text-center py-xl text-muted">No products found.</td></tr>
+                    <tr><td colSpan={3} className="text-center py-xl text-muted">No products found.</td></tr>
                   ) : (
                     filteredProducts.map(product => {
-                      const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-                      const isLowStock = totalStock <= 5;
+                      const displayStock = locationFilter === 'all'
+                        ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+                        : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+                      const isLowStock = displayStock <= 5;
                       
                       return (
-                        <tr key={product.id} className={isLowStock ? 'row-warning' : ''}>
+                        <tr 
+                          key={product.id} 
+                          className={isLowStock ? 'row-warning' : ''}
+                          style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
+                          onClick={() => hasPermission('manage_products') && openEditProductModal(product)}
+                        >
+                          <td><code className="text-mono">{product.sku}</code></td>
                           <td>
                             <div className="product-cell">
-                              <div className="product-avatar">{product.name.charAt(0).toUpperCase()}</div>
                               <div className="product-info">
                                 <span className="product-name">{product.name}</span>
+                                {product.product_code && (
+                                  <span className="text-muted text-sm" style={{display: 'block'}}>{product.product_code}</span>
+                                )}
                                 {isLowStock && <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>}
                               </div>
                             </div>
                           </td>
-                          <td><code className="text-mono">{product.sku}</code></td>
-                          <td><span className="badge badge-neutral">{product.category}</span></td>
-                          <td className="font-medium">${Number(product.price).toFixed(2)}</td>
                           <td>
-                            <div className="stock-cell" onClick={() => { setSelectedTrackingProduct(product); setIsTrackingModalOpen(true); }} style={{ cursor: 'pointer' }} title="Manage QR Tracking">
-                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`} style={{ textDecoration: 'underline', textDecorationStyle: 'dotted', color: 'var(--color-primary)' }}>{totalStock}</span>
-                              <span className="stock-threshold text-muted text-sm">/ across locs</span>
+                            <div className="stock-cell">
+                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>
+                                {displayStock}
+                              </span>
                             </div>
                           </td>
-                          {hasPermission('manage_inventory') && (
-                            <td>
-                              <button 
-                                className="btn btn-sm"
-                                onClick={() => { setSelectedSoldProduct(product); setIsSoldUnitsModalOpen(true); }}
-                                style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
-                              >
-                                View Sold
-                              </button>
-                            </td>
-                          )}
-                          {hasPermission('manage_products') && (
-                            <td className="text-right">
-                              <div className="action-buttons">
-                                <button className="btn-icon" onClick={() => openEditProductModal(product)} title="Edit">
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
-                                </button>
-                                <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteProduct(product.id, product.name)} title="Delete">
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          )}
                         </tr>
                       );
                     })
@@ -585,30 +632,34 @@ export default function Inventory() {
                 {filteredProducts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No products found.</div>
                 ) : filteredProducts.map(product => {
-                  const totalStock = product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0;
-                  const isLowStock = totalStock <= 5;
+                  const displayStock = locationFilter === 'all'
+                    ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
+                    : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
+                  const isLowStock = displayStock <= 5;
                   return (
-                    <div key={product.id} className="m-card">
+                    <div 
+                      key={product.id} 
+                      className="m-card"
+                      style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
+                      onClick={() => hasPermission('manage_products') && openEditProductModal(product)}
+                    >
                       <div className="m-card-top">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                          <div className="product-avatar" style={{ flexShrink: 0 }}>{product.name.charAt(0).toUpperCase()}</div>
                           <div style={{ minWidth: 0 }}>
                             <div className="m-card-title">{product.name}</div>
                             {isLowStock && <span className="badge badge-warning badge-sm">Low Stock</span>}
-                            <div className="m-card-meta"><code>{product.sku}</code> · <span className="badge badge-neutral" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>{product.category}</span></div>
+                            <div className="m-card-meta">
+                              <code>{product.sku}</code>
+                              {product.product_code && <span style={{marginLeft: '8px', color: 'var(--color-text-secondary)'}}>{product.product_code}</span>}
+                            </div>
                           </div>
                         </div>
                         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div className="m-card-amount">${Number(product.price).toFixed(2)}</div>
-                          <div className="m-card-meta">{totalStock} in stock</div>
+                          <div className="m-card-amount" style={{ color: isLowStock ? 'var(--color-warning)' : undefined }}>
+                            {displayStock} in stock
+                          </div>
                         </div>
                       </div>
-                      {hasPermission('manage_products') && (
-                        <div className="m-card-actions">
-                          <button className="btn btn-sm btn-secondary" onClick={() => openEditProductModal(product)}>Edit</button>
-                          <button className="btn btn-sm" onClick={() => handleDeleteProduct(product.id, product.name)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none' }}>Delete</button>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1033,6 +1084,7 @@ export default function Inventory() {
         isOpen={isProductModalOpen} 
         onClose={closeProductModal} 
         onSubmit={handleProductSubmit} 
+        onDelete={handleDeleteProduct}
         editingProduct={editingProduct} 
         locations={locations} 
         isSubmitting={isProductSubmitting} 

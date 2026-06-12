@@ -1,6 +1,7 @@
 import Modal from '../../../components/Modal';
+import LetterheadRenderer, { LetterheadFooter } from '../../../components/LetterheadRenderer';
 
-export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, actions }) {
+export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, actions, business }) {
   if (!receiptData) return null;
 
   const handlePrint = () => {
@@ -30,7 +31,11 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
         >
           {/* Jagged Edge effect top & bottom using CSS gradients (optional, we'll keep it clean) */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>STORE APP</h2>
+            <LetterheadRenderer
+              letterhead={business?.letterhead}
+              logoUrl={business?.logo_url}
+              businessName={business?.name}
+            />
             <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: '#64748b' }}>Receipt #{receiptData.receipt_number}</p>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
               {new Date(receiptData.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
@@ -74,8 +79,14 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
           </div>
 
           <div style={{ textAlign: 'center', marginTop: '32px', color: '#64748b', fontSize: '0.85rem' }}>
-            <p style={{ margin: 0 }}>Thank you for your purchase!</p>
-            <p style={{ margin: '4px 0 0 0' }}>Please retain your receipt for returns.</p>
+            {business?.letterhead?.footer_text ? (
+              <LetterheadFooter letterhead={business.letterhead} />
+            ) : (
+              <>
+                <p style={{ margin: 0 }}>Thank you for your purchase!</p>
+                <p style={{ margin: '4px 0 0 0' }}>Please retain your receipt for returns.</p>
+              </>
+            )}
           </div>
         </div>
         

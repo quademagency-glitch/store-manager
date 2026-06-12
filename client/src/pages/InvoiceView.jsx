@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
+import LetterheadRenderer from '../components/LetterheadRenderer';
 
 export default function InvoiceView() {
   const { id } = useParams();
@@ -110,11 +111,13 @@ export default function InvoiceView() {
           boxShadow: 'var(--shadow-lg)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <h1 className="page-title">
-                {invoice.business?.name || 'Store Manager'}
-              </h1>
-              <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px' }}>Platform Subscription Receipt</p>
+            <div style={{ flex: 1 }}>
+              <LetterheadRenderer
+                letterhead={invoice.business?.letterhead}
+                logoUrl={invoice.business?.logo_url}
+                businessName={invoice.business?.name || 'Store Manager'}
+              />
+              <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px', fontSize: '0.85rem' }}>Platform Subscription Receipt</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-text-muted)', letterSpacing: '2px' }}>INVOICE</h2>

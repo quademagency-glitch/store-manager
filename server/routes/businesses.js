@@ -39,22 +39,29 @@ router.get('/me', authGuard, async (req, res) => {
  */
 router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, contact_email, logo_url, tax_rate, return_policy } = req.body;
+    const { name, contact_email, logo_url, tax_rate, return_policy, phone, address_line1, city, region, letterhead } = req.body;
 
     // Verify tenant isolation
     if (req.user.role !== 'Platform Admin' && req.user.business_id !== req.params.id) {
       return res.status(403).json({ error: 'Cannot update a different business profile.' });
     }
 
+    // Build update payload, only include fields that were provided
+    const updatePayload = {};
+    if (name !== undefined) updatePayload.name = name;
+    if (contact_email !== undefined) updatePayload.contact_email = contact_email;
+    if (logo_url !== undefined) updatePayload.logo_url = logo_url;
+    if (tax_rate !== undefined) updatePayload.tax_rate = tax_rate;
+    if (return_policy !== undefined) updatePayload.return_policy = return_policy;
+    if (phone !== undefined) updatePayload.phone = phone;
+    if (address_line1 !== undefined) updatePayload.address_line1 = address_line1;
+    if (city !== undefined) updatePayload.city = city;
+    if (region !== undefined) updatePayload.region = region;
+    if (letterhead !== undefined) updatePayload.letterhead = letterhead;
+
     const { data, error } = await supabaseAdmin
       .from('businesses')
-      .update({ 
-        name, 
-        contact_email, 
-        logo_url,
-        tax_rate: tax_rate !== undefined ? tax_rate : undefined,
-        return_policy: return_policy !== undefined ? return_policy : undefined
-      })
+      .update(updatePayload)
       .eq('id', req.params.id)
       .select()
       .single();

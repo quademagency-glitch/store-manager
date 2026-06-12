@@ -1,7 +1,7 @@
 // Service Worker for Store Manager ERP
 // Minimal implementation for PWA install capability and app shell caching.
 
-const CACHE_NAME = 'store-manager-v1';
+const CACHE_NAME = 'store-manager-v2';
 const APP_SHELL = [
   '/',
   '/index.html',

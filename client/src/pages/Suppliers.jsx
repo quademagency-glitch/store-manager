@@ -124,8 +124,8 @@ export default function Suppliers() {
       </div>
 
       {/* Search */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div className="search-bar" style={{ flex: 1, maxWidth: '400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="search-bar" style={{ flex: 1, maxWidth: '400px', minWidth: '200px' }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="search-icon">
             <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
             <path d="M18 18L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -136,9 +136,9 @@ export default function Suppliers() {
       </div>
 
       {/* Two-column layout: list + detail */}
-      <div style={{ display: 'grid', gridTemplateColumns: selectedSupplier ? '1fr 1fr' : '1fr', gap: '16px' }}>
+      <div className={`suppliers-grid ${selectedSupplier ? 'has-selection' : ''}`}>
         {/* Suppliers Table */}
-        <div className="glass-panel">
+        <div className="glass-panel suppliers-table-wrapper">
           {loading ? (
             <div className="table-loading"><div className="spinner"></div><p>Loading suppliers...</p></div>
           ) : (
@@ -220,7 +220,7 @@ export default function Suppliers() {
             ) : supplierDetail && (
               <>
                 {/* Contact Info */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
                   {[
                     { label: 'Phone', value: supplierDetail.phone },
                     { label: 'Email', value: supplierDetail.email },
@@ -235,7 +235,7 @@ export default function Suppliers() {
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
                   <div style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>{supplierDetail.po_count || 0}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Total POs</div>

@@ -397,3 +397,26 @@
     justify-content: center;
   }
 }
+
+/* ─── Suppliers page ─── */
+.suppliers-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.suppliers-grid.has-selection {
+  grid-template-columns: 1fr 1fr;
+}
+
+.suppliers-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* On smaller screens, stack the layout even with selection */
+@media (max-width: 1024px) {
+  .suppliers-grid.has-selection {
+    grid-template-columns: 1fr;
+  }
+}

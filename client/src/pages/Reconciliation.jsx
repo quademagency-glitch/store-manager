@@ -90,20 +90,22 @@ export default function Reconciliation() {
         <div className="pos-glass-card" style={{ minHeight: '350px', padding: 'var(--space-xl)' }}>
           <h3 className="bento-title mb-lg" style={{ fontSize: '1.25rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Net Contribution by Staff</h3>
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
-                <Tooltip 
-                  cursor={{ fill: 'var(--color-bg-tertiary)' }}
-                  contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}
-                  itemStyle={{ color: 'var(--color-text-primary)' }}
-                />
-                <Bar dataKey="Sales" fill="var(--color-accent-primary)" radius={[6, 6, 0, 0]} barSize={32} />
-                <Bar dataKey="Shrinkage" fill="var(--color-error)" radius={[6, 6, 0, 0]} barSize={32} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: 280, minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
+                  <Tooltip 
+                    cursor={{ fill: 'var(--color-bg-tertiary)' }}
+                    contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}
+                    itemStyle={{ color: 'var(--color-text-primary)' }}
+                  />
+                  <Bar dataKey="Sales" fill="var(--color-accent-primary)" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Bar dataKey="Shrinkage" fill="var(--color-error)" radius={[6, 6, 0, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-muted" style={{ minHeight: '280px' }}>No data available for chart</div>
           )}

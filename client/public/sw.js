@@ -1,7 +1,7 @@
 // Service Worker for Store Manager ERP
 // Minimal implementation for PWA install capability and app shell caching.
 
-const CACHE_NAME = 'store-manager-v3';
+const CACHE_NAME = 'store-manager-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -37,6 +37,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // NEVER cache HTML navigations to ensure rapid updates are always visible
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -51,9 +59,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         // Fallback to cache when offline
-        return caches.match(event.request).then((cachedResponse) => {
-          return cachedResponse || caches.match('/');
-        });
+        return caches.match(event.request);
       })
   );
 });

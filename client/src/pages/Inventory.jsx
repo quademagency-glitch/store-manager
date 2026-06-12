@@ -18,6 +18,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
+import InventoryAnalytics from '../features/inventory/components/InventoryAnalytics';
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const toast = useToast();
@@ -406,6 +407,7 @@ export default function Inventory() {
     { id: 'inventorycount', label: 'Inventory Count' },
     { id: 'audits', label: 'Cycle Counts' },
     { id: 'batches', label: 'Batches' },
+    { id: 'analytics', label: 'Analytics' },
   ];
 
   return (
@@ -824,6 +826,11 @@ export default function Inventory() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* ═══ ANALYTICS TAB ═══ */}
+      {activeTab === 'analytics' && (
+        <InventoryAnalytics />
       )}
 
       {/* ═══ MODALS ═══ */}

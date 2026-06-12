@@ -22,6 +22,9 @@ const scannerRoutes = require('./routes/scanner');
 const returnsRoutes = require('./routes/returns');
 const ledgerRoutes = require('./routes/ledger');
 const accountingTemplatesRoutes = require('./routes/accountingTemplates');
+const suppliersRoutes = require('./routes/suppliers');
+const purchaseOrdersRoutes = require('./routes/purchaseOrders');
+const inventoryAnalyticsRoutes = require('./routes/inventoryAnalytics');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -139,6 +142,15 @@ app.use('/api/ledger', ledgerRoutes);
 
 // Accounting Templates routes
 app.use('/api/accounting/templates', accountingTemplatesRoutes);
+
+// Suppliers routes
+app.use('/api/suppliers', suppliersRoutes);
+
+// Purchase Orders routes
+app.use('/api/purchase-orders', purchaseOrdersRoutes);
+
+// Inventory Analytics routes
+app.use('/api/inventory-analytics', inventoryAnalyticsRoutes);
 
 // ============================================
 // Error handling

@@ -97,6 +97,14 @@ const Icons = {
       <polyline points="10 9 9 9 8 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  suppliers: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="1" y="3" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
   signout: (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
       <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -163,6 +171,8 @@ export default function MainLayout() {
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
+        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_inventory') },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.invoice, visible: hasPermission('manage_inventory') },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('create_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },

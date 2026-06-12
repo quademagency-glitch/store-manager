@@ -23,6 +23,8 @@ import InvoiceList from './pages/InvoiceList';
 import InvoiceView from './pages/InvoiceView';
 import SmartRedirect from './components/SmartRedirect';
 import UserProfile from './pages/UserProfile';
+import Suppliers from './pages/Suppliers';
+import PurchaseOrders from './pages/PurchaseOrders';
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
@@ -89,7 +91,12 @@ export default function App() {
                     <Route path="/alerts" element={
                       <ProtectedRoute requiredPermission="view_analytics"><Alerts /></ProtectedRoute>
                     } />
-                    
+                    <Route path="/suppliers" element={
+                      <ProtectedRoute><Suppliers /></ProtectedRoute>
+                    } />
+                    <Route path="/purchase-orders" element={
+                      <ProtectedRoute><PurchaseOrders /></ProtectedRoute>
+                    } />
                     {/* Protected sub-routes handled within components or layout level */}
                     <Route path="/reconciliation" element={
                       <ProtectedRoute requiredPermission="view_analytics"><Reconciliation /></ProtectedRoute>

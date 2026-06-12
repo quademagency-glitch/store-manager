@@ -1,22 +1,123 @@
 /* ============================================
    Responsive
    ============================================ */
-@media (max-width: 768px) {
-  .dashboard-sidebar {
-    width: 100%;
-    position: relative;
-    min-height: auto;
+
+/* ─── Tablet (≤1024px) ─── */
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
+  .bento-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .page-container {
+    padding: 0 var(--space-md);
+  }
+}
+
+/* ─── Mobile (≤768px) ─── */
+@media (max-width: 768px) {
+  /* ── Non-admin Sidebar Layout ── */
   .dashboard-page {
     flex-direction: column;
   }
 
+  /* Show mobile topbar */
+  .mobile-sidebar-topbar {
+    display: flex;
+  }
+
+  /* Show close button inside sidebar */
+  .sidebar-mobile-close {
+    display: flex;
+  }
+
+  /* Sidebar becomes a slide-in drawer */
+  .dashboard-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    z-index: 201;
+    transition: transform var(--transition-normal);
+  }
+
+  .dashboard-sidebar.mobile-open {
+    transform: translateX(280px);
+  }
+
+  /* Overlay visible for non-admin sidebar too */
+  .mobile-drawer-overlay {
+    display: block;
+  }
+
+  /* Main content fills full width */
   .dashboard-main {
     margin-left: 0;
+    padding: var(--space-md);
+  }
+
+  /* ── Page Headers ── */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-title,
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .search-bar {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* ── Stats ── */
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Bento / Analytics Grids ── */
+  .bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Welcome Banner ── */
+  .dashboard-welcome-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
     padding: var(--space-lg);
   }
 
+  .banner-title {
+    font-size: 1.5rem;
+  }
+
+  /* ── Forms ── */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Modals ── */
+  .modal-overlay {
+    padding: var(--space-sm);
+  }
+
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  /* ── Login ── */
   .login-container {
     padding: var(--space-md);
   }
@@ -25,7 +126,69 @@
     padding: var(--space-xl);
   }
 
-  .stats-grid {
+  /* ── Sales POS ── */
+  .sales-page {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .sales-catalog {
+    max-height: none;
+  }
+
+  .sales-cart {
+    position: relative;
+    max-height: none;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+/* ─── Small Mobile (≤480px) ─── */
+@media (max-width: 480px) {
+  .page-title,
+  .dashboard-title {
+    font-size: 1.25rem;
+  }
+
+  .page-subtitle,
+  .dashboard-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .banner-title {
+    font-size: 1.25rem;
+  }
+
+  .admin-main-content {
+    padding: var(--space-sm);
+  }
+
+  .dashboard-main {
+    padding: var(--space-sm);
+  }
+
+  .catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .modal-body {
+    padding: var(--space-md);
+  }
+
+  .modal-header {
+    padding: var(--space-md);
+  }
+
+  .page-container {
+    padding: 0;
   }
 }

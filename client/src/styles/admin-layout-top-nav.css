@@ -165,8 +165,22 @@
   padding: 0.5rem;
 }
 
+/* Overlay base styles always present; visibility toggled by media queries */
 .mobile-drawer-overlay {
   display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(8px);
+}
+
+.mobile-drawer-overlay.open {
+  opacity: 1;
+  visibility: visible;
 }
 
 .mobile-drawer {
@@ -183,7 +197,7 @@
     align-items: center;
     justify-content: center;
   }
-  
+
   .top-navbar {
     padding: 0 var(--space-md);
   }
@@ -194,19 +208,6 @@
 
   .mobile-drawer-overlay {
     display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 200;
-    opacity: 0;
-    visibility: hidden;
-    transition: all var(--transition-fast);
-    backdrop-filter: blur(8px);
-  }
-
-  .mobile-drawer-overlay.open {
-    opacity: 1;
-    visibility: visible;
   }
 
   .mobile-drawer {

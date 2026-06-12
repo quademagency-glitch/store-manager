@@ -133,15 +133,7 @@ export default function Sales() {
     }
   };
 
-  // const handleSendVerification = async (customer) => {
-    const res = await sendVerificationCode(customer.id);
-    if (res.success) {
-      setCustomerToVerify(customer);
-      setShowVerifyModal(true);
-    } else {
-      toast.error(res.error || 'Failed to send SMS');
-    }
-  };
+
 
   const handleVerifyCode = async (e) => {
     e.preventDefault();
@@ -226,46 +218,7 @@ export default function Sales() {
     setShowScanner(true);
   };
 
-  // const onScanComplete = async (decodedText) => {
-    setShowScanner(false);
-    if (!activeScanTarget) return;
 
-    try {
-      // Look up unit (Single mode UX enhancement)
-      const unitRes = await api.get(`/units/lookup?qr=${encodeURIComponent(decodedText)}`);
-      
-      if (!unitRes || !unitRes.unit) {
-        toast.error('QR code exists but is not assigned to any item.');
-        return;
-      }
-
-      const unit = unitRes.unit;
-      const { itemId, unitIndex } = activeScanTarget;
-      
-      setWizardItems(prev => prev.map(item => {
-        if (item.id === itemId) {
-          if (unit.product_id !== item.product.id) {
-            toast.error(`Mismatched product! Scanned unit is ${unit.product.name}, but expected ${item.product.name}.`);
-            return item;
-          }
-          
-          // Check for duplicate scan within same item
-          if (item.scans.some(s => s.unit_id === unit.id)) {
-            toast.warning('This exact unit was already scanned for this item.');
-            return item;
-          }
-
-          const newScans = [...item.scans];
-          newScans[unitIndex] = { ...newScans[unitIndex], item_code: decodedText, unit_id: unit.id };
-
-          return { ...item, scans: newScans };
-        }
-        return item;
-      }));
-    } catch {
-      toast.error(`Could not verify physical unit for QR: ${decodedText}. Make sure you scan a tracked inventory sticker.`);
-    }
-  };
 
   const removeWizardItem = (itemId) => {
     setWizardItems(prev => prev.filter(i => i.id !== itemId));
@@ -347,21 +300,7 @@ export default function Sales() {
     }
   };
 
-  // const handleCancelSale = async () => {
-    if (!pendingSale) return;
-    setIsProcessing(true);
-    try {
-      await api.post(`/sales/${pendingSale.id}/cancel`, {});
-      setShowPaymentModal(false);
-      setPendingSale(null);
-      setSaleError('Transaction was cancelled. Items have been removed from your batch.');
-      setWizardItems([]);
-    } catch {
-      setSaleError(err.message || 'Failed to cancel sale');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+
 
   const handleFinalizeSale = async () => {
     if (!amountPaid || isNaN(parseFloat(amountPaid))) {

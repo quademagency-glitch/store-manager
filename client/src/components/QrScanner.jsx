@@ -1,44 +1,38 @@
 import { useEffect } from 'react';
-import { api } from '../lib/api';
+import { API_BASE } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
-/**
- * QrScanner — External Scanner App listener component.
- * Polls the backend for scanned QR codes from the linked mobile app.
- * 
- * Props:
- *  - onScan(decodedText): Called when a QR code is successfully scanned.
- *  - onClose(): Called when the user closes the scanner modal.
- *  - isOpen: Boolean to show/hide the scanner overlay.
- */
 export default function QrScanner({ onScan, onClose, isOpen }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    let eventSource;
 
-    // Connect to the Server-Sent Events (SSE) endpoint
-    const eventSource = new EventSource(`${import.meta.env.VITE_API_URL}/scanner/events?token=${token}`);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token;
+      if (!token) return;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data && data.scanned && data.qr_code) {
-          eventSource.close();
-          onScan(data.qr_code);
+      eventSource = new EventSource(`${API_BASE}/scanner/events?token=${token}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.scanned && data.qr_code) {
+            eventSource.close();
+            onScan(data.qr_code);
+          }
+        } catch (err) {
+          if (import.meta.env.DEV) console.error('Error parsing SSE scan event:', err);
         }
-      } catch (err) {
-        if (import.meta.env.DEV) console.error('Error parsing SSE scan event:', err);
-      }
-    };
+      };
 
-    eventSource.onerror = (err) => {
-      if (import.meta.env.DEV) console.error('SSE connection error:', err);
-      // EventSource automatically reconnects, but we can log it here.
-    };
+      eventSource.onerror = (err) => {
+        if (import.meta.env.DEV) console.error('SSE connection error:', err);
+      };
+    });
 
     return () => {
-      eventSource.close();
+      eventSource?.close();
     };
   }, [isOpen, onScan]);
 

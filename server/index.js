@@ -45,6 +45,9 @@ const allowedOrigins = [
   'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
 ];
 
+if (process.env.APP_URL) {
+  allowedOrigins.push(process.env.APP_URL);
+}
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }

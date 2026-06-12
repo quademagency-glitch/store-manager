@@ -14,6 +14,7 @@ export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct
       sku: '',
       category: '',
       price: '',
+      cost_price: '',
       initialQuantity: '',
       locationId: '',
       qr_code_data: ''
@@ -28,6 +29,7 @@ export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct
         sku: editingProduct.sku || '',
         category: editingProduct.category || '',
         price: editingProduct.price || '',
+        cost_price: editingProduct.cost_price || '',
         qr_code_data: editingProduct.qr_code_data || ''
       });
     } else {
@@ -36,6 +38,7 @@ export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct
         sku: '',
         category: '',
         price: '',
+        cost_price: '',
         initialQuantity: '',
         locationId: '',
         qr_code_data: ''
@@ -88,21 +91,38 @@ export default function ProductModal({ isOpen, onClose, onSubmit, editingProduct
           </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="prod-price">Price ($) *</label>
-          <div className="input-prefix-wrapper">
-            <span className="input-prefix">$</span>
-            <input 
-              type="number" 
-              id="prod-price" 
-              className="form-input with-prefix" 
-              min="0" 
-              step="0.01"
-              placeholder="99.99"
-              {...register('price', { required: 'Price is required', min: 0 })} 
-            />
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="prod-price">Selling Price *</label>
+            <div className="input-prefix-wrapper">
+              <span className="input-prefix">$</span>
+              <input 
+                type="number" 
+                id="prod-price" 
+                className="form-input with-prefix" 
+                min="0" 
+                step="0.01"
+                placeholder="99.99"
+                {...register('price', { required: 'Price is required', min: 0 })} 
+              />
+            </div>
+            {errors.price && <small className="text-error">{errors.price.message}</small>}
           </div>
-          {errors.price && <small className="text-error">{errors.price.message}</small>}
+          <div className="form-group">
+            <label htmlFor="prod-cost">Cost Price</label>
+            <div className="input-prefix-wrapper">
+              <span className="input-prefix">$</span>
+              <input 
+                type="number" 
+                id="prod-cost" 
+                className="form-input with-prefix" 
+                min="0" 
+                step="0.01"
+                placeholder="0.00"
+                {...register('cost_price', { min: 0 })} 
+              />
+            </div>
+          </div>
         </div>
 
         {!editingProduct && (

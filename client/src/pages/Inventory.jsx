@@ -19,6 +19,42 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 import InventoryAnalytics from '../features/inventory/components/InventoryAnalytics';
+import BulkPriceUpdate from '../features/inventory/components/BulkPriceUpdate';
+import PriceTagPrinter from '../features/inventory/components/PriceTagPrinter';
+import PriceListPrint from '../features/inventory/components/PriceListPrint';
+import PriceChangeHistory from '../features/inventory/components/PriceChangeHistory';
+
+function PricingTabContent({ refreshProducts }) {
+  const [activeSection, setActiveSection] = useState('bulk-update');
+  const sections = [
+    { id: 'bulk-update', label: 'Bulk Update' },
+    { id: 'price-tags', label: 'Price Tags' },
+    { id: 'price-list', label: 'Price List' },
+    { id: 'history', label: 'Change History' },
+  ];
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {sections.map(s => (
+          <button
+            key={s.id}
+            className={`btn btn-sm ${activeSection === s.id ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveSection(s.id)}
+            style={activeSection === s.id ? { background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' } : {}}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {activeSection === 'bulk-update' && <BulkPriceUpdate onComplete={refreshProducts} />}
+      {activeSection === 'price-tags' && <PriceTagPrinter />}
+      {activeSection === 'price-list' && <PriceListPrint />}
+      {activeSection === 'history' && <PriceChangeHistory />}
+    </div>
+  );
+}
+
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const toast = useToast();
@@ -408,6 +444,7 @@ export default function Inventory() {
     { id: 'audits', label: 'Cycle Counts' },
     { id: 'batches', label: 'Batches' },
     { id: 'analytics', label: 'Analytics' },
+    { id: 'pricing', label: 'Pricing' },
   ];
 
   return (
@@ -831,6 +868,11 @@ export default function Inventory() {
       {/* ═══ ANALYTICS TAB ═══ */}
       {activeTab === 'analytics' && (
         <InventoryAnalytics />
+      )}
+
+      {/* ═══ PRICING TAB ═══ */}
+      {activeTab === 'pricing' && (
+        <PricingTabContent refreshProducts={refreshProducts} />
       )}
 
       {/* ═══ MODALS ═══ */}

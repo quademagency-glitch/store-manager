@@ -25,6 +25,7 @@ const accountingTemplatesRoutes = require('./routes/accountingTemplates');
 const suppliersRoutes = require('./routes/suppliers');
 const purchaseOrdersRoutes = require('./routes/purchaseOrders');
 const inventoryAnalyticsRoutes = require('./routes/inventoryAnalytics');
+const pricingRoutes = require('./routes/pricing');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -151,6 +152,7 @@ app.use('/api/purchase-orders', purchaseOrdersRoutes);
 
 // Inventory Analytics routes
 app.use('/api/inventory-analytics', inventoryAnalyticsRoutes);
+app.use('/api/pricing', pricingRoutes);
 
 // ============================================
 // Error handling

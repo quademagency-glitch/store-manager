@@ -114,6 +114,14 @@ export function PlatformAdminProvider({ children }) {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [campaignForm, setCampaignForm] = useState({ targetAudience: 'specific_business', businessId: '', type: 'email', subject: '', message: '', templateId: '' });
 
+  const [communicationGateways, setCommunicationGateways] = useState([]);
+  const [showCommsGatewayModal, setShowCommsGatewayModal] = useState(false);
+  const [editingCommsGateway, setEditingCommsGateway] = useState(null);
+  const [commsGatewayForm, setCommsGatewayForm] = useState({
+    provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADEM',
+    is_active: true, is_default: true, config: {}
+  });
+
   // All available permissions in the system
   const ALL_PERMISSIONS = [
     'manage_platform', 'manage_business', 'manage_users', 'manage_products',
@@ -141,14 +149,15 @@ export function PlatformAdminProvider({ children }) {
 
       // Fetch pricing/billing/platform data (non-blocking)
       try {
-        const [plansRes, gwRes, invRes, statsRes, subsRes, settingsRes, templatesRes] = await Promise.all([
+        const [plansRes, gwRes, invRes, statsRes, subsRes, settingsRes, templatesRes, commsGwRes] = await Promise.all([
           api.get('/subscriptions/plans/all').catch(() => []),
           api.get('/billing/gateways').catch(() => []),
           api.get('/billing/invoices?limit=100').catch(() => []),
           api.get('/billing/stats').catch(() => ({})),
           api.get('/subscriptions').catch(() => []),
           api.get('/platform/settings').catch(() => []),
-          api.get('/communications/templates').catch(() => [])
+          api.get('/communications/templates').catch(() => []),
+          api.get('/communications/gateways').catch(() => [])
         ]);
         setPlans(plansRes || []);
         setGateways(gwRes || []);
@@ -157,6 +166,7 @@ export function PlatformAdminProvider({ children }) {
         setSubscriptions(subsRes || []);
         setPlatformSettings(settingsRes || []);
         setTemplates(templatesRes || []);
+        setCommunicationGateways(commsGwRes || []);
       } catch (billingErr) {
         if (import.meta.env.DEV) console.warn('Secondary platform data not available:', billingErr.message);
       }
@@ -589,6 +599,36 @@ export function PlatformAdminProvider({ children }) {
     }
   };
 
+  const openCommsGatewayModal = (gw = null) => {
+    if (gw) {
+      setEditingCommsGateway(gw);
+      setCommsGatewayForm({ provider: gw.provider, type: gw.type, display_name: gw.display_name, api_key: gw.api_key || '', secret_key: gw.secret_key || '', sender_id: gw.sender_id || '', is_active: gw.is_active, is_default: gw.is_default, config: gw.config || {} });
+    } else {
+      setEditingCommsGateway(null);
+      setCommsGatewayForm({ provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADEM', is_active: true, is_default: true, config: {} });
+    }
+    setShowCommsGatewayModal(true);
+  };
+
+  const handleSaveCommsGateway = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingCommsGateway) {
+        await api.put(`/communications/gateways/${editingCommsGateway.id}`, commsGatewayForm);
+      } else {
+        await api.post('/communications/gateways', commsGatewayForm);
+      }
+      setShowCommsGatewayModal(false); setEditingCommsGateway(null); fetchData();
+    } catch (err) { toast.error(`Error saving communication gateway: ${err.message}`); }
+  };
+
+  const handleDeleteCommsGateway = async (id) => {
+    const confirmed = await confirmDialog({ title: 'Remove Gateway', message: 'Remove this communication gateway configuration?', variant: 'danger', confirmText: 'Remove' });
+    if (!confirmed) return;
+    try { await api.delete(`/communications/gateways/${id}`); fetchData(); }
+    catch (err) { toast.error(`Error: ${err.message}`); }
+  };
+
 
   /* ============================
      COMPUTED / MEMOS
@@ -684,6 +724,10 @@ export function PlatformAdminProvider({ children }) {
     templateForm, setTemplateForm,
     showCampaignModal, setShowCampaignModal,
     campaignForm, setCampaignForm,
+    communicationGateways, setCommunicationGateways,
+    showCommsGatewayModal, setShowCommsGatewayModal,
+    editingCommsGateway, setEditingCommsGateway,
+    commsGatewayForm, setCommsGatewayForm,
     ALL_PERMISSIONS,
     fetchData,
     // Business CRUD
@@ -704,6 +748,7 @@ export function PlatformAdminProvider({ children }) {
     handleSaveGateway, handleDeleteGateway, openGatewayModal,
     // Communications & Settings
     handleSavePlatformSettings, handleSaveTemplate, handleDeleteTemplate, openTemplateModal, handleSendCampaign,
+    openCommsGatewayModal, handleSaveCommsGateway, handleDeleteCommsGateway,
     // Billing
     handleSendInvoice, handleRecordPayment, handleAssignPlan,
     // Helpers

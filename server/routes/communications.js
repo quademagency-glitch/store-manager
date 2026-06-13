@@ -78,6 +78,148 @@ router.delete('/templates/:id', authGuard, permissionCheck('manage_platform'), a
 });
 
 /**
+ * GET /api/communications/gateways
+ * Fetch all communication gateways
+ */
+router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('communication_gateways')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    
+    // Mask secrets
+    const masked = (data || []).map(gw => ({
+      ...gw,
+      api_key: gw.api_key ? '••••••••' + gw.api_key.slice(-4) : null,
+      secret_key: gw.secret_key ? '••••••••' + gw.secret_key.slice(-4) : null,
+    }));
+    
+    res.json(masked);
+  } catch (err) {
+    console.error('Error fetching communication gateways:', err);
+    res.status(500).json({ error: 'Failed to fetch communication gateways' });
+  }
+});
+
+/**
+ * POST /api/communications/gateways
+ * Create a new communication gateway
+ */
+router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  try {
+    const { provider, type, display_name, api_key, secret_key, sender_id, config } = req.body;
+    
+    if (!provider || !type || !display_name) {
+      return res.status(400).json({ error: 'provider, type, and display_name are required' });
+    }
+
+    if (req.body.is_default) {
+      // Unset other defaults of the same type
+      await supabaseAdmin
+        .from('communication_gateways')
+        .update({ is_default: false })
+        .eq('type', type)
+        .eq('is_default', true);
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('communication_gateways')
+      .insert([{
+        provider,
+        type,
+        display_name,
+        api_key: api_key || null,
+        secret_key: secret_key || null,
+        sender_id: sender_id || null,
+        is_active: req.body.is_active ?? true,
+        is_default: req.body.is_default ?? false,
+        config: config || {}
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({
+      ...data,
+      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
+      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+    });
+  } catch (err) {
+    console.error('Error creating communication gateway:', err);
+    res.status(500).json({ error: err.message || 'Failed to create communication gateway' });
+  }
+});
+
+/**
+ * PUT /api/communications/gateways/:id
+ * Update a communication gateway
+ */
+router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = { ...req.body, updated_at: new Date().toISOString() };
+    delete updates.id;
+    delete updates.created_at;
+
+    if (updates.api_key && updates.api_key.startsWith('••')) delete updates.api_key;
+    if (updates.secret_key && updates.secret_key.startsWith('••')) delete updates.secret_key;
+
+    if (updates.is_default) {
+      // Get the type of this gateway to unset others
+      const { data: existingGw } = await supabaseAdmin.from('communication_gateways').select('type').eq('id', id).single();
+      if (existingGw) {
+        await supabaseAdmin
+          .from('communication_gateways')
+          .update({ is_default: false })
+          .eq('type', existingGw.type)
+          .neq('id', id);
+      }
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('communication_gateways')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Gateway not found' });
+
+    res.json({
+      ...data,
+      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
+      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+    });
+  } catch (err) {
+    console.error('Error updating communication gateway:', err);
+    res.status(500).json({ error: err.message || 'Failed to update communication gateway' });
+  }
+});
+
+/**
+ * DELETE /api/communications/gateways/:id
+ * Delete a communication gateway
+ */
+router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from('communication_gateways')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ message: 'Gateway removed' });
+  } catch (err) {
+    console.error('Error deleting communication gateway:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete communication gateway' });
+  }
+});
+
+/**
  * POST /api/communications/send
  * Dispatch SMS or Emails to target audience
  */
@@ -114,21 +256,30 @@ router.post('/send', authGuard, permissionCheck('manage_platform'), async (req, 
       return res.status(400).json({ error: 'No recipients found for this audience' });
     }
 
-    // 2. Fetch Arkesel API settings if SMS is required
-    let arkeselApiKey = '';
-    let arkeselSenderId = 'QUADEM';
+    // 2. Fetch Active Default Gateways
+    let smsGateway = null;
+    let emailGateway = null;
+
     if (type === 'sms' || type === 'both') {
-      const { data: settingsData } = await supabaseAdmin
-        .from('platform_settings')
-        .select('key, value')
-        .in('key', ['ARKESEL_API_KEY', 'ARKESEL_SENDER_ID']);
-      
-      if (settingsData) {
-        const apiKeyRow = settingsData.find(s => s.key === 'ARKESEL_API_KEY');
-        const senderRow = settingsData.find(s => s.key === 'ARKESEL_SENDER_ID');
-        if (apiKeyRow && apiKeyRow.value) arkeselApiKey = apiKeyRow.value;
-        if (senderRow && senderRow.value) arkeselSenderId = senderRow.value;
-      }
+      const { data } = await supabaseAdmin
+        .from('communication_gateways')
+        .select('*')
+        .eq('type', 'sms')
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .single();
+      smsGateway = data || null;
+    }
+
+    if (type === 'email' || type === 'both') {
+      const { data } = await supabaseAdmin
+        .from('communication_gateways')
+        .select('*')
+        .eq('type', 'email')
+        .eq('is_active', true)
+        .eq('is_default', true)
+        .single();
+      emailGateway = data || null;
     }
 
     let smsResults = null;
@@ -138,7 +289,7 @@ router.post('/send', authGuard, permissionCheck('manage_platform'), async (req, 
     if (type === 'sms' || type === 'both') {
       const phoneNumbers = businesses.map(b => b.phone).filter(Boolean);
       if (phoneNumbers.length > 0) {
-        smsResults = await smsService.sendCustomSMS(phoneNumbers, message, arkeselApiKey, arkeselSenderId);
+        smsResults = await smsService.sendCustomSMS(phoneNumbers, message, smsGateway);
       } else {
         smsResults = { success: false, error: 'No valid phone numbers found' };
       }
@@ -148,7 +299,7 @@ router.post('/send', authGuard, permissionCheck('manage_platform'), async (req, 
     if (type === 'email' || type === 'both') {
       const emails = businesses.map(b => b.contact_email).filter(Boolean);
       if (emails.length > 0) {
-        emailResults = await emailService.sendCustomEmail(emails, subject || 'Message from Platform Admin', message);
+        emailResults = await emailService.sendCustomEmail(emails, subject || 'Message from Platform Admin', message, emailGateway);
       } else {
         emailResults = { success: false, error: 'No valid email addresses found' };
       }

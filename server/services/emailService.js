@@ -423,19 +423,41 @@ async function sendSuspensionNotice(business) {
 /**
  * Send custom email for platform communications
  */
-async function sendCustomEmail(recipients, subject, htmlContent) {
-  const client = getResendClient();
-  
+async function sendCustomEmail(recipients, subject, htmlContent, gateway = null) {
   if (!recipients || recipients.length === 0) return { success: false, error: 'No recipients' };
 
-  if (!client) {
+  let activeClient = getResendClient();
+  let fromEmail = `${PLATFORM_NAME} <${FROM_EMAIL}>`;
+
+  // If a custom gateway is provided
+  if (gateway && gateway.api_key) {
+    if (gateway.provider === 'resend') {
+      try {
+        const CustomResend = require('resend').Resend;
+        activeClient = new CustomResend(gateway.api_key);
+        if (gateway.sender_id) {
+          fromEmail = gateway.sender_id;
+        }
+      } catch (err) {
+        console.warn('Custom Resend initialization failed.');
+      }
+    } else if (gateway.provider === 'smtp') {
+      console.warn('SMTP logic not fully implemented yet, simulating.');
+      return { success: true, simulated: true, provider: 'smtp', recipients };
+    } else if (gateway.provider === 'sendgrid') {
+      console.warn('SendGrid logic not fully implemented yet, simulating.');
+      return { success: true, simulated: true, provider: 'sendgrid', recipients };
+    }
+  }
+
+  if (!activeClient) {
     console.log(`[EMAIL SIMULATED] Custom email to ${recipients.join(', ')}. Subject: ${subject}`);
     return { success: true, simulated: true };
   }
 
   try {
-    const { data, error } = await client.emails.send({
-      from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await activeClient.emails.send({
+      from: fromEmail,
       to: recipients,
       subject: subject,
       html: htmlContent,

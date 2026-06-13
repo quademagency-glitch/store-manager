@@ -5,7 +5,8 @@ export default function CommunicationsTab() {
   const { 
     templates, openTemplateModal, handleDeleteTemplate,
     campaignForm, setCampaignForm, handleSendCampaign,
-    activeBusinesses
+    activeBusinesses,
+    communicationGateways, openCommsGatewayModal, handleDeleteCommsGateway
   } = usePlatformAdmin();
 
   const handleCampaignChange = (e) => {
@@ -18,9 +19,70 @@ export default function CommunicationsTab() {
       <header className="dashboard-header">
         <div>
           <h1 className="dashboard-title">Marketing & Communications</h1>
-          <p className="dashboard-subtitle">Manage templates and send direct messages to businesses.</p>
+          <p className="dashboard-subtitle">Manage communication gateways, templates, and send direct messages.</p>
         </div>
       </header>
+
+      <div className="dashboard-content">
+        
+        {/* Communication Gateways */}
+        <div style={{ marginBottom: 'var(--space-2xl)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+            <h2 className="pa-section-title" style={{ marginBottom: 0 }}>
+              {Icons.settings} Communication Gateways
+            </h2>
+            <button className="btn btn-secondary btn-sm" onClick={() => openCommsGatewayModal()}>
+              {Icons.plus} Add Gateway
+            </button>
+          </div>
+          
+          <div className="pa-gateway-grid">
+            {communicationGateways?.map(gw => (
+              <div key={gw.id} className="pa-gateway-card">
+                <div className="pa-gateway-header">
+                  <div className="pa-gateway-provider">
+                    <div className={`pa-gateway-logo ${gw.provider}`}>
+                      {gw.provider.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="pa-gateway-name">{gw.display_name}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {gw.is_default && <span className="pa-invoice-badge paid" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Default {gw.type.toUpperCase()}</span>}
+                    <span className={`pa-gateway-status ${gw.is_active ? 'active' : 'inactive'}`}>
+                      <span className="pa-gateway-status-dot"></span>
+                      {gw.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+                <div className="pa-gateway-details">
+                  <div className="pa-key-field">
+                    <span className="pa-key-label">Type</span>
+                    <span className="pa-key-value" style={{ textTransform: 'uppercase' }}>{gw.type}</span>
+                  </div>
+                  {gw.sender_id && (
+                    <div className="pa-key-field">
+                      <span className="pa-key-label">Sender ID</span>
+                      <span className="pa-key-value">{gw.sender_id}</span>
+                    </div>
+                  )}
+                  {gw.api_key && (
+                    <div className="pa-key-field">
+                      <span className="pa-key-label">API Key</span>
+                      <span className="pa-key-value">{gw.api_key}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="pa-gateway-actions">
+                  <button className="btn btn-secondary btn-sm" onClick={() => openCommsGatewayModal(gw)}>{Icons.edit} Edit</button>
+                  <button className="btn btn-secondary btn-sm text-error" onClick={() => handleDeleteCommsGateway(gw.id)}>{Icons.trash} Remove</button>
+                </div>
+              </div>
+            ))}
+            {(!communicationGateways || communicationGateways.length === 0) && (
+              <div className="text-center py-xl text-muted" style={{ gridColumn: '1 / -1' }}>No communication gateways configured yet. Messages will be simulated.</div>
+            )}
+          </div>
+        </div>
 
       <div className="comms-dashboard-grid">
         

@@ -42,6 +42,8 @@ export default function PlatformAdminModals() {
     handleSavePlan, handleSaveGateway, handleSendInvoice, handleRecordPayment, handleAssignPlan,
     showTemplateModal, setShowTemplateModal,
     editingTemplate, templateForm, setTemplateForm, handleSaveTemplate,
+    showCommsGatewayModal, setShowCommsGatewayModal,
+    editingCommsGateway, commsGatewayForm, setCommsGatewayForm, handleSaveCommsGateway,
     FEATURE_LABELS, formatCurrency,
   } = usePlatformAdmin();
 
@@ -500,6 +502,88 @@ export default function PlatformAdminModals() {
     </form>
   </Modal>
 )}
+
+{/* ═══════════════════════════════════
+    MODAL: CREATE/EDIT COMMS GATEWAY
+    ═══════════════════════════════════ */}
+{showCommsGatewayModal && (
+  <Modal isOpen={true} title={editingCommsGateway ? 'Edit Communication Gateway' : 'Add Communication Gateway'} onClose={() => setShowCommsGatewayModal(false)}>
+    <form onSubmit={handleSaveCommsGateway}>
+      <div className="form-row" style={{ marginBottom: '1rem' }}>
+        <div className="form-group">
+          <label className="form-label">Gateway Type</label>
+          <select className="form-input" value={commsGatewayForm.type} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, type: e.target.value, provider: e.target.value === 'sms' ? 'arkesel' : 'resend' })}>
+            <option value="sms">SMS</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Provider</label>
+          <select className="form-input" value={commsGatewayForm.provider} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, provider: e.target.value })}>
+            {commsGatewayForm.type === 'sms' ? (
+              <>
+                <optgroup label="Local (Ghana)">
+                  <option value="arkesel">Arkesel</option>
+                  <option value="mnotify">mNotify</option>
+                  <option value="hubtel">Hubtel</option>
+                </optgroup>
+                <optgroup label="Global">
+                  <option value="twilio">Twilio</option>
+                </optgroup>
+              </>
+            ) : (
+              <>
+                <option value="resend">Resend</option>
+                <option value="sendgrid">SendGrid</option>
+                <option value="smtp">SMTP</option>
+              </>
+            )}
+          </select>
+        </div>
+      </div>
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label className="form-label">Display Name</label>
+        <input className="form-input" value={commsGatewayForm.display_name} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, display_name: e.target.value })} required placeholder="e.g. Arkesel Primary" />
+      </div>
+      
+      {commsGatewayForm.type === 'sms' && (
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label className="form-label">Sender ID</label>
+          <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. QUADEM (max 11 chars)" maxLength={11} />
+        </div>
+      )}
+
+      {commsGatewayForm.type === 'email' && commsGatewayForm.provider === 'resend' && (
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label className="form-label">From Email Address</label>
+          <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. Acme Corp <updates@acme.com>" />
+        </div>
+      )}
+      
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label className="form-label">API Key</label>
+        <input className="form-input" type="password" value={commsGatewayForm.api_key} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, api_key: e.target.value })} placeholder="Enter API Key" />
+      </div>
+      
+      <div className="form-row" style={{ marginBottom: '1rem' }}>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={commsGatewayForm.is_active} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, is_active: e.target.checked })} />
+          Active
+        </label>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={commsGatewayForm.is_default} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, is_default: e.target.checked })} />
+          Default for {commsGatewayForm.type.toUpperCase()}
+        </label>
+      </div>
+      
+      <div className="modal-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => setShowCommsGatewayModal(false)}>Cancel</button>
+        <button type="submit" className="btn btn-primary">{editingCommsGateway ? 'Update Gateway' : 'Add Gateway'}</button>
+      </div>
+    </form>
+  </Modal>
+)}
+
     </>
   );
 }

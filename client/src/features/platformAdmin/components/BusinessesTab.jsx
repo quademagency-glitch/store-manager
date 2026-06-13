@@ -47,9 +47,9 @@ export default function BusinessesTab() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: b.status === 'banned' ? 0.6 : 1 }}>
                         <div className="product-avatar" style={{ background: b.status === 'banned' ? '#666' : 'linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary))' }}>
-                          {b.name.charAt(0).toUpperCase()}
+                          {(b.name || 'U').charAt(0).toUpperCase()}
                         </div>
-                        <span style={{ fontWeight: 500 }}>{b.name}</span>
+                        <span style={{ fontWeight: 500 }}>{b.name || 'Unnamed Business'}</span>
                       </div>
                     </td>
                     <td><span className="badge badge-neutral">{userCount}</span></td>

@@ -7,9 +7,27 @@
   grid-template-columns: repeat(4, 1fr);
 }
 
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .pa-stat-card {
   position: relative;
   overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+  animation: slideUpFade 0.5s ease-out backwards;
+}
+
+.pa-stat-card:nth-child(1) { animation-delay: 0.05s; }
+.pa-stat-card:nth-child(2) { animation-delay: 0.1s; }
+.pa-stat-card:nth-child(3) { animation-delay: 0.15s; }
+.pa-stat-card:nth-child(4) { animation-delay: 0.2s; }
+
+.pa-stat-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 15px 30px -10px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
 .pa-stat-card::after {
@@ -21,6 +39,11 @@
   height: 80px;
   background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 70%);
   pointer-events: none;
+  transition: transform 0.5s ease;
+}
+
+.pa-stat-card:hover::after {
+  transform: scale(1.5);
 }
 
 /* ── Section Titles ── */
@@ -58,13 +81,19 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  transition: all var(--transition-normal);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: slideUpFade 0.5s ease-out backwards;
 }
 
+.pa-health-card:nth-child(1) { animation-delay: 0.1s; }
+.pa-health-card:nth-child(2) { animation-delay: 0.2s; }
+.pa-health-card:nth-child(3) { animation-delay: 0.3s; }
+.pa-health-card:nth-child(4) { animation-delay: 0.4s; }
+
 .pa-health-card:hover {
-  border-color: rgba(148, 148, 184, 0.25);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(148, 148, 184, 0.35);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
 .pa-health-indicator {
@@ -350,3 +379,110 @@
 }
 
 /* Business Admin & Platform Admin additions */
+.platform-admin-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.pa-sidebar {
+  width: 260px;
+  background: var(--color-bg-card);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.pa-sidebar-header {
+  padding: var(--space-xl) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pa-sidebar-header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.pa-sidebar-nav {
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--color-accent-primary);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+  border-radius: 0 4px 4px 0;
+}
+
+.sidebar-link:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  transform: translateX(4px);
+}
+
+.sidebar-link.active {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-accent-primary);
+}
+
+.sidebar-link.active::before,
+.sidebar-link:hover::before {
+  transform: scaleY(1);
+}
+
+.sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.sidebar-link:hover .sidebar-icon,
+.sidebar-link.active .sidebar-icon {
+  transform: scale(1.15) rotate(-5deg);
+}
+
+.pa-main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2xl);
+  background: var(--color-bg-primary);
+}

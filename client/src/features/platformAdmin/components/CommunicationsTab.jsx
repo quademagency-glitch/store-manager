@@ -1,4 +1,5 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
+import { Icons } from '../Icons';
 
 export default function CommunicationsTab() {
   const { 
@@ -135,8 +136,18 @@ export default function CommunicationsTab() {
               )}
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }}>
-              Review & Send Campaign
+            <button type="submit" className="btn btn-primary" style={{ 
+              marginTop: '1rem', 
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent, #6366f1))',
+              border: 'none',
+              padding: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontWeight: 600
+            }}>
+              {Icons.send} Review & Send Campaign
             </button>
           </form>
         </div>
@@ -155,20 +166,62 @@ export default function CommunicationsTab() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {templates.map(t => (
-                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.25rem' }}>{t.name}</h3>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>{t.type.toUpperCase()}</span>
-                      {t.subject && <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Subject: {t.subject}</span>}
+                <div 
+                  key={t.id} 
+                  className="template-card"
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    padding: '1.25rem', 
+                    background: 'var(--color-bg-primary)',
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    cursor: 'default'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+                  }}
+                >
+                  <div style={{ flex: 1, marginRight: '1rem' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-primary)' }}>{t.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                      <span className="badge badge-neutral" style={{ 
+                        display: 'flex', alignItems: 'center', gap: '0.25rem', 
+                        background: t.type === 'email' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                        color: t.type === 'email' ? '#3b82f6' : '#10b981',
+                        border: 'none', padding: '0.2rem 0.5rem'
+                      }}>
+                        {t.type === 'email' ? Icons.email : Icons.sms} {t.type.toUpperCase()}
+                      </span>
+                      {t.subject && <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t.subject}</span>}
                     </div>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>
+                    <p style={{ 
+                      fontSize: '0.9rem', 
+                      color: 'var(--color-text-secondary)', 
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      lineHeight: 1.5
+                    }}>
                       {t.content}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => openTemplateModal(t)} style={{ color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>Edit</button>
-                    <button onClick={() => handleDeleteTemplate(t.id, t.name)} style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>Delete</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                    <button onClick={() => openTemplateModal(t)} className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                      {Icons.edit} Edit
+                    </button>
+                    <button onClick={() => handleDeleteTemplate(t.id, t.name)} className="btn btn-sm" style={{ color: 'var(--color-error)', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                      {Icons.trash} Delete
+                    </button>
                   </div>
                 </div>
               ))}

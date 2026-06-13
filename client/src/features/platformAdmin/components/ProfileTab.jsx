@@ -80,7 +80,10 @@ export default function ProfileTab() {
       </div>
 
       <div className="content-card" style={{ maxWidth: '600px', marginTop: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Integrations & API Keys</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Integrations & API Keys</h2>
+          <span className="badge badge-neutral" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: 'none' }}>Global</span>
+        </div>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
           Manage global API keys for services like SMS (Arkesel).
         </p>
@@ -93,11 +96,23 @@ export default function ProfileTab() {
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {settingsForm.map((setting, index) => (
-              <div key={setting.key}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '0.25rem', fontWeight: 600 }}>
-                  {setting.key.replace(/_/g, ' ')}
-                </label>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{setting.description}</p>
+              <div key={setting.key} style={{ 
+                background: 'var(--color-bg-secondary)', 
+                padding: '1rem', 
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                    {setting.key.replace(/_/g, ' ')}
+                  </label>
+                  {setting.is_secret && (
+                    <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-error)', fontWeight: 600, background: 'rgba(239, 68, 68, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                      Secret
+                    </span>
+                  )}
+                </div>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>{setting.description}</p>
                 <input 
                   type={setting.is_secret && setting.value === '********' ? 'password' : 'text'}
                   value={setting.value || ''} 
@@ -107,7 +122,7 @@ export default function ProfileTab() {
                     setSettingsForm(newForm);
                   }}
                   className="form-input" 
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', fontFamily: setting.is_secret ? 'monospace' : 'inherit', fontSize: '0.9rem', padding: '0.6rem 0.8rem' }}
                   placeholder={setting.is_secret ? 'Enter new key to update' : ''}
                   onFocus={(e) => {
                     // Clear masked password on focus so user can type a new one
@@ -122,12 +137,14 @@ export default function ProfileTab() {
             ))}
             
             {settingsForm.length === 0 && (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No platform settings found.</p>
+              <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No platform settings found in database.</p>
+              </div>
             )}
 
             {settingsForm.length > 0 && (
-              <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
-                <button type="submit" className="btn btn-primary" disabled={settingsSaving}>
+              <div style={{ marginTop: '0.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary" disabled={settingsSaving} style={{ padding: '0.6rem 1.5rem', fontWeight: 600 }}>
                   {settingsSaving ? 'Saving...' : 'Save Integrations'}
                 </button>
               </div>

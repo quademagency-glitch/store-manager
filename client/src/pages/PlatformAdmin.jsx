@@ -15,13 +15,11 @@ import PlatformAdminModals from '../features/platformAdmin/components/PlatformAd
 
 function PlatformAdminShell() {
   const { hasPermission } = useAuthContext();
-  const { activeTab, setActiveTab, loading, error, fetchData, fetchPricingData, fetchBillingData } = usePlatformAdmin();
+  const { activeTab, setActiveTab, loading, error, fetchData } = usePlatformAdmin();
 
   useEffect(() => {
     fetchData();
-    fetchPricingData();
-    fetchBillingData();
-  }, [fetchData, fetchPricingData, fetchBillingData]);
+  }, [fetchData]);
 
   // Validate access
   if (!hasPermission('manage_platform')) {

@@ -628,11 +628,12 @@ export default function InventoryCount({ locations, products }) {
                   </button>
                 </div>
 
-                {showScanner && (
-                  <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <QrScanner onScan={handleScan} continuous={true} />
-                  </div>
-                )}
+                <QrScanner 
+                  isOpen={showScanner} 
+                  onClose={() => setShowScanner(false)} 
+                  onScan={handleScan} 
+                  continuous={true} 
+                />
 
                 {scanFeedback && (
                   <div style={{ padding: '6px', marginBottom: '8px', fontSize: '0.8rem', borderRadius: '4px', background: scanFeedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)', color: scanFeedback.type === 'success' ? '#22c55e' : '#f59e0b' }}>

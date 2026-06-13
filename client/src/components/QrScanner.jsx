@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { API_BASE } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
-export default function QrScanner({ onScan, onClose, isOpen }) {
+export default function QrScanner({ onScan, onClose, isOpen, continuous = false }) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -18,8 +18,13 @@ export default function QrScanner({ onScan, onClose, isOpen }) {
         try {
           const data = JSON.parse(event.data);
           if (data && data.scanned && data.qr_code) {
-            eventSource.close();
+            if (!continuous) {
+              eventSource.close();
+            }
             onScan(data.qr_code);
+            if (!continuous && onClose) {
+              onClose();
+            }
           }
         } catch (err) {
           if (import.meta.env.DEV) console.error('Error parsing SSE scan event:', err);
@@ -34,7 +39,7 @@ export default function QrScanner({ onScan, onClose, isOpen }) {
     return () => {
       eventSource?.close();
     };
-  }, [isOpen, onScan]);
+  }, [isOpen, onScan, continuous, onClose]);
 
   if (!isOpen) return null;
 

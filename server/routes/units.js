@@ -374,4 +374,143 @@ router.get('/sold/:productId', authGuard, permissionCheck('manage_inventory'), a
   }
 });
 
+/**
+ * GET /api/units/:id/journey
+ * Fetch the complete lifecycle journey of a specific unit.
+ * Access: Business Admin, Manager, Platform Admin
+ */
+router.get('/:id/journey', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id === 'untracked') {
+      const { product_id, location_id } = req.query;
+      
+      // Fetch Product
+      const { data: product } = await supabaseAdmin
+        .from('products')
+        .select('id, name, sku')
+        .eq('id', product_id)
+        .single();
+        
+      // Fetch Location
+      const { data: location } = await supabaseAdmin
+        .from('locations')
+        .select('id, name')
+        .eq('id', location_id)
+        .single();
+
+      // Fetch Supplier
+      let supplier = null;
+      const { data: config } = await supabaseAdmin
+        .from('inventory_reorder_config')
+        .select(`
+          preferred_supplier:suppliers!preferred_supplier_id(id, name, contact_person, phone)
+        `)
+        .eq('product_id', product_id)
+        .eq('location_id', location_id)
+        .single();
+
+      if (config && config.preferred_supplier) {
+        supplier = config.preferred_supplier;
+      }
+
+      return res.json({
+        id: 'untracked',
+        product: product || { name: 'Unknown' },
+        location: location || { name: 'Unknown' },
+        status: 'untracked',
+        assigned_at: null,
+        assigned_by: null,
+        sold_at: null,
+        notes: null,
+        serial_number: null,
+        product_code: null,
+        qr_code: null,
+        pack_code: null,
+        supplier: supplier,
+        sale: null
+      });
+    }
+
+    // Fetch the unit details including product, location, user, sale, qr code
+    let query = supabaseAdmin
+      .from('inventory_units')
+      .select(`
+        *,
+        product:products!product_id(id, name, sku),
+        location:locations!location_id(id, name),
+        qr:qr_code_pool!qr_code_id(code),
+        pack_qr:qr_code_pool!pack_code_id(code),
+        assigned_by_user:users!assigned_by(id, name, email),
+        sale:sales!sold_in_sale_id(
+          created_at,
+          receipt_number,
+          customer:customers(id, name, phone, customer_code)
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    const { data: unit, error: unitErr } = await query;
+    if (unitErr) throw unitErr;
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+
+    // Ensure the user has permission to view this unit's business data
+    if (req.user.role !== 'Platform Admin' && unit.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Try to fetch the supplier through inventory_reorder_config
+    let supplier = null;
+    const { data: config } = await supabaseAdmin
+      .from('inventory_reorder_config')
+      .select(`
+        preferred_supplier:suppliers!preferred_supplier_id(id, name, contact_person, phone)
+      `)
+      .eq('product_id', unit.product_id)
+      .eq('location_id', unit.location_id)
+      .single();
+
+    if (config && config.preferred_supplier) {
+      supplier = config.preferred_supplier;
+    }
+
+    // Prepare the payload
+    const payload = {
+      id: unit.id,
+      product: unit.product,
+      location: unit.location,
+      status: unit.status,
+      assigned_at: unit.assigned_at,
+      assigned_by: unit.assigned_by_user,
+      sold_at: unit.sold_at || (unit.sale ? unit.sale.created_at : null),
+      notes: unit.notes,
+      serial_number: unit.serial_number,
+      product_code: unit.product_code,
+      qr_code: unit.qr ? unit.qr.code : null,
+      pack_code: unit.pack_qr ? unit.pack_qr.code : null,
+      supplier: supplier,
+      sale: null
+    };
+
+    // Include sale details if applicable
+    const isBusinessAdmin = req.user.role === 'Business Admin' || req.user.role === 'Platform Admin';
+    if (unit.sale) {
+      const customer = unit.sale.customer;
+      payload.sale = {
+        receipt_number: isBusinessAdmin ? unit.sale.receipt_number : null,
+        customer_code: customer ? customer.customer_code : 'Walk-in',
+        customer_name: isBusinessAdmin && customer ? customer.name : (customer ? 'Walk-in' : 'Walk-in'),
+        customer_phone: isBusinessAdmin && customer ? customer.phone : ''
+      };
+    }
+
+    res.json(payload);
+  } catch (err) {
+    console.error('Error fetching unit journey:', err);
+    res.status(500).json({ error: 'Failed to fetch unit journey' });
+  }
+});
+
 module.exports = router;

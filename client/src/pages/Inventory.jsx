@@ -616,7 +616,15 @@ export default function Inventory() {
                           </td>
                           <td>
                             <div className="stock-cell">
-                              <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>
+                              <span 
+                                className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}
+                                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTrackingProduct(product);
+                                  setIsTrackingModalOpen(true);
+                                }}
+                              >
                                 {displayStock}
                               </span>
                             </div>
@@ -655,7 +663,15 @@ export default function Inventory() {
                           </div>
                         </div>
                         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div className="m-card-amount" style={{ color: isLowStock ? 'var(--color-warning)' : undefined }}>
+                          <div 
+                            className="m-card-amount" 
+                            style={{ color: isLowStock ? 'var(--color-warning)' : undefined, cursor: 'pointer', textDecoration: 'underline' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTrackingProduct(product);
+                              setIsTrackingModalOpen(true);
+                            }}
+                          >
                             {displayStock} in stock
                           </div>
                         </div>
@@ -1101,6 +1117,7 @@ export default function Inventory() {
         product={selectedTrackingProduct}
         locations={locations}
         isDoubleMode={business?.qr_tracking_mode === 'double'}
+        activeLocationFilter={locationFilter}
       />
       
       <SoldUnitsModal

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { PlatformAdminProvider, usePlatformAdmin } from '../features/platformAdmin/PlatformAdminContext';
 import { Icons } from '../features/platformAdmin/Icons';
@@ -11,10 +12,12 @@ import UsersTab from '../features/platformAdmin/components/UsersTab';
 import RolesTab from '../features/platformAdmin/components/RolesTab';
 import PricingTab from '../features/platformAdmin/components/PricingTab';
 import BillingTab from '../features/platformAdmin/components/BillingTab';
+import ProfileTab from '../features/platformAdmin/components/ProfileTab';
 import PlatformAdminModals from '../features/platformAdmin/components/PlatformAdminModals';
 
 function PlatformAdminShell() {
-  const { hasPermission } = useAuthContext();
+  const navigate = useNavigate();
+  const { hasPermission, signOut } = useAuthContext();
   const { activeTab, setActiveTab, loading, error, fetchData } = usePlatformAdmin();
 
   useEffect(() => {
@@ -50,6 +53,7 @@ function PlatformAdminShell() {
     { id: 'roles', label: 'Roles', icon: Icons.roles },
     { id: 'pricing', label: 'Pricing Plans', icon: Icons.pricing },
     { id: 'billing', label: 'Billing & Invoices', icon: Icons.billing },
+    { id: 'profile', label: 'Settings', icon: Icons.settings },
   ];
 
   return (
@@ -77,6 +81,19 @@ function PlatformAdminShell() {
             </button>
           ))}
         </nav>
+        <div style={{ padding: 'var(--space-md)', borderTop: '1px solid var(--color-border)' }}>
+          <button 
+            className="sidebar-link" 
+            style={{ color: '#f87171' }}
+            onClick={async () => {
+              await signOut();
+              navigate('/login');
+            }}
+          >
+            <span className="sidebar-icon" style={{ color: '#f87171' }}>{Icons.logout}</span>
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {/* ── MAIN CONTENT ── */}
@@ -88,6 +105,7 @@ function PlatformAdminShell() {
         {activeTab === 'roles' && <RolesTab />}
         {activeTab === 'pricing' && <PricingTab />}
         {activeTab === 'billing' && <BillingTab />}
+        {activeTab === 'profile' && <ProfileTab />}
         
         <PlatformAdminModals />
       </div>

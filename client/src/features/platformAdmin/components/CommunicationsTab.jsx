@@ -22,11 +22,11 @@ export default function CommunicationsTab() {
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div className="comms-dashboard-grid">
         
         {/* Left Column: Campaigns */}
-        <div className="content-card">
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Send Campaign</h2>
+        <div className="premium-card interactive">
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 600 }}>Send Campaign</h2>
           <form onSubmit={handleSendCampaign} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             
             <div>
@@ -133,93 +133,45 @@ export default function CommunicationsTab() {
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>
                   SMS Length: {campaignForm.message.length} characters ({(Math.ceil(campaignForm.message.length / 160)) || 1} message(s) per recipient).
                 </p>
-              )}
-            </div>
-
-            <button type="submit" className="btn btn-primary" style={{ 
-              marginTop: '1rem', 
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent, #6366f1))',
-              border: 'none',
-              padding: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              fontWeight: 600
-            }}>
+            <button type="submit" className="premium-gradient-btn" style={{ marginTop: '0.5rem' }}>
               {Icons.send} Review & Send Campaign
             </button>
           </form>
         </div>
 
         {/* Right Column: Templates */}
-        <div className="content-card">
+        <div className="premium-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem' }}>Saved Templates</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Saved Templates</h2>
             <button className="btn btn-secondary btn-sm" onClick={() => openTemplateModal()}>+ New Template</button>
           </div>
 
           {templates.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-secondary)' }}>
-              No templates saved yet.
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+              <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>No templates saved yet.</p>
+              <button className="btn btn-primary btn-sm" onClick={() => openTemplateModal()}>Create your first template</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {templates.map(t => (
-                <div 
-                  key={t.id} 
-                  className="template-card"
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start', 
-                    padding: '1.25rem', 
-                    background: 'var(--color-bg-primary)',
-                    border: '1px solid var(--color-border)', 
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    cursor: 'default'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
-                  }}
-                >
+                <div key={t.id} className="template-item-card">
                   <div style={{ flex: 1, marginRight: '1rem' }}>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-primary)' }}>{t.name}</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                      <span className="badge badge-neutral" style={{ 
-                        display: 'flex', alignItems: 'center', gap: '0.25rem', 
-                        background: t.type === 'email' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                        color: t.type === 'email' ? '#3b82f6' : '#10b981',
-                        border: 'none', padding: '0.2rem 0.5rem'
-                      }}>
-                        {t.type === 'email' ? Icons.email : Icons.sms} {t.type.toUpperCase()}
+                    <h3 className="template-title">{t.name}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <span className={`template-badge ${t.type}`}>
+                        {t.type === 'email' ? Icons.email : Icons.sms} {t.type}
                       </span>
                       {t.subject && <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>{t.subject}</span>}
                     </div>
-                    <p style={{ 
-                      fontSize: '0.9rem', 
-                      color: 'var(--color-text-secondary)', 
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      lineHeight: 1.5
-                    }}>
+                    <p className="template-excerpt">
                       {t.content}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-                    <button onClick={() => openTemplateModal(t)} className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                  <div className="template-actions">
+                    <button onClick={() => openTemplateModal(t)} className="btn-icon-small edit" title="Edit Template">
                       {Icons.edit} Edit
                     </button>
-                    <button onClick={() => handleDeleteTemplate(t.id, t.name)} className="btn btn-sm" style={{ color: 'var(--color-error)', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                    <button onClick={() => handleDeleteTemplate(t.id, t.name)} className="btn-icon-small delete" title="Delete Template">
                       {Icons.trash} Delete
                     </button>
                   </div>

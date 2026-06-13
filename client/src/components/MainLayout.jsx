@@ -196,13 +196,13 @@ export default function MainLayout() {
     };
     if (accounting.items.length > 0) groups.push(accounting);
 
-    // ─── CRM ───
     const crm = {
       title: 'CRM',
       icon: Icons.team,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales') },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
+        { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (crm.items.length > 0) groups.push(crm);

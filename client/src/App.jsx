@@ -26,6 +26,7 @@ import UserProfile from './pages/UserProfile';
 import Suppliers from './pages/Suppliers';
 import PurchaseOrders from './pages/PurchaseOrders';
 import CustomerOrders from './pages/CustomerOrders';
+import CRMCommunications from './pages/CRMCommunications';
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
@@ -88,6 +89,9 @@ export default function App() {
                     } />
                     <Route path="/customer-orders" element={
                       <ProtectedRoute><CustomerOrders /></ProtectedRoute>
+                    } />
+                    <Route path="/crm-communications" element={
+                      <ProtectedRoute requiredPermission="manage_business"><CRMCommunications /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
                       <ProtectedRoute><Inventory /></ProtectedRoute>

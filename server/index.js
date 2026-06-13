@@ -29,6 +29,7 @@ const pricingRoutes = require('./routes/pricing');
 const customerOrdersRoutes = require('./routes/customerOrders');
 const communicationsRoutes = require('./routes/communications');
 const platformRoutes = require('./routes/platform');
+const crmCommunicationsRoutes = require('./routes/crmCommunications');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -164,6 +165,9 @@ app.use('/api/pricing', pricingRoutes);
 
 // Customer Orders routes (CRM)
 app.use('/api/customer-orders', customerOrdersRoutes);
+
+// CRM Communications routes
+app.use('/api/crm-communications', crmCommunicationsRoutes);
 
 // Platform Admin Communications and Settings
 app.use('/api/communications', communicationsRoutes);

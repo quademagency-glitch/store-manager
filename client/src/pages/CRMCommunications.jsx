@@ -198,39 +198,32 @@ export default function CRMCommunications() {
           max-width: 1200px;
           margin: 0 auto;
         }
+        
         .premium-header {
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          background: var(--color-bg-card);
           border-radius: var(--radius-xl);
           padding: 2.5rem;
-          color: white;
+          color: var(--color-text-primary);
           margin-bottom: 2rem;
-          box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2);
+          box-shadow: var(--shadow-md);
           position: relative;
           overflow: hidden;
+          border: 1px solid var(--color-border);
         }
-        .premium-header::after {
-          content: '';
-          position: absolute;
-          top: -50%;
-          right: -10%;
-          width: 400px;
-          height: 400px;
-          background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
-          border-radius: 50%;
-          pointer-events: none;
-        }
+        
         .premium-header h1 {
           font-size: 2.5rem;
           font-weight: 800;
           margin-bottom: 0.5rem;
           letter-spacing: -0.02em;
-          color: white;
+          background: linear-gradient(135deg, var(--color-text-primary), var(--color-accent-hover));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
         .premium-header p {
           font-size: 1.1rem;
-          opacity: 0.9;
+          color: var(--color-text-secondary);
           max-width: 600px;
-          color: rgba(255,255,255,0.9);
         }
         
         .modern-tabs {
@@ -238,12 +231,10 @@ export default function CRMCommunications() {
           gap: 1rem;
           margin-bottom: 2.5rem;
           padding: 0.5rem;
-          background: rgba(255, 255, 255, 0.4);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 16px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+          background: var(--color-bg-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-sm);
           width: max-content;
         }
         .modern-tab {
@@ -251,38 +242,38 @@ export default function CRMCommunications() {
           align-items: center;
           gap: 0.5rem;
           padding: 0.75rem 1.5rem;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
           font-weight: 600;
           font-size: 1rem;
           color: var(--color-text-secondary);
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all var(--transition-fast);
           border: none;
           background: transparent;
         }
         .modern-tab:hover {
-          color: #4f46e5;
-          background: rgba(255, 255, 255, 0.5);
+          color: var(--color-text-primary);
+          background: var(--color-bg-tertiary);
         }
         .modern-tab.active {
-          background: white;
-          color: #4f46e5;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          background: var(--color-bg-primary);
+          color: var(--color-accent-hover);
+          box-shadow: var(--shadow-sm);
+          border: 1px solid var(--color-border);
           transform: translateY(-1px);
         }
 
         .premium-card {
-          background: rgba(255, 255, 255, 0.6);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          background: var(--color-bg-card);
           border-radius: var(--radius-xl);
           padding: 2.5rem;
-          box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          box-shadow: var(--shadow-md);
+          border: 1px solid var(--color-border);
+          transition: transform var(--transition-fast), box-shadow var(--transition-fast);
         }
         .premium-card:hover {
-          box-shadow: 0 12px 40px rgba(31, 38, 135, 0.08);
+          box-shadow: var(--shadow-lg);
+          border-color: var(--color-border-focus);
         }
 
         .form-grid {
@@ -295,36 +286,33 @@ export default function CRMCommunications() {
         .sleek-input {
           width: 100%;
           padding: 1rem 1.25rem;
-          border-radius: 12px;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-secondary);
           font-size: 1rem;
-          transition: all 0.2s ease;
+          transition: all var(--transition-fast);
           color: var(--color-text-primary);
         }
         .sleek-input:focus {
           outline: none;
-          border-color: #4f46e5;
-          background: #ffffff;
-          box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+          border-color: var(--color-border-focus);
+          box-shadow: 0 0 0 3px var(--color-accent-glow);
         }
         
         .sleek-label {
           display: block;
           font-weight: 600;
           margin-bottom: 0.5rem;
-          color: var(--color-text-primary);
+          color: var(--color-text-secondary);
           font-size: 0.95rem;
         }
 
         .btn-gradient {
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
+          background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
           color: white;
           border: none;
           padding: 1rem 2rem;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
           font-weight: 700;
           font-size: 1.05rem;
           cursor: pointer;
@@ -332,15 +320,12 @@ export default function CRMCommunications() {
           align-items: center;
           justify-content: center;
           gap: 0.75rem;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+          transition: all var(--transition-fast);
         }
         .btn-gradient:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-        }
-        .btn-gradient:active {
-          transform: translateY(0);
+          transform: translateY(-1px);
+          background: var(--color-accent-hover);
+          box-shadow: var(--shadow-md);
         }
 
         .template-grid {
@@ -349,22 +334,20 @@ export default function CRMCommunications() {
           gap: 1.5rem;
         }
         .template-card {
-          background: rgba(255, 255, 255, 0.6);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          border-radius: 16px;
+          background: var(--color-bg-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
           padding: 1.5rem;
           position: relative;
-          transition: all 0.3s ease;
+          transition: all var(--transition-fast);
           display: flex;
           flex-direction: column;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+          box-shadow: var(--shadow-sm);
         }
         .template-card:hover {
-          border-color: #4f46e5;
-          box-shadow: 0 8px 24px rgba(79, 70, 229, 0.1);
-          transform: translateY(-4px);
+          border-color: var(--color-border-focus);
+          box-shadow: var(--shadow-md);
+          transform: translateY(-2px);
         }
         .template-type-badge {
           position: absolute;
@@ -374,9 +357,9 @@ export default function CRMCommunications() {
           align-items: center;
           gap: 0.25rem;
           padding: 0.35rem 0.75rem;
-          background: rgba(255, 255, 255, 0.8);
-          border: 1px solid rgba(0,0,0,0.05);
-          border-radius: 20px;
+          background: var(--color-bg-tertiary);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-full);
           font-size: 0.75rem;
           font-weight: 700;
           color: var(--color-text-secondary);
@@ -393,39 +376,35 @@ export default function CRMCommunications() {
           align-items: center;
           justify-content: space-between;
           padding: 1.5rem;
-          background: rgba(255, 255, 255, 0.6);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          border-radius: 16px;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+          background: var(--color-bg-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          transition: all var(--transition-fast);
+          box-shadow: var(--shadow-sm);
         }
         .gateway-row:hover {
-          background: rgba(255, 255, 255, 0.9);
-          transform: scale(1.01);
+          border-color: var(--color-border-focus);
+          background: var(--color-bg-tertiary);
         }
         .gateway-icon {
           width: 48px;
           height: 48px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #4f46e5, #7c3aed);
-          color: white;
+          border-radius: var(--radius-md);
+          background: var(--color-bg-tertiary);
+          color: var(--color-accent-primary);
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 1.25rem;
           font-weight: bold;
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+          border: 1px solid var(--color-border);
         }
         
         .glass-modal {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border-radius: 24px;
-          border: 1px solid rgba(255, 255, 255, 0.5);
-          box-shadow: 0 24px 48px rgba(31, 38, 135, 0.1);
+          background: var(--color-bg-card);
+          border-radius: var(--radius-xl);
+          border: 1px solid var(--color-border);
+          box-shadow: var(--shadow-lg);
         }
       `}} />
 

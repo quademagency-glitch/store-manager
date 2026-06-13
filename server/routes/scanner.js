@@ -1,3 +1,22 @@
+/**
+ * ============================================================================
+ * ⚠️ CRITICAL: BACKWARD COMPATIBILITY WARNING ⚠️
+ * ============================================================================
+ * 
+ * The endpoints in this file are used by DOWNLOADED versions of the Mobile Scanner App.
+ * Because users install the APK/iOS app on their devices, you CANNOT force them 
+ * to update their app immediately if you change the API structure.
+ * 
+ * RULES FOR EDITING THIS FILE:
+ * 1. NEVER rename or delete existing endpoints.
+ * 2. NEVER change the required JSON payload structure for incoming requests.
+ * 3. NEVER rename or remove fields from the JSON responses.
+ * 4. You MAY add new endpoints or add new optional fields to existing responses.
+ * 
+ * Breaking these rules will cause the downloaded scanner apps in the field to 
+ * crash or fail to connect seamlessly!
+ * ============================================================================
+ */
 const express = require('express');
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');

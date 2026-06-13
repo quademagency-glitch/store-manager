@@ -20,7 +20,16 @@ export default function SmartRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  // By default, everyone goes to the store dashboard.
-  // Admins can navigate to their specific admin panels via the sidebar.
+  // Platform Admins go straight to their management dashboard
+  if (hasPermission('manage_platform')) {
+    return <Navigate to="/platform-admin" replace />;
+  }
+
+  // Business Admins go to their business admin dashboard
+  if (hasPermission('manage_business')) {
+    return <Navigate to="/business-admin" replace />;
+  }
+
+  // Everyone else goes to the business dashboard
   return <Navigate to="/dashboard" replace />;
 }

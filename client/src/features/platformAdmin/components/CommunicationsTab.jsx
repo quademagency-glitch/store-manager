@@ -247,6 +247,7 @@ export default function CommunicationsTab() {
         </div>
 
       </div>
+      </div>
     </>
   );
 }

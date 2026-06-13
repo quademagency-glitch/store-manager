@@ -22,7 +22,7 @@ function getResendClient() {
 const PLATFORM_NAME = 'Quadem ERP';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'billing@quadem.com'; // Use verified domain in production
 const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL || '';
-const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+const APP_URL = process.env.APP_URL || 'https://quaderp.app';
 
 /**
  * Generate the HTML invoice email template

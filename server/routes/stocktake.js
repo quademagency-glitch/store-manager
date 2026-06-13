@@ -303,6 +303,161 @@ router.post('/:id/scan', authGuard, async (req, res) => {
 });
 
 /**
+ * POST /api/stocktake/:id/batch-scan
+ * Record multiple QR code scans in bulk during a stock take.
+ * Access: All authenticated staff
+ */
+router.post('/:id/batch-scan', authGuard, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { qr_codes } = req.body;
+
+    if (!qr_codes || !Array.isArray(qr_codes) || qr_codes.length === 0) {
+      return res.status(400).json({ error: 'qr_codes array is required and must not be empty' });
+    }
+
+    // Clean and deduplicate requested codes
+    const uniqueCodes = [...new Set(qr_codes.map(c => c.trim().toUpperCase()).filter(Boolean))];
+
+    // Verify session exists and is in progress
+    const { data: session, error: sessErr } = await supabaseAdmin
+      .from('stock_take_sessions')
+      .select('id, location_id, business_id, status')
+      .eq('id', id)
+      .single();
+
+    if (sessErr || !session) {
+      return res.status(404).json({ error: 'Stock take session not found.' });
+    }
+
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({ error: 'Stock take session is not active.' });
+    }
+
+    // Fetch existing scans for this session
+    const { data: existingScans } = await supabaseAdmin
+      .from('stock_take_scans')
+      .select('qr_code')
+      .eq('session_id', id);
+
+    const alreadyScannedSet = new Set((existingScans || []).map(s => s.qr_code));
+
+    // Filter out codes that were already scanned
+    const codesToProcess = uniqueCodes.filter(c => !alreadyScannedSet.has(c));
+
+    if (codesToProcess.length === 0) {
+      return res.json({ 
+        message: 'All provided codes were already scanned in this session.',
+        processed_count: 0
+      });
+    }
+
+    // Look up the QR codes
+    const { data: qrRecords } = await supabaseAdmin
+      .from('qr_code_pool')
+      .select('id, code, status')
+      .in('code', codesToProcess);
+
+    const qrRecordMap = new Map((qrRecords || []).map(qr => [qr.code, qr]));
+    const qrRecordIds = (qrRecords || []).map(qr => qr.id);
+
+    // Find the inventory units
+    let unitsMap = new Map();
+    if (qrRecordIds.length > 0) {
+      const { data: units } = await supabaseAdmin
+        .from('inventory_units')
+        .select('id, qr_code_id, product_id, location_id, status, products!product_id(name, sku)')
+        .in('qr_code_id', qrRecordIds);
+
+      unitsMap = new Map((units || []).map(u => [u.qr_code_id, u]));
+    }
+
+    const scansToInsert = [];
+    let newFoundCount = 0;
+
+    for (const code of codesToProcess) {
+      const qrRecord = qrRecordMap.get(code);
+
+      if (!qrRecord) {
+        // Unknown QR code
+        scansToInsert.push({
+          session_id: id,
+          unit_id: null,
+          qr_code: code,
+          scan_result: 'unknown',
+          scanned_by: req.user.id
+        });
+        continue;
+      }
+
+      const unit = unitsMap.get(qrRecord.id);
+
+      if (!unit) {
+        scansToInsert.push({
+          session_id: id,
+          unit_id: null,
+          qr_code: code,
+          scan_result: 'unknown',
+          scanned_by: req.user.id
+        });
+        continue;
+      }
+
+      let scan_result = 'found';
+      if (unit.status === 'sold') {
+        scan_result = 'already_sold';
+      } else if (unit.location_id !== session.location_id) {
+        scan_result = 'wrong_location';
+      }
+
+      if (scan_result === 'found') newFoundCount++;
+
+      scansToInsert.push({
+        session_id: id,
+        unit_id: unit.id,
+        qr_code: code,
+        scan_result,
+        scanned_by: req.user.id
+      });
+    }
+
+    // Batch Insert Scans
+    const { error: insertError } = await supabaseAdmin
+      .from('stock_take_scans')
+      .insert(scansToInsert);
+
+    if (insertError) throw insertError;
+
+    // Update session scanned count
+    const { count: totalScannedCount } = await supabaseAdmin
+      .from('stock_take_scans')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', id)
+      .eq('scan_result', 'found');
+
+    await supabaseAdmin
+      .from('stock_take_sessions')
+      .update({ scanned_count: totalScannedCount || 0 })
+      .eq('id', id);
+
+    res.json({
+      message: `Batch processed successfully. ${newFoundCount} new valid items found out of ${codesToProcess.length} processed.`,
+      processed_count: codesToProcess.length,
+      found_count: newFoundCount,
+      progress: {
+        scanned: totalScannedCount || 0,
+        expected: session.expected_count || 0
+      }
+    });
+  } catch (err) {
+    console.error('Error recording batch scan:', err);
+    res.status(500).json({ error: 'Failed to record batch scan' });
+  }
+});
+
+
+
+/**
  * PUT /api/stocktake/:id/complete
  * Complete a stock take session — flag missing items and generate alerts.
  * Access: Inventory managers

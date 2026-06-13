@@ -78,7 +78,7 @@ router.post('/link', async (req, res) => {
     // Find user by token
     const { data: users, error: fetchError } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, name, roles(name)')
       .eq('scanner_session_token', token);
 
     if (fetchError) throw fetchError;
@@ -86,20 +86,65 @@ router.post('/link', async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired token' });
     }
 
-    const userId = users[0].id;
+    const user = users[0];
 
     // Update link status
     const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ scanner_linked_at: new Date().toISOString() })
-      .eq('id', userId);
+      .eq('id', user.id);
 
     if (updateError) throw updateError;
 
-    res.json({ message: 'Scanner successfully linked', userId });
+    res.json({ 
+      message: 'Scanner successfully linked', 
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.roles?.name || 'Unknown Role'
+      }
+    });
   } catch (err) {
-    console.error('Error linking scanner:', err);
-    res.status(500).json({ error: 'Failed to link scanner' });
+    console.log('====== CRITICAL ERROR LINKING SCANNER ======');
+    console.log(JSON.stringify(err, null, 2));
+    console.log(err.message);
+    res.status(500).json({ error: 'Failed to link scanner', details: err.message || err });
+  }
+});
+
+/**
+ * GET /api/scanner/me
+ * Fetch the linked user info using the scanner token
+ * Access: Public (Scanner app calls this without user session)
+ */
+router.get('/me', async (req, res) => {
+  try {
+    const token = req.query.token;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const { data: users, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('id, name, roles(name)')
+      .eq('scanner_session_token', token);
+
+    if (fetchError) throw fetchError;
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired token' });
+    }
+
+    const user = users[0];
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      role: user.roles?.name || 'Unknown Role'
+    });
+  } catch (err) {
+    console.error('Error fetching scanner user:', err);
+    res.status(500).json({ error: 'Failed to fetch user info' });
   }
 });
 
@@ -132,6 +177,7 @@ router.post('/unlink', authGuard, async (req, res) => {
  * Structure: { [userId]: express.Response }
  */
 const activeClients = {};
+const activeScanners = {};
 
 /**
  * POST /api/scanner/push-scan
@@ -140,10 +186,14 @@ const activeClients = {};
  */
 router.post('/push-scan', scanLimiter, async (req, res) => {
   try {
-    const { token, qr_code } = req.body;
+    const { token, qr_code, payload } = req.body;
 
-    if (!token || !qr_code) {
-      return res.status(400).json({ error: 'Token and qr_code are required' });
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    if (!qr_code && !payload) {
+      return res.status(400).json({ error: 'qr_code or payload is required' });
     }
 
     // Find user by token
@@ -162,13 +212,79 @@ router.post('/push-scan', scanLimiter, async (req, res) => {
     // Send the scan event directly if the user's Web App is connected via SSE
     const client = activeClients[userId];
     if (client) {
-      client.write(`data: ${JSON.stringify({ scanned: true, qr_code })}\n\n`);
+      client.write(`data: ${JSON.stringify({ scanned: true, qr_code, payload })}\n\n`);
     }
 
     res.json({ message: 'Scan received successfully' });
   } catch (err) {
     console.error('Error pushing scan:', err);
     res.status(500).json({ error: 'Failed to process scan' });
+  }
+});
+
+/**
+ * POST /api/scanner/cancel-scan
+ * External scanner app calls this endpoint to notify that a scan was cancelled.
+ * Access: Public (Uses scanner session token)
+ */
+router.post('/cancel-scan', scanLimiter, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    // Find user by token
+    const { data: users, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('scanner_session_token', token);
+
+    if (fetchError) throw fetchError;
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired scanner token' });
+    }
+
+    const userId = users[0].id;
+
+    // Send the cancel event directly if the user's Web App is connected via SSE
+    const client = activeClients[userId];
+    if (client) {
+      client.write(`data: ${JSON.stringify({ cancelled: true })}\n\n`);
+    }
+
+    res.json({ message: 'Scan cancellation received successfully' });
+  } catch (err) {
+    console.error('Error cancelling scan:', err);
+    res.status(500).json({ error: 'Failed to process cancel' });
+  }
+});
+
+/**
+ * POST /api/scanner/push-command
+ * Web App calls this endpoint to send a command to the Scanner App (e.g., to request a specific scan).
+ * Access: Authenticated users
+ */
+router.post('/push-command', authGuard, async (req, res) => {
+  try {
+    const { command, payload } = req.body;
+    const userId = req.user.id;
+
+    if (!command) {
+      return res.status(400).json({ error: 'command is required' });
+    }
+
+    const scanner = activeScanners[userId];
+    if (scanner) {
+      scanner.write(`data: ${JSON.stringify({ command, payload })}\n\n`);
+      return res.json({ message: 'Command sent to scanner app' });
+    } else {
+      return res.status(404).json({ error: 'No active scanner app connected' });
+    }
+  } catch (err) {
+    console.error('Error pushing command:', err);
+    res.status(500).json({ error: 'Failed to push command' });
   }
 });
 
@@ -201,6 +317,56 @@ router.get('/events', authGuard, (req, res) => {
       delete activeClients[userId];
     }
   });
+});
+
+/**
+ * GET /api/scanner/app-events
+ * Scanner app connects to this endpoint to receive commands via SSE.
+ * Access: Public (Uses scanner session token)
+ */
+router.get('/app-events', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    // Find user by token
+    const { data: users, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('id, name, roles(name)')
+      .eq('scanner_session_token', token);
+
+    if (fetchError) throw fetchError;
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired scanner token' });
+    }
+
+    const user = users[0];
+    const userId = user.id;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    activeScanners[userId] = res;
+
+    const keepAlive = setInterval(() => {
+      res.write(':ping\n\n');
+    }, 30000);
+
+    req.on('close', () => {
+      clearInterval(keepAlive);
+      if (activeScanners[userId] === res) {
+        delete activeScanners[userId];
+      }
+    });
+  } catch (err) {
+    console.error('Error establishing scanner SSE:', err);
+    res.status(500).json({ error: 'Failed to establish connection' });
+  }
 });
 
 module.exports = router;

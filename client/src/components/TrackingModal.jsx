@@ -4,10 +4,11 @@ import { api } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import { useAuthContext } from '../lib/AuthContext';
 import UnitJourneyModal from './UnitJourneyModal';
+import QrScanner from './QrScanner';
 
 export default function TrackingModal({ isOpen, onClose, product, locations, isDoubleMode, activeLocationFilter }) {
   const toast = useToast();
-  const { role, hasPermission } = useAuthContext();
+  const { hasPermission } = useAuthContext();
   const isManagerOrAdmin = hasPermission('manage_inventory');
   const [selectedLocationId, setSelectedLocationId] = useState('');
   
@@ -21,6 +22,10 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUnitIds, setSelectedUnitIds] = useState([]);
+
+  // Scanner State
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [activeScanIndex, setActiveScanIndex] = useState(null);
 
   // Journey Modal State
   const [isJourneyModalOpen, setIsJourneyModalOpen] = useState(false);
@@ -85,15 +90,66 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
     onClose();
   };
 
-  const handleSlotChange = (index, field, value) => {
-    const newSlots = [...untrackedSlots];
-    newSlots[index] = { ...newSlots[index], [field]: value };
-    setUntrackedSlots(newSlots);
+  const simulateScan = async (index) => {
+    try {
+      await api.post('/scanner/push-command', {
+        command: 'scan_unit',
+        payload: { index }
+      });
+      toast.info('Command sent to Scanner App. Waiting for scan...');
+    } catch {
+      // In case they don't have a scanner app linked, we just open the modal.
+      console.log('No active scanner app connected or error pushing command.');
+    }
+    setActiveScanIndex(index);
+    setIsScannerOpen(true);
   };
 
-  const simulateScan = (index, field = null) => {
-    const msg = field ? `Scanner Placeholder: Ready to scan for ${field.replace('_', ' ')}...` : 'Scanner Integration Placeholder: In the future, this will send a command to the Scanner App or open the camera.';
-    toast.info(msg);
+  const handleScanFromScanner = (data) => {
+    if (activeScanIndex === null) return;
+    
+    // Data might be a string (qr code) or an object (full payload from scanner app)
+    if (typeof data === 'object') {
+      // Prevent duplicate scans
+      if (data.serial_number) {
+        const isDuplicateSerial = trackedUnits.some(u => u.serial_number === data.serial_number) ||
+                                  untrackedSlots.some((s, idx) => idx !== activeScanIndex && s.serial_number === data.serial_number);
+        if (isDuplicateSerial) {
+          toast.error(`Duplicate Error: Serial number ${data.serial_number} has already been scanned.`);
+          setIsScannerOpen(false);
+          setActiveScanIndex(null);
+          return;
+        }
+      }
+      
+      if (data.pack_code) {
+        const isDuplicatePack = trackedUnits.some(u => u.pack_qr?.code === data.pack_code) ||
+                                untrackedSlots.some((s, idx) => idx !== activeScanIndex && s.pack_code === data.pack_code);
+        if (isDuplicatePack) {
+          toast.error(`Duplicate Error: Pack code ${data.pack_code} has already been scanned.`);
+          setIsScannerOpen(false);
+          setActiveScanIndex(null);
+          return;
+        }
+      }
+
+      const newSlots = [...untrackedSlots];
+      newSlots[activeScanIndex] = { 
+        ...newSlots[activeScanIndex], 
+        pack_code: data.pack_code || newSlots[activeScanIndex].pack_code,
+        serial_number: data.serial_number || newSlots[activeScanIndex].serial_number,
+        product_code: data.product_code || newSlots[activeScanIndex].product_code,
+        item_code: data.item_code || newSlots[activeScanIndex].item_code
+      };
+      setUntrackedSlots(newSlots);
+      toast.success('Codes successfully received from Scanner App.');
+    } else {
+      // If it's a simple string scan, we could put it in one of the fields depending on what's missing
+      // But for now, we expect the scanner app to send a structured object for TrackingModal
+      toast.info(`Received basic scan: ${data}. Please use Scanner App to scan all required codes.`);
+    }
+    setIsScannerOpen(false);
+    setActiveScanIndex(null);
   };
 
   const handleSave = async () => {
@@ -468,6 +524,16 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
           locationId={selectedLocationId}
         />
       )}
+
+      <QrScanner 
+        isOpen={isScannerOpen} 
+        onClose={() => {
+          setIsScannerOpen(false);
+          setActiveScanIndex(null);
+        }} 
+        onScan={handleScanFromScanner} 
+        continuous={false} 
+      />
     </>
   );
 }

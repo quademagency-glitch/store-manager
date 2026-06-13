@@ -43,6 +43,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://store-manager-app-one.vercel.app',
   'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
+  'https://quaderp.app',
+  'https://www.quaderp.app',
 ];
 
 if (process.env.APP_URL) {

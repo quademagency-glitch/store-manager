@@ -367,7 +367,7 @@ router.post('/initialize-paystack', authGuard, async (req, res) => {
         email: req.user.email,
         amount: amountInPesewas,
         currency: plan.currency || 'GHS',
-        callback_url: callback_url || `${process.env.APP_URL || 'http://localhost:5173'}/platform-admin`,
+        callback_url: callback_url || `${process.env.APP_URL || 'https://quaderp.app'}/platform-admin`,
         metadata: {
           business_id: req.user.business_id,
           plan_id: plan.id,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import QrScanner from '../components/QrScanner';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
@@ -45,6 +46,89 @@ export default function InventoryCount({ locations, products }) {
   useEffect(() => {
     fetchSessions();
   }, []);
+
+  // View or Resume session
+  const handleViewSession = async (id) => {
+    setViewSessionLoading(true);
+    setStep('view');
+    try {
+      const data = await api.get(`/stocktake/${id}`);
+
+      if (data.session.status === 'in_progress') {
+        setSession(data.session);
+        setSelectedLocationId(data.session.location_id);
+
+        const counts = {};
+        for (const scan of data.scans) {
+          if (scan.scan_result === 'found' && scan.unit?.product?.id) {
+            const pid = scan.unit.product.id;
+            if (!counts[pid]) {
+              counts[pid] = { counted: '', scannedQrs: [], returnQrs: [], damagedQrs: [], status: 'pending' };
+            }
+            if (!counts[pid].scannedQrs.includes(scan.qr_code)) {
+              counts[pid].scannedQrs.push(scan.qr_code);
+            }
+          }
+        }
+
+        for (const pid of Object.keys(counts)) {
+          counts[pid].counted = counts[pid].scannedQrs.length.toString();
+        }
+
+        setProductCounts(counts);
+        setStep('counting');
+      } else {
+        setViewSession(data);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to fetch session details');
+      setStep('select');
+    }
+    setViewSessionLoading(false);
+  };
+
+  // Global SSE Listener for batch scans
+  useEffect(() => {
+    if (step !== 'counting' || !session) return;
+
+    let eventSource;
+
+    supabase.auth.getSession().then(({ data: { session: authSession } }) => {
+      const token = authSession?.access_token;
+      if (!token) return;
+
+      eventSource = new EventSource(`${API_BASE}/scanner/events?token=${token}`);
+
+      eventSource.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.scanned && data.payload && data.payload.command === 'batch_stock_take') {
+            const qrCodes = data.payload.pack_codes || data.payload.qr_codes;
+            if (qrCodes && qrCodes.length > 0) {
+              try {
+                const result = await api.post(`/stocktake/${session.id}/batch-scan`, { qr_codes: qrCodes });
+                toast.success(result.message);
+                // Reload session to hydrate the counts
+                handleViewSession(session.id);
+              } catch (err) {
+                toast.error(err.message || 'Failed to process batch scan');
+              }
+            }
+          }
+        } catch (err) {
+          if (import.meta.env.DEV) console.error('Error parsing batch SSE event:', err);
+        }
+      };
+      
+      eventSource.onerror = (err) => {
+        if (import.meta.env.DEV) console.error('SSE connection error:', err);
+      };
+    });
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [step, session]);
 
   // Get products at selected location with stock info
   const locationProducts = useMemo(() => {
@@ -229,57 +313,6 @@ export default function InventoryCount({ locations, products }) {
     }
   };
 
-  // View or Resume session
-  const handleViewSession = async (id) => {
-    setViewSessionLoading(true);
-    setStep('view');
-    try {
-      const data = await api.get(`/stocktake/${id}`);
-      
-      if (data.session.status === 'in_progress') {
-        // Resume session
-        setSession(data.session);
-        setSelectedLocationId(data.session.location_id);
-        
-        // Rehydrate product counts from existing scans
-        const counts = {};
-        for (const scan of data.scans) {
-          if (scan.scan_result === 'found' && scan.unit?.product?.id) {
-            const pid = scan.unit.product.id;
-            if (!counts[pid]) {
-              counts[pid] = {
-                counted: '', 
-                scannedQrs: [],
-                returnQrs: [],
-                damagedQrs: [],
-                status: 'pending'
-              };
-            }
-            if (!counts[pid].scannedQrs.includes(scan.qr_code)) {
-              counts[pid].scannedQrs.push(scan.qr_code);
-            }
-          }
-        }
-        
-        // Pre-fill 'counted' to match the number of scans
-        for (const pid of Object.keys(counts)) {
-          counts[pid].counted = counts[pid].scannedQrs.length.toString();
-          // Status ('match' or 'discrepancy') requires systemQty, which is dynamically calculated
-          // so we'll leave it as 'pending' and the user can click 'Save' to re-verify.
-        }
-        
-        setProductCounts(counts);
-        setStep('counting');
-      } else {
-        // View completed/cancelled session
-        setViewSession(data);
-      }
-    } catch (err) {
-      toast.error(err.message || 'Failed to fetch session details');
-      setStep('select');
-    }
-    setViewSessionLoading(false);
-  };
 
   // Stats
   const countedCount = Object.values(productCounts).filter(c => c.status !== 'pending').length;

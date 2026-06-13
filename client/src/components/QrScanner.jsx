@@ -17,12 +17,19 @@ export default function QrScanner({ onScan, onClose, isOpen, continuous = false 
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data && data.scanned && data.qr_code) {
+          if (data && data.scanned && (data.qr_code || data.payload)) {
             if (!continuous) {
               eventSource.close();
             }
-            onScan(data.qr_code);
+            onScan(data.payload || data.qr_code);
             if (!continuous && onClose) {
+              onClose();
+            }
+          } else if (data && data.cancelled) {
+            if (!continuous) {
+              eventSource.close();
+            }
+            if (onClose) {
               onClose();
             }
           }

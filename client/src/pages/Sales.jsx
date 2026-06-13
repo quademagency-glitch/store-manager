@@ -241,17 +241,6 @@ export default function Sales() {
     return true;
   };
 
-  const handleManualScanInput = (itemId, unitIndex, field, value) => {
-    setWizardItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        const newScans = [...item.scans];
-        newScans[unitIndex] = { ...newScans[unitIndex], [field]: value };
-        return { ...item, scans: newScans };
-      }
-      return item;
-    }));
-  };
-
   const handleHoldSale = async () => {
     if (!isCheckoutReady()) return;
     setSaleError('');

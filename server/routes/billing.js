@@ -195,7 +195,7 @@ router.post('/paystack/initialize', authGuard, async (req, res) => {
     // Build payload for Paystack
     const callback_url = process.env.APP_URL
       ? `${process.env.APP_URL}/billing?success=true`
-      : 'http://localhost:5173/billing?success=true';
+      : 'https://quaderp.app/billing?success=true';
 
     const paystackParams = {
       email,

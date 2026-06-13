@@ -7,18 +7,12 @@ export default function UnitJourneyModal({ isOpen, onClose, unitId, productId, l
   const [error, setError] = useState('');
   const [journey, setJourney] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && unitId) {
-      fetchJourney();
-    }
-  }, [isOpen, unitId, productId, locationId]);
-
   const fetchJourney = async () => {
     setLoading(true);
     setError('');
     try {
-      const qs = unitId === 'untracked' && productId && locationId 
-        ? `?product_id=${productId}&location_id=${locationId}` 
+      const qs = unitId === 'untracked' && productId && locationId
+        ? `?product_id=${productId}&location_id=${locationId}`
         : '';
       const data = await api.get(`/units/${unitId}/journey${qs}`);
       setJourney(data);
@@ -28,6 +22,12 @@ export default function UnitJourneyModal({ isOpen, onClose, unitId, productId, l
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && unitId) {
+      fetchJourney();
+    }
+  }, [isOpen, unitId, productId, locationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (isoStr) => {
     if (!isoStr) return 'N/A';

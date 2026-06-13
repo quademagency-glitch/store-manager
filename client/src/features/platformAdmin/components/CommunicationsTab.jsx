@@ -133,6 +133,9 @@ export default function CommunicationsTab() {
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem' }}>
                   SMS Length: {campaignForm.message.length} characters ({(Math.ceil(campaignForm.message.length / 160)) || 1} message(s) per recipient).
                 </p>
+              )}
+            </div>
+
             <button type="submit" className="premium-gradient-btn" style={{ marginTop: '0.5rem' }}>
               {Icons.send} Review & Send Campaign
             </button>

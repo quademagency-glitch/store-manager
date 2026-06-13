@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { useAuthContext } from '../../../lib/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { usePlatformAdmin } from '../PlatformAdminContext';
 
 export default function ProfileTab() {
   const { user } = useAuthContext();
+  const { platformSettings, handleSavePlatformSettings } = usePlatformAdmin();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  
+  // Settings Form State
+  const [settingsForm, setSettingsForm] = useState(platformSettings || []);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const handlePasswordReset = async () => {
     setLoading(true);
@@ -71,6 +77,63 @@ export default function ProfileTab() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="content-card" style={{ maxWidth: '600px', marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Integrations & API Keys</h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+          Manage global API keys for services like SMS (Arkesel).
+        </p>
+
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setSettingsSaving(true);
+          await handleSavePlatformSettings(settingsForm);
+          setSettingsSaving(false);
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {settingsForm.map((setting, index) => (
+              <div key={setting.key}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '0.25rem', fontWeight: 600 }}>
+                  {setting.key.replace(/_/g, ' ')}
+                </label>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{setting.description}</p>
+                <input 
+                  type={setting.is_secret && setting.value === '********' ? 'password' : 'text'}
+                  value={setting.value || ''} 
+                  onChange={(e) => {
+                    const newForm = [...settingsForm];
+                    newForm[index].value = e.target.value;
+                    setSettingsForm(newForm);
+                  }}
+                  className="form-input" 
+                  style={{ width: '100%' }}
+                  placeholder={setting.is_secret ? 'Enter new key to update' : ''}
+                  onFocus={(e) => {
+                    // Clear masked password on focus so user can type a new one
+                    if (setting.is_secret && setting.value === '********') {
+                      const newForm = [...settingsForm];
+                      newForm[index].value = '';
+                      setSettingsForm(newForm);
+                    }
+                  }}
+                />
+              </div>
+            ))}
+            
+            {settingsForm.length === 0 && (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No platform settings found.</p>
+            )}
+
+            {settingsForm.length > 0 && (
+              <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+                <button type="submit" className="btn btn-primary" disabled={settingsSaving}>
+                  {settingsSaving ? 'Saving...' : 'Save Integrations'}
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
       </div>
     </>
   );

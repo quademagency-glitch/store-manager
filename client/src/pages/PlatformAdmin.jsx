@@ -13,6 +13,7 @@ import RolesTab from '../features/platformAdmin/components/RolesTab';
 import PricingTab from '../features/platformAdmin/components/PricingTab';
 import BillingTab from '../features/platformAdmin/components/BillingTab';
 import ProfileTab from '../features/platformAdmin/components/ProfileTab';
+import CommunicationsTab from '../features/platformAdmin/components/CommunicationsTab';
 import PlatformAdminModals from '../features/platformAdmin/components/PlatformAdminModals';
 
 function PlatformAdminShell() {
@@ -53,6 +54,7 @@ function PlatformAdminShell() {
     { id: 'roles', label: 'Roles', icon: Icons.roles },
     { id: 'pricing', label: 'Pricing Plans', icon: Icons.pricing },
     { id: 'billing', label: 'Billing & Invoices', icon: Icons.billing },
+    { id: 'comms', label: 'Marketing & Comms', icon: Icons.marketing },
     { id: 'profile', label: 'Settings', icon: Icons.settings },
   ];
 
@@ -105,6 +107,7 @@ function PlatformAdminShell() {
         {activeTab === 'roles' && <RolesTab />}
         {activeTab === 'pricing' && <PricingTab />}
         {activeTab === 'billing' && <BillingTab />}
+        {activeTab === 'comms' && <CommunicationsTab />}
         {activeTab === 'profile' && <ProfileTab />}
         
         <PlatformAdminModals />

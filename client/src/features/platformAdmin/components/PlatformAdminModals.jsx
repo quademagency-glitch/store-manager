@@ -40,6 +40,8 @@ export default function PlatformAdminModals() {
     handleCreateUser, handleUpdateUser,
     handleCreateRole, handleUpdateRole, togglePermission,
     handleSavePlan, handleSaveGateway, handleSendInvoice, handleRecordPayment, handleAssignPlan,
+    showTemplateModal, setShowTemplateModal,
+    editingTemplate, templateForm, setTemplateForm, handleSaveTemplate,
     FEATURE_LABELS, formatCurrency,
   } = usePlatformAdmin();
 
@@ -456,6 +458,41 @@ export default function PlatformAdminModals() {
       <div className="modal-actions">
         <button type="button" className="btn btn-secondary" onClick={() => setShowRecordPaymentModal(false)}>Cancel</button>
         <button type="submit" className="btn btn-primary">{Icons.plus} Record Payment</button>
+      </div>
+    </form>
+  </Modal>
+)}
+
+{/* ═══════════════════════════════════
+    MODAL: CREATE/EDIT TEMPLATE
+    ═══════════════════════════════════ */}
+{showTemplateModal && (
+  <Modal isOpen={true} title={editingTemplate ? 'Edit Template' : 'New Template'} onClose={() => setShowTemplateModal(false)}>
+    <form onSubmit={handleSaveTemplate}>
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label className="form-label">Template Name</label>
+        <input className="form-input" value={templateForm.name} onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })} required placeholder="e.g., Black Friday Promo" />
+      </div>
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label className="form-label">Type</label>
+        <select className="form-input" value={templateForm.type} onChange={e => setTemplateForm({ ...templateForm, type: e.target.value })}>
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+        </select>
+      </div>
+      {templateForm.type === 'email' && (
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label className="form-label">Subject</label>
+          <input className="form-input" value={templateForm.subject} onChange={e => setTemplateForm({ ...templateForm, subject: e.target.value })} required={templateForm.type === 'email'} placeholder="Email Subject" />
+        </div>
+      )}
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label className="form-label">Content</label>
+        <textarea className="form-input" rows="6" value={templateForm.content} onChange={e => setTemplateForm({ ...templateForm, content: e.target.value })} required placeholder={templateForm.type === 'email' ? "HTML or Text content..." : "SMS text message..."} />
+      </div>
+      <div className="modal-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => setShowTemplateModal(false)}>Cancel</button>
+        <button type="submit" className="btn btn-primary">{editingTemplate ? 'Update Template' : 'Save Template'}</button>
       </div>
     </form>
   </Modal>

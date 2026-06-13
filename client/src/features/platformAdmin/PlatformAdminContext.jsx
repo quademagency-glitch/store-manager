@@ -105,6 +105,15 @@ export function PlatformAdminProvider({ children }) {
   // ── Business subscription detail ──
   const [businessSubscription, setBusinessSubscription] = useState(null);
 
+  // ── Platform Settings & Communications ──
+  const [platformSettings, setPlatformSettings] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [templateForm, setTemplateForm] = useState({ name: '', type: 'email', subject: '', content: '' });
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [campaignForm, setCampaignForm] = useState({ targetAudience: 'specific_business', businessId: '', type: 'email', subject: '', message: '', templateId: '' });
+
   // All available permissions in the system
   const ALL_PERMISSIONS = [
     'manage_platform', 'manage_business', 'manage_users', 'manage_products',
@@ -130,22 +139,26 @@ export function PlatformAdminProvider({ children }) {
       setUsers(uRes.data || []);
       setRoles(rRes.data || []);
 
-      // Fetch pricing/billing data (non-blocking)
+      // Fetch pricing/billing/platform data (non-blocking)
       try {
-        const [plansRes, gwRes, invRes, statsRes, subsRes] = await Promise.all([
-          api.get('/subscriptions/plans/all'),
-          api.get('/billing/gateways'),
-          api.get('/billing/invoices?limit=100'),
-          api.get('/billing/stats'),
-          api.get('/subscriptions'),
+        const [plansRes, gwRes, invRes, statsRes, subsRes, settingsRes, templatesRes] = await Promise.all([
+          api.get('/subscriptions/plans/all').catch(() => []),
+          api.get('/billing/gateways').catch(() => []),
+          api.get('/billing/invoices?limit=100').catch(() => []),
+          api.get('/billing/stats').catch(() => ({})),
+          api.get('/subscriptions').catch(() => []),
+          api.get('/platform/settings').catch(() => []),
+          api.get('/communications/templates').catch(() => [])
         ]);
         setPlans(plansRes || []);
         setGateways(gwRes || []);
         setInvoices(invRes || []);
         setBillingStats(statsRes || {});
         setSubscriptions(subsRes || []);
+        setPlatformSettings(settingsRes || []);
+        setTemplates(templatesRes || []);
       } catch (billingErr) {
-        if (import.meta.env.DEV) console.warn('Billing data not available yet (run migration 015):', billingErr.message);
+        if (import.meta.env.DEV) console.warn('Secondary platform data not available:', billingErr.message);
       }
     } catch (err) {
       if (import.meta.env.DEV) console.error('Error fetching platform data:', err);
@@ -508,6 +521,76 @@ export function PlatformAdminProvider({ children }) {
 
 
   /* ============================
+     PLATFORM SETTINGS
+     ============================ */
+  const handleSavePlatformSettings = async (settingsArray) => {
+    try {
+      await api.put('/platform/settings', { settings: settingsArray });
+      toast.success('Platform settings updated successfully!');
+      fetchData();
+    } catch (err) {
+      toast.error(`Error saving settings: ${err.message}`);
+    }
+  };
+
+  /* ============================
+     COMMUNICATIONS & TEMPLATES
+     ============================ */
+  const openTemplateModal = (template = null) => {
+    if (template) {
+      setEditingTemplate(template);
+      setTemplateForm({ name: template.name, type: template.type, subject: template.subject || '', content: template.content });
+    } else {
+      setEditingTemplate(null);
+      setTemplateForm({ name: '', type: 'email', subject: '', content: '' });
+    }
+    setShowTemplateModal(true);
+  };
+
+  const handleSaveTemplate = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTemplate) {
+        await api.post('/communications/templates', { ...templateForm, id: editingTemplate.id });
+      } else {
+        await api.post('/communications/templates', templateForm);
+      }
+      toast.success('Template saved successfully!');
+      setShowTemplateModal(false);
+      setEditingTemplate(null);
+      fetchData();
+    } catch (err) { toast.error(`Error saving template: ${err.message}`); }
+  };
+
+  const handleDeleteTemplate = async (id, name) => {
+    const confirmed = await confirmDialog({ title: 'Delete Template', message: `Are you sure you want to delete template "${name}"?`, variant: 'danger', confirmText: 'Delete' });
+    if (!confirmed) return;
+    try { await api.delete(`/communications/templates/${id}`); fetchData(); }
+    catch (err) { toast.error(`Error deleting template: ${err.message}`); }
+  };
+
+  const handleSendCampaign = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        targetAudience: campaignForm.targetAudience,
+        businessId: campaignForm.businessId,
+        type: campaignForm.type,
+        subject: campaignForm.subject,
+        message: campaignForm.message
+      };
+
+      const result = await api.post('/communications/send', payload);
+      toast.success(`Messages sent to ${result.recipientsCount} recipients!`);
+      setShowCampaignModal(false);
+      setCampaignForm({ targetAudience: 'specific_business', businessId: '', type: 'email', subject: '', message: '', templateId: '' });
+    } catch (err) {
+      toast.error(`Error sending campaign: ${err.message}`);
+    }
+  };
+
+
+  /* ============================
      COMPUTED / MEMOS
      ============================ */
   const filteredBusinesses = useMemo(() => {
@@ -594,6 +677,13 @@ export function PlatformAdminProvider({ children }) {
     showAssignPlanModal, setShowAssignPlanModal,
     assignForm, setAssignForm,
     businessSubscription, setBusinessSubscription,
+    platformSettings, setPlatformSettings,
+    templates, setTemplates,
+    showTemplateModal, setShowTemplateModal,
+    editingTemplate, setEditingTemplate,
+    templateForm, setTemplateForm,
+    showCampaignModal, setShowCampaignModal,
+    campaignForm, setCampaignForm,
     ALL_PERMISSIONS,
     fetchData,
     // Business CRUD
@@ -612,6 +702,8 @@ export function PlatformAdminProvider({ children }) {
     handleSavePlan, handleDeletePlan, openPlanModal,
     // Gateway CRUD
     handleSaveGateway, handleDeleteGateway, openGatewayModal,
+    // Communications & Settings
+    handleSavePlatformSettings, handleSaveTemplate, handleDeleteTemplate, openTemplateModal, handleSendCampaign,
     // Billing
     handleSendInvoice, handleRecordPayment, handleAssignPlan,
     // Helpers

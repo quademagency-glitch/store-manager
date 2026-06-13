@@ -420,8 +420,37 @@ async function sendSuspensionNotice(business) {
   }
 }
 
+/**
+ * Send custom email for platform communications
+ */
+async function sendCustomEmail(recipients, subject, htmlContent) {
+  const client = getResendClient();
+  
+  if (!recipients || recipients.length === 0) return { success: false, error: 'No recipients' };
+
+  if (!client) {
+    console.log(`[EMAIL SIMULATED] Custom email to ${recipients.join(', ')}. Subject: ${subject}`);
+    return { success: true, simulated: true };
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
+      to: recipients,
+      subject: subject,
+      html: htmlContent,
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, messageId: data?.id, recipients };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   sendInvoiceEmail,
   sendExpirationWarning,
   sendSuspensionNotice,
+  sendCustomEmail,
 };

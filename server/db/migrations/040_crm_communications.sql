@@ -16,7 +16,7 @@ CREATE POLICY "Platform admins can read comms gateways"
   USING (
     public.has_permission('manage_platform') 
     OR 
-    (public.has_permission('manage_business') AND business_id = public.get_auth_business_id())
+    (public.has_permission('manage_business') AND business_id = public.get_user_business_id())
   );
 
 DROP POLICY IF EXISTS "Platform admins can insert comms gateways" ON public.communication_gateways;
@@ -27,7 +27,7 @@ CREATE POLICY "Platform admins can insert comms gateways"
   WITH CHECK (
     public.has_permission('manage_platform')
     OR
-    (public.has_permission('manage_business') AND business_id = public.get_auth_business_id())
+    (public.has_permission('manage_business') AND business_id = public.get_user_business_id())
   );
 
 DROP POLICY IF EXISTS "Platform admins can update comms gateways" ON public.communication_gateways;
@@ -38,7 +38,7 @@ CREATE POLICY "Platform admins can update comms gateways"
   USING (
     public.has_permission('manage_platform')
     OR
-    (public.has_permission('manage_business') AND business_id = public.get_auth_business_id())
+    (public.has_permission('manage_business') AND business_id = public.get_user_business_id())
   );
 
 DROP POLICY IF EXISTS "Platform admins can delete comms gateways" ON public.communication_gateways;
@@ -49,7 +49,7 @@ CREATE POLICY "Platform admins can delete comms gateways"
   USING (
     public.has_permission('manage_platform')
     OR
-    (public.has_permission('manage_business') AND business_id = public.get_auth_business_id())
+    (public.has_permission('manage_business') AND business_id = public.get_user_business_id())
   );
 
 -- 2. Create crm_communication_templates
@@ -70,22 +70,22 @@ CREATE POLICY "Business admins can read their templates"
   ON public.crm_communication_templates
   FOR SELECT
   TO authenticated
-  USING (business_id = public.get_auth_business_id());
+  USING (business_id = public.get_user_business_id());
 
 CREATE POLICY "Business admins can insert templates"
   ON public.crm_communication_templates
   FOR INSERT
   TO authenticated
-  WITH CHECK (business_id = public.get_auth_business_id());
+  WITH CHECK (business_id = public.get_user_business_id());
 
 CREATE POLICY "Business admins can update templates"
   ON public.crm_communication_templates
   FOR UPDATE
   TO authenticated
-  USING (business_id = public.get_auth_business_id());
+  USING (business_id = public.get_user_business_id());
 
 CREATE POLICY "Business admins can delete templates"
   ON public.crm_communication_templates
   FOR DELETE
   TO authenticated
-  USING (business_id = public.get_auth_business_id());
+  USING (business_id = public.get_user_business_id());

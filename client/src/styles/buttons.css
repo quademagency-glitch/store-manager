@@ -53,6 +53,10 @@
   color: #fca5a5;
 }
 
+[data-theme="light"] .hover-bg-error:hover {
+  color: var(--color-error);
+}
+
 /* FAB specific icon logic */
 .fab-icon { display: none; }
 @media (max-width: 768px) {

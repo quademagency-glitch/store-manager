@@ -88,6 +88,10 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+[data-theme="light"] .sidebar-group-header:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 .sidebar-group-header.has-active {
   color: var(--color-accent-hover);
 }
@@ -217,6 +221,10 @@
 .sidebar-signout:hover {
   background: var(--color-error-bg);
   color: #fca5a5;
+}
+
+[data-theme="light"] .sidebar-signout:hover {
+  color: var(--color-error);
 }
 
 /* Branch Selector Custom Style */
@@ -473,8 +481,9 @@
 }
 
 [data-theme="light"] .stat-card {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.04);
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .stat-card:hover {

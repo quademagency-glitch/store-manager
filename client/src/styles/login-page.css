@@ -21,6 +21,10 @@
   animation: float 20s ease-in-out infinite;
 }
 
+[data-theme="light"] .login-bg-orb {
+  opacity: 0.12;
+}
+
 .login-bg-orb-1 {
   width: 400px;
   height: 400px;
@@ -76,6 +80,12 @@
   animation: slideUp 0.6s var(--transition-slow) forwards;
   opacity: 0;
   transform: translateY(20px);
+}
+
+[data-theme="light"] .login-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 @keyframes slideUp {
@@ -136,6 +146,10 @@
   color: #fca5a5;
   font-size: 0.85rem;
   animation: shake 0.4s ease;
+}
+
+[data-theme="light"] .login-error {
+  color: var(--color-error);
 }
 
 @keyframes shake {

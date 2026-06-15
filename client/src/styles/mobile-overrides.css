@@ -529,6 +529,10 @@
     align-items: center;
     justify-content: center;
   }
+
+  [data-theme="light"] .fab-mobile {
+    box-shadow: 0 6px 16px rgba(67, 56, 202, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  }
   /* Hide the text label inside the FAB, only show SVG icon */
   .fab-mobile span.fab-text {
     display: none !important;

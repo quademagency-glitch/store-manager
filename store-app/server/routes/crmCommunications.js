@@ -17,7 +17,7 @@ router.get('/templates', authGuard, permissionCheck('manage_business'), async (r
     const { data, error } = await supabaseAdmin
       .from('crm_communication_templates')
       .select('*')
-      .eq('business_id', req.user.businessId)
+      .eq('business_id', req.user.business_id)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -43,13 +43,13 @@ router.post('/templates', authGuard, permissionCheck('manage_business'), async (
         .from('crm_communication_templates')
         .update({ name, type, subject, content, updated_at: new Date() })
         .eq('id', id)
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .select()
         .single();
     } else {
       result = await supabaseAdmin
         .from('crm_communication_templates')
-        .insert([{ business_id: req.user.businessId, name, type, subject, content }])
+        .insert([{ business_id: req.user.business_id, name, type, subject, content }])
         .select()
         .single();
     }
@@ -72,7 +72,7 @@ router.delete('/templates/:id', authGuard, permissionCheck('manage_business'), a
       .from('crm_communication_templates')
       .delete()
       .eq('id', req.params.id)
-      .eq('business_id', req.user.businessId);
+      .eq('business_id', req.user.business_id);
 
     if (error) throw error;
     res.json({ success: true });
@@ -91,7 +91,7 @@ router.get('/gateways', authGuard, permissionCheck('manage_business'), async (re
     const { data, error } = await supabaseAdmin
       .from('communication_gateways')
       .select('*')
-      .eq('business_id', req.user.businessId)
+      .eq('business_id', req.user.business_id)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -127,7 +127,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_business'), async (r
       await supabaseAdmin
         .from('communication_gateways')
         .update({ is_default: false })
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .eq('type', type)
         .eq('is_default', true);
     }
@@ -135,7 +135,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_business'), async (r
     const { data, error } = await supabaseAdmin
       .from('communication_gateways')
       .insert([{
-        business_id: req.user.businessId,
+        business_id: req.user.business_id,
         provider,
         type,
         display_name,
@@ -182,14 +182,14 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_business'), async
         .from('communication_gateways')
         .select('type')
         .eq('id', id)
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .single();
         
       if (existingGw) {
         await supabaseAdmin
           .from('communication_gateways')
           .update({ is_default: false })
-          .eq('business_id', req.user.businessId)
+          .eq('business_id', req.user.business_id)
           .eq('type', existingGw.type)
           .neq('id', id);
       }
@@ -199,7 +199,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_business'), async
       .from('communication_gateways')
       .update(updates)
       .eq('id', id)
-      .eq('business_id', req.user.businessId)
+      .eq('business_id', req.user.business_id)
       .select()
       .single();
 
@@ -227,7 +227,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_business'), as
       .from('communication_gateways')
       .delete()
       .eq('id', req.params.id)
-      .eq('business_id', req.user.businessId);
+      .eq('business_id', req.user.business_id);
 
     if (error) throw error;
     res.json({ message: 'Gateway removed' });
@@ -256,7 +256,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
         .from('customers')
         .select('name, email, phone')
         .eq('id', customerId)
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .single();
       if (error || !data) return res.status(404).json({ error: 'Customer not found' });
       customers = [data];
@@ -264,7 +264,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
       const { data, error } = await supabaseAdmin
         .from('customers')
         .select('name, email, phone')
-        .eq('business_id', req.user.businessId);
+        .eq('business_id', req.user.business_id);
       if (error) throw error;
       customers = data || [];
     } else if (targetAudience === 'recent_buyers') {
@@ -275,7 +275,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
        const { data: sales, error: salesError } = await supabaseAdmin
          .from('sales')
          .select('customer_id')
-         .eq('business_id', req.user.businessId)
+         .eq('business_id', req.user.business_id)
          .gte('created_at', thirtyDaysAgo.toISOString())
          .not('customer_id', 'is', null);
          
@@ -288,7 +288,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
            .from('customers')
            .select('name, email, phone')
            .in('id', customerIds)
-           .eq('business_id', req.user.businessId);
+           .eq('business_id', req.user.business_id);
          if (error) throw error;
          customers = data || [];
        }
@@ -309,7 +309,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
       let { data } = await supabaseAdmin
         .from('communication_gateways')
         .select('*')
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .eq('type', 'sms')
         .eq('is_active', true)
         .eq('is_default', true)
@@ -335,7 +335,7 @@ router.post('/send', authGuard, permissionCheck('manage_business'), async (req, 
       let { data } = await supabaseAdmin
         .from('communication_gateways')
         .select('*')
-        .eq('business_id', req.user.businessId)
+        .eq('business_id', req.user.business_id)
         .eq('type', 'email')
         .eq('is_active', true)
         .eq('is_default', true)

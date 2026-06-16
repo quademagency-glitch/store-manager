@@ -1,0 +1,117 @@
+/* ============================================
+   QR Print Label
+   ============================================ */
+.qr-print-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl);
+  gap: var(--space-md);
+}
+
+.qr-print-label .qr-code-wrapper {
+  padding: var(--space-lg);
+  background: white;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+}
+
+.qr-print-label .product-label-info {
+  text-align: center;
+}
+
+.qr-print-label .product-label-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.qr-print-label .product-label-sku {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+}
+
+.qr-print-label .product-label-price {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-accent-hover);
+  margin-top: var(--space-sm);
+}
+
+/* Print-specific styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .qr-print-label,
+  .qr-print-label * {
+    visibility: visible;
+  }
+  .qr-print-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: white !important;
+    color: black !important;
+  }
+  .qr-print-label .product-label-sku,
+  .qr-print-label .product-label-price {
+    color: black !important;
+  }
+  .modal-overlay,
+  .qr-scanner-overlay {
+    display: none !important;
+  }
+}
+
+/* Cycle Count Grid */
+.audit-grid {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.audit-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.audit-row .product-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.audit-row .expected-qty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.audit-row input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.audit-row input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

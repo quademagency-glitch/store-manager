@@ -1,0 +1,41 @@
+/* ============================================
+   Access Denied
+   ============================================ */
+.access-denied {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--color-bg-primary);
+}
+
+.access-denied-card {
+  text-align: center;
+  background: var(--color-bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  max-width: 400px;
+}
+
+.access-denied-icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-md);
+}
+
+.access-denied-card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.access-denied-card p {
+  color: var(--color-text-secondary);
+}
+
+.access-denied-role {
+  margin-top: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-text-tertiary);
+}

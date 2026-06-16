@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+api/node_modules/
+
+# Build output
+store-app/client/dist/
+
+# Environment files
+.env
+store-app/client/.env
+store-app/server/.env
+
+# OS files
+.DS_Store
+._*
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Vercel
+.vercel/
+
+# Logs
+*.log
+.vercel

@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "scanner-app",
+    "slug": "scanner-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./logo.png",
+    "scheme": "scannerapp",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./logo.png",
+      "bundleIdentifier": "com.quadem.scannerapp"
+    },
+    "android": {
+      "package": "com.quadem.scannerapp",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./logo.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#208AEF",
+          "image": "./logo.png",
+          "imageWidth": 200,
+          "android": {
+            "image": "./logo.png",
+            "imageWidth": 200
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2343cb5d-bbfe-4827-bbfd-c1802ffb603a"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2343cb5d-bbfe-4827-bbfd-c1802ffb603a"
+    }
+  }
+}

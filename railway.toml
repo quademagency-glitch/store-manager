@@ -1,10 +1,10 @@
 [build]
 builder = "NIXPACKS"
-watchPaths = ["store-app/server/**"]
-buildCommand = "cd store-app/server && npm install"
+watchPaths = ["server/**"]
+buildCommand = "cd server && npm install"
 
 [deploy]
-startCommand = "cd store-app/server && npm start"
+startCommand = "cd server && npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"

@@ -111,7 +111,24 @@ const Icons = {
       <path d="M12 12.75L15.75 9L12 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15.75 9H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
-  )
+  ),
+  crm: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  history: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h12v4H3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  purchaseOrder: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M16 10a4 4 0 0 1-8 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
 };
 
 export default function MainLayout() {
@@ -171,10 +188,11 @@ export default function MainLayout() {
       icon: Icons.products,
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('manage_products') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: true },
         { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: true },
-        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.invoice, visible: true },
-        { path: '/sales-record', label: 'Sales Record', icon: Icons.sales, visible: hasPermission('view_sales') },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: true },
+        { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
       ].filter(i => i.visible)
@@ -198,7 +216,7 @@ export default function MainLayout() {
 
     const crm = {
       title: 'CRM',
-      icon: Icons.team,
+      icon: Icons.crm,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales') },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },

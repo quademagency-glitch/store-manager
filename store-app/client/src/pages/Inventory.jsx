@@ -486,20 +486,21 @@ export default function Inventory() {
 
       {/* Low Stock Alerts */}
       {lowStockProducts.length > 0 && (
-        <div className="alert alert-warning" style={{ marginBottom: '24px', padding: '16px', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fef3c7' }}>
-          <h3 style={{ color: '#d97706', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <div style={{ marginBottom: '24px', padding: '16px', borderRadius: 'var(--radius-lg)', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}>
+          <h3 style={{ color: 'var(--color-warning)', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 9V14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               <path d="M12 17.5V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               <path d="M12 3L2 21H22L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
             </svg>
             Low Stock Alerts ({lowStockProducts.length})
           </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {lowStockProducts.map((p, idx) => (
-              <div key={`${p.id}-${idx}`} style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #fcd34d', fontSize: '14px' }}>
-                <strong>{p.name}</strong> • <span style={{ color: p.quantity === 0 ? '#ef4444' : '#d97706' }}>{p.quantity} left</span> 
-                {locations.length > 1 && <span style={{ color: '#94a3b8' }}> @ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown Loc'}</span>}
+              <div key={`${p.id}-${idx}`} style={{ padding: '6px 10px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.825rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.name}</span>
+                <span style={{ color: p.quantity === 0 ? 'var(--color-error)' : 'var(--color-warning)', fontWeight: 700 }}>{p.quantity} left</span>
+                {locations.length > 1 && <span style={{ color: 'var(--color-text-muted)' }}>@ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown'}</span>}
               </div>
             ))}
           </div>

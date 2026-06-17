@@ -152,7 +152,7 @@ export default function Products() {
     <div className="page-container">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Inventory</h1>
+          <h1 className="page-title">Products</h1>
           <p className="page-subtitle">Manage products, pricing, and stock levels.</p>
         </div>
         {hasPermission('manage_products') && (
@@ -229,14 +229,16 @@ export default function Products() {
               <thead>
                 <tr>
                   <th>SKU</th>
-                  <th>Model</th>
-                  <th>Quantity available</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center py-xl text-muted">
+                    <td colSpan={5} className="text-center py-xl text-muted">
                       No products found matching your search.
                     </td>
                   </tr>
@@ -245,10 +247,14 @@ export default function Products() {
                     const displayStock = locationFilter === 'all'
                       ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
                       : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
-                    const isLowStock = displayStock <= 5;
+                    const threshold = locationFilter === 'all'
+                      ? (product.product_inventory?.[0]?.low_stock_threshold ?? 5)
+                      : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.low_stock_threshold ?? 5);
+                    const isLowStock = displayStock <= threshold;
+                    const isOutOfStock = displayStock === 0;
                     return (
-                      <tr 
-                        key={product.id} 
+                      <tr
+                        key={product.id}
                         className={isLowStock ? 'row-warning' : ''}
                         style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
                         onClick={() => hasPermission('manage_products') && openEditModal(product)}
@@ -264,20 +270,29 @@ export default function Products() {
                               {product.product_code && (
                                 <span className="text-muted text-sm" style={{display: 'block'}}>{product.product_code}</span>
                               )}
-                              {isLowStock && (
-                                <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>
-                              )}
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div className="stock-cell">
-                            <span className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}>
+                          <span className="badge badge-neutral" style={{ fontWeight: 500 }}>
+                            {product.category || '—'}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                            ${Number(product.price || 0).toFixed(2)}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className={`stock-count ${isOutOfStock ? 'text-error font-bold' : isLowStock ? 'text-warning font-bold' : ''}`}>
                               {displayStock}
                             </span>
-                            {locationFilter === 'all' && (
-                              <span className="stock-threshold text-muted text-sm">/ across locs</span>
-                            )}
+                            {isOutOfStock ? (
+                              <span className="badge badge-error badge-sm">Out</span>
+                            ) : isLowStock ? (
+                              <span className="badge badge-warning badge-sm">Low</span>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -304,12 +319,17 @@ export default function Products() {
             const displayStock = locationFilter === 'all'
               ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
               : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
-            const isLowStock = displayStock <= 5;
+            const threshold = locationFilter === 'all'
+              ? (product.product_inventory?.[0]?.low_stock_threshold ?? 5)
+              : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.low_stock_threshold ?? 5);
+            const isLowStock = displayStock <= threshold;
+            const isOutOfStock = displayStock === 0;
+            const stockBorderColor = isOutOfStock ? 'var(--color-error)' : isLowStock ? 'var(--color-warning)' : undefined;
             return (
-              <div 
-                key={product.id} 
-                className="m-card" 
-                style={{ ...(isLowStock ? { borderLeft: '3px solid var(--color-warning)' } : {}), cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
+              <div
+                key={product.id}
+                className="m-card"
+                style={{ ...(stockBorderColor ? { borderLeft: `3px solid ${stockBorderColor}` } : {}), cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
                 onClick={() => hasPermission('manage_products') && openEditModal(product)}
               >
                 <div className="m-card-top">
@@ -317,17 +337,24 @@ export default function Products() {
                   <div style={{ flex: 1 }}>
                     <div className="m-card-title">
                       {product.name}
-                      {isLowStock && <span className="badge badge-warning badge-sm" style={{ marginLeft: '6px' }}>Low Stock</span>}
+                      {isOutOfStock ? (
+                        <span className="badge badge-error badge-sm" style={{ marginLeft: '6px' }}>Out of Stock</span>
+                      ) : isLowStock ? (
+                        <span className="badge badge-warning badge-sm" style={{ marginLeft: '6px' }}>Low Stock</span>
+                      ) : null}
                     </div>
                     <div className="m-card-sub">
                       <code>{product.sku}</code>
-                      {product.product_code && <span style={{marginLeft: '8px', color: 'var(--color-text-secondary)'}}>{product.product_code}</span>}
+                      {product.category && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>{product.category}</span>}
                     </div>
                   </div>
                 </div>
-                <div className="m-card-row">
-                  <span style={{ color: isLowStock ? 'var(--color-warning)' : undefined, fontWeight: isLowStock ? 700 : undefined }}>
-                    Quantity available: {displayStock}
+                <div className="m-card-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: isOutOfStock ? 'var(--color-error)' : isLowStock ? 'var(--color-warning)' : 'var(--color-text-secondary)', fontWeight: isLowStock ? 700 : undefined }}>
+                    Stock: {displayStock}
+                  </span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                    ${Number(product.price || 0).toFixed(2)}
                   </span>
                 </div>
               </div>

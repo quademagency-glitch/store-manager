@@ -6,12 +6,19 @@ import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function Dashboard() {
   const { user, role, hasPermission } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const { summary, recentActivity, loading, fetchSummary, fetchRecentActivity } = useAnalytics();
-  
+
   useEffect(() => {
     fetchSummary();
     fetchRecentActivity();
@@ -50,13 +57,15 @@ export default function Dashboard() {
     }
   };
 
+  const todayTxCount = summary?.todayTransactionCount ?? null;
+
   return (
     <>
       {/* Dynamic Welcome Banner */}
       <div className="dashboard-welcome-banner">
         <div className="banner-content">
           <h1 className="banner-title">
-            Good morning, <span className="highlight-text">{user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
+            {getGreeting()}, <span className="highlight-text">{user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
           </h1>
           <p className="banner-subtitle">
             Here's what's happening in your store today.
@@ -72,7 +81,7 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-content">
-        
+
         {/* Quick Actions Panel */}
         <div className="dashboard-quick-actions">
           {hasPermission('create_sales') && (
@@ -117,14 +126,6 @@ export default function Dashboard() {
             </div>
             <span>Till Account</span>
           </Link>
-          {(role === 'Business Admin' || role === 'Manager') && (
-            <button onClick={handleResetDashboard} className="action-btn">
-              <div className="action-icon action-icon-error" style={{ color: 'var(--color-error)' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
-              </div>
-              <span>Reset Dash</span>
-            </button>
-          )}
         </div>
 
         {/* Enhanced Stats Grid */}
@@ -141,9 +142,11 @@ export default function Dashboard() {
                 <span className="stat-label">Today's Sales</span>
                 <div className="stat-value-row">
                   <span className="stat-value">{loading ? '...' : fmt(summary?.todaySalesTotal)}</span>
-                  <span className="stat-trend trend-up">↑ 12%</span>
+                  {!loading && todayTxCount !== null && (
+                    <span className="stat-trend trend-neutral">{todayTxCount} tx</span>
+                  )}
                 </div>
-                <span className="stat-hint">vs yesterday</span>
+                <span className="stat-hint">Today's transactions</span>
               </div>
             </div>
           )}
@@ -161,9 +164,9 @@ export default function Dashboard() {
                 <span className="stat-label">Products</span>
                 <div className="stat-value-row">
                   <span className="stat-value">{loading ? '...' : summary?.totalProducts || 0}</span>
-                  <span className="stat-trend trend-neutral">- 0%</span>
+                  <span className="stat-trend trend-neutral">Active catalog</span>
                 </div>
-                <span className="stat-hint">Active catalog</span>
+                <span className="stat-hint">Listed in inventory</span>
               </div>
             </div>
           )}
@@ -204,7 +207,7 @@ export default function Dashboard() {
                 <div className="stat-value-row">
                   <span className="stat-value">{loading ? '...' : summary?.theftAlertsCount || 0}</span>
                   <span className={`stat-trend ${(summary?.theftAlertsCount > 0) ? 'trend-down' : 'trend-up'}`}>
-                    {(summary?.theftAlertsCount > 0) ? '↑ Investigate' : '↓ 0%'}
+                    {(summary?.theftAlertsCount > 0) ? '↑ Investigate' : 'All clear'}
                   </span>
                 </div>
                 <span className="stat-hint">Shrinkage events (30d)</span>
@@ -240,6 +243,47 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Danger Zone — admin only */}
+        {(role === 'Business Admin' || role === 'Manager') && (
+          <div style={{
+            marginTop: 'var(--space-2xl)',
+            padding: 'var(--space-lg) var(--space-xl)',
+            border: '1px solid var(--color-error-border)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--color-error-bg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-lg)',
+          }}>
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--color-error)', fontSize: '0.9rem', marginBottom: '2px' }}>Danger Zone</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.825rem' }}>
+                Permanently wipe all sales, stock movements, and alerts for this location. This cannot be undone.
+              </div>
+            </div>
+            <button
+              onClick={handleResetDashboard}
+              style={{
+                flexShrink: 0,
+                padding: '0.5rem 1.25rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-error)',
+                background: 'transparent',
+                color: 'var(--color-error)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'background var(--transition-fast)',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              Reset Dashboard
+            </button>
+          </div>
+        )}
 
       </div>
     </>

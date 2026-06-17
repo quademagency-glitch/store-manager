@@ -21,7 +21,7 @@ export default function Alerts() {
         url += `?status=${filter}`;
       }
       const res = await api.get(url);
-      setAlerts(res.data);
+      setAlerts(res);
     } catch (err) {
       if (import.meta.env.DEV) console.error('Error fetching alerts:', err);
       setError('Failed to fetch alerts. Please try again.');

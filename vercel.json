@@ -1,9 +1,9 @@
 {
   "name": "store-manager-app",
   "version": 2,
-  "buildCommand": "cd store-app/client && npm install && npm run build",
+  "buildCommand": "cd store-app/client && npm run build",
   "outputDirectory": "store-app/client/dist",
-  "installCommand": "cd store-app/client && npm install",
+  "installCommand": "cd store-app/client && npm install --include=dev",
   "framework": null,
   "rewrites": [
     {

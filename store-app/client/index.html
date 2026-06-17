@@ -18,12 +18,11 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register service worker for PWA support
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.log('SW registration failed:', err));
+        // Reload once when the new service worker takes control so users
+        // always get the latest JS bundle after a deployment.
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
         });
       }
     </script>

@@ -1,0 +1,5 @@
+{
+  "build": {
+    "rootDirectory": "store-app/server/"
+  }
+}

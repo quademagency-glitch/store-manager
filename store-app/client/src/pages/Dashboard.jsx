@@ -131,7 +131,7 @@ export default function Dashboard() {
         {/* Enhanced Stats Grid */}
         <div className="stats-grid">
           {hasPermission('view_sales') && (
-            <div className="stat-card">
+            <Link to="/sales-record" className="stat-card" aria-label="View today's sales records">
               <div className="stat-icon stat-icon-sales">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -148,11 +148,11 @@ export default function Dashboard() {
                 </div>
                 <span className="stat-hint">Today's transactions</span>
               </div>
-            </div>
+            </Link>
           )}
 
           {hasPermission('manage_products') && (
-            <div className="stat-card">
+            <Link to="/products" className="stat-card" aria-label="View product catalog">
               <div className="stat-icon stat-icon-products">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -168,11 +168,11 @@ export default function Dashboard() {
                 </div>
                 <span className="stat-hint">Listed in inventory</span>
               </div>
-            </div>
+            </Link>
           )}
 
           {hasPermission('manage_inventory') && (
-            <div className="stat-card">
+            <Link to="/inventory" className="stat-card" aria-label="View stock and low-stock alerts">
               <div className="stat-icon stat-icon-stock">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -190,11 +190,11 @@ export default function Dashboard() {
                 </div>
                 <span className="stat-hint">Items low on stock</span>
               </div>
-            </div>
+            </Link>
           )}
 
           {hasPermission('view_analytics') && (
-            <div className="stat-card">
+            <Link to="/alerts" className="stat-card" aria-label="View loss prevention and theft alerts">
               <div className="stat-icon stat-icon-alerts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 3L21 20H3L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -212,7 +212,7 @@ export default function Dashboard() {
                 </div>
                 <span className="stat-hint">Shrinkage events (30d)</span>
               </div>
-            </div>
+            </Link>
           )}
         </div>
 
@@ -221,7 +221,7 @@ export default function Dashboard() {
           <div className="bento-card col-span-full">
             <div className="bento-header">
               <h3 className="bento-title">Recent Activity</h3>
-              <button className="btn btn-secondary btn-sm">View All</button>
+              <Link to="/sales-record" className="btn btn-secondary btn-sm">View All</Link>
             </div>
             <div className="activity-feed">
               {recentActivity && recentActivity.length > 0 ? (

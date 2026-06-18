@@ -336,4 +336,68 @@ router.get('/recent-activity', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/analytics/reset
+ * Permanently wipe sales, returns, stock movements, and alerts for the
+ * caller's business/location. Inventory levels are left untouched.
+ */
+router.delete('/reset', authGuard, async (req, res) => {
+  try {
+    if (!['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Only Business Admins or Managers can reset dashboard data.'
+      });
+    }
+
+    let salesIdQuery = supabaseAdmin.from('sales').select('id');
+    if (req.user.role !== 'Platform Admin') {
+      salesIdQuery = salesIdQuery.eq('business_id', req.user.business_id);
+    }
+    salesIdQuery = applyLocationFilter(salesIdQuery, req);
+    const { data: salesRows, error: salesIdErr } = await salesIdQuery;
+    if (salesIdErr) throw salesIdErr;
+
+    const saleIds = salesRows.map(s => s.id);
+    if (saleIds.length > 0) {
+      // returns.original_sale_id has no ON DELETE CASCADE, so it must be
+      // cleared before the parent sales rows can be deleted.
+      const { error: returnsErr } = await supabaseAdmin
+        .from('returns')
+        .delete()
+        .in('original_sale_id', saleIds);
+      if (returnsErr) throw returnsErr;
+    }
+
+    let salesDelQuery = supabaseAdmin.from('sales').delete();
+    if (req.user.role !== 'Platform Admin') {
+      salesDelQuery = salesDelQuery.eq('business_id', req.user.business_id);
+    }
+    salesDelQuery = applyLocationFilter(salesDelQuery, req);
+    const { error: salesErr } = await salesDelQuery;
+    if (salesErr) throw salesErr;
+
+    let stockDelQuery = supabaseAdmin.from('stock_movements').delete();
+    if (req.user.role !== 'Platform Admin') {
+      stockDelQuery = stockDelQuery.eq('business_id', req.user.business_id);
+    }
+    stockDelQuery = applyLocationFilter(stockDelQuery, req);
+    const { error: stockErr } = await stockDelQuery;
+    if (stockErr) throw stockErr;
+
+    let alertsDelQuery = supabaseAdmin.from('alerts').delete();
+    if (req.user.role !== 'Platform Admin') {
+      alertsDelQuery = alertsDelQuery.eq('business_id', req.user.business_id);
+    }
+    alertsDelQuery = applyLocationFilter(alertsDelQuery, req);
+    const { error: alertsErr } = await alertsDelQuery;
+    if (alertsErr) throw alertsErr;
+
+    res.json({ message: 'Dashboard data reset successfully' });
+  } catch (err) {
+    logger.error({ err: err }, 'Error resetting dashboard data:');
+    res.status(500).json({ error: 'Failed to reset dashboard data' });
+  }
+});
+
 module.exports = router;

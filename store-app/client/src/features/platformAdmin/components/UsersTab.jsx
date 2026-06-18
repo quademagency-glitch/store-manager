@@ -1,5 +1,5 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
-import { Icons } from '../Icons';
+import { Icons } from '../../../components/icons/Icons';
 
 export default function UsersTab() {
   const {
@@ -65,9 +65,9 @@ export default function UsersTab() {
                   </td>
                   <td className="text-right">
                     <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
-                      <button className="btn-icon" onClick={() => openEditUser(u)} title="Edit">{Icons.edit}</button>
-                      <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleUserBan(u)} title={u.status === 'banned' ? 'Unban' : 'Ban'}>{Icons.ban}</button>
-                      <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id, u.email)} title="Delete">{Icons.trash}</button>
+                      <button className="btn-icon" onClick={() => openEditUser(u)} title="Edit" aria-label={`Edit ${u.email}`}>{Icons.edit}</button>
+                      <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleUserBan(u)} title={u.status === 'banned' ? 'Unban' : 'Ban'} aria-label={u.status === 'banned' ? `Unban ${u.email}` : `Ban ${u.email}`}>{Icons.ban}</button>
+                      <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id, u.email)} title="Delete" aria-label={`Delete ${u.email}`}>{Icons.trash}</button>
                     </div>
                   </td>
                 </tr>

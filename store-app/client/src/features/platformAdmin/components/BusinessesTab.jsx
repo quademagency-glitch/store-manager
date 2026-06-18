@@ -1,5 +1,5 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
-import { Icons } from '../Icons';
+import { Icons } from '../../../components/icons/Icons';
 
 export default function BusinessesTab() {
   const {
@@ -63,16 +63,16 @@ export default function BusinessesTab() {
                     <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(b.created_at).toLocaleDateString()}</td>
                     <td className="text-right">
                       <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
-                        <button className="btn-icon" onClick={() => handleViewBusiness(b)} title="View Details">
+                        <button className="btn-icon" onClick={() => handleViewBusiness(b)} title="View Details" aria-label={`View details for ${b.name}`}>
                           {Icons.eye}
                         </button>
-                        <button className="btn-icon" onClick={() => openEditBusiness(b)} title="Edit">
+                        <button className="btn-icon" onClick={() => openEditBusiness(b)} title="Edit" aria-label={`Edit ${b.name}`}>
                           {Icons.edit}
                         </button>
-                        <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleBusinessBan(b)} title={b.status === 'banned' ? 'Unban' : 'Ban'}>
+                        <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleBusinessBan(b)} title={b.status === 'banned' ? 'Unban' : 'Ban'} aria-label={b.status === 'banned' ? `Unban ${b.name}` : `Ban ${b.name}`}>
                           {Icons.ban}
                         </button>
-                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteBusiness(b.id, b.name)} title="Delete">
+                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteBusiness(b.id, b.name)} title="Delete" aria-label={`Delete ${b.name}`}>
                           {Icons.trash}
                         </button>
                       </div>

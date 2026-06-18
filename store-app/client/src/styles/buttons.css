@@ -38,6 +38,11 @@
 }
 
 .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
   padding: 0.4rem;
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);

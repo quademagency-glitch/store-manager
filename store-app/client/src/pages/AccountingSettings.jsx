@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { Icons } from '../components/icons/Icons';
 
 export default function AccountingSettings() {
   const toast = useToast();
@@ -282,8 +283,8 @@ export default function AccountingSettings() {
               return (
                 <div key={t.id} className={`acct-card type-${t.type}`} style={{ cursor: 'default' }}>
                   <div className="acct-card-header">
-                    <div className={`acct-card-icon type-${t.type}`}>
-                      {t.type === 'expense' ? '💸' : '🏦'}
+                    <div className={`acct-card-icon type-${t.type}`} aria-hidden="true">
+                      {t.type === 'expense' ? Icons.dollar : Icons.bank}
                     </div>
                     <div className="acct-card-title-group">
                       <h3 className="acct-card-title">{t.name}</h3>
@@ -339,7 +340,7 @@ export default function AccountingSettings() {
 
             {templates.length > 0 && filteredTemplates.length === 0 && (
               <div className="acct-empty">
-                <div className="acct-empty-icon">🔍</div>
+                <div className="acct-empty-icon" aria-hidden="true">{Icons.search}</div>
                 <p className="acct-empty-title">No matching templates</p>
                 <p className="acct-empty-subtitle">Try adjusting your search or filter criteria.</p>
               </div>
@@ -347,7 +348,7 @@ export default function AccountingSettings() {
 
             {templates.length === 0 && (
               <div className="acct-empty">
-                <div className="acct-empty-icon">📋</div>
+                <div className="acct-empty-icon" aria-hidden="true">{Icons.clipboard}</div>
                 <p className="acct-empty-title">No templates yet</p>
                 <p className="acct-empty-subtitle">Create your first accounting template to enable your team to record expenses and deposits.</p>
                 <button className="btn btn-primary" onClick={() => handleOpenModal()}>

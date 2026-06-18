@@ -3,6 +3,7 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import { useToast } from '../../hooks/useToast';
 import LetterheadBuilder from '../../components/LetterheadBuilder';
+import { Icons } from '../../components/icons/Icons';
 
 export default function Organization() {
   const { user } = useAuthContext();
@@ -101,7 +102,7 @@ export default function Organization() {
           {/* ─── Section 1: Company Profile ─── */}
           <div className="org-section">
             <div className="org-section-header">
-              <div className="org-section-icon">🏢</div>
+              <div className="org-section-icon" aria-hidden="true">{Icons.business}</div>
               <div>
                 <h2 className="org-section-title">Company Profile</h2>
                 <p className="org-section-subtitle">Basic information about your business</p>
@@ -183,7 +184,7 @@ export default function Organization() {
           {/* ─── Section 2: Branding ─── */}
           <div className="org-section">
             <div className="org-section-header">
-              <div className="org-section-icon">🎨</div>
+              <div className="org-section-icon" aria-hidden="true">{Icons.palette}</div>
               <div>
                 <h2 className="org-section-title">Branding</h2>
                 <p className="org-section-subtitle">Your logo appears on receipts, invoices, and reports</p>
@@ -195,7 +196,7 @@ export default function Organization() {
                   {business.logo_url ? (
                     <img src={business.logo_url} alt="Business logo" />
                   ) : (
-                    '🖼'
+                    <span aria-hidden="true">{Icons.image}</span>
                   )}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -219,7 +220,7 @@ export default function Organization() {
           {/* ─── Section 3: Store Policies ─── */}
           <div className="org-section">
             <div className="org-section-header">
-              <div className="org-section-icon">📋</div>
+              <div className="org-section-icon" aria-hidden="true">{Icons.clipboard}</div>
               <div>
                 <h2 className="org-section-title">Store Policies & Compliance</h2>
                 <p className="org-section-subtitle">Tax configuration and return policy for your business</p>
@@ -309,7 +310,7 @@ export default function Organization() {
           {/* ─── Section 4: Billing ─── */}
           <div className="org-section">
             <div className="org-section-header">
-              <div className="org-section-icon">💳</div>
+              <div className="org-section-icon" aria-hidden="true">{Icons.creditCard}</div>
               <div>
                 <h2 className="org-section-title">Billing & Plan</h2>
                 <p className="org-section-subtitle">Your current subscription details</p>
@@ -335,7 +336,7 @@ export default function Organization() {
           {/* ─── Section 5: Letterhead ─── */}
           <div className="org-section">
             <div className="org-section-header">
-              <div className="org-section-icon">📄</div>
+              <div className="org-section-icon" aria-hidden="true">{Icons.document}</div>
               <div>
                 <h2 className="org-section-title">Document Letterhead</h2>
                 <p className="org-section-subtitle">Configure the header and footer for receipts, invoices, and printable documents</p>

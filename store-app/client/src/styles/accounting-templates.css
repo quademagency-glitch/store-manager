@@ -153,15 +153,20 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-lg);
-  font-size: 1.2rem;
+}
+.acct-card-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .acct-card-icon.type-expense {
+  color: var(--color-error);
   background: var(--color-error-bg);
   border: 1px solid var(--color-error-border);
 }
 
 .acct-card-icon.type-deposit {
+  color: var(--color-success);
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
@@ -335,9 +340,15 @@
 }
 
 .acct-empty-icon {
-  font-size: 2.5rem;
+  display: flex;
+  justify-content: center;
+  color: var(--color-text-muted);
   margin-bottom: var(--space-md);
   opacity: 0.6;
+}
+.acct-empty-icon svg {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .acct-empty-title {
@@ -371,12 +382,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
   background: rgba(34, 197, 94, 0.1);
   border: 2px solid rgba(34, 197, 94, 0.25);
   color: var(--color-success);
   margin-bottom: var(--space-lg);
   animation: successPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.acct-success-icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 [data-theme="light"] .acct-success-icon {
@@ -452,9 +466,15 @@
 }
 
 .acct-dropzone-icon {
-  font-size: 1.5rem;
+  display: flex;
+  justify-content: center;
+  color: var(--color-text-muted);
   margin-bottom: var(--space-sm);
   opacity: 0.5;
+}
+.acct-dropzone-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .acct-dropzone-text {

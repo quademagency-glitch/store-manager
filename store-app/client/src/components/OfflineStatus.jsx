@@ -95,12 +95,12 @@ export default function OfflineStatus() {
         disabled={!isOnline || isSyncing}
         style={{ 
           display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', 
-          background: isOnline ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
-          borderRadius: '16px', 
-          border: `1px solid ${isOnline ? '#10b981' : '#f59e0b'}`,
+          background: isOnline ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)',
+          borderRadius: '16px',
+          border: `1px solid ${isOnline ? 'var(--color-success)' : 'var(--color-warning)'}`,
           cursor: isOnline && !isSyncing ? 'pointer' : 'not-allowed',
           fontSize: '0.85rem',
-          color: isOnline ? '#10b981' : '#f59e0b',
+          color: isOnline ? 'var(--color-success)' : 'var(--color-warning)',
           fontWeight: 600
         }}
         title={isOnline ? 'Click to sync now' : 'Waiting for connection to sync'}

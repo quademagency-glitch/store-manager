@@ -565,9 +565,15 @@
 }
 
 .empty-state-icon {
-  font-size: 3rem;
+  display: flex;
+  justify-content: center;
+  color: var(--color-text-muted);
   margin-bottom: var(--space-md);
   animation: bounce 2s ease-in-out infinite;
+}
+.empty-state-icon svg {
+  width: 3rem;
+  height: 3rem;
 }
 
 @keyframes bounce {

@@ -48,7 +48,7 @@ export default function AdjustStockModal({ isOpen, onClose, onSubmit, locations,
         </div>
         {adjustData.movementType === 'SHRINKAGE' && (
           <div className="form-group">
-            <label>Shrinkage Reason <span style={{ color: '#ef4444' }}>*</span></label>
+            <label>Shrinkage Reason <span style={{ color: 'var(--color-error)' }}>*</span></label>
             <select required value={adjustData.shrinkageReason} onChange={e => setAdjustData({...adjustData, shrinkageReason: e.target.value})} className="form-input">
               <option value="">Select reason...</option>
               <option value="theft_suspected">🚨 Theft Suspected</option>

@@ -1,5 +1,5 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
-import { Icons } from '../Icons';
+import { Icons } from '../../../components/icons/Icons';
 
 export default function BusinessDetailTab() {
   const {

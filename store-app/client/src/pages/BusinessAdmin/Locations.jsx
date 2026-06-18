@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
+import { Icons } from '../../components/icons/Icons';
 
 export default function Locations() {
   const { user } = useAuthContext();
@@ -116,8 +117,8 @@ export default function Locations() {
                     <td className="text-muted">{loc.address || '—'}</td>
                     <td>{loc.tax_rate}%</td>
                     <td className="text-right">
-                      <button className="btn-icon" onClick={() => openModal(loc)}>✎</button>
-                      <button className="btn-icon text-error hover-bg-error" onClick={() => handleDelete(loc.id)}>🗑</button>
+                      <button className="btn-icon" onClick={() => openModal(loc)} aria-label={`Edit ${loc.name}`}>{Icons.edit}</button>
+                      <button className="btn-icon text-error hover-bg-error" onClick={() => handleDelete(loc.id)} aria-label={`Delete ${loc.name}`}>{Icons.trash}</button>
                     </td>
                   </tr>
                 ))}

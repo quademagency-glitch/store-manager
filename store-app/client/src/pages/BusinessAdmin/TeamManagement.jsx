@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
+import { Icons } from '../../components/icons/Icons';
 
 export default function TeamManagement() {
   const { hasPermission } = useAuthContext();
@@ -206,14 +207,14 @@ export default function TeamManagement() {
                         <button className="btn-icon" onClick={() => {
                           setPinForm({ userId: u.id, pin: '' });
                           setIsPinModalOpen(true);
-                        }} title="Set Manager PIN">
-                          🔑
+                        }} title="Set Manager PIN" aria-label="Set Manager PIN">
+                          {Icons.key}
                         </button>
-                        <button className="btn-icon" onClick={() => toggleUserStatus(u)} title={u.status === 'banned' ? 'Restore Access' : 'Revoke Access'}>
-                          {u.status === 'banned' ? '✅' : '🚫'}
+                        <button className="btn-icon" onClick={() => toggleUserStatus(u)} title={u.status === 'banned' ? 'Restore Access' : 'Revoke Access'} aria-label={u.status === 'banned' ? 'Restore Access' : 'Revoke Access'}>
+                          {u.status === 'banned' ? Icons.checkCircle : Icons.ban}
                         </button>
-                        <button className="btn-icon" onClick={() => openUserModal(u)} title="Edit">✎</button>
-                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id, u.name)} title="Delete">🗑</button>
+                        <button className="btn-icon" onClick={() => openUserModal(u)} title="Edit" aria-label="Edit user">{Icons.edit}</button>
+                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id, u.name)} title="Delete" aria-label="Delete user">{Icons.trash}</button>
                       </td>
                     </tr>
                   ))}

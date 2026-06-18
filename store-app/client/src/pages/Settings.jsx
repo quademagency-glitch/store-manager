@@ -3,6 +3,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useConfirm } from '../hooks/useConfirm';
+import { Icons } from '../components/icons/Icons';
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'manage_users', label: 'Manage Users & Roles' },
@@ -210,8 +211,8 @@ export default function Settings() {
                           <span className="badge badge-neutral">{u.roles?.name || 'Unknown'}</span>
                         </td>
                         <td className="text-right">
-                          <button className="btn-icon" onClick={() => openUserModal(u)}>✎</button>
-                          <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id)}>🗑</button>
+                          <button className="btn-icon" onClick={() => openUserModal(u)} aria-label={`Edit ${u.name}`}>{Icons.edit}</button>
+                          <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id)} aria-label={`Delete ${u.name}`}>{Icons.trash}</button>
                         </td>
                       </tr>
                     ))}
@@ -231,8 +232,8 @@ export default function Settings() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                       <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>{r.name}</h4>
                       <div>
-                        <button className="btn-icon" onClick={() => openRoleModal(r)}>✎</button>
-                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteRole(r.id)}>🗑</button>
+                        <button className="btn-icon" onClick={() => openRoleModal(r)} aria-label={`Edit ${r.name}`}>{Icons.edit}</button>
+                        <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteRole(r.id)} aria-label={`Delete ${r.name}`}>{Icons.trash}</button>
                       </div>
                     </div>
                     <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '16px' }}>{r.description || 'No description'}</p>

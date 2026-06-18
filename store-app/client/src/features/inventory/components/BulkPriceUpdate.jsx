@@ -274,7 +274,7 @@ export default function BulkPriceUpdate({ onComplete }) {
               className="btn btn-primary"
               onClick={handleApply}
               disabled={applying || changedCount === 0}
-              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+              style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               {applying ? 'Applying...' : `Apply to ${changedCount} Product(s)`}
             </button>

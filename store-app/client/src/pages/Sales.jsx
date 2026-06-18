@@ -4,6 +4,7 @@ import { useProducts } from '../hooks/useProducts';
 import { useCustomers } from '../hooks/useCustomers';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
+import { Icons } from '../components/icons/Icons';
 import { api } from '../lib/api';
 
 import NewCustomerModal from '../features/sales/components/NewCustomerModal';
@@ -590,7 +591,7 @@ export default function Sales() {
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '2px' }}>Selected Customer</div>
                     <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--color-text-primary)' }}>{selectedCustomer.name}</div>
                     <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>📞 {selectedCustomer.phone}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.phone}</span> {selectedCustomer.phone}</span>
                       <span style={{ color: 'var(--color-border)' }}>|</span>
                       <span>ID: {selectedCustomer.customer_code || 'N/A'}</span>
                     </div>
@@ -702,7 +703,7 @@ export default function Sales() {
                                   style={{ padding: '0.5rem 1rem' }}
                                   onClick={() => openScanner(item.id, idx)}
                                 >
-                                  {scan.item_code ? 'Rescan' : '📷 Scan QR'}
+                                  {scan.item_code ? 'Rescan' : <><span aria-hidden="true" style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '4px' }}>{Icons.camera}</span>Scan QR</>}
                                 </button>
                               </div>
                             )}

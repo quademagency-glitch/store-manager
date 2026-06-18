@@ -1,6 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import Modal from '../../../components/Modal';
-import { Icons } from '../Icons';
+import { Icons } from '../../../components/icons/Icons';
 
 export default function PlatformAdminModals() {
   const {

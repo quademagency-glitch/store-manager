@@ -57,7 +57,7 @@ export default function ShrinkageReport() {
         {/* Breakdown Chart */}
         <div className="content-card" style={{ padding: '24px', background: 'var(--color-bg-secondary)', borderRadius: '8px' }}>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '8px', fontWeight: '600' }}>Financial Impact</h2>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444', marginBottom: '16px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-error)', marginBottom: '16px' }}>
             ${totalLost.toFixed(2)} <span style={{ fontSize: '1rem', color: 'var(--color-text-muted)', fontWeight: 'normal' }}>Total Lost</span>
           </div>
           
@@ -110,7 +110,7 @@ export default function ShrinkageReport() {
                       <td style={{ whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleDateString()}</td>
                       <td style={{ fontWeight: 500 }}>{e.product?.name || 'Unknown'}</td>
                       <td>{e.user?.name || e.user?.email || 'Unknown'}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 'bold' }}>{Math.abs(e.quantity_change)}</td>
+                      <td style={{ color: 'var(--color-error)', fontWeight: 'bold' }}>{Math.abs(e.quantity_change)}</td>
                       <td>${e.value_lost.toFixed(2)}</td>
                       <td style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{e.notes}</td>
                     </tr>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { Icons } from '../components/icons/Icons';
 
 export default function InvoiceList() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function InvoiceList() {
         </div>
       ) : invoices.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">📄</div>
+          <div className="empty-state-icon" aria-hidden="true">{Icons.document}</div>
           <h2>No Invoices Yet</h2>
           <p className="text-muted">You have not received any invoices from Quadem ERP yet.</p>
         </div>
@@ -69,7 +70,7 @@ export default function InvoiceList() {
                     <td style={{ padding: '1rem' }}>{inv.description || 'Subscription Payment'}</td>
                     <td style={{ padding: '1rem', fontWeight: 600, color: 'var(--color-primary)' }}>{formatCurrency(inv.amount, inv.currency)}</td>
                     <td style={{ padding: '1rem' }}>
-                      <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: inv.status === 'paid' ? '#10b981' : '#f59e0b' }}>{inv.status}</span>
+                      <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: inv.status === 'paid' ? 'var(--color-success)' : 'var(--color-warning)' }}>{inv.status}</span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                       <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/invoice/${inv.id}`); }}>View Invoice</button>
@@ -89,7 +90,7 @@ export default function InvoiceList() {
                     <div className="m-card-sub">{inv.description || 'Subscription Payment'}</div>
                     <div className="m-card-meta">{new Date(inv.created_at).toLocaleDateString()}</div>
                   </div>
-                  <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: inv.status === 'paid' ? '#10b981' : '#f59e0b', flexShrink: 0 }}>{inv.status}</span>
+                  <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', background: inv.status === 'paid' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: inv.status === 'paid' ? 'var(--color-success)' : 'var(--color-warning)', flexShrink: 0 }}>{inv.status}</span>
                 </div>
                 <div className="m-card-row">
                   <span className="m-card-amount" style={{ color: 'var(--color-primary)' }}>{formatCurrency(inv.amount, inv.currency)}</span>

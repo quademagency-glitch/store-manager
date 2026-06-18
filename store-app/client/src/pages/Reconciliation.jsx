@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Icons } from '../components/icons/Icons';
 
 export default function Reconciliation() {
   const { reconciliationData, loading, fetchReconciliation, error } = useAnalytics();
@@ -135,7 +136,7 @@ export default function Reconciliation() {
               {loading ? (
                 <tr><td colSpan="7" className="text-center py-xl text-muted"><div className="spinner mb-sm mx-auto"></div><p>Loading...</p></td></tr>
               ) : reconciliationData.length === 0 ? (
-                <tr><td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📊</div><p>No activity found for this date.</p></td></tr>
+                <tr><td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.3 }} aria-hidden="true">{Icons.chart}</div><p>No activity found for this date.</p></td></tr>
               ) : reconciliationData.map(row => {
                 const net = row.totalSalesRevenue - row.totalShrinkageValue;
                 return (
@@ -159,7 +160,7 @@ export default function Reconciliation() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
           ) : reconciliationData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📊</div><p>No activity found for this date.</p></div>
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.3 }} aria-hidden="true">{Icons.chart}</div><p>No activity found for this date.</p></div>
           ) : reconciliationData.map(row => {
             const net = row.totalSalesRevenue - row.totalShrinkageValue;
             return (

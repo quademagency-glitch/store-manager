@@ -51,25 +51,25 @@ export default function Overview() {
       </header>
 
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div className="stat-card" style={{ borderTop: '4px solid #10b981', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
+        <div className="stat-card" style={{ borderTop: '4px solid var(--color-success)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
           <div className="stat-details">
             <span className="stat-label" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Today's Revenue</span>
             <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>${Number(stats.todaySalesTotal).toFixed(2)}</span>
           </div>
         </div>
-        <div className="stat-card" style={{ borderTop: '4px solid #3b82f6', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
+        <div className="stat-card" style={{ borderTop: '4px solid var(--color-accent-primary)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
           <div className="stat-details">
             <span className="stat-label" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Products in Catalog</span>
             <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalProducts}</span>
           </div>
         </div>
-        <div className="stat-card" style={{ borderTop: '4px solid #f59e0b', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
+        <div className="stat-card" style={{ borderTop: '4px solid var(--color-warning)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
           <div className="stat-details">
             <span className="stat-label" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Low Stock Alerts</span>
             <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: stats.lowStockCount > 0 ? '#d97706' : 'inherit' }}>{stats.lowStockCount}</span>
           </div>
         </div>
-        <div className="stat-card" style={{ borderTop: '4px solid #ef4444', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
+        <div className="stat-card" style={{ borderTop: '4px solid var(--color-error)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
           <div className="stat-details">
             <span className="stat-label" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Shrinkage Events</span>
             <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: stats.theftAlertsCount > 0 ? '#b91c1c' : 'inherit' }}>{stats.theftAlertsCount}</span>
@@ -107,7 +107,7 @@ export default function Overview() {
                 <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
                   <div style={{ 
                     width: '10px', height: '10px', borderRadius: '50%', marginTop: '6px',
-                    background: item.status === 'success' ? '#10b981' : item.status === 'error' ? '#ef4444' : '#f59e0b' 
+                    background: item.status === 'success' ? 'var(--color-success)' : item.status === 'error' ? 'var(--color-error)' : 'var(--color-warning)' 
                   }}></div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{item.title}</p>

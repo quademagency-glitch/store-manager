@@ -48,10 +48,14 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-lg);
-  font-size: 1.1rem;
+  color: var(--color-accent-primary);
   background: var(--color-accent-glow);
   border: 1px solid rgba(99, 102, 241, 0.15);
   flex-shrink: 0;
+}
+.org-section-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .org-section-title {

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
+import { Icons } from '../components/icons/Icons';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -349,8 +350,8 @@ export default function AccountingTemplates() {
                   aria-label={`${t.name} — ${t.type} template`}
                 >
                   <div className="acct-card-header">
-                    <div className={`acct-card-icon type-${t.type}`}>
-                      {t.type === 'expense' ? '💸' : '🏦'}
+                    <div className={`acct-card-icon type-${t.type}`} aria-hidden="true">
+                      {t.type === 'expense' ? Icons.dollar : Icons.bank}
                     </div>
                     <div className="acct-card-title-group">
                       <h3 className="acct-card-title">{t.name}</h3>
@@ -369,7 +370,7 @@ export default function AccountingTemplates() {
 
             {templates.length > 0 && filteredTemplates.length === 0 && (
               <div className="acct-empty">
-                <div className="acct-empty-icon">🔍</div>
+                <div className="acct-empty-icon" aria-hidden="true">{Icons.search}</div>
                 <p className="acct-empty-title">No matching templates</p>
                 <p className="acct-empty-subtitle">Try adjusting your search or filter criteria.</p>
               </div>
@@ -377,7 +378,7 @@ export default function AccountingTemplates() {
 
             {templates.length === 0 && (
               <div className="acct-empty">
-                <div className="acct-empty-icon">📋</div>
+                <div className="acct-empty-icon" aria-hidden="true">{Icons.clipboard}</div>
                 <p className="acct-empty-title">No templates available</p>
                 <p className="acct-empty-subtitle">No accounting templates have been assigned to your role. Contact your manager to get started.</p>
               </div>
@@ -392,7 +393,7 @@ export default function AccountingTemplates() {
           {submissionResult ? (
             /* ---- Success State ---- */
             <div className="acct-success">
-              <div className="acct-success-icon">✓</div>
+              <div className="acct-success-icon" aria-hidden="true">{Icons.check}</div>
               <h3 className="acct-success-title">Entry Submitted</h3>
               <div className="acct-success-summary">
                 <div className="acct-success-row">
@@ -547,7 +548,7 @@ export default function AccountingTemplates() {
                           {filePreview ? (
                             <img src={filePreview} alt="Receipt preview" />
                           ) : (
-                            '📄'
+                            <span aria-hidden="true">{Icons.document}</span>
                           )}
                         </div>
                         <div className="acct-file-info">
@@ -566,7 +567,7 @@ export default function AccountingTemplates() {
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                       >
-                        <div className="acct-dropzone-icon">📎</div>
+                        <div className="acct-dropzone-icon" aria-hidden="true">{Icons.paperclip}</div>
                         <p className="acct-dropzone-text">Drag & drop a file here, or click to browse</p>
                         <p className="acct-dropzone-hint">Images or PDFs up to 5MB</p>
                         <input 
@@ -578,7 +579,7 @@ export default function AccountingTemplates() {
                     )}
                     {needsReceipt && (
                       <div className={`acct-receipt-required-hint ${receiptFile ? 'satisfied' : ''}`}>
-                        {receiptFile ? '✓ Evidence document attached' : '⚠ A receipt or evidence document is required to submit this entry.'}
+                        {receiptFile ? 'Evidence document attached' : 'A receipt or evidence document is required to submit this entry.'}
                       </div>
                     )}
                   </div>

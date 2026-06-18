@@ -268,7 +268,7 @@ export default function PurchaseOrders() {
                               </>
                             )}
                             {(po.status === 'sent' || po.status === 'partial') && (
-                              <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none' }}>Receive</button>
+                              <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                             )}
                             {['draft', 'sent'].includes(po.status) && (
                               <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none', cursor: 'pointer' }}>Cancel</button>
@@ -304,7 +304,7 @@ export default function PurchaseOrders() {
                         <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none' }}>Send</button>
                       </>)}
                       {(po.status === 'sent' || po.status === 'partial') && (
-                        <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none' }}>Receive</button>
+                        <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                       )}
                       {['draft', 'sent'].includes(po.status) && (
                         <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none' }}>Cancel</button>
@@ -419,7 +419,7 @@ export default function PurchaseOrders() {
                     <button className="btn btn-primary btn-sm" onClick={() => handleSend(selectedPO)}>Send to Supplier</button>
                   )}
                   {(selectedPO.status === 'sent' || selectedPO.status === 'partial') && (
-                    <button className="btn btn-primary btn-sm" onClick={() => handleReceiveOpen(selectedPO)} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none' }}>Receive Goods</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => handleReceiveOpen(selectedPO)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive Goods</button>
                   )}
                 </div>
               </>

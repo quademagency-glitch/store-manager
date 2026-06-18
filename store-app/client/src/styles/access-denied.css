@@ -20,8 +20,14 @@
 }
 
 .access-denied-icon {
-  font-size: 3rem;
+  display: flex;
+  justify-content: center;
+  color: var(--color-error);
   margin-bottom: var(--space-md);
+}
+.access-denied-icon svg {
+  width: 3rem;
+  height: 3rem;
 }
 
 .access-denied-card h2 {

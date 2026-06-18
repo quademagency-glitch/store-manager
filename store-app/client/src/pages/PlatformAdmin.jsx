@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { PlatformAdminProvider, usePlatformAdmin } from '../features/platformAdmin/PlatformAdminContext';
-import { Icons } from '../features/platformAdmin/Icons';
+import { Icons } from '../components/icons/Icons';
 
 // Tabs
 import OverviewTab from '../features/platformAdmin/components/OverviewTab';

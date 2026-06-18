@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { Icons } from '../components/icons/Icons';
 
 export default function Alerts() {
   const { user } = useAuthContext();
@@ -99,10 +100,10 @@ export default function Alerts() {
 
   const getSeverityBadge = (severity) => {
     const colors = {
-      critical: { bg: 'rgba(239,68,68,0.2)', color: '#ef4444', label: '● Critical' },
+      critical: { bg: 'color-mix(in srgb, var(--color-error) 20%, transparent)', color: 'var(--color-error)', label: '● Critical' },
       high: { bg: 'rgba(249,115,22,0.2)', color: '#f97316', label: '● High' },
       medium: { bg: 'rgba(234,179,8,0.2)', color: '#eab308', label: '● Medium' },
-      low: { bg: 'rgba(34,197,94,0.2)', color: '#22c55e', label: '● Low' }
+      low: { bg: 'color-mix(in srgb, var(--color-success) 20%, transparent)', color: 'var(--color-success)', label: '● Low' }
     };
     const s = colors[severity] || colors.medium;
     return (
@@ -148,13 +149,13 @@ export default function Alerts() {
       {filter === 'pending' && pendingCount > 0 && (
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {criticalCount > 0 && (
-            <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '0.85rem', fontWeight: 600, color: '#ef4444' }}>
-              🔴 {criticalCount} Critical
+            <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-error)' }}>
+              {criticalCount} Critical
             </div>
           )}
           {highCount > 0 && (
-            <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.3)', fontSize: '0.85rem', fontWeight: 600, color: '#f97316' }}>
-              🟠 {highCount} High
+            <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-warning)' }}>
+              {highCount} High
             </div>
           )}
           <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', fontSize: '0.85rem' }}>
@@ -197,9 +198,9 @@ export default function Alerts() {
               {loading ? (
                 <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm"></div><p>Loading alerts...</p></td></tr>
               ) : filteredAlerts.length === 0 ? (
-                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🛡️</div><p>No {filter !== 'all' ? filter : ''} alerts found.</p></td></tr>
+                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.5 }} aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V6l8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div><p>No {filter !== 'all' ? filter : ''} alerts found.</p></td></tr>
               ) : filteredAlerts.map(alertItem => (
-                <tr key={alertItem.id} style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid #ef4444' : alertItem.severity === 'high' ? '3px solid #f97316' : 'none' }}>
+                <tr key={alertItem.id} style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid var(--color-error)' : alertItem.severity === 'high' ? '3px solid var(--color-warning)' : 'none' }}>
                   <td className="text-muted">{formatDate(alertItem.created_at)}</td>
                   <td>{getSeverityBadge(alertItem.severity)}</td>
                   <td>{getTypeBadge(alertItem.type)}</td>
@@ -207,14 +208,14 @@ export default function Alerts() {
                   <td className="text-sm" style={{ maxWidth: '300px' }}>
                     <div>{alertItem.note}</div>
                     {alertItem.metadata?.pattern && alertItem.type === 'SUSPICIOUS_PATTERN' && (
-                      <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
+                      <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', fontSize: '0.75rem' }}>
                         Pattern: <strong>{alertItem.metadata.pattern.replace(/_/g, ' ')}</strong>
                         {alertItem.metadata.void_count && <> · {alertItem.metadata.void_count} voids</>}
                         {alertItem.metadata.total_value && <> · ${alertItem.metadata.total_value.toFixed(2)}</>}
                       </div>
                     )}
                     {alertItem.metadata?.missing_items && alertItem.type === 'STOCK_TAKE_MISSING' && (
-                      <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
+                      <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', fontSize: '0.75rem' }}>
                         Missing: {alertItem.metadata.missing_items.slice(0, 5).map((m, i) => <span key={i}>{m.product} ({m.qr_code}){i < Math.min(alertItem.metadata.missing_items.length, 5) - 1 ? ', ' : ''}</span>)}
                         {alertItem.metadata.missing_items.length > 5 && <span> +{alertItem.metadata.missing_items.length - 5} more</span>}
                       </div>
@@ -227,8 +228,8 @@ export default function Alerts() {
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                           {alertItem.type === 'VOID_REQUEST' ? (
                             <>
-                              <button className="btn btn-sm" style={{ background: '#22c55e', color: 'white', fontSize: '0.75rem' }} onClick={() => handleApproveVoid(alertItem)}>✅ Approve</button>
-                              <button className="btn btn-sm" style={{ background: '#ef4444', color: 'white', fontSize: '0.75rem' }} onClick={() => handleRejectVoid(alertItem)}>❌ Reject</button>
+                              <button className="btn btn-sm" style={{ background: 'var(--color-success)', color: 'white', fontSize: '0.75rem' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
+                              <button className="btn btn-sm" style={{ background: 'var(--color-error)', color: 'white', fontSize: '0.75rem' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
                             </>
                           ) : (
                             <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>
@@ -249,7 +250,7 @@ export default function Alerts() {
             <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading alerts...</p></div>
           ) : filteredAlerts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🛡️</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.5 }} aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V6l8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
               <p>No {filter !== 'all' ? filter : ''} alerts found.</p>
             </div>
           ) : filteredAlerts.map(alertItem => (
@@ -269,7 +270,7 @@ export default function Alerts() {
               </div>
               {alertItem.note && <div className="m-card-sub" style={{ marginTop: '6px' }}>{alertItem.note}</div>}
               {alertItem.metadata?.pattern && alertItem.type === 'SUSPICIOUS_PATTERN' && (
-                <div style={{ marginTop: '6px', padding: '6px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', fontSize: '0.75rem' }}>
+                <div style={{ marginTop: '6px', padding: '6px 8px', borderRadius: '4px', background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', fontSize: '0.75rem' }}>
                   Pattern: <strong>{alertItem.metadata.pattern.replace(/_/g, ' ')}</strong>
                   {alertItem.metadata.void_count && <> · {alertItem.metadata.void_count} voids</>}
                 </div>

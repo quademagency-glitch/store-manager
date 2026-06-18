@@ -22,7 +22,13 @@ export class ErrorBoundary extends React.Component {
       // You can render any custom fallback UI
       return (
         <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '600px', margin: '4rem auto' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💥</div>
+          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--color-error, #ef4444)', marginBottom: '1rem' }} aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="12" y1="17" x2="12" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--color-error, #ef4444)' }}>
             Something went wrong
           </h1>

@@ -208,10 +208,10 @@ export default function UserProfile() {
                   <div className="text-muted">Generating code...</div>
                 </div>
               ) : isLinked ? (
-                <div className="glass-panel" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)', padding: '24px', textAlign: 'center' }}>
-                  <div style={{ color: '#10b981', fontSize: '48px', marginBottom: '8px' }}>✓</div>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#047857', marginBottom: '4px' }}>Scanner Linked</h4>
-                  <p style={{ color: '#065f46', marginBottom: '24px', fontSize: '0.9rem' }}>Your mobile device is connected.</p>
+                <div className="glass-panel" style={{ background: 'color-mix(in srgb, var(--color-success) 5%, transparent)', borderColor: 'color-mix(in srgb, var(--color-success) 20%, transparent)', padding: '24px', textAlign: 'center' }}>
+                  <div style={{ color: 'var(--color-success)', fontSize: '48px', marginBottom: '8px' }}>✓</div>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--color-success)', marginBottom: '4px' }}>Scanner Linked</h4>
+                  <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>Your mobile device is connected.</p>
                   <button className="btn btn-outline text-error" onClick={handleUnlink}>
                     Unlink Device
                   </button>

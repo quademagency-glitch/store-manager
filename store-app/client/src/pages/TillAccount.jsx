@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { usePrintDocument } from '../hooks/usePrintDocument';
+import { Icons as SharedIcons } from '../components/icons/Icons';
 import { useCurrency } from '../hooks/useCurrency';
 import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
 
 const Icons = {
   printer: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
-  loader: <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+  loader: <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
+  chart: SharedIcons.chart
 };
 
 export default function TillAccount() {
@@ -83,7 +85,7 @@ export default function TillAccount() {
     return (
       <div className="fin-summary-section">
         <div className="fin-summary-header" onClick={() => setFinExpanded(!finExpanded)}>
-          <h2>📊 Financial Summary</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.chart}</span> Financial Summary</h2>
           <span className="fin-summary-toggle" style={{ transform: finExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
         {finExpanded && (

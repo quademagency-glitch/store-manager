@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
-import { Icons } from '../Icons';
+import { Icons } from '../../../components/icons/Icons';
 
 export default function OverviewTab() {
   const {
@@ -52,7 +52,7 @@ export default function OverviewTab() {
           </div>
 
           <div className="stat-card pa-stat-card" style={{ cursor: 'pointer' }} onClick={() => { setUserSearchTerm('Business Admin'); setActiveTab('users'); }}>
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))', color: '#fbbf24' }}>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))', color: 'var(--color-warning)' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="8.5" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>

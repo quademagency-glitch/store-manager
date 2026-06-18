@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
+import { Icons } from './icons/Icons';
 
 export default function ProtectedRoute({ children, requiredPermission }) {
   const { isAuthenticated, hasPermission, loading } = useAuthContext();
@@ -28,7 +29,7 @@ export default function ProtectedRoute({ children, requiredPermission }) {
     return (
       <div className="access-denied">
         <div className="access-denied-card">
-          <div className="access-denied-icon">🚫</div>
+          <div className="access-denied-icon" aria-hidden="true">{Icons.ban}</div>
           <h2>Access Denied</h2>
           <p>You don't have permission to view this page.</p>
           <p className="access-denied-role">Required permission: <strong>{requiredPermission}</strong></p>

@@ -140,7 +140,7 @@ export default function InvoiceView() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Status:</span>
-                  <span style={{ fontWeight: 600, minWidth: '100px', color: invoice.status === 'paid' ? '#10b981' : '#f59e0b', textTransform: 'uppercase' }}>
+                  <span style={{ fontWeight: 600, minWidth: '100px', color: invoice.status === 'paid' ? 'var(--color-success)' : 'var(--color-warning)', textTransform: 'uppercase' }}>
                     {invoice.status}
                   </span>
                 </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { Icons } from './icons/Icons';
 
 const defaultLetterhead = {
   company_name: '',
@@ -125,7 +126,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
             boxShadow: mode === 'build' ? '0 2px 8px rgba(99, 102, 241, 0.25)' : 'none'
           }}
         >
-          🛠 Build Letterhead
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.wrench}</span>Build Letterhead</span>
         </button>
         <button
           type="button"
@@ -144,7 +145,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
             boxShadow: mode === 'upload' ? '0 2px 8px rgba(99, 102, 241, 0.25)' : 'none'
           }}
         >
-          📤 Upload Letterhead
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.upload}</span>Upload Letterhead</span>
         </button>
       </div>
 
@@ -173,7 +174,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                   style={{
                     position: 'absolute', top: '8px', right: '8px',
                     padding: '4px 12px', fontSize: '0.75rem', fontWeight: 600,
-                    background: 'rgba(239, 68, 68, 0.9)', color: '#fff',
+                    background: 'var(--color-error)', color: '#fff',
                     border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer'
                   }}
                 >
@@ -195,7 +196,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-accent-primary)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
               >
-                <div style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5 }}>🖼</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', opacity: 0.5 }} aria-hidden="true">{Icons.image}</div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0 0 4px 0' }}>
                   Click to upload your header letterhead
                 </p>
@@ -231,7 +232,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                   style={{
                     position: 'absolute', top: '8px', right: '8px',
                     padding: '4px 12px', fontSize: '0.75rem', fontWeight: 600,
-                    background: 'rgba(239, 68, 68, 0.9)', color: '#fff',
+                    background: 'var(--color-error)', color: '#fff',
                     border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer'
                   }}
                 >
@@ -253,7 +254,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-accent-primary)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
               >
-                <div style={{ fontSize: '1.5rem', marginBottom: '4px', opacity: 0.5 }}>📎</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px', opacity: 0.5 }} aria-hidden="true">{Icons.paperclip}</div>
                 <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', margin: '0 0 2px 0' }}>
                   Click to upload footer image
                 </p>

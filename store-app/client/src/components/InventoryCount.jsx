@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import QrScanner from '../components/QrScanner';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { Icons } from './icons/Icons';
 
 /**
  * InventoryCount — Full inventory count flow:
@@ -199,7 +200,7 @@ export default function InventoryCount({ locations, products }) {
     // Check for duplicates across all scan lists
     const allScanned = [...current.scannedQrs, ...current.returnQrs, ...current.damagedQrs];
     if (allScanned.includes(qrCode)) {
-      setScanFeedback({ type: 'warning', message: `⚠️ Already scanned: ${qrCode}` });
+      setScanFeedback({ type: 'warning', message: `Already scanned: ${qrCode}` });
       return;
     }
 
@@ -223,7 +224,7 @@ export default function InventoryCount({ locations, products }) {
       return { ...prev, [productId]: updated };
     });
 
-    setScanFeedback({ type: 'success', message: `✅ Scanned: ${qrCode}` });
+    setScanFeedback({ type: 'success', message: `Scanned: ${qrCode}` });
 
     // Clear feedback after 2s
     setTimeout(() => setScanFeedback(null), 2000);
@@ -327,7 +328,7 @@ export default function InventoryCount({ locations, products }) {
     return (
       <div>
         <div className="glass-panel" style={{ padding: '2rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '1.2rem' }}>📋 New Inventory Count</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem', fontSize: '1.2rem' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> New Inventory Count</h3>
           <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1.5rem' }}>
             Select the branch where you want to perform the inventory count. 
             All items at that branch will be listed by category for counting.
@@ -395,16 +396,16 @@ export default function InventoryCount({ locations, products }) {
                   </td>
                   <td>{s.expected_count}</td>
                   <td>{s.scanned_count}</td>
-                  <td style={{ color: s.missing_count > 0 ? '#ef4444' : '#22c55e', fontWeight: 600 }}>{s.missing_count}</td>
+                  <td style={{ color: s.missing_count > 0 ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 600 }}>{s.missing_count}</td>
                   <td>{s.starter?.name || 'Unknown'}</td>
                   <td>
-                    <button 
-                      className="btn btn-sm btn-icon" 
-                      style={{ color: '#ef4444', padding: '4px 8px' }}
+                    <button
+                      className="btn btn-sm btn-icon text-error"
                       onClick={(e) => handleDeleteSession(e, s.id)}
                       title="Delete Session"
+                      aria-label="Delete Session"
                     >
-                      🗑️
+                      {Icons.trash}
                     </button>
                   </td>
                 </tr>
@@ -422,8 +423,8 @@ export default function InventoryCount({ locations, products }) {
       <div>
         <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ fontWeight: 600, margin: 0, fontSize: '1.2rem' }}>
-              📋 Inventory Count Details
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, margin: 0, fontSize: '1.2rem' }}>
+              <span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> Inventory Count Details
             </h3>
             <button className="btn btn-sm btn-outline" onClick={() => { setStep('select'); setViewSession(null); }}>
               ← Back
@@ -516,24 +517,24 @@ export default function InventoryCount({ locations, products }) {
       {/* Header Bar */}
       <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h3 style={{ fontWeight: 600, margin: 0, fontSize: '1.1rem' }}>
-            📋 Inventory Count — {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, margin: 0, fontSize: '1.1rem' }}>
+            <span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> Inventory Count — {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
           </h3>
           <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '4px' }}>
             {countedCount} / {totalProducts} products counted
-            {matchCount > 0 && <span style={{ color: '#22c55e', marginLeft: '8px' }}>✅ {matchCount} match</span>}
-            {discrepancyCount > 0 && <span style={{ color: '#ef4444', marginLeft: '8px' }}>❌ {discrepancyCount} discrepancies</span>}
+            {matchCount > 0 && <span style={{ color: 'var(--color-success)', marginLeft: '8px' }}>{matchCount} match</span>}
+            {discrepancyCount > 0 && <span style={{ color: 'var(--color-error)', marginLeft: '8px' }}>{discrepancyCount} discrepancies</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn btn-sm btn-secondary" onClick={cancelCount}>Cancel</button>
-          <button 
-            className="btn btn-sm" 
-            style={{ background: '#22c55e', color: 'white' }} 
+          <button
+            className="btn btn-sm"
+            style={{ background: 'var(--color-success)', color: 'white' }}
             onClick={completeCount}
             disabled={completing}
           >
-            {completing ? 'Completing...' : '✅ Complete Count'}
+            {completing ? 'Completing...' : 'Complete Count'}
           </button>
         </div>
       </div>
@@ -588,8 +589,8 @@ export default function InventoryCount({ locations, products }) {
                       </div>
                     </div>
                     <div>
-                      {status === 'match' && <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '1.1rem' }}>✅</span>}
-                      {status === 'discrepancy' && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: '1.1rem' }}>❌</span>}
+                      {status === 'match' && <span style={{ color: 'var(--color-success)', display: 'inline-flex' }} aria-label="Match">{Icons.checkCircle}</span>}
+                      {status === 'discrepancy' && <span style={{ color: 'var(--color-error)', display: 'inline-flex' }} aria-label="Discrepancy">{Icons.xCircle}</span>}
                       {status === 'pending' && <span style={{ opacity: 0.3, fontSize: '0.85rem' }}>Tap to count</span>}
                     </div>
                   </div>
@@ -652,12 +653,14 @@ export default function InventoryCount({ locations, products }) {
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scanned QR Codes</span>
-                  <button 
+                  <button
+                    className="btn-icon"
                     onClick={() => setShowScanner(!showScanner)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                     title="Scan QR Code"
+                    aria-label="Scan QR Code"
                   >
-                    📷
+                    {Icons.camera}
                   </button>
                 </div>
 
@@ -669,7 +672,8 @@ export default function InventoryCount({ locations, products }) {
                 />
 
                 {scanFeedback && (
-                  <div style={{ padding: '6px', marginBottom: '8px', fontSize: '0.8rem', borderRadius: '4px', background: scanFeedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.1)', color: scanFeedback.type === 'success' ? '#22c55e' : '#f59e0b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px', marginBottom: '8px', fontSize: '0.8rem', borderRadius: '4px', background: scanFeedback.type === 'success' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: scanFeedback.type === 'success' ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                    <span aria-hidden="true" style={{ display: 'inline-flex' }}>{scanFeedback.type === 'success' ? Icons.checkCircle : Icons.alertTriangle}</span>
                     {scanFeedback.message}
                   </div>
                 )}

@@ -1,0 +1,670 @@
+/* ============================================
+   HR Module Styles
+   Attendance, Schedules, Commissions
+   ============================================ */
+
+/* Page Layout */
+.hr-page {
+  padding: var(--space-xl) var(--space-2xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.hr-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+  gap: var(--space-md);
+}
+
+.hr-page .page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.hr-page .page-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+/* ─── Clock In/Out Card ─── */
+.hr-clock-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.clock-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.clock-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.clock-indicator.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.clock-indicator.inactive {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--color-text-muted);
+}
+
+.clock-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: clock-pulse 2s ease-in-out infinite;
+}
+
+.clock-indicator.active .clock-pulse {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+@keyframes clock-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 0; }
+}
+
+.clock-info h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.clock-since {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.clock-note-row {
+  max-width: 400px;
+  margin: 0 auto var(--space-lg);
+}
+
+.clock-btn {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-md) var(--space-xl) !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-lg) !important;
+  transition: all 0.2s ease;
+}
+
+.btn-clock-in {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-clock-in:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-clock-out {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-clock-out:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* ─── Summary Cards ─── */
+.hr-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.hr-summary-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: border-color 0.2s;
+}
+
+.hr-summary-card:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.hr-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.hr-summary-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.hr-summary-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: 2px;
+}
+
+/* ─── Filter Bar ─── */
+.hr-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.hr-filter-bar h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.hr-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.hr-filters .form-input {
+  max-width: 160px;
+}
+
+.hr-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.hr-checkbox-label input[type="checkbox"] {
+  accent-color: var(--color-accent-primary);
+}
+
+/* ─── Schedule Grid ─── */
+.schedule-grid-wrapper {
+  overflow-x: auto;
+  margin-bottom: var(--space-xl);
+}
+
+.schedule-grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.schedule-grid th,
+.schedule-grid td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-sm);
+  vertical-align: top;
+}
+
+.schedule-grid th {
+  background: var(--color-bg-tertiary);
+  text-align: center;
+  padding: var(--space-md) var(--space-sm);
+}
+
+.schedule-user-col {
+  min-width: 160px;
+  text-align: left !important;
+}
+
+.schedule-day-col {
+  min-width: 120px;
+}
+
+.schedule-day-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.schedule-day-date {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.schedule-today {
+  background: rgba(99, 102, 241, 0.05) !important;
+}
+
+.schedule-today .schedule-day-date {
+  color: var(--color-accent-primary);
+}
+
+.schedule-user-cell {
+  padding: var(--space-md) !important;
+}
+
+.schedule-user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.schedule-user-email {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.schedule-cell {
+  min-height: 60px;
+}
+
+.schedule-shift-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.shift-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+}
+
+.shift-role {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.shift-delete {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.schedule-shift-chip:hover .shift-delete {
+  opacity: 1;
+}
+
+.shift-delete:hover {
+  color: var(--color-error);
+}
+
+/* ─── Week Nav ─── */
+.hr-week-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hr-week-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  min-width: 180px;
+  text-align: center;
+}
+
+/* ─── Commission Rules Grid ─── */
+.commission-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.commission-rule-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: all 0.2s;
+}
+
+.commission-rule-card:hover {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.commission-rule-card.rule-disabled {
+  opacity: 0.6;
+}
+
+.rule-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+}
+
+.rule-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.rule-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rule-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.rule-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rule-detail-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.rule-detail-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.btn-danger-outline {
+  background: transparent !important;
+  border: 1px solid var(--color-error) !important;
+  color: var(--color-error) !important;
+}
+
+.btn-danger-outline:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+/* ─── Empty State Card ─── */
+.empty-state-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl);
+  background: var(--color-bg-secondary);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  gap: var(--space-sm);
+}
+
+.empty-state-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Staff Summary ─── */
+.hr-staff-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.hr-staff-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.hr-staff-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.hr-staff-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.hr-staff-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Pagination ─── */
+.pagination-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+}
+
+/* ─── Form Hint ─── */
+.form-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.form-row {
+  display: flex;
+  gap: var(--space-md);
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+  .hr-page {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .hr-page .page-header {
+    flex-direction: column;
+  }
+
+  .hr-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hr-filters {
+    width: 100%;
+  }
+
+  .hr-filters .form-input {
+    max-width: 100%;
+    flex: 1;
+  }
+
+  .clock-btn {
+    max-width: 100%;
+  }
+
+  .hr-week-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .commission-rules-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+/* ─── Geofence Status Banner ─── */
+.geofence-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+  transition: all 0.3s ease;
+}
+
+.geofence-ok {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.geofence-outside {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.geofence-status-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.geofence-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.geofence-ok .geofence-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.geofence-outside .geofence-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.geofence-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.geofence-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.geofence-ok .geofence-label {
+  color: #059669;
+}
+
+.geofence-outside .geofence-label {
+  color: #dc2626;
+}
+
+.geofence-detail {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.geofence-warning-text {
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-md);
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

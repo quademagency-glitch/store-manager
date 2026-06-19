@@ -104,3 +104,46 @@ export const createEventSource = async () => {
   if (!token) throw new Error('Scanner not linked');
   return new EventSource(`${API_BASE}/scanner/app-events?token=${token}`);
 };
+
+// ─── Attendance ───
+
+export const getAttendanceStatus = async () => {
+  const token = await getToken();
+  if (!token) throw new Error('Scanner not linked');
+  const response = await fetchWithTimeout(`${API_BASE}/scanner/attendance-status?token=${token}`);
+  return handleResponse(response);
+};
+
+export const clockIn = async (latitude?: number, longitude?: number, note?: string) => {
+  const token = await getToken();
+  if (!token) throw new Error('Scanner not linked');
+
+  const body: any = { token };
+  if (latitude != null) body.latitude = latitude;
+  if (longitude != null) body.longitude = longitude;
+  if (note) body.note = note;
+
+  const response = await fetchWithTimeout(`${API_BASE}/scanner/clock-in`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(response);
+};
+
+export const clockOut = async (latitude?: number, longitude?: number, note?: string) => {
+  const token = await getToken();
+  if (!token) throw new Error('Scanner not linked');
+
+  const body: any = { token };
+  if (latitude != null) body.latitude = latitude;
+  if (longitude != null) body.longitude = longitude;
+  if (note) body.note = note;
+
+  const response = await fetchWithTimeout(`${API_BASE}/scanner/clock-out`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(response);
+};

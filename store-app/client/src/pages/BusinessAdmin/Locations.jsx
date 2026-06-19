@@ -15,7 +15,11 @@ export default function Locations() {
   const [error, setError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ id: null, name: '', address: '', tax_rate: 0, receipt_header: '' });
+  const [formData, setFormData] = useState({
+    id: null, name: '', address: '', tax_rate: 0, receipt_header: '',
+    latitude: '', longitude: '', geofence_radius_m: 200,
+    clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
+  });
 
   const fetchLocations = useCallback(async () => {
     setLoading(true);
@@ -36,9 +40,22 @@ export default function Locations() {
 
   const openModal = (loc = null) => {
     if (loc) {
-      setFormData({ ...loc });
+      setFormData({
+        ...loc,
+        latitude: loc.latitude || '',
+        longitude: loc.longitude || '',
+        geofence_radius_m: loc.geofence_radius_m || 200,
+        clock_in_start: loc.clock_in_start?.slice(0, 5) || '',
+        clock_in_end: loc.clock_in_end?.slice(0, 5) || '',
+        clock_out_start: loc.clock_out_start?.slice(0, 5) || '',
+        clock_out_end: loc.clock_out_end?.slice(0, 5) || '',
+      });
     } else {
-      setFormData({ id: null, name: '', address: '', tax_rate: 0, receipt_header: '' });
+      setFormData({
+        id: null, name: '', address: '', tax_rate: 0, receipt_header: '',
+        latitude: '', longitude: '', geofence_radius_m: 200,
+        clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
+      });
     }
     setIsModalOpen(true);
   };
@@ -46,26 +63,54 @@ export default function Locations() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: formData.name,
+        address: formData.address,
+        tax_rate: formData.tax_rate,
+        receipt_header: formData.receipt_header,
+      };
       if (formData.id) {
-        await api.put(`/locations/${formData.id}`, {
-          name: formData.name,
-          address: formData.address,
-          tax_rate: formData.tax_rate,
-          receipt_header: formData.receipt_header
-        });
+        await api.put(`/locations/${formData.id}`, payload);
       } else {
-        await api.post('/locations', {
-          name: formData.name,
-          address: formData.address,
-          tax_rate: formData.tax_rate,
-          receipt_header: formData.receipt_header
+        await api.post('/locations', payload);
+      }
+      // Update geofence + time windows separately via HR endpoint
+      if (formData.id) {
+        await api.put(`/hr/geofence/${formData.id}`, {
+          latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+          longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+          geofence_radius_m: parseInt(formData.geofence_radius_m) || 200,
+          clock_in_start: formData.clock_in_start || null,
+          clock_in_end: formData.clock_in_end || null,
+          clock_out_start: formData.clock_out_start || null,
+          clock_out_end: formData.clock_out_end || null,
         });
       }
       setIsModalOpen(false);
       fetchLocations();
+      toast.success(formData.id ? 'Location updated' : 'Location created');
     } catch (err) {
       toast.error("Error saving location: " + err.message);
     }
+  };
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('GPS not available in your browser');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormData(prev => ({
+          ...prev,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+        }));
+        toast.success('GPS coordinates captured!');
+      },
+      () => toast.error('Could not get your location. Enable GPS and try again.'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleDelete = async (id) => {
@@ -107,6 +152,7 @@ export default function Locations() {
                   <th>Location Name</th>
                   <th>Address</th>
                   <th>Tax Rate</th>
+                  <th>Geofence</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
@@ -116,6 +162,15 @@ export default function Locations() {
                     <td className="font-medium">{loc.name}</td>
                     <td className="text-muted">{loc.address || '—'}</td>
                     <td>{loc.tax_rate}%</td>
+                    <td>
+                      {loc.latitude && loc.longitude ? (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                          ✓ {loc.geofence_radius_m || 200}m radius
+                        </span>
+                      ) : (
+                        <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>Not set</span>
+                      )}
+                    </td>
                     <td className="text-right">
                       <button className="btn-icon" onClick={() => openModal(loc)} aria-label={`Edit ${loc.name}`}>{Icons.edit}</button>
                       <button className="btn-icon text-error hover-bg-error" onClick={() => handleDelete(loc.id)} aria-label={`Delete ${loc.name}`}>{Icons.trash}</button>
@@ -124,7 +179,7 @@ export default function Locations() {
                 ))}
                 {locations.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="text-center p-xl text-muted">No locations found.</td>
+                    <td colSpan="5" className="text-center p-xl text-muted">No locations found.</td>
                   </tr>
                 )}
               </tbody>
@@ -175,6 +230,122 @@ export default function Locations() {
               placeholder="Store Name&#10;123 Address St&#10;Phone: 555-0100"
             ></textarea>
           </div>
+
+          {/* Geofence Section */}
+          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>
+                📍 Attendance Geofence
+              </label>
+              <button type="button" className="btn btn-sm btn-secondary" onClick={handleUseMyLocation} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+                </svg>
+                Use My Location
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+              Set coordinates and a radius to enforce location-based clock in/out. Staff must be within the radius to clock in.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Latitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  className="form-input"
+                  placeholder="e.g. 5.614818"
+                  value={formData.latitude}
+                  onChange={e => setFormData({...formData, latitude: e.target.value})}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Longitude</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  className="form-input"
+                  placeholder="e.g. -0.186964"
+                  value={formData.longitude}
+                  onChange={e => setFormData({...formData, longitude: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label>Allowed Radius (meters): {formData.geofence_radius_m}m</label>
+              <input
+                type="range"
+                min="50"
+                max="2000"
+                step="50"
+                value={formData.geofence_radius_m}
+                onChange={e => setFormData({...formData, geofence_radius_m: parseInt(e.target.value)})}
+                style={{ width: '100%' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                <span>50m</span>
+                <span>2000m</span>
+              </div>
+            </div>
+
+            {/* Time Windows Section */}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '8px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.95rem', margin: '0 0 8px', display: 'block' }}>
+                ⏰ Allowed Clock-In / Clock-Out Times
+              </label>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                Set time windows to restrict when staff can clock in and clock out. Leave empty for no restriction.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Clock-In Start</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={formData.clock_in_start}
+                    onChange={e => setFormData({...formData, clock_in_start: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Clock-In End</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={formData.clock_in_end}
+                    onChange={e => setFormData({...formData, clock_in_end: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Clock-Out Start</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={formData.clock_out_start}
+                    onChange={e => setFormData({...formData, clock_out_start: e.target.value})}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Clock-Out End</label>
+                  <input
+                    type="time"
+                    className="form-input"
+                    value={formData.clock_out_end}
+                    onChange={e => setFormData({...formData, clock_out_end: e.target.value})}
+                  />
+                </div>
+              </div>
+              {(formData.clock_in_start && formData.clock_in_end) && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>
+                  Staff can clock in between <strong>{formData.clock_in_start}</strong> and <strong>{formData.clock_in_end}</strong>
+                  {formData.clock_out_start && formData.clock_out_end
+                    ? <>, and clock out between <strong>{formData.clock_out_start}</strong> and <strong>{formData.clock_out_end}</strong></>
+                    : ''}
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save Location</button>

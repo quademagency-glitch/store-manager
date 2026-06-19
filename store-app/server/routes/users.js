@@ -64,6 +64,27 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
 
     const assigned_business_id = req.user.role === 'Platform Admin' && business_id ? business_id : req.user.business_id;
 
+    if (req.user.role !== 'Platform Admin') {
+      const requestedRoleName = role_name || 'Salesperson';
+      const { data: targetRole, error: roleErr } = await supabaseAdmin
+        .from('roles')
+        .select('name, business_id, permissions')
+        .eq('name', requestedRoleName)
+        .or(`business_id.is.null,business_id.eq.${req.user.business_id}`)
+        .order('business_id', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (roleErr) throw roleErr;
+
+      const grantedPermissions = targetRole?.permissions || [];
+      const exceedsOwnPermissions = grantedPermissions.some(p => !req.user.permissions.includes(p));
+
+      if (!targetRole || exceedsOwnPermissions) {
+        return res.status(403).json({ error: `You cannot assign the "${requestedRoleName}" role because it grants permissions you do not have.` });
+      }
+    }
+
     // Use Supabase Admin API to create the user securely without logging out the admin
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -107,6 +128,23 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
     if (!role_id) {
       return res.status(400).json({ error: 'role_id is required' });
+    }
+
+    if (req.user.role !== 'Platform Admin') {
+      const { data: targetRole, error: roleErr } = await supabaseAdmin
+        .from('roles')
+        .select('name, permissions')
+        .eq('id', role_id)
+        .single();
+
+      if (roleErr || !targetRole) {
+        return res.status(400).json({ error: 'Invalid role_id.' });
+      }
+
+      const exceedsOwnPermissions = (targetRole.permissions || []).some(p => !req.user.permissions.includes(p));
+      if (exceedsOwnPermissions) {
+        return res.status(403).json({ error: `You cannot assign the "${targetRole.name}" role because it grants permissions you do not have.` });
+      }
     }
 
     const updates = { name, role_id };

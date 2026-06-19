@@ -210,6 +210,8 @@ export default function MainLayout() {
         { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: role === 'Business Admin' || role === 'Platform Admin' },
         { path: '/invoice', label: 'Invoices', icon: Icons.invoice, visible: hasPermission('manage_sales') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
+        { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('manage_business') },
+        { path: '/reports/accounts-receivable', label: 'Accounts Receivable', icon: Icons.invoice, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (accounting.items.length > 0) groups.push(accounting);
@@ -221,6 +223,7 @@ export default function MainLayout() {
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales') },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
         { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_business') },
+        { path: '/loyalty', label: 'Loyalty & Rewards', icon: Icons.billing, visible: true },
       ].filter(i => i.visible)
     };
     if (crm.items.length > 0) groups.push(crm);
@@ -230,6 +233,9 @@ export default function MainLayout() {
       title: 'HR & Team',
       icon: Icons.team,
       items: [
+        { path: '/hr/attendance', label: 'Attendance', icon: Icons.reconciliation, visible: true },
+        { path: '/hr/schedules', label: 'Schedules', icon: Icons.history, visible: hasPermission('manage_users') },
+        { path: '/hr/my-commissions', label: 'My Commissions', icon: Icons.billing, visible: true },
         { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users') },
       ].filter(i => i.visible)
     };
@@ -247,6 +253,8 @@ export default function MainLayout() {
         { path: '/business-admin/roles', label: 'Roles', icon: Icons.settings, visible: hasPermission('manage_users') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_business') },
         { path: '/business-admin/shrinkage', label: 'Loss Prevention', icon: Icons.alerts, visible: hasPermission('manage_business') },
+        { path: '/business-admin/attendance-report', label: 'Attendance Report', icon: Icons.reconciliation, visible: hasPermission('manage_users') },
+        { path: '/business-admin/commission-rules', label: 'Commission Rules', icon: Icons.billing, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);

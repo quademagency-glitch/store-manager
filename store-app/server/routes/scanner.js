@@ -389,4 +389,262 @@ router.get('/app-events', async (req, res) => {
   }
 });
 
+// ============================================
+// ATTENDANCE ENDPOINTS (Scanner Token Auth)
+// ============================================
+
+function haversineDistanceM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function checkTimeWindow(location, action) {
+  const startCol = action === 'clock_in' ? 'clock_in_start' : 'clock_out_start';
+  const endCol = action === 'clock_in' ? 'clock_in_end' : 'clock_out_end';
+  const startTime = location[startCol];
+  const endTime = location[endCol];
+  if (!startTime || !endTime) return null;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  const label = action === 'clock_in' ? 'clock in' : 'clock out';
+  const fmt = (h, m) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
+    return `You can only ${label} between ${fmt(sh, sm)} and ${fmt(eh, em)}. Current time: ${fmt(now.getHours(), now.getMinutes())}.`;
+  }
+  return null;
+}
+
+/** Helper: resolve user + location from scanner token */
+async function resolveScanner(token) {
+  if (!token) return null;
+  const { data: users, error } = await supabaseAdmin
+    .from('users')
+    .select('id, name, business_id, active_location_id, roles(name)')
+    .eq('scanner_session_token', token);
+  if (error || !users?.length) return null;
+  return users[0];
+}
+
+/**
+ * GET /api/scanner/attendance-status
+ * Check if the scanner user is currently clocked in
+ */
+router.get('/attendance-status', async (req, res) => {
+  try {
+    const user = await resolveScanner(req.query.token);
+    if (!user) return res.status(401).json({ error: 'Invalid token' });
+
+    const { data: openLog } = await supabaseAdmin
+      .from('attendance_logs')
+      .select('id, clock_in, location_id, note')
+      .eq('user_id', user.id)
+      .eq('business_id', user.business_id)
+      .is('clock_out', null)
+      .order('clock_in', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Get active location geofence info
+    let locationInfo = null;
+    const locId = user.active_location_id;
+    if (locId) {
+      const { data: loc } = await supabaseAdmin
+        .from('locations')
+        .select('id, name, latitude, longitude, geofence_radius_m, clock_in_start, clock_in_end, clock_out_start, clock_out_end')
+        .eq('id', locId)
+        .single();
+      locationInfo = loc;
+    }
+
+    res.json({
+      clocked_in: !!openLog,
+      active_log: openLog || null,
+      location: locationInfo,
+    });
+  } catch (err) {
+    logger.error({ err }, 'Scanner attendance status error');
+    res.status(500).json({ error: 'Failed to check attendance' });
+  }
+});
+
+/**
+ * POST /api/scanner/clock-in
+ * Clock in from the scanner app
+ */
+router.post('/clock-in', scanLimiter, async (req, res) => {
+  try {
+    const { token, latitude, longitude, note } = req.body;
+    const user = await resolveScanner(token);
+    if (!user) return res.status(401).json({ error: 'Invalid token' });
+
+    const location_id = user.active_location_id;
+    if (!location_id) {
+      return res.status(400).json({ error: 'No active location set. Ask your admin to assign you.' });
+    }
+
+    // Geofence + time window check
+    let distanceM = null;
+    const { data: location } = await supabaseAdmin
+      .from('locations')
+      .select('id, name, latitude, longitude, geofence_radius_m, clock_in_start, clock_in_end, clock_out_start, clock_out_end')
+      .eq('id', location_id)
+      .single();
+
+    // Time window validation
+    if (location) {
+      const timeErr = checkTimeWindow(location, 'clock_in');
+      if (timeErr) {
+        return res.status(403).json({ error: 'Outside allowed hours', message: timeErr });
+      }
+    }
+
+    if (location?.latitude && location?.longitude) {
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          error: 'Location required',
+          message: 'GPS is required to clock in at this location.',
+        });
+      }
+      distanceM = Math.round(haversineDistanceM(latitude, longitude, location.latitude, location.longitude));
+      const radiusM = location.geofence_radius_m || 200;
+      if (distanceM > radiusM) {
+        return res.status(403).json({
+          error: 'Outside geofence',
+          message: `You are ${distanceM}m from ${location.name}. Must be within ${radiusM}m.`,
+          distance: distanceM,
+          radius: radiusM,
+        });
+      }
+    }
+
+    // Check for existing open clock-in
+    const { data: openLog } = await supabaseAdmin
+      .from('attendance_logs')
+      .select('id, clock_in')
+      .eq('user_id', user.id)
+      .eq('business_id', user.business_id)
+      .is('clock_out', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (openLog) {
+      return res.status(400).json({ error: 'Already clocked in', activeLog: openLog });
+    }
+
+    const insertData = {
+      user_id: user.id,
+      business_id: user.business_id,
+      location_id,
+      note: note || null,
+    };
+    if (latitude) insertData.clock_in_lat = latitude;
+    if (longitude) insertData.clock_in_lng = longitude;
+    if (distanceM !== null) insertData.clock_in_distance_m = distanceM;
+
+    const { data, error } = await supabaseAdmin
+      .from('attendance_logs')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ message: 'Clocked in', log: data, distance: distanceM });
+  } catch (err) {
+    logger.error({ err }, 'Scanner clock-in error');
+    res.status(500).json({ error: 'Failed to clock in' });
+  }
+});
+
+/**
+ * POST /api/scanner/clock-out
+ * Clock out from the scanner app
+ */
+router.post('/clock-out', scanLimiter, async (req, res) => {
+  try {
+    const { token, latitude, longitude, note } = req.body;
+    const user = await resolveScanner(token);
+    if (!user) return res.status(401).json({ error: 'Invalid token' });
+
+    const { data: openLog } = await supabaseAdmin
+      .from('attendance_logs')
+      .select('id, clock_in, location_id')
+      .eq('user_id', user.id)
+      .eq('business_id', user.business_id)
+      .is('clock_out', null)
+      .order('clock_in', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!openLog) {
+      return res.status(400).json({ error: 'Not clocked in' });
+    }
+
+    // Geofence check
+    let distanceM = null;
+    if (openLog.location_id) {
+      const { data: location } = await supabaseAdmin
+        .from('locations')
+        .select('id, name, latitude, longitude, geofence_radius_m, clock_in_start, clock_in_end, clock_out_start, clock_out_end')
+        .eq('id', openLog.location_id)
+        .single();
+
+      // Time window validation
+      if (location) {
+        const timeErr = checkTimeWindow(location, 'clock_out');
+        if (timeErr) {
+          return res.status(403).json({ error: 'Outside allowed hours', message: timeErr });
+        }
+      }
+
+      if (location?.latitude && location?.longitude) {
+        if (!latitude || !longitude) {
+          return res.status(400).json({
+            error: 'Location required',
+            message: 'GPS is required to clock out at this location.',
+          });
+        }
+        distanceM = Math.round(haversineDistanceM(latitude, longitude, location.latitude, location.longitude));
+        const radiusM = location.geofence_radius_m || 200;
+        if (distanceM > radiusM) {
+          return res.status(403).json({
+            error: 'Outside geofence',
+            message: `You are ${distanceM}m from ${location.name}. Must be within ${radiusM}m.`,
+            distance: distanceM,
+            radius: radiusM,
+          });
+        }
+      }
+    }
+
+    const updateData = { clock_out: new Date().toISOString() };
+    if (note) updateData.note = note;
+    if (latitude) updateData.clock_out_lat = latitude;
+    if (longitude) updateData.clock_out_lng = longitude;
+    if (distanceM !== null) updateData.clock_out_distance_m = distanceM;
+
+    const { data, error } = await supabaseAdmin
+      .from('attendance_logs')
+      .update(updateData)
+      .eq('id', openLog.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ message: 'Clocked out', log: data, distance: distanceM });
+  } catch (err) {
+    logger.error({ err }, 'Scanner clock-out error');
+    res.status(500).json({ error: 'Failed to clock out' });
+  }
+});
+
 module.exports = router;

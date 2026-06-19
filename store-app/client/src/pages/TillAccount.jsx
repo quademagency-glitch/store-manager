@@ -298,7 +298,7 @@ export default function TillAccount() {
                       <tbody>
                         {branch.transactions.map((t) => {
                           const isInflow = t.type === 'sale' || t.type === 'pay_in';
-                          const isOutflow = t.type === 'expense' || t.type === 'deposit_to_bank';
+                          const isOutflow = t.type === 'expense' || t.type === 'deposit_to_bank' || t.type === 'ap_payment';
                           
                           return (
                             <tr key={t.id} className="transition-colors" style={{ background: 'var(--color-bg-primary)', borderBottom: '1px solid var(--color-border)' }}>
@@ -417,7 +417,7 @@ export default function TillAccount() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary)' }}>Amount</span>
-                <span className="text-2xl font-mono font-bold" style={{ color: selectedExpense.type === 'expense' || selectedExpense.type === 'deposit_to_bank' ? 'var(--color-error)' : 'var(--color-success)' }}>
+                <span className="text-2xl font-mono font-bold" style={{ color: selectedExpense.type === 'expense' || selectedExpense.type === 'deposit_to_bank' || selectedExpense.type === 'ap_payment' ? 'var(--color-error)' : 'var(--color-success)' }}>
                   {fmt(selectedExpense.amount)}
                 </span>
               </div>

@@ -13,6 +13,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'manage_sales', label: 'Manage Sales (Void/Discount)' },
   { id: 'manage_inventory', label: 'Manage Inventory (Adjustments)' },
   { id: 'view_analytics', label: 'View Analytics & Alerts' },
+  { id: 'manage_financials', label: 'Manage Financial Ledger (AR/AP, Imports)' },
 ];
 
 export default function Settings() {

@@ -9,6 +9,12 @@ export function useAnalytics() {
   const [error, setError] = useState(null);
 
   const [recentActivity, setRecentActivity] = useState([]);
+
+  // Chart data states
+  const [salesTrend, setSalesTrend] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [inventoryHealth, setInventoryHealth] = useState([]);
+  const [staffPerformance, setStaffPerformance] = useState([]);
   
   const fetchRecentActivity = useCallback(async () => {
     setLoading(true);
@@ -75,6 +81,52 @@ export function useAnalytics() {
     }
   }, []);
 
+  // ─── Chart Data Fetchers ───
+
+  const fetchSalesTrend = useCallback(async () => {
+    try {
+      const data = await api.get('/analytics/sales-trend');
+      setSalesTrend(data);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  const fetchTopProducts = useCallback(async () => {
+    try {
+      const data = await api.get('/analytics/top-products');
+      setTopProducts(data);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  const fetchInventoryHealth = useCallback(async () => {
+    try {
+      const data = await api.get('/analytics/inventory-health');
+      setInventoryHealth(data);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  const fetchStaffPerformance = useCallback(async () => {
+    try {
+      const data = await api.get('/analytics/staff-performance');
+      setStaffPerformance(data);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
   return {
     summary,
     shrinkageEvents,
@@ -85,6 +137,16 @@ export function useAnalytics() {
     fetchSummary,
     fetchShrinkageEvents,
     fetchReconciliation,
-    fetchRecentActivity
+    fetchRecentActivity,
+    // Charts
+    salesTrend,
+    topProducts,
+    inventoryHealth,
+    staffPerformance,
+    fetchSalesTrend,
+    fetchTopProducts,
+    fetchInventoryHealth,
+    fetchStaffPerformance,
   };
 }
+

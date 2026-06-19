@@ -3,11 +3,13 @@ import { useCustomers } from '../hooks/useCustomers';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useConfirm } from '../hooks/useConfirm';
+import { useExportCsv } from '../hooks/useExportCsv';
 
 export default function Customers() {
   const { customers, loading, error, fetchCustomers, createCustomer, updateCustomer, deleteCustomer, page, totalPages, totalCustomers } = useCustomers();
   const { role } = useAuthContext();
   const confirm = useConfirm();
+  const { exportCsv } = useExportCsv();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,11 +57,21 @@ export default function Customers() {
           <h1 className="dashboard-title">Customers</h1>
           <p className="dashboard-subtitle">Manage your customer directory.</p>
         </div>
-        {canEdit && (
-          <button className="btn btn-primary" onClick={openNewModal}>
-            Add Customer
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={() => exportCsv(customers, [
+            { key: 'name', label: 'Name' },
+            { key: 'phone', label: 'Phone' },
+            { key: 'email', label: 'Email' },
+            { key: 'created_at', label: 'Joined', format: (v) => new Date(v).toLocaleDateString() },
+          ], 'customers')} disabled={customers.length === 0}>
+            Export CSV
           </button>
-        )}
+          {canEdit && (
+            <button className="btn btn-primary" onClick={openNewModal}>
+              Add Customer
+            </button>
+          )}
+        </div>
       </header>
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}

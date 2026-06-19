@@ -22,6 +22,7 @@ import BulkPriceUpdate from '../features/inventory/components/BulkPriceUpdate';
 import PriceTagPrinter from '../features/inventory/components/PriceTagPrinter';
 import PriceListPrint from '../features/inventory/components/PriceListPrint';
 import PriceChangeHistory from '../features/inventory/components/PriceChangeHistory';
+import { useExportCsv } from '../hooks/useExportCsv';
 
 function PricingTabContent({ refreshProducts }) {
   const [activeSection, setActiveSection] = useState('bulk-update');
@@ -60,6 +61,7 @@ export default function Inventory() {
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
+  const { exportCsv } = useExportCsv();
   const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
   const { role, locationIds } = useAuthContext();
@@ -468,6 +470,17 @@ export default function Inventory() {
         </div>
         {hasPermission('manage_inventory') && (
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => exportCsv(filteredProducts, [
+              { key: 'sku', label: 'SKU' },
+              { key: 'name', label: 'Product Name' },
+              { key: 'category', label: 'Category' },
+              { key: 'price', label: 'Price', format: (v) => Number(v).toFixed(2) },
+              { key: 'stock_quantity', label: 'Stock', format: (_, row) => {
+                return (row.product_inventory?.reduce((s, i) => s + i.quantity, 0) || 0).toString();
+              }},
+            ], 'inventory')} disabled={filteredProducts.length === 0}>
+              Export CSV
+            </button>
             <button className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3v18M18 9l-6-6-6 6M18 15l-6 6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

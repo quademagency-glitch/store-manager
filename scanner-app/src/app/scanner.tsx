@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import * as Location from 'expo-location';
 import { theme } from '../lib/theme';
-import { createEventSource, pushScan, removeToken, getMe, cancelScan, AuthExpiredError } from '../lib/api';
+import { createEventSource, pushScan, removeToken, getMe, cancelScan, getAttendanceStatus, clockIn, clockOut, AuthExpiredError } from '../lib/api';
 
 type ScanMode = 'idle' | 'list_view' | 'scanning_field' | 'stock_take_batch' | 'stock_take_summary';
 type FieldType = 'serial_number' | 'pack_code' | 'product_code' | 'item_code';
@@ -26,6 +27,17 @@ export default function ScannerScreen() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
 
+  // Attendance state
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [clockedInSince, setClockedInSince] = useState<string | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [geofenceConfigured, setGeofenceConfigured] = useState(false);
+  const [distanceM, setDistanceM] = useState<number | null>(null);
+  const [geofenceRadiusM, setGeofenceRadiusM] = useState(200);
+  const [userCoords, setUserCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [timeWindow, setTimeWindow] = useState<{clock_in_start?: string, clock_in_end?: string, clock_out_start?: string, clock_out_end?: string} | null>(null);
+
   useEffect(() => {
     unmountedRef.current = false;
 
@@ -45,6 +57,10 @@ export default function ScannerScreen() {
       }
     };
     init();
+
+    // Fetch attendance status
+    fetchAttendance();
+    requestLocationPermission();
 
     const connectSSE = async (attempt = 0) => {
       if (unmountedRef.current) return;
@@ -115,6 +131,148 @@ export default function ScannerScreen() {
       }
     };
   }, []);
+
+  // ─── Attendance helpers ───
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      }
+    } catch { /* GPS not available */ }
+  };
+
+  const haversineM = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const fetchAttendance = async () => {
+    try {
+      const status = await getAttendanceStatus();
+      setIsClockedIn(status.clocked_in);
+      setClockedInSince(status.active_log?.clock_in || null);
+      if (status.location) {
+        setLocationName(status.location.name);
+        setGeofenceRadiusM(status.location.geofence_radius_m || 200);
+        // Store time window info
+        setTimeWindow({
+          clock_in_start: status.location.clock_in_start?.slice(0, 5),
+          clock_in_end: status.location.clock_in_end?.slice(0, 5),
+          clock_out_start: status.location.clock_out_start?.slice(0, 5),
+          clock_out_end: status.location.clock_out_end?.slice(0, 5),
+        });
+        if (status.location.latitude && status.location.longitude) {
+          setGeofenceConfigured(true);
+          if (userCoords) {
+            const d = Math.round(haversineM(userCoords.lat, userCoords.lng, status.location.latitude, status.location.longitude));
+            setDistanceM(d);
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  };
+
+  // Recompute distance when coords change
+  useEffect(() => {
+    if (userCoords && geofenceConfigured) {
+      fetchAttendance();
+    }
+  }, [userCoords]);
+
+  const isWithinGeofence = !geofenceConfigured || (distanceM !== null && distanceM <= geofenceRadiusM);
+
+  const isWithinTimeWindow = (() => {
+    if (!timeWindow) return true;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const action = isClockedIn ? 'clock_out' : 'clock_in';
+    const start = timeWindow[`${action}_start` as keyof typeof timeWindow];
+    const end = timeWindow[`${action}_end` as keyof typeof timeWindow];
+    if (!start || !end) return true;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    return currentMinutes >= sh * 60 + sm && currentMinutes <= eh * 60 + em;
+  })();
+
+  const getTimeWindowLabel = () => {
+    if (!timeWindow) return null;
+    const action = isClockedIn ? 'clock_out' : 'clock_in';
+    const start = timeWindow[`${action}_start` as keyof typeof timeWindow];
+    const end = timeWindow[`${action}_end` as keyof typeof timeWindow];
+    if (!start || !end) return null;
+    return `${isClockedIn ? 'Clock out' : 'Clock in'}: ${start} – ${end}`;
+  };
+
+  const handleClockIn = async () => {
+    setAttendanceLoading(true);
+    try {
+      // Refresh GPS
+      let lat = userCoords?.lat;
+      let lng = userCoords?.lng;
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+        setUserCoords({ lat, lng });
+      } catch { /* use cached */ }
+
+      await clockIn(lat, lng);
+      setIsClockedIn(true);
+      setClockedInSince(new Date().toISOString());
+      Alert.alert('Clocked In ✅', 'You are now clocked in.');
+      fetchAttendance();
+    } catch (e: any) {
+      if (e instanceof AuthExpiredError) {
+        Alert.alert('Session Expired', e.message);
+        handleUnlink();
+        return;
+      }
+      Alert.alert('Clock In Failed', e.message || 'Could not clock in.');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const handleClockOut = async () => {
+    setAttendanceLoading(true);
+    try {
+      let lat = userCoords?.lat;
+      let lng = userCoords?.lng;
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+        setUserCoords({ lat, lng });
+      } catch { /* use cached */ }
+
+      await clockOut(lat, lng);
+      setIsClockedIn(false);
+      setClockedInSince(null);
+      Alert.alert('Clocked Out 👋', 'You have been clocked out.');
+      fetchAttendance();
+    } catch (e: any) {
+      if (e instanceof AuthExpiredError) {
+        Alert.alert('Session Expired', e.message);
+        handleUnlink();
+        return;
+      }
+      Alert.alert('Clock Out Failed', e.message || 'Could not clock out.');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const formatTimeSince = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   const handleUnlink = async () => {
     unmountedRef.current = true;
@@ -273,24 +431,104 @@ export default function ScannerScreen() {
           </View>
 
           <View style={styles.idleCenter}>
-            <View style={{ flexDirection: 'column', gap: 20 }}>
+            <View style={styles.actionButtonGroup}>
+              {/* Attendance Button */}
+              <View style={[styles.glowRing, { borderColor: isClockedIn ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', backgroundColor: isClockedIn ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)' }]}>
+                <TouchableOpacity 
+                  style={[
+                    styles.hugeScanButton, 
+                    { backgroundColor: isClockedIn ? theme.colors.error : theme.colors.success },
+                    ((geofenceConfigured && !isWithinGeofence) || !isWithinTimeWindow) && { opacity: 0.5 }
+                  ]} 
+                  onPress={isClockedIn ? handleClockOut : handleClockIn}
+                  activeOpacity={0.8}
+                  disabled={attendanceLoading || (geofenceConfigured && !isWithinGeofence) || !isWithinTimeWindow}
+                >
+                  {attendanceLoading ? (
+                    <ActivityIndicator size="large" color="#fff" />
+                  ) : (
+                    <>
+                      <SymbolView 
+                        name={isClockedIn ? "clock.badge.xmark" : "clock.badge.checkmark"} 
+                        size={32} 
+                        tintColor="#fff" 
+                      />
+                      <Text style={styles.hugeScanButtonText}>
+                        {isClockedIn ? 'CLOCK OUT' : 'CLOCK IN'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Attendance Info */}
+              {isClockedIn && clockedInSince && (
+                <View style={styles.attendanceInfoPill}>
+                  <View style={styles.clockPulseDot} />
+                  <Text style={styles.attendanceInfoText}>
+                    Working since {formatTimeSince(clockedInSince)}
+                    {locationName ? ` at ${locationName}` : ''}
+                  </Text>
+                </View>
+              )}
+
+              {geofenceConfigured && distanceM !== null && (
+                <View style={[
+                  styles.geofencePill,
+                  isWithinGeofence ? styles.geofencePillOk : styles.geofencePillFar
+                ]}>
+                  <SymbolView 
+                    name={isWithinGeofence ? "location.fill" : "location.slash.fill"}
+                    size={14}
+                    tintColor={isWithinGeofence ? theme.colors.success : theme.colors.error}
+                  />
+                  <Text style={[
+                    styles.geofencePillText,
+                    { color: isWithinGeofence ? theme.colors.success : theme.colors.error }
+                  ]}>
+                    {distanceM}m away · {isWithinGeofence ? 'In range' : `Need ≤${geofenceRadiusM}m`}
+                  </Text>
+                </View>
+              )}
+
+              {/* Time Window Info */}
+              {getTimeWindowLabel() && (
+                <View style={[
+                  styles.geofencePill,
+                  isWithinTimeWindow ? styles.geofencePillOk : styles.geofencePillFar
+                ]}>
+                  <SymbolView 
+                    name={isWithinTimeWindow ? "clock.fill" : "clock.badge.exclamationmark.fill"}
+                    size={14}
+                    tintColor={isWithinTimeWindow ? theme.colors.success : theme.colors.warning}
+                  />
+                  <Text style={[
+                    styles.geofencePillText,
+                    { color: isWithinTimeWindow ? theme.colors.success : theme.colors.warning }
+                  ]}>
+                    {getTimeWindowLabel()}{!isWithinTimeWindow ? ' (outside hours)' : ''}
+                  </Text>
+                </View>
+              )}
+
+              {/* Scan Buttons */}
               <View style={styles.glowRing}>
                 <TouchableOpacity 
                   style={styles.hugeScanButton} 
                   onPress={handleManualScanStart}
                   activeOpacity={0.8}
                 >
-                  <SymbolView name="qrcode.viewfinder" size={60} tintColor="#fff" style={styles.scanIcon} />
+                  <SymbolView name="qrcode.viewfinder" size={32} tintColor="#fff" />
                   <Text style={styles.hugeScanButtonText}>START SCAN</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.glowRing}>
+              <View style={[styles.glowRing, { borderColor: 'rgba(16, 185, 129, 0.15)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}>
                 <TouchableOpacity 
                   style={[styles.hugeScanButton, { backgroundColor: theme.colors.success }]} 
                   onPress={handleStartStockTake}
                   activeOpacity={0.8}
                 >
-                  <SymbolView name="shippingbox" size={60} tintColor="#fff" style={styles.scanIcon} />
+                  <SymbolView name="shippingbox" size={32} tintColor="#fff" />
                   <Text style={styles.hugeScanButtonText}>STOCK TAKE</Text>
                 </TouchableOpacity>
               </View>
@@ -609,36 +847,40 @@ const styles = StyleSheet.create({
   idleCenter: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  actionButtonGroup: {
+    width: '100%',
+    gap: 14,
   },
   glowRing: {
-    padding: 16,
-    borderRadius: 999,
+    padding: 4,
+    borderRadius: theme.radius.xl,
     backgroundColor: 'rgba(99, 102, 241, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(99, 102, 241, 0.1)',
-    marginBottom: theme.spacing.xl,
   },
   hugeScanButton: {
     backgroundColor: theme.colors.accent,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 28,
+    borderRadius: theme.radius.lg,
     shadowColor: theme.colors.accentHover,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  scanIcon: {
-    marginBottom: theme.spacing.sm,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
   hugeScanButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 2,
   },
   idleSubtitle: {
     fontSize: 15,
@@ -900,5 +1142,55 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     fontSize: 15,
     fontWeight: 'bold',
-  }
+  },
+
+  // ─── Attendance Styles ───
+  attendanceInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.cardBackground,
+    borderWidth: 1,
+    borderColor: theme.colors.success,
+    borderRadius: theme.radius.full,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    gap: 8,
+    alignSelf: 'center',
+  },
+  clockPulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.success,
+  },
+  attendanceInfoText: {
+    color: theme.colors.primaryText,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  geofencePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.full,
+    gap: 6,
+    alignSelf: 'center',
+  },
+  geofencePillOk: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  geofencePillFar: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  geofencePillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
+import { useExportCsv } from '../hooks/useExportCsv';
 
 export default function SalesRecord() {
   const { hasPermission } = useAuthContext();
@@ -15,6 +16,7 @@ export default function SalesRecord() {
   const confirm = useConfirm();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
+  const { exportCsv } = useExportCsv();
   const [searchParams] = useSearchParams();
   
   // Date range state (default to today or URL param)
@@ -197,6 +199,17 @@ export default function SalesRecord() {
               : "View today's sales data."}
           </p>
         </div>
+        <button className="btn btn-secondary" onClick={() => exportCsv(sales, [
+          { key: 'created_at', label: 'Date', format: (v) => new Date(v).toLocaleDateString() },
+          { key: 'receipt_number', label: 'Receipt #' },
+          { key: 'customer.name', label: 'Customer' },
+          { key: 'status', label: 'Status' },
+          { key: 'total_amount', label: 'Total', format: (v) => Number(v).toFixed(2) },
+          { key: 'payment_method', label: 'Payment Method' },
+          { key: 'salesperson.name', label: 'Salesperson' },
+        ], 'sales_record')} disabled={sales.length === 0}>
+          Export CSV
+        </button>
       </div>
 
       <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>

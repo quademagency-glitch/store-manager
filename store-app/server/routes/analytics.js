@@ -400,4 +400,161 @@ router.delete('/reset', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/analytics/top-products
+ * Top 5 products by revenue this month
+ */
+router.get('/top-products', authGuard, async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    let query = supabaseAdmin
+      .from('sale_items')
+      .select('quantity, unit_price, product:products!product_id(id, name)')
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    // sale_items doesn't have business_id directly, so filter via sales join
+    // Instead, query sales first to get IDs
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('id')
+      .gte('created_at', thirtyDaysAgo.toISOString())
+      .neq('status', 'voided');
+
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+    salesQuery = applyLocationFilter(salesQuery, req);
+
+    const { data: salesIds } = await salesQuery;
+    if (!salesIds || salesIds.length === 0) return res.json([]);
+
+    const ids = salesIds.map(s => s.id);
+
+    const { data: items, error } = await supabaseAdmin
+      .from('sale_items')
+      .select('quantity, unit_price, product:products!product_id(id, name)')
+      .in('sale_id', ids);
+
+    if (error) throw error;
+
+    // Aggregate by product
+    const productMap = {};
+    (items || []).forEach(item => {
+      const pId = item.product?.id;
+      if (!pId) return;
+      if (!productMap[pId]) {
+        productMap[pId] = { name: item.product.name, revenue: 0, quantity: 0 };
+      }
+      productMap[pId].revenue += Number(item.quantity) * Number(item.unit_price);
+      productMap[pId].quantity += Number(item.quantity);
+    });
+
+    const topProducts = Object.values(productMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+      .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }));
+
+    res.json(topProducts);
+  } catch (err) {
+    logger.error({ err }, 'Top products error');
+    res.status(500).json({ error: 'Failed to fetch top products' });
+  }
+});
+
+/**
+ * GET /api/analytics/inventory-health
+ * Stock status counts: in-stock, low-stock, out-of-stock
+ */
+router.get('/inventory-health', authGuard, async (req, res) => {
+  try {
+    let query = supabaseAdmin
+      .from('products')
+      .select('stock_quantity, min_stock_level');
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    let inStock = 0, lowStock = 0, outOfStock = 0;
+    (data || []).forEach(p => {
+      const qty = Number(p.stock_quantity || 0);
+      const minLevel = Number(p.min_stock_level || 5);
+      if (qty <= 0) outOfStock++;
+      else if (qty <= minLevel) lowStock++;
+      else inStock++;
+    });
+
+    res.json([
+      { name: 'In Stock', value: inStock, fill: '#10b981' },
+      { name: 'Low Stock', value: lowStock, fill: '#f59e0b' },
+      { name: 'Out of Stock', value: outOfStock, fill: '#ef4444' },
+    ]);
+  } catch (err) {
+    logger.error({ err }, 'Inventory health error');
+    res.status(500).json({ error: 'Failed to fetch inventory health' });
+  }
+});
+
+/**
+ * GET /api/analytics/staff-performance
+ * Per-salesperson metrics this week
+ */
+router.get('/staff-performance', authGuard, async (req, res) => {
+  try {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    let salesQuery = supabaseAdmin
+      .from('sales')
+      .select('salesperson_id, total_amount')
+      .gte('created_at', weekStart.toISOString())
+      .neq('status', 'voided');
+
+    if (req.user.role !== 'Platform Admin') {
+      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    }
+    salesQuery = applyLocationFilter(salesQuery, req);
+
+    const { data: sales, error: salesErr } = await salesQuery;
+    if (salesErr) throw salesErr;
+
+    // Get user names
+    let usersQuery = supabaseAdmin.from('users').select('id, name, email');
+    if (req.user.role !== 'Platform Admin') {
+      usersQuery = usersQuery.eq('business_id', req.user.business_id);
+    }
+    const { data: users } = await usersQuery;
+
+    const userMap = {};
+    (users || []).forEach(u => { userMap[u.id] = u; });
+
+    const staffMap = {};
+    (sales || []).forEach(s => {
+      const uid = s.salesperson_id;
+      if (!uid) return;
+      if (!staffMap[uid]) {
+        const user = userMap[uid] || {};
+        staffMap[uid] = { name: user.name || 'Unknown', email: user.email || '', sales: 0, revenue: 0 };
+      }
+      staffMap[uid].sales += 1;
+      staffMap[uid].revenue += Number(s.total_amount);
+    });
+
+    const performance = Object.values(staffMap)
+      .sort((a, b) => b.revenue - a.revenue)
+      .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }));
+
+    res.json(performance);
+  } catch (err) {
+    logger.error({ err }, 'Staff performance error');
+    res.status(500).json({ error: 'Failed to fetch staff performance' });
+  }
+});
+
 module.exports = router;

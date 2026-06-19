@@ -2,6 +2,10 @@ import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { api } from '../lib/api';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
 import { Link } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
@@ -17,12 +21,21 @@ export default function Dashboard() {
   const { user, role, hasPermission } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
-  const { summary, recentActivity, loading, fetchSummary, fetchRecentActivity } = useAnalytics();
+  const {
+    summary, recentActivity, loading,
+    salesTrend, topProducts, inventoryHealth, staffPerformance,
+    fetchSummary, fetchRecentActivity,
+    fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance
+  } = useAnalytics();
 
   useEffect(() => {
     fetchSummary();
     fetchRecentActivity();
-  }, [fetchSummary, fetchRecentActivity]);
+    fetchSalesTrend();
+    fetchTopProducts();
+    fetchInventoryHealth();
+    fetchStaffPerformance();
+  }, [fetchSummary, fetchRecentActivity, fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance]);
 
   const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 
@@ -243,6 +256,123 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* ─── Charts Grid ─── */}
+        {hasPermission('view_analytics') && (
+          <div className="dashboard-charts-grid">
+            {/* Sales Trend — Area Chart */}
+            <div className="bento-card chart-card">
+              <div className="bento-header">
+                <h3 className="bento-title">Sales Trend (7 Days)</h3>
+              </div>
+              <div className="chart-container">
+                {salesTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={salesTrend}>
+                      <defs>
+                        <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="date" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                        formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
+                      />
+                      <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#salesGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : <p className="chart-empty">No sales data yet</p>}
+              </div>
+            </div>
+
+            {/* Top Products — Bar Chart */}
+            <div className="bento-card chart-card">
+              <div className="bento-header">
+                <h3 className="bento-title">Top Products (30 Days)</h3>
+              </div>
+              <div className="chart-container">
+                {topProducts.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={topProducts} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis type="number" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} />
+                      <YAxis type="category" dataKey="name" width={100} tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                        formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
+                      />
+                      <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : <p className="chart-empty">No product data yet</p>}
+              </div>
+            </div>
+
+            {/* Inventory Health — Pie Chart */}
+            <div className="bento-card chart-card">
+              <div className="bento-header">
+                <h3 className="bento-title">Inventory Health</h3>
+              </div>
+              <div className="chart-container">
+                {inventoryHealth.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie
+                        data={inventoryHealth}
+                        cx="50%" cy="50%"
+                        innerRadius={55} outerRadius={85}
+                        paddingAngle={3}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {inventoryHealth.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                      />
+                      <Legend iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : <p className="chart-empty">No inventory data</p>}
+              </div>
+            </div>
+
+            {/* Staff Performance — Bar Chart */}
+            <div className="bento-card chart-card">
+              <div className="bento-header">
+                <h3 className="bento-title">Staff Performance (This Week)</h3>
+              </div>
+              <div className="chart-container">
+                {staffPerformance.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={staffPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }} />
+                      <YAxis tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                        formatter={(v, n) => {
+                          if (n === 'revenue') return [`$${v.toFixed(2)}`, 'Revenue'];
+                          return [v, 'Sales'];
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue" />
+                      <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sales" />
+                      <Legend iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : <p className="chart-empty">No sales data this week</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Danger Zone — admin only */}
         {(role === 'Business Admin' || role === 'Manager') && (

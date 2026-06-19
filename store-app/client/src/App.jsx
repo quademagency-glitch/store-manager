@@ -46,6 +46,18 @@ import BusinessTeam from './pages/BusinessAdmin/TeamManagement';
 import BusinessRoles from './pages/BusinessAdmin/RolesManagement';
 import Billing from './pages/BusinessAdmin/Billing';
 import ShrinkageReport from './pages/BusinessAdmin/ShrinkageReport';
+import AttendanceReport from './pages/BusinessAdmin/AttendanceReport';
+import CommissionRules from './pages/BusinessAdmin/CommissionRules';
+
+// HR Pages
+import Attendance from './pages/HR/Attendance';
+import Schedules from './pages/HR/Schedules';
+import MyCommissions from './pages/HR/MyCommissions';
+import Loyalty from './pages/Loyalty';
+
+// Report Pages
+import ProfitLoss from './pages/Reports/ProfitLoss';
+import AccountsReceivable from './pages/Reports/AccountsReceivable';
 
 export default function App() {
   return (
@@ -150,6 +162,34 @@ export default function App() {
                     } />
                     <Route path="/business-admin/shrinkage" element={
                       <ProtectedRoute requiredPermission="manage_business"><ShrinkageReport /></ProtectedRoute>
+                    } />
+                    <Route path="/business-admin/attendance-report" element={
+                      <ProtectedRoute requiredPermission="manage_users"><AttendanceReport /></ProtectedRoute>
+                    } />
+                    <Route path="/business-admin/commission-rules" element={
+                      <ProtectedRoute requiredPermission="manage_business"><CommissionRules /></ProtectedRoute>
+                    } />
+
+                    {/* HR Pages */}
+                    <Route path="/hr/attendance" element={
+                      <ProtectedRoute><Attendance /></ProtectedRoute>
+                    } />
+                    <Route path="/hr/schedules" element={
+                      <ProtectedRoute><Schedules /></ProtectedRoute>
+                    } />
+                    <Route path="/hr/my-commissions" element={
+                      <ProtectedRoute><MyCommissions /></ProtectedRoute>
+                    } />
+                    <Route path="/loyalty" element={
+                      <ProtectedRoute><Loyalty /></ProtectedRoute>
+                    } />
+
+                    {/* Reports Pages */}
+                    <Route path="/reports/pnl" element={
+                      <ProtectedRoute requiredPermission="manage_business"><ProfitLoss /></ProtectedRoute>
+                    } />
+                    <Route path="/reports/accounts-receivable" element={
+                      <ProtectedRoute requiredPermission="manage_business"><AccountsReceivable /></ProtectedRoute>
                     } />
                   </Route>
 

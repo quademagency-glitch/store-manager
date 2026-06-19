@@ -1,0 +1,196 @@
+/* ============================================
+   Reports & Financials Styles
+   P&L, AR Aging
+   ============================================ */
+
+.reports-page {
+  padding: var(--space-xl) var(--space-2xl);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.reports-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+  gap: var(--space-md);
+}
+
+.reports-page .page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.reports-page .page-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+/* ─── P&L Statement ─── */
+.pnl-statement {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+}
+
+.pnl-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) 0;
+}
+
+.pnl-header span:first-child {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+
+.pnl-deduction span:first-child {
+  color: var(--color-text-secondary);
+  padding-left: var(--space-xl);
+}
+
+.pnl-subtotal {
+  padding: var(--space-lg) 0;
+}
+
+.pnl-subtotal span:first-child {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.pnl-total {
+  padding: var(--space-lg) 0;
+}
+
+.pnl-total span:first-child {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--color-text-primary);
+}
+
+.pnl-margin span:first-child {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.pnl-amount {
+  font-family: 'Inter', monospace;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.pnl-amount.positive {
+  color: #10b981;
+}
+
+.pnl-amount.negative {
+  color: #ef4444;
+}
+
+.pnl-total .pnl-amount {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.pnl-divider {
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-xs) 0;
+}
+
+.pnl-divider-bold {
+  border-top-width: 2px;
+  border-color: var(--color-text-secondary);
+}
+
+/* ─── AR Aging Buckets ─── */
+.ar-bucket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.ar-bucket-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  transition: border-color 0.2s;
+}
+
+.ar-bucket-card:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.ar-current { border-left: 4px solid #10b981; }
+.ar-30 { border-left: 4px solid #f59e0b; }
+.ar-60 { border-left: 4px solid #f97316; }
+.ar-90 { border-left: 4px solid #ef4444; }
+
+.ar-bucket-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.ar-bucket-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.ar-bucket-count {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.ar-total-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg) var(--space-xl);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ar-total-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-accent-primary);
+}
+
+@media (max-width: 768px) {
+  .reports-page {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .reports-page .page-header {
+    flex-direction: column;
+  }
+
+  .pnl-statement {
+    padding: var(--space-lg);
+  }
+
+  .pnl-deduction span:first-child {
+    padding-left: var(--space-md);
+  }
+}

@@ -46,6 +46,24 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
       return res.status(400).json({ error: 'Name and permissions array are required' });
     }
 
+    if (req.user.role !== 'Platform Admin') {
+      const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
+      if (exceedsOwnPermissions) {
+        return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });
+      }
+
+      const { data: globalCollision } = await supabaseAdmin
+        .from('roles')
+        .select('id')
+        .is('business_id', null)
+        .ilike('name', name)
+        .maybeSingle();
+
+      if (globalCollision) {
+        return res.status(403).json({ error: 'This role name is reserved. Please choose a different name.' });
+      }
+    }
+
     const business_id = req.user.role === 'Platform Admin' ? req.body.business_id || null : req.user.business_id;
 
     const { data, error } = await supabaseAdmin
@@ -93,6 +111,26 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     // Verify tenant isolation
     if (req.user.role !== 'Platform Admin' && role.business_id !== req.user.business_id) {
        return res.status(403).json({ error: 'Unauthorized to edit this role.' });
+    }
+
+    if (req.user.role !== 'Platform Admin') {
+      const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
+      if (exceedsOwnPermissions) {
+        return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });
+      }
+
+      if (name.toLowerCase() !== role.name.toLowerCase()) {
+        const { data: globalCollision } = await supabaseAdmin
+          .from('roles')
+          .select('id')
+          .is('business_id', null)
+          .ilike('name', name)
+          .maybeSingle();
+
+        if (globalCollision) {
+          return res.status(403).json({ error: 'This role name is reserved. Please choose a different name.' });
+        }
+      }
     }
 
     const { data: updatedRole, error } = await supabaseAdmin

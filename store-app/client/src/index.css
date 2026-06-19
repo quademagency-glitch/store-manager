@@ -35,3 +35,6 @@
 @import './styles/organization-settings.css';
 @import './styles/print.css';
 @import './styles/mobile-overrides.css';
+@import './styles/hr.css';
+@import './styles/loyalty.css';
+@import './styles/reports.css';

@@ -376,6 +376,84 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
     // Trigger after-hours check for the sale
     runChecks('sale', { userId: req.user.id, businessId: req.user.business_id, locationId: location_id });
 
+    // ─── Commission Calculation (non-blocking) ───
+    // Compute applicable commissions and insert into commission_ledger
+    try {
+      const { data: commRules } = await supabaseAdmin
+        .from('commission_rules')
+        .select('id, type, value, min_sale_amount, product_category')
+        .eq('business_id', req.user.business_id)
+        .eq('active', true);
+
+      if (commRules && commRules.length > 0 && saleId) {
+        const saleTotal = Number(total_amount) || 0;
+        for (const rule of commRules) {
+          if (saleTotal < Number(rule.min_sale_amount || 0)) continue;
+          // TODO: product_category filtering can be added when category is tracked on sale_items
+          const commAmount = rule.type === 'percentage'
+            ? saleTotal * (Number(rule.value) / 100)
+            : Number(rule.value);
+
+          if (commAmount > 0) {
+            await supabaseAdmin.from('commission_ledger').insert({
+              user_id: req.user.id,
+              sale_id: saleId,
+              business_id: req.user.business_id,
+              rule_id: rule.id,
+              amount: Math.round(commAmount * 100) / 100,
+            });
+          }
+        }
+      }
+    } catch (commErr) {
+      // Commission calculation failure should not block the sale
+      logger.error({ err: commErr }, 'Commission calculation failed (non-critical)');
+    }
+
+    // ─── Loyalty Points Earn (non-blocking) ───
+    // Award loyalty points if customer is attached to the sale and rules exist
+    try {
+      if (customer_id && saleId) {
+        const { data: loyaltyRules } = await supabaseAdmin
+          .from('loyalty_rules')
+          .select('points_per_currency_unit')
+          .eq('business_id', req.user.business_id)
+          .eq('active', true)
+          .maybeSingle();
+
+        if (loyaltyRules && loyaltyRules.points_per_currency_unit > 0) {
+          const saleTotal = Number(total_amount) || 0;
+          const pointsEarned = Math.floor(saleTotal * Number(loyaltyRules.points_per_currency_unit));
+
+          if (pointsEarned > 0) {
+            // Get current balance
+            const { data: lastEntry } = await supabaseAdmin
+              .from('loyalty_ledger')
+              .select('balance_after')
+              .eq('customer_id', customer_id)
+              .eq('business_id', req.user.business_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const currentBalance = lastEntry?.balance_after || 0;
+
+            await supabaseAdmin.from('loyalty_ledger').insert({
+              customer_id,
+              business_id: req.user.business_id,
+              sale_id: saleId,
+              type: 'earn',
+              points: pointsEarned,
+              balance_after: currentBalance + pointsEarned,
+              note: `Earned from sale`,
+            });
+          }
+        }
+      }
+    } catch (loyaltyErr) {
+      logger.error({ err: loyaltyErr }, 'Loyalty points earn failed (non-critical)');
+    }
+
     return res.status(201).json({
       message: 'Sale recorded successfully',
       sale: saleData,

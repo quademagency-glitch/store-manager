@@ -35,6 +35,9 @@ const customerOrdersRoutes = require('./routes/customerOrders');
 const communicationsRoutes = require('./routes/communications');
 const platformRoutes = require('./routes/platform');
 const crmCommunicationsRoutes = require('./routes/crmCommunications');
+const hrRoutes = require('./routes/hr');
+const loyaltyRoutes = require('./routes/loyalty');
+const reportsRoutes = require('./routes/reports');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 
 const app = express();
@@ -187,6 +190,15 @@ app.use('/api/crm-communications', crmCommunicationsRoutes);
 // Platform Admin Communications and Settings
 app.use('/api/communications', communicationsRoutes);
 app.use('/api/platform', platformRoutes);
+
+// HR routes
+app.use('/api/hr', hrRoutes);
+
+// Loyalty routes
+app.use('/api/loyalty', loyaltyRoutes);
+
+// Reports routes
+app.use('/api/reports', reportsRoutes);
 
 // ============================================
 // Error handling

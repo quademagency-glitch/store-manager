@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Overview() {
-  const [stats, setStats] = useState({ 
-    todaySalesTotal: 0, 
-    totalProducts: 0, 
-    lowStockCount: 0, 
-    theftAlertsCount: 0 
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    todaySalesTotal: 0,
+    totalProducts: 0,
+    lowStockCount: 0,
+    theftAlertsCount: 0
   });
   const [trendData, setTrendData] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [setupStatus, setSetupStatus] = useState(null);
+  const [setupBannerHidden, setSetupBannerHidden] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -37,9 +41,25 @@ export default function Overview() {
       }
     }
     fetchData();
+
+    api.get('/businesses/me/setup-status').then(setSetupStatus).catch(() => {});
   }, []);
 
   if (loading) return <div className="p-xl text-center">Loading overview...</div>;
+
+  const setupComplete = setupStatus ? setupStatus.steps.filter(s => s.complete).length : 0;
+  const setupTotal = setupStatus?.steps.length || 0;
+  const showSetupBanner = setupStatus && !setupStatus.dismissed && !setupBannerHidden && setupComplete < setupTotal;
+
+  const dismissSetupBanner = async () => {
+    setSetupBannerHidden(true);
+    try {
+      const businessId = (await api.get('/businesses/me')).id;
+      await api.put(`/businesses/${businessId}/setup-status/dismiss`);
+    } catch {
+      // banner stays hidden for this session regardless
+    }
+  };
 
   return (
     <div>
@@ -49,6 +69,16 @@ export default function Overview() {
           <p className="dashboard-subtitle">High-level metrics across all your locations.</p>
         </div>
       </header>
+
+      {showSetupBanner && (
+        <div className="alert alert-info mb-xl" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+          <span>{setupComplete} of {setupTotal} setup steps complete — finish setting up your business.</span>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <button className="btn btn-sm btn-primary" onClick={() => navigate('/business-admin/setup')}>Finish Setup</button>
+            <button className="btn btn-sm btn-outline" onClick={dismissSetupBanner}>Dismiss</button>
+          </div>
+        </div>
+      )}
 
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div className="stat-card" style={{ borderTop: '4px solid var(--color-success)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>

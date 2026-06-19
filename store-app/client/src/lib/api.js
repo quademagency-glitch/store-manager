@@ -16,9 +16,12 @@ async function fetchWithAuth(endpoint, options = {}) {
   }
 
   const activeLocationId = localStorage.getItem('active_location_id');
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    // Omit Content-Type for FormData bodies — the browser must set its own
+    // multipart/form-data boundary, which we can't replicate here.
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     'Authorization': `Bearer ${token}`,
     ...(activeLocationId ? { 'X-Location-Id': activeLocationId } : {}),
     ...(options.headers || {}),
@@ -59,4 +62,6 @@ export const api = {
   post: (endpoint, body) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   put: (endpoint, body) => fetchWithAuth(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (endpoint) => fetchWithAuth(endpoint, { method: 'DELETE' }),
+  // For multipart uploads — pass a FormData instance, never JSON.stringify it.
+  postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),
 };

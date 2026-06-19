@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCustomers } from '../hooks/useCustomers';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
@@ -7,7 +8,8 @@ import { useExportCsv } from '../hooks/useExportCsv';
 
 export default function Customers() {
   const { customers, loading, error, fetchCustomers, createCustomer, updateCustomer, deleteCustomer, page, totalPages, totalCustomers } = useCustomers();
-  const { role } = useAuthContext();
+  const { role, hasPermission } = useAuthContext();
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const { exportCsv } = useExportCsv();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
@@ -66,6 +68,11 @@ export default function Customers() {
           ], 'customers')} disabled={customers.length === 0}>
             Export CSV
           </button>
+          {hasPermission('manage_financials') && (
+            <button className="btn btn-secondary" onClick={() => navigate('/imports/customers')}>
+              Import
+            </button>
+          )}
           {canEdit && (
             <button className="btn btn-primary" onClick={openNewModal}>
               Add Customer

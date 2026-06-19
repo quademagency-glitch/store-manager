@@ -35,6 +35,9 @@ const customerOrdersRoutes = require('./routes/customerOrders');
 const communicationsRoutes = require('./routes/communications');
 const platformRoutes = require('./routes/platform');
 const crmCommunicationsRoutes = require('./routes/crmCommunications');
+const accountsReceivableRoutes = require('./routes/accountsReceivable');
+const accountsPayableRoutes = require('./routes/accountsPayable');
+const importsRoutes = require('./routes/imports');
 const hrRoutes = require('./routes/hr');
 const loyaltyRoutes = require('./routes/loyalty');
 const reportsRoutes = require('./routes/reports');
@@ -186,6 +189,13 @@ app.use('/api/customer-orders', customerOrdersRoutes);
 
 // CRM Communications routes
 app.use('/api/crm-communications', crmCommunicationsRoutes);
+
+// Accounts Receivable / Payable routes
+app.use('/api/ar', accountsReceivableRoutes);
+app.use('/api/ap', accountsPayableRoutes);
+
+// Bulk import routes
+app.use('/api/imports', importsRoutes);
 
 // Platform Admin Communications and Settings
 app.use('/api/communications', communicationsRoutes);

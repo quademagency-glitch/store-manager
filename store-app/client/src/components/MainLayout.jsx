@@ -212,6 +212,8 @@ export default function MainLayout() {
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
         { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('manage_business') },
         { path: '/reports/accounts-receivable', label: 'Accounts Receivable', icon: Icons.invoice, visible: hasPermission('manage_business') },
+        { path: '/accounts-receivable', label: 'Receivables & Invoices', icon: Icons.invoice, visible: hasPermission('manage_financials') },
+        { path: '/accounts-payable', label: 'Payables & Bills', icon: Icons.invoice, visible: hasPermission('manage_financials') },
       ].filter(i => i.visible)
     };
     if (accounting.items.length > 0) groups.push(accounting);
@@ -247,6 +249,7 @@ export default function MainLayout() {
       icon: Icons.settings,
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
+        { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_business') },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_business') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_business') },
         { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_business') },

@@ -176,4 +176,28 @@ router.post('/:id/duplicate', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/accounting/templates/starter-pack
+ * Installs the same default templates every new business gets automatically
+ * (migration 028's trigger) — for businesses created before that trigger
+ * existed. Dedup-safe by name, so re-clicking it is harmless.
+ */
+router.post('/starter-pack', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only admins can install starter templates.' });
+    }
+
+    const { data: insertedCount, error } = await supabaseAdmin.rpc('apply_accounting_starter_pack', {
+      p_business_id: req.user.business_id,
+    });
+
+    if (error) throw error;
+    res.status(201).json({ message: `Installed ${insertedCount} new template(s).`, inserted_count: insertedCount });
+  } catch (err) {
+    logger.error({ err: err }, 'Error installing starter pack:');
+    res.status(500).json({ error: 'Failed to install starter pack' });
+  }
+});
+
 module.exports = router;

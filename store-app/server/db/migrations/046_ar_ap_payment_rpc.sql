@@ -40,7 +40,7 @@ BEGIN
     RAISE EXCEPTION 'Cannot record a payment against a voided invoice';
   END IF;
 
-  v_outstanding := v_invoice.amount - v_invoice.amount_paid;
+  v_outstanding := v_invoice.total_amount - v_invoice.amount_paid;
   IF p_amount > v_outstanding THEN
     RAISE EXCEPTION 'Payment of % exceeds outstanding balance of %', p_amount, v_outstanding;
   END IF;
@@ -68,7 +68,7 @@ BEGIN
   ) RETURNING id INTO v_payment_id;
 
   v_new_amount_paid := v_invoice.amount_paid + p_amount;
-  v_new_status := CASE WHEN v_new_amount_paid >= v_invoice.amount THEN 'paid' ELSE 'partial' END;
+  v_new_status := CASE WHEN v_new_amount_paid >= v_invoice.total_amount THEN 'paid' ELSE 'partial' END;
 
   UPDATE public.ar_invoices
   SET amount_paid = v_new_amount_paid, status = v_new_status, updated_at = now()

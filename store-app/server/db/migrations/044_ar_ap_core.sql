@@ -7,6 +7,13 @@
 
 -- ============== ACCOUNTS RECEIVABLE ==============
 
+-- Column names and status vocabulary here (total_amount, issued_date,
+-- sent/partial/paid/overdue/void) are dictated by server/routes/reports.js's
+-- GET /api/reports/ar-aging and client/src/pages/Reports/AccountsReceivable.jsx,
+-- written concurrently against this same table name — matched here rather
+-- than the other way around since that report/page already exists and works
+-- against this exact shape. ap_bills below intentionally keeps the original
+-- amount/issue_date/open naming since nothing else in the codebase depends on it.
 CREATE TABLE IF NOT EXISTS public.ar_invoices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
@@ -14,20 +21,20 @@ CREATE TABLE IF NOT EXISTS public.ar_invoices (
   invoice_number TEXT NOT NULL,
   is_opening_balance BOOLEAN NOT NULL DEFAULT false,
   as_of_date DATE,
-  issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  issued_date DATE NOT NULL DEFAULT CURRENT_DATE,
   due_date DATE,
   description TEXT,
-  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  total_amount NUMERIC(12,2) NOT NULL CHECK (total_amount > 0),
   amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
   currency TEXT NOT NULL DEFAULT 'GHS',
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'partial', 'paid', 'void')),
+  status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'partial', 'paid', 'overdue', 'void')),
   import_batch_id UUID REFERENCES public.import_batches(id) ON DELETE SET NULL,
   created_by UUID NOT NULL REFERENCES public.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(business_id, invoice_number),
   CONSTRAINT ar_opening_requires_asof CHECK (NOT is_opening_balance OR as_of_date IS NOT NULL),
-  CONSTRAINT ar_paid_not_over_amount CHECK (amount_paid <= amount)
+  CONSTRAINT ar_paid_not_over_amount CHECK (amount_paid <= total_amount)
 );
 
 CREATE TABLE IF NOT EXISTS public.ar_payments (
@@ -154,7 +161,7 @@ CREATE POLICY "Users with manage_financials can write ap_payments"
 CREATE INDEX IF NOT EXISTS idx_ar_invoices_business ON public.ar_invoices(business_id);
 CREATE INDEX IF NOT EXISTS idx_ar_invoices_customer ON public.ar_invoices(customer_id);
 CREATE INDEX IF NOT EXISTS idx_ar_invoices_status ON public.ar_invoices(status);
-CREATE INDEX IF NOT EXISTS idx_ar_invoices_due_date ON public.ar_invoices(due_date) WHERE status IN ('open', 'partial');
+CREATE INDEX IF NOT EXISTS idx_ar_invoices_due_date ON public.ar_invoices(due_date) WHERE status IN ('sent', 'partial');
 CREATE INDEX IF NOT EXISTS idx_ar_invoices_import_batch ON public.ar_invoices(import_batch_id) WHERE import_batch_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ar_payments_business ON public.ar_payments(business_id);
 CREATE INDEX IF NOT EXISTS idx_ar_payments_invoice ON public.ar_payments(invoice_id);

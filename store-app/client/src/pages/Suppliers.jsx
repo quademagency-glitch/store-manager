@@ -1,15 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSuppliers } from '../hooks/useSuppliers';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import { useCurrency } from '../hooks/useCurrency';
 import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import SupplierModal from '../features/inventory/components/SupplierModal';
 
 export default function Suppliers() {
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
+  const { hasPermission } = useAuthContext();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const { suppliers, loading, fetchSuppliers, addSupplier, updateSupplier, archiveSupplier } = useSuppliers();
@@ -116,6 +120,11 @@ export default function Suppliers() {
             <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
             Show Archived
           </label>
+          {hasPermission('manage_financials') && (
+            <button className="btn btn-secondary" onClick={() => navigate('/imports/suppliers')}>
+              Import
+            </button>
+          )}
           <button className="btn btn-primary" onClick={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
             Add Supplier

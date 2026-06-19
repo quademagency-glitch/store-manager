@@ -27,6 +27,9 @@ import Suppliers from './pages/Suppliers';
 import PurchaseOrders from './pages/PurchaseOrders';
 import CustomerOrders from './pages/CustomerOrders';
 import CRMCommunications from './pages/CRMCommunications';
+import AccountsReceivableLedger from './pages/AccountsReceivable';
+import AccountsPayableLedger from './pages/AccountsPayable';
+import ImportWizard from './pages/ImportWizard';
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
@@ -48,6 +51,7 @@ import Billing from './pages/BusinessAdmin/Billing';
 import ShrinkageReport from './pages/BusinessAdmin/ShrinkageReport';
 import AttendanceReport from './pages/BusinessAdmin/AttendanceReport';
 import CommissionRules from './pages/BusinessAdmin/CommissionRules';
+import BusinessSetup from './pages/BusinessAdmin/Setup';
 
 // HR Pages
 import Attendance from './pages/HR/Attendance';
@@ -104,6 +108,15 @@ export default function App() {
                     } />
                     <Route path="/crm-communications" element={
                       <ProtectedRoute requiredPermission="manage_business"><CRMCommunications /></ProtectedRoute>
+                    } />
+                    <Route path="/accounts-receivable" element={
+                      <ProtectedRoute requiredPermission="manage_financials"><AccountsReceivableLedger /></ProtectedRoute>
+                    } />
+                    <Route path="/accounts-payable" element={
+                      <ProtectedRoute requiredPermission="manage_financials"><AccountsPayableLedger /></ProtectedRoute>
+                    } />
+                    <Route path="/imports/:entityType" element={
+                      <ProtectedRoute requiredPermission="manage_financials"><ImportWizard /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
                       <ProtectedRoute><Inventory /></ProtectedRoute>
@@ -168,6 +181,9 @@ export default function App() {
                     } />
                     <Route path="/business-admin/commission-rules" element={
                       <ProtectedRoute requiredPermission="manage_business"><CommissionRules /></ProtectedRoute>
+                    } />
+                    <Route path="/business-admin/setup" element={
+                      <ProtectedRoute requiredPermission="manage_business"><BusinessSetup /></ProtectedRoute>
                     } />
 
                     {/* HR Pages */}

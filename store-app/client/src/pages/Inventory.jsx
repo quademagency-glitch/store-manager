@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useStock } from '../hooks/useStock';
@@ -57,6 +58,8 @@ function PricingTabContent({ refreshProducts }) {
 
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
@@ -68,7 +71,7 @@ export default function Inventory() {
   const isManagerOrAdmin = ['Business Admin', 'Manager', 'Platform Admin'].includes(role);
 
   const [locations, setLocations] = useState([]);
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'products');
 
   // ─── Products Tab State ───
   const [productSearch, setProductSearch] = useState('');
@@ -97,7 +100,7 @@ export default function Inventory() {
   // Audits (Cycle Counts)
   const [audits, setAudits] = useState([]);
   const [auditsLoading, setAuditsLoading] = useState(false);
-  const [auditLocationId, setAuditLocationId] = useState('');
+  const [auditLocationId, setAuditLocationId] = useState(searchParams.get('location') || '');
   const [auditCounts, setAuditCounts] = useState({});
   const [submittingAudit, setSubmittingAudit] = useState(false);
   const [auditResults, setAuditResults] = useState(null);
@@ -481,6 +484,11 @@ export default function Inventory() {
             ], 'inventory')} disabled={filteredProducts.length === 0}>
               Export CSV
             </button>
+            {hasPermission('manage_financials') && (
+              <button className="btn btn-secondary" onClick={() => navigate('/imports/products')}>
+                Import
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={() => setIsThresholdModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3v18M18 9l-6-6-6 6M18 15l-6 6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

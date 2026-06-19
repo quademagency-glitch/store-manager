@@ -11,7 +11,7 @@ const router = express.Router();
  * List all suppliers for the business. Optionally filter by active status.
  * Access: Inventory managers
  */
-router.get('/', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.get('/', authGuard, permissionCheck('manage_inventory', 'manage_financials'), async (req, res) => {
   try {
     const showArchived = req.query.archived === 'true';
 
@@ -53,7 +53,7 @@ router.get('/', authGuard, permissionCheck('manage_inventory'), async (req, res)
  * Get a single supplier with purchase history summary.
  * Access: Inventory managers
  */
-router.get('/:id', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.get('/:id', authGuard, permissionCheck('manage_inventory', 'manage_financials'), async (req, res) => {
   try {
     const { id } = req.params;
 

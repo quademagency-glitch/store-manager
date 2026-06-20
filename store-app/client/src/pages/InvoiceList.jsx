@@ -30,7 +30,7 @@ export default function InvoiceList() {
     <div className="invoice-list-page" style={{ padding: '0 1rem 2rem' }}>
       <header className="page-header" style={{ marginBottom: '2rem' }}>
         <h1 className="dashboard-title">My Invoices</h1>
-        <p className="dashboard-subtitle">View all your subscription invoices from Quadem ERP.</p>
+        <p className="dashboard-subtitle">View all your subscription invoices from QuadERP.</p>
       </header>
 
       {loading ? (
@@ -42,7 +42,7 @@ export default function InvoiceList() {
         <div className="empty-state">
           <div className="empty-state-icon" aria-hidden="true">{Icons.document}</div>
           <h2>No Invoices Yet</h2>
-          <p className="text-muted">You have not received any invoices from Quadem ERP yet.</p>
+          <p className="text-muted">You have not received any invoices from QuadERP yet.</p>
         </div>
       ) : (
         <div className="glass-panel">

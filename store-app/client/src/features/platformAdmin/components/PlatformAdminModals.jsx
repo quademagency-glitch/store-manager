@@ -549,7 +549,7 @@ export default function PlatformAdminModals() {
       {commsGatewayForm.type === 'sms' && (
         <div className="form-group" style={{ marginBottom: '1rem' }}>
           <label className="form-label">Sender ID</label>
-          <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. QUADEM (max 11 chars)" maxLength={11} />
+          <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. QUADERP (max 11 chars)" maxLength={11} />
         </div>
       )}
 

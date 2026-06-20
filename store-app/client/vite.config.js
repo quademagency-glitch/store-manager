@@ -16,20 +16,20 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Store Manager',
-        short_name: 'StoreApp',
+        name: 'QuadERP',
+        short_name: 'QuadERP',
         description: 'Offline-capable Store Management App',
-        theme_color: '#4f46e5',
-        background_color: '#ffffff',
+        theme_color: '#0D0A28',
+        background_color: '#0D0A28',
         display: 'standalone',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png'
           }

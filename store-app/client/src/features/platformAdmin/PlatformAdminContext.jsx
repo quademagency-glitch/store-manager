@@ -118,7 +118,7 @@ export function PlatformAdminProvider({ children }) {
   const [showCommsGatewayModal, setShowCommsGatewayModal] = useState(false);
   const [editingCommsGateway, setEditingCommsGateway] = useState(null);
   const [commsGatewayForm, setCommsGatewayForm] = useState({
-    provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADEM',
+    provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADERP',
     is_active: true, is_default: true, config: {}
   });
 
@@ -605,7 +605,7 @@ export function PlatformAdminProvider({ children }) {
       setCommsGatewayForm({ provider: gw.provider, type: gw.type, display_name: gw.display_name, api_key: gw.api_key || '', secret_key: gw.secret_key || '', sender_id: gw.sender_id || '', is_active: gw.is_active, is_default: gw.is_default, config: gw.config || {} });
     } else {
       setEditingCommsGateway(null);
-      setCommsGatewayForm({ provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADEM', is_active: true, is_default: true, config: {} });
+      setCommsGatewayForm({ provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS', api_key: '', secret_key: '', sender_id: 'QUADERP', is_active: true, is_default: true, config: {} });
     }
     setShowCommsGatewayModal(true);
   };

@@ -36,7 +36,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Quadem ERP Scanner</Text>
+        <Text style={styles.title}>QuadERP Scanner</Text>
         <Text style={styles.subtitle}>Your dedicated inventory assistant</Text>
       </View>
 

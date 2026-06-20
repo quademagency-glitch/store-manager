@@ -1,4 +1,4 @@
-// Service Worker for Store Manager ERP
+// Service Worker for QuadERP
 // Minimal implementation for PWA install capability and app shell caching.
 
 const CACHE_NAME = 'store-manager-v4';

@@ -63,20 +63,25 @@ export default function Login() {
           {/* Logo / Brand */}
           <div className="login-header">
             <div className="login-logo">
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="40" height="40" rx="12" fill="url(#logo-gradient)" />
-                <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
-                <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
-                <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+              <svg width="40" height="40" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <linearGradient id="logo-gradient" x1="0" y1="0" x2="40" y2="40">
-                    <stop stopColor="#6366f1" />
-                    <stop offset="1" stopColor="#8b5cf6" />
-                  </linearGradient>
+                  <linearGradient id="login-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
+                  <linearGradient id="login-logo-ring" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
+                  <linearGradient id="login-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
+                  <linearGradient id="login-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
+                  <linearGradient id="login-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
                 </defs>
+                <rect width="512" height="512" rx="118" fill="url(#login-logo-bg)" />
+                <circle cx="256" cy="248" r="150" fill="none" stroke="url(#login-logo-ring)" strokeWidth="30" />
+                <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
+                <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
+                <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#login-logo-ring)" />
+                <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#login-logo-b1)" />
+                <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#login-logo-b2)" />
+                <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#login-logo-b3)" />
               </svg>
             </div>
-            <h1 className="login-title">Store Manager</h1>
+            <h1 className="login-title">QuadERP</h1>
             <p className="login-subtitle">Sign in to your account</p>
           </div>
 

@@ -385,19 +385,24 @@ export default function MainLayout() {
             </button>
 
             <div className="top-nav-logo">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
-                <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
-                <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
-                <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+              <svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
-                    <stop stopColor="#6366f1" />
-                    <stop offset="1" stopColor="#8b5cf6" />
-                  </linearGradient>
+                  <linearGradient id="pa-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
+                  <linearGradient id="pa-logo-grad" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
+                  <linearGradient id="pa-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
+                  <linearGradient id="pa-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
+                  <linearGradient id="pa-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
                 </defs>
+                <rect width="512" height="512" rx="118" fill="url(#pa-logo-bg)" />
+                <circle cx="256" cy="248" r="150" fill="none" stroke="url(#pa-logo-grad)" strokeWidth="30" />
+                <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
+                <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
+                <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#pa-logo-grad)" />
+                <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#pa-logo-b1)" />
+                <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#pa-logo-b2)" />
+                <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#pa-logo-b3)" />
               </svg>
-              <span className="top-nav-brand" style={{marginLeft: '12px'}}>QERP Store</span>
+              <span className="top-nav-brand" style={{marginLeft: '12px'}}>QuadERP</span>
             </div>
 
             <nav className="top-nav-menu">
@@ -506,7 +511,7 @@ export default function MainLayout() {
         <aside className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
           <div className="mobile-drawer-header">
             <div className="top-nav-logo">
-              <span className="top-nav-brand">QERP Store</span>
+              <span className="top-nav-brand">QuadERP</span>
             </div>
             <button className="mobile-drawer-close" onClick={() => setIsMobileMenuOpen(false)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -620,19 +625,24 @@ export default function MainLayout() {
           </svg>
         </button>
         <div className="top-nav-logo">
-          <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="40" height="40" rx="12" fill="url(#mob-logo-grad)" />
-            <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
-            <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
-            <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+          <svg width="28" height="28" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="mob-logo-grad" x1="0" y1="0" x2="40" y2="40">
-                <stop stopColor="#6366f1" />
-                <stop offset="1" stopColor="#8b5cf6" />
-              </linearGradient>
+              <linearGradient id="mob-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
+              <linearGradient id="mob-logo-grad" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
+              <linearGradient id="mob-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
+              <linearGradient id="mob-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
+              <linearGradient id="mob-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
             </defs>
+            <rect width="512" height="512" rx="118" fill="url(#mob-logo-bg)" />
+            <circle cx="256" cy="248" r="150" fill="none" stroke="url(#mob-logo-grad)" strokeWidth="30" />
+            <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
+            <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
+            <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#mob-logo-grad)" />
+            <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#mob-logo-b1)" />
+            <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#mob-logo-b2)" />
+            <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#mob-logo-b3)" />
           </svg>
-          <span className="top-nav-brand" style={{ marginLeft: '8px' }}>QERP Store</span>
+          <span className="top-nav-brand" style={{ marginLeft: '8px' }}>QuadERP</span>
         </div>
         <button
           onClick={toggleTheme}
@@ -664,20 +674,25 @@ export default function MainLayout() {
       <aside className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="12" fill="url(#pa-logo-grad)" />
-              <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" fillOpacity="0.9" />
-              <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" fillOpacity="0.6" />
-              <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" fillOpacity="0.6" />
+            <svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <linearGradient id="pa-logo-grad" x1="0" y1="0" x2="40" y2="40">
-                  <stop stopColor="#6366f1" />
-                  <stop offset="1" stopColor="#8b5cf6" />
-                </linearGradient>
+                <linearGradient id="sb-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
+                <linearGradient id="sb-logo-grad" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
+                <linearGradient id="sb-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
+                <linearGradient id="sb-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
+                <linearGradient id="sb-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
               </defs>
+              <rect width="512" height="512" rx="118" fill="url(#sb-logo-bg)" />
+              <circle cx="256" cy="248" r="150" fill="none" stroke="url(#sb-logo-grad)" strokeWidth="30" />
+              <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
+              <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
+              <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#sb-logo-grad)" />
+              <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#sb-logo-b1)" />
+              <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#sb-logo-b2)" />
+              <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#sb-logo-b3)" />
             </svg>
           </div>
-          <span className="sidebar-brand">QERP Store</span>
+          <span className="sidebar-brand">QuadERP</span>
           <button
             className="sidebar-mobile-close"
             onClick={() => setIsMobileMenuOpen(false)}

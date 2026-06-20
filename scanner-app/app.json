@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "scanner-app",
+    "name": "QuadERP Scanner",
     "slug": "scanner-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,13 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./logo.png",
-      "bundleIdentifier": "com.quadem.scannerapp"
+      "bundleIdentifier": "com.quaderp.scannerapp"
     },
     "android": {
-      "package": "com.quadem.scannerapp",
+      "package": "com.quaderp.scannerapp",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#0D0A28",
         "foregroundImage": "./logo.png"
       },
       "predictiveBackGestureEnabled": false
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0D0A28",
           "image": "./logo.png",
           "imageWidth": 200,
           "android": {

@@ -123,7 +123,7 @@ export default function InvoiceView() {
               <LetterheadRenderer
                 letterhead={invoice.business?.letterhead}
                 logoUrl={invoice.business?.logo_url}
-                businessName={invoice.business?.name || 'Store Manager'}
+                businessName={invoice.business?.name || 'QuadERP'}
               />
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px', fontSize: '0.85rem' }}>Platform Subscription Receipt</p>
             </div>
@@ -157,7 +157,7 @@ export default function InvoiceView() {
             <div style={{ textAlign: 'right' }}>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>From:</h3>
               <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Quadem Digital Enterprise</p>
-              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quadem.com</p>
+              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quaderp.app</p>
             </div>
           </div>
 
@@ -195,7 +195,7 @@ export default function InvoiceView() {
           </div>
 
           <div style={{ textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '2rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            <p>Thank you for subscribing to Quadem ERP. We appreciate your business!</p>
+            <p>Thank you for subscribing to QuadERP. We appreciate your business!</p>
           </div>
         </div>
 

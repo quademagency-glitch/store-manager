@@ -6,6 +6,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { getPagination } = require('../utils/paginate');
+const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
 
@@ -164,6 +165,8 @@ router.post('/bills', authGuard, permissionCheck('manage_financials'), validateB
     const { data: billNumber, error: numErr } = await supabaseAdmin.rpc('generate_ap_bill_number', { p_business_id: business_id });
     if (numErr) throw numErr;
 
+    const currency = await resolveCurrency(supabaseAdmin, business_id, req.user.active_location_id);
+
     const { data, error } = await supabaseAdmin
       .from('ap_bills')
       .insert([{
@@ -173,6 +176,7 @@ router.post('/bills', authGuard, permissionCheck('manage_financials'), validateB
         bill_number: billNumber,
         description: description || null,
         amount,
+        currency,
         due_date: due_date || null,
         is_opening_balance: !!is_opening_balance,
         as_of_date: as_of_date || null,

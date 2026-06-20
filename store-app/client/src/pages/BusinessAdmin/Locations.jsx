@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Icons } from '../../components/icons/Icons';
+import { CURRENCY_OPTIONS } from '../../utils/currencyOptions';
 
 export default function Locations() {
   const { user } = useAuthContext();
@@ -16,7 +17,7 @@ export default function Locations() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    id: null, name: '', address: '', tax_rate: 0, receipt_header: '',
+    id: null, name: '', address: '', tax_rate: 0, receipt_header: '', currency: '',
     latitude: '', longitude: '', geofence_radius_m: 200,
     clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
   });
@@ -42,6 +43,7 @@ export default function Locations() {
     if (loc) {
       setFormData({
         ...loc,
+        currency: loc.currency || '',
         latitude: loc.latitude || '',
         longitude: loc.longitude || '',
         geofence_radius_m: loc.geofence_radius_m || 200,
@@ -52,7 +54,7 @@ export default function Locations() {
       });
     } else {
       setFormData({
-        id: null, name: '', address: '', tax_rate: 0, receipt_header: '',
+        id: null, name: '', address: '', tax_rate: 0, receipt_header: '', currency: '',
         latitude: '', longitude: '', geofence_radius_m: 200,
         clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
       });
@@ -68,6 +70,7 @@ export default function Locations() {
         address: formData.address,
         tax_rate: formData.tax_rate,
         receipt_header: formData.receipt_header,
+        currency: formData.currency || null,
       };
       if (formData.id) {
         await api.put(`/locations/${formData.id}`, payload);
@@ -152,6 +155,7 @@ export default function Locations() {
                   <th>Location Name</th>
                   <th>Address</th>
                   <th>Tax Rate</th>
+                  <th>Currency</th>
                   <th>Geofence</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -162,6 +166,7 @@ export default function Locations() {
                     <td className="font-medium">{loc.name}</td>
                     <td className="text-muted">{loc.address || '—'}</td>
                     <td>{loc.tax_rate}%</td>
+                    <td className="text-muted">{loc.currency || 'Business default'}</td>
                     <td>
                       {loc.latitude && loc.longitude ? (
                         <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
@@ -179,7 +184,7 @@ export default function Locations() {
                 ))}
                 {locations.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="text-center p-xl text-muted">No locations found.</td>
+                    <td colSpan="6" className="text-center p-xl text-muted">No locations found.</td>
                   </tr>
                 )}
               </tbody>
@@ -229,6 +234,22 @@ export default function Locations() {
               onChange={e => setFormData({...formData, receipt_header: e.target.value})}
               placeholder="Store Name&#10;123 Address St&#10;Phone: 555-0100"
             ></textarea>
+          </div>
+          <div className="form-group">
+            <label>Currency</label>
+            <select
+              className="form-input"
+              value={formData.currency}
+              onChange={e => setFormData({...formData, currency: e.target.value})}
+            >
+              <option value="">Same as business default</option>
+              {CURRENCY_OPTIONS.map(opt => (
+                <option key={opt.code} value={opt.code}>{opt.label}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+              Staff working at this location will see amounts in this currency automatically.
+            </p>
           </div>
 
           {/* Geofence Section */}

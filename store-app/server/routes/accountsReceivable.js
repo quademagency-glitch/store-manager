@@ -6,6 +6,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { getPagination } = require('../utils/paginate');
+const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
 
@@ -166,6 +167,8 @@ router.post('/invoices', authGuard, permissionCheck('manage_financials'), valida
     const { data: invoiceNumber, error: numErr } = await supabaseAdmin.rpc('generate_ar_invoice_number', { p_business_id: business_id });
     if (numErr) throw numErr;
 
+    const currency = await resolveCurrency(supabaseAdmin, business_id, req.user.active_location_id);
+
     const { data, error } = await supabaseAdmin
       .from('ar_invoices')
       .insert([{
@@ -174,6 +177,7 @@ router.post('/invoices', authGuard, permissionCheck('manage_financials'), valida
         invoice_number: invoiceNumber,
         description: description || null,
         total_amount,
+        currency,
         due_date: due_date || null,
         is_opening_balance: !!is_opening_balance,
         as_of_date: as_of_date || null,

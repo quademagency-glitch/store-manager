@@ -53,7 +53,7 @@ router.get('/', authGuard, async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, address, tax_rate, receipt_header } = req.body;
+    const { name, address, tax_rate, receipt_header, currency } = req.body;
     let business_id = req.user.business_id;
 
     if (req.user.role === 'Platform Admin' && req.body.business_id) {
@@ -71,7 +71,8 @@ router.post('/', authGuard, permissionCheck('manage_business'), async (req, res)
         name,
         address,
         tax_rate: tax_rate || 0.00,
-        receipt_header
+        receipt_header,
+        currency: currency || null,
       }])
       .select()
       .single();
@@ -91,7 +92,7 @@ router.post('/', authGuard, permissionCheck('manage_business'), async (req, res)
  */
 router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, address, tax_rate, receipt_header } = req.body;
+    const { name, address, tax_rate, receipt_header, currency } = req.body;
 
     // Verify ownership if not Platform Admin
     if (req.user.role !== 'Platform Admin') {
@@ -100,7 +101,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
         .select('business_id')
         .eq('id', req.params.id)
         .single();
-        
+
       if (!existing || existing.business_id !== req.user.business_id) {
         return res.status(403).json({ error: 'Cannot modify a location belonging to another business' });
       }
@@ -108,7 +109,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
 
     const { data, error } = await supabaseAdmin
       .from('locations')
-      .update({ name, address, tax_rate, receipt_header })
+      .update({ name, address, tax_rate, receipt_header, currency: currency || null })
       .eq('id', req.params.id)
       .select()
       .single();

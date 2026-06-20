@@ -4,6 +4,7 @@ const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
 
@@ -138,14 +139,7 @@ router.post('/', authGuard, permissionCheck('manage_inventory'), async (req, res
       }
     }
 
-    // Get business currency
-    const { data: business } = await supabaseAdmin
-      .from('businesses')
-      .select('currency')
-      .eq('id', req.user.business_id)
-      .single();
-
-    const currency = business?.currency || 'GHS';
+    const currency = await resolveCurrency(supabaseAdmin, req.user.business_id, req.user.active_location_id);
 
     // Generate PO number
     const poNumber = await generatePoNumber(req.user.business_id);

@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import { useToast } from '../../hooks/useToast';
 import LetterheadBuilder from '../../components/LetterheadBuilder';
 import { Icons } from '../../components/icons/Icons';
+import { CURRENCY_OPTIONS } from '../../utils/currencyOptions';
 
 export default function Organization() {
   const { user } = useAuthContext();
@@ -250,17 +251,11 @@ export default function Organization() {
                     value={business.currency || 'GHS'}
                     onChange={e => updateField('currency', e.target.value)}
                   >
-                    <option value="GHS">🇬🇭 GHS — Ghanaian Cedi</option>
-                    <option value="NGN">🇳🇬 NGN — Nigerian Naira</option>
-                    <option value="KES">🇰🇪 KES — Kenyan Shilling</option>
-                    <option value="ZAR">🇿🇦 ZAR — South African Rand</option>
-                    <option value="XOF">🇸🇳 XOF — West African CFA</option>
-                    <option value="XAF">🇨🇲 XAF — Central African CFA</option>
-                    <option value="USD">🇺🇸 USD — US Dollar</option>
-                    <option value="EUR">🇪🇺 EUR — Euro</option>
-                    <option value="GBP">🇬🇧 GBP — British Pound</option>
+                    {CURRENCY_OPTIONS.map(opt => (
+                      <option key={opt.code} value={opt.code}>{opt.label}</option>
+                    ))}
                   </select>
-                  <p className="org-form-hint">Used on receipts, invoices, and all printed documents.</p>
+                  <p className="org-form-hint">Default for locations that don't set their own currency.</p>
                 </div>
                 <div className="form-group">
                   <label htmlFor="org-qr-mode">QR Tracking Mode</label>

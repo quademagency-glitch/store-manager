@@ -115,10 +115,7 @@
 .login-title {
   font-size: 1.75rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text-primary);
   margin-bottom: var(--space-xs);
 }
 

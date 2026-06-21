@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/theme-context';
+import type { AppTheme } from '../lib/theme';
 import { linkScanner } from '../lib/api';
 
 export default function CameraLinkScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,7 +74,8 @@ export default function CameraLinkScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -119,4 +123,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   }
-});
+  });
+}

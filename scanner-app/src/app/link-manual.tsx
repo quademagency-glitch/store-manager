@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/theme-context';
+import type { AppTheme } from '../lib/theme';
 import { linkScanner } from '../lib/api';
 
 export default function ManualLinkScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +56,8 @@ export default function ManualLinkScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -90,4 +94,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   }
-});
+  });
+}

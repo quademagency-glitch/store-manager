@@ -402,7 +402,7 @@ export default function MainLayout() {
                 <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#pa-logo-b2)" />
                 <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#pa-logo-b3)" />
               </svg>
-              <span className="top-nav-brand" style={{marginLeft: '12px'}}>QuadERP</span>
+              <span className="top-nav-brand" style={{marginLeft: '12px'}}>Quad<span className="brand-erp">ERP</span></span>
             </div>
 
             <nav className="top-nav-menu">
@@ -511,7 +511,7 @@ export default function MainLayout() {
         <aside className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
           <div className="mobile-drawer-header">
             <div className="top-nav-logo">
-              <span className="top-nav-brand">QuadERP</span>
+              <span className="top-nav-brand">Quad<span className="brand-erp">ERP</span></span>
             </div>
             <button className="mobile-drawer-close" onClick={() => setIsMobileMenuOpen(false)}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -642,7 +642,7 @@ export default function MainLayout() {
             <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#mob-logo-b2)" />
             <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#mob-logo-b3)" />
           </svg>
-          <span className="top-nav-brand" style={{ marginLeft: '8px' }}>QuadERP</span>
+          <span className="top-nav-brand" style={{ marginLeft: '8px' }}>Quad<span className="brand-erp">ERP</span></span>
         </div>
         <button
           onClick={toggleTheme}
@@ -692,7 +692,7 @@ export default function MainLayout() {
               <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#sb-logo-b3)" />
             </svg>
           </div>
-          <span className="sidebar-brand">QuadERP</span>
+          <span className="sidebar-brand">Quad<span className="brand-erp">ERP</span></span>
           <button
             className="sidebar-mobile-close"
             onClick={() => setIsMobileMenuOpen(false)}

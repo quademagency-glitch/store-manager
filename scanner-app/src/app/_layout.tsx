@@ -1,11 +1,14 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { theme } from '../lib/theme';
+import { ThemeProvider, useAppTheme } from '@/lib/theme-context';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const { theme, scheme } = useAppTheme();
+
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerStyle: {
@@ -18,6 +21,7 @@ export default function RootLayout() {
           contentStyle: {
             backgroundColor: theme.colors.background,
           },
+          headerRight: () => <ThemeToggleButton />,
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -27,5 +31,13 @@ export default function RootLayout() {
         <Stack.Screen name="scanner" options={{ headerShown: false }} />
       </Stack>
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutNav />
+    </ThemeProvider>
   );
 }

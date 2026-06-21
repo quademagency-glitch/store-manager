@@ -1,8 +1,13 @@
+import { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/theme-context';
+import type { AppTheme } from '../lib/theme';
 
 export default function SetupScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.prompt}>
@@ -30,7 +35,8 @@ export default function SetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -82,4 +88,5 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     fontSize: 13,
   }
-});
+  });
+}

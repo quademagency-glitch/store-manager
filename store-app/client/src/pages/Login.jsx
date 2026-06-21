@@ -81,7 +81,7 @@ export default function Login() {
                 <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#login-logo-b3)" />
               </svg>
             </div>
-            <h1 className="login-title">QuadERP</h1>
+            <h1 className="login-title">Quad<span className="brand-erp">ERP</span></h1>
             <p className="login-subtitle">Sign in to your account</p>
           </div>
 

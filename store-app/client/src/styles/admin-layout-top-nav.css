@@ -39,10 +39,11 @@
 .top-nav-brand {
   font-size: 1.25rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-text-primary), var(--color-accent-hover));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text-primary);
+}
+
+.brand-erp {
+  color: var(--color-brand-erp);
 }
 
 .top-nav-menu {

@@ -62,6 +62,9 @@
 
   /* Global Settings */
   --sidebar-width: 260px;
+
+  /* Brand wordmark — fixed color from the QuadERP logo, same in light/dark */
+  --color-brand-erp: #19a8cb;
 }
 
 [data-theme="dark"] {

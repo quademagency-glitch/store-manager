@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/theme-context';
+import type { AppTheme } from '../lib/theme';
+import { ThemeToggleButton } from '../components/theme-toggle-button';
 import { getToken } from '../lib/api';
 
 export default function WelcomeScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,8 +39,11 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
+      <ThemeToggleButton style={styles.themeToggle} />
       <View style={styles.header}>
-        <Text style={styles.title}>QuadERP Scanner</Text>
+        <Text style={styles.title}>
+          Quad<Text style={{ color: theme.colors.brandErp }}>ERP</Text> Scanner
+        </Text>
         <Text style={styles.subtitle}>Your dedicated inventory assistant</Text>
       </View>
 
@@ -55,7 +62,14 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
+  themeToggle: {
+    position: 'absolute',
+    top: theme.spacing.xl,
+    right: theme.spacing.lg,
+    zIndex: 1,
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -114,3 +128,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   }
 });
+}

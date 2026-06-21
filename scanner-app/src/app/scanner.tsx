@@ -1,16 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import * as Location from 'expo-location';
-import { theme } from '../lib/theme';
+import { useAppTheme } from '../lib/theme-context';
+import type { AppTheme } from '../lib/theme';
+import { ThemeToggleButton } from '../components/theme-toggle-button';
 import { createEventSource, pushScan, removeToken, getMe, cancelScan, getAttendanceStatus, clockIn, clockOut, AuthExpiredError } from '../lib/api';
 
 type ScanMode = 'idle' | 'list_view' | 'scanning_field' | 'stock_take_batch' | 'stock_take_summary';
 type FieldType = 'serial_number' | 'pack_code' | 'product_code' | 'item_code';
 
 export default function ScannerScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<ScanMode>('idle');
   const [activeField, setActiveField] = useState<FieldType | null>(null);
@@ -400,34 +404,37 @@ export default function ScannerScreen() {
     return (
       <View style={styles.idleContainer}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.profilePill}>
-            <View style={styles.avatarCircle}>
-              <SymbolView name="person.fill" size={20} tintColor={initError ? theme.colors.error : theme.colors.accent} />
+          <View style={styles.topBar}>
+            <View style={styles.profilePill}>
+              <View style={styles.avatarCircle}>
+                <SymbolView name="person.fill" size={20} tintColor={initError ? theme.colors.error : theme.colors.accent} />
+              </View>
+              <View>
+                {initError ? (
+                  <>
+                    <Text style={[styles.profileName, { color: theme.colors.error }]}>Connection Error</Text>
+                    <Text style={[styles.profileRole, { color: theme.colors.error }]}>Tap Disconnect to relink</Text>
+                  </>
+                ) : user ? (
+                  <>
+                    <Text style={styles.profileName}>{user.name}</Text>
+                    <Text style={[styles.profileRole, {
+                      color: sseStatus === 'connected' ? theme.colors.success
+                        : sseStatus === 'failed' ? theme.colors.error
+                        : theme.colors.warning,
+                    }]}>
+                      {sseStatus === 'connected' ? `● ${user.role}`
+                        : sseStatus === 'reconnecting' ? `↻ Reconnecting…`
+                        : sseStatus === 'failed' ? `✕ Disconnected`
+                        : `○ ${user.role}`}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.profileName}>Connecting…</Text>
+                )}
+              </View>
             </View>
-            <View>
-              {initError ? (
-                <>
-                  <Text style={[styles.profileName, { color: theme.colors.error }]}>Connection Error</Text>
-                  <Text style={[styles.profileRole, { color: theme.colors.error }]}>Tap Disconnect to relink</Text>
-                </>
-              ) : user ? (
-                <>
-                  <Text style={styles.profileName}>{user.name}</Text>
-                  <Text style={[styles.profileRole, {
-                    color: sseStatus === 'connected' ? theme.colors.success
-                      : sseStatus === 'failed' ? theme.colors.error
-                      : theme.colors.warning,
-                  }]}>
-                    {sseStatus === 'connected' ? `● ${user.role}`
-                      : sseStatus === 'reconnecting' ? `↻ Reconnecting…`
-                      : sseStatus === 'failed' ? `✕ Disconnected`
-                      : `○ ${user.role}`}
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.profileName}>Connecting…</Text>
-              )}
-            </View>
+            <ThemeToggleButton />
           </View>
 
           <View style={styles.idleCenter}>
@@ -764,7 +771,8 @@ export default function ScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -812,6 +820,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: theme.spacing.xl,
+  },
   profilePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -821,7 +836,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.full,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginTop: theme.spacing.xl,
   },
   avatarCircle: {
     width: 40,
@@ -1193,4 +1207,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-});
+  });
+}

@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./logo.png",
-      "bundleIdentifier": "com.quaderp.scannerapp"
+      "bundleIdentifier": "com.quaderp.scannerapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.quaderp.scannerapp",

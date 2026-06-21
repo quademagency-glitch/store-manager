@@ -142,6 +142,11 @@ export default function MainLayout() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
+  // locationIds is a freshly-allocated array on every auth refresh even when
+  // its contents haven't changed; key off its contents so this effect doesn't
+  // re-fire (and re-request /locations) for an equivalent array reference.
+  const locationIdsKey = useMemo(() => locationIds.join(','), [locationIds]);
+
   useEffect(() => {
     // Only fetch locations if they have assigned locationIds OR if they are an admin
     if (locationIds.length > 0 || role === 'Platform Admin' || role === 'Business Admin') {
@@ -150,14 +155,15 @@ export default function MainLayout() {
           setAvailableLocations(res);
           // If no active location set and we are an admin, default to first available
           if (!activeLocationId && res.length > 0 && (role === 'Platform Admin' || role === 'Business Admin')) {
-            switchLocation(res[0].id);
+            switchLocation(res[0].id, { silent: true });
           }
         }
       }).catch(err => {
         if (import.meta.env.DEV) console.error("Failed to load locations for switcher", err);
       });
     }
-  }, [locationIds, role, activeLocationId, switchLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationIdsKey, role, activeLocationId, switchLocation]);
 
   const handleSignOut = async () => {
     await signOut();

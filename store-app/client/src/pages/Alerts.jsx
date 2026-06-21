@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -12,6 +12,20 @@ export default function Alerts() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('pending'); // 'pending', 'resolved', 'all'
   const [typeFilter, setTypeFilter] = useState('all');
+
+  const typeFilterRef = useRef(null);
+  const [typeFilterFade, setTypeFilterFade] = useState({ left: false, right: false });
+
+  const updateTypeFilterFade = () => {
+    const el = typeFilterRef.current;
+    if (!el) return;
+    setTypeFilterFade({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  };
+
+  useEffect(() => { updateTypeFilterFade(); }, []);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -165,16 +179,22 @@ export default function Alerts() {
       )}
 
       {/* Type Filter */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '4px' }}>
-        {alertTypes.map(t => (
-          <button key={t}
-            className={`btn btn-sm ${typeFilter === t ? 'btn-primary' : 'btn-outline'}`}
-            style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-            onClick={() => setTypeFilter(t)}
-          >
-            {t === 'all' ? 'All Types' : t.replace(/_/g, ' ')}
-          </button>
-        ))}
+      <div className={`alerts-type-filter-wrap ${typeFilterFade.left ? 'fade-left' : ''} ${typeFilterFade.right ? 'fade-right' : ''}`} style={{ marginBottom: '1rem' }}>
+        <div
+          ref={typeFilterRef}
+          onScroll={updateTypeFilterFade}
+          style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '4px' }}
+        >
+          {alertTypes.map(t => (
+            <button key={t}
+              className={`btn btn-sm ${typeFilter === t ? 'btn-primary' : 'btn-outline'}`}
+              style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t === 'all' ? 'All Types' : t.replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (

@@ -187,11 +187,17 @@ export function useAuth() {
     return permissions.includes(perm);
   }, [permissions, role]);
 
-  const switchLocation = useCallback((locationId) => {
+  const switchLocation = useCallback((locationId, { silent = false } = {}) => {
     setActiveLocationId(locationId);
     localStorage.setItem('active_location_id', locationId);
-    // You might want to trigger a full app reload or emit an event to refetch data
-    window.location.reload(); 
+    // Pages fetch their data keyed off the location header rather than
+    // watching activeLocationId, so a reload is needed to refresh them —
+    // except for the automatic first-login default assignment, where
+    // there's no stale data on screen yet and reloading just causes a
+    // jarring flash right after sign-in.
+    if (!silent) {
+      window.location.reload();
+    }
   }, []);
 
   return {

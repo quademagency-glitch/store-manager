@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
@@ -464,6 +464,20 @@ export default function Inventory() {
     { id: 'pricing', label: 'Pricing' },
   ];
 
+  const tabsScrollRef = useRef(null);
+  const [tabsFade, setTabsFade] = useState({ left: false, right: false });
+
+  const updateTabsFade = () => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    setTabsFade({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  };
+
+  useEffect(() => { updateTabsFade(); }, []);
+
   return (
     <div className="inventory-page">
       <div className="inventory-header page-header">
@@ -529,16 +543,18 @@ export default function Inventory() {
       )}
 
       {/* Tab Navigation */}
-      <div className="inventory-tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`inventory-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className={`inventory-tabs-wrap ${tabsFade.left ? 'fade-left' : ''} ${tabsFade.right ? 'fade-right' : ''}`}>
+        <div className="inventory-tabs" ref={tabsScrollRef} onScroll={updateTabsFade}>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              className={`inventory-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
       {/* ═══ PRODUCTS TAB ═══ */}
       {activeTab === 'products' && (

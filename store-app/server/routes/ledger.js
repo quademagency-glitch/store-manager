@@ -119,7 +119,9 @@ router.get('/till-balance', authGuard, async (req, res) => {
       const totalDeposits = entries.filter(e => e.type === 'deposit_to_bank' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
       const totalApPayments = entries.filter(e => e.type === 'ap_payment' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
 
-      const currentBalance = totalCashSales - totalExpenses - totalDeposits - totalApPayments;
+      const totalPayIns = entries.filter(e => e.type === 'pay_in' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
+
+      const currentBalance = totalCashSales + totalPayIns - totalExpenses - totalDeposits - totalApPayments;
 
       return res.json({
         view: 'basic',
@@ -141,6 +143,8 @@ router.get('/till-balance', authGuard, async (req, res) => {
           total_sales: 0,
           total_expenses: 0,
           total_deposits: 0,
+          total_pay_ins: 0,
+          total_ap_payments: 0,
           current_balance: 0,
           transactions: []
         };
@@ -176,8 +180,10 @@ router.get('/till-balance', authGuard, async (req, res) => {
             b.total_deposits += Number(e.amount);
             b.current_balance -= Number(e.amount);
           } else if (e.type === 'pay_in') {
+            b.total_pay_ins += Number(e.amount);
             b.current_balance += Number(e.amount);
           } else if (e.type === 'ap_payment') {
+            b.total_ap_payments += Number(e.amount);
             b.current_balance -= Number(e.amount);
           }
         }

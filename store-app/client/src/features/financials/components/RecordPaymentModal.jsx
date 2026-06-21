@@ -94,6 +94,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
               <option value="mobile_money">Mobile Money</option>
               <option value="bank_transfer">Bank Transfer</option>
               <option value="card">Card</option>
+              <option value="customer_deposit">Customer Deposit</option>
               <option value="other">Other</option>
             </select>
           </div>

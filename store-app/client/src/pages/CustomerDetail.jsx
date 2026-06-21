@@ -13,14 +13,14 @@ import RecordPaymentModal from '../features/financials/components/RecordPaymentM
 const TABS = [
   { key: 'purchases', label: 'Purchase History' },
   { key: 'credit', label: 'Credit (AR)', permission: 'manage_financials' },
-  { key: 'store_credit', label: 'Store Credit' },
+  { key: 'store_credit', label: 'Deposits' },
   { key: 'loyalty', label: 'Loyalty Points' },
 ];
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role, hasPermission } = useAuthContext();
+  const { role, hasPermission, user } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
@@ -44,6 +44,11 @@ export default function CustomerDetail() {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [depositForm, setDepositForm] = useState({ amount: '', note: '' });
   const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
+
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [withdrawStep, setWithdrawStep] = useState(1);
+  const [withdrawForm, setWithdrawForm] = useState({ amount: '', note: '', code: '', location_id: '' });
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
 
   const [locations, setLocations] = useState([]);
   const [paymentTarget, setPaymentTarget] = useState(null);
@@ -94,8 +99,26 @@ export default function CustomerDetail() {
   }, [activeTab, id]);
 
   useEffect(() => {
-    api.get('/locations').then(res => { if (Array.isArray(res)) setLocations(res); }).catch(() => {});
-  }, []);
+    api.get('/locations').then(res => { 
+      if (Array.isArray(res)) {
+        const userLocs = user?.user_metadata?.location_ids || [];
+        const userLoc = user?.user_metadata?.location_id;
+        const isAdmin = role === 'Platform Admin' || role === 'Business Admin';
+        
+        let filtered = res;
+        if (!isAdmin && userLocs.length <= 1) {
+          filtered = res.filter(l => l.id === userLoc || userLocs.includes(l.id));
+        }
+        setLocations(filtered);
+      } 
+    }).catch(() => {});
+  }, [role, user]);
+
+  useEffect(() => {
+    if (locations.length === 1) {
+      setWithdrawForm(prev => ({ ...prev, location_id: locations[0].id }));
+    }
+  }, [locations]);
 
   const openEditModal = () => {
     setEditForm({ name: customer.name, phone: customer.phone });
@@ -141,6 +164,54 @@ export default function CustomerDetail() {
       toast.error(err.message || 'Failed to record deposit');
     } finally {
       setIsSubmittingDeposit(false);
+    }
+  };
+
+  const handleWithdrawRequest = async (e) => {
+    e.preventDefault();
+    const amount = Number(withdrawForm.amount);
+    if (!amount || amount <= 0) return;
+    if (amount > loyalty.storeCreditBalance) {
+      toast.error('Withdrawal amount exceeds available deposit balance.');
+      return;
+    }
+    if (!withdrawForm.location_id) {
+      toast.error('Please select a till location to withdraw cash from.');
+      return;
+    }
+    setIsSubmittingWithdraw(true);
+    try {
+      await api.post(`/customers/${id}/send-verification`);
+      setWithdrawStep(2);
+      toast.success('Verification code sent to customer.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to send verification code');
+    } finally {
+      setIsSubmittingWithdraw(false);
+    }
+  };
+
+  const handleWithdrawConfirm = async (e) => {
+    e.preventDefault();
+    if (!withdrawForm.code) return;
+    setIsSubmittingWithdraw(true);
+    try {
+      await api.post(`/loyalty/store-credit/withdraw`, {
+        customer_id: id,
+        amount: Number(withdrawForm.amount),
+        code: withdrawForm.code,
+        location_id: withdrawForm.location_id,
+        note: withdrawForm.note || 'Cash Withdrawal'
+      });
+      await loadStoreCredit();
+      setIsWithdrawOpen(false);
+      setWithdrawStep(1);
+      setWithdrawForm({ amount: '', note: '', code: '', location_id: '' });
+      toast.success('Funds withdrawn successfully.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to complete withdrawal. Incorrect code?');
+    } finally {
+      setIsSubmittingWithdraw(false);
     }
   };
 
@@ -206,9 +277,12 @@ export default function CustomerDetail() {
           <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>${totalSpent.toFixed(2)}</div>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
-          <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Store Credit Balance</span>
+          <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Deposit Balance</span>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>${Number(loyalty.storeCreditBalance || 0).toFixed(2)}</div>
-          <button className="btn btn-sm btn-primary mt-sm" onClick={() => setIsDepositOpen(true)}>Deposit Funds</button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <button className="btn btn-sm btn-primary" onClick={() => setIsDepositOpen(true)}>Deposit</button>
+            <button className="btn btn-sm btn-outline" onClick={() => setIsWithdrawOpen(true)}>Withdraw</button>
+          </div>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
           <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Loyalty Points</span>
@@ -356,7 +430,7 @@ export default function CustomerDetail() {
       {activeTab === 'store_credit' && (
         <div className="glass-panel">
           {storeCreditLedger.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No store credit activity yet.</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No deposits or activity yet.</div>
           ) : (
             <>
               <div className="desktop-table-view">
@@ -477,7 +551,7 @@ export default function CustomerDetail() {
       <Modal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} title="Deposit Funds">
         <form onSubmit={handleDeposit}>
           <p className="text-muted" style={{ marginTop: 0 }}>
-            Record cash received from {customer.name} as store credit they can spend on future purchases.
+            Record cash received from {customer.name} as a deposit they can spend on future purchases.
           </p>
           <div className="form-group">
             <label>Amount *</label>
@@ -503,6 +577,81 @@ export default function CustomerDetail() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={isWithdrawOpen} onClose={() => { setIsWithdrawOpen(false); setWithdrawStep(1); }} title="Withdraw Funds">
+        {withdrawStep === 1 ? (
+          <form onSubmit={handleWithdrawRequest}>
+            <p className="text-muted" style={{ marginTop: 0 }}>
+              Initiate a cash withdrawal from {customer.name}'s deposit balance. They will receive an SMS code to verify.
+            </p>
+            <div className="form-group">
+              <label>Amount * (Max: ${Number(loyalty.storeCreditBalance || 0).toFixed(2)})</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                max={loyalty.storeCreditBalance}
+                className="input"
+                value={withdrawForm.amount}
+                onChange={(e) => setWithdrawForm({ ...withdrawForm, amount: e.target.value })}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="form-group">
+              <label>Till Location (Cash Source) *</label>
+              <select 
+                className="input" 
+                value={withdrawForm.location_id} 
+                onChange={(e) => setWithdrawForm({ ...withdrawForm, location_id: e.target.value })} 
+                required
+                disabled={locations.length === 1}
+              >
+                {locations.length !== 1 && <option value="">Select a location...</option>}
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Note</label>
+              <input type="text" className="input" value={withdrawForm.note} onChange={(e) => setWithdrawForm({ ...withdrawForm, note: e.target.value })} placeholder="Optional" />
+            </div>
+            <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setIsWithdrawOpen(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmittingWithdraw}>
+                {isSubmittingWithdraw ? 'Sending SMS...' : 'Request Code'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleWithdrawConfirm}>
+            <div className="alert alert-info mb-lg">
+              An SMS with a 4-digit code has been sent to {customer.phone}.
+            </div>
+            <div className="form-group">
+              <label>Verification Code *</label>
+              <input
+                type="text"
+                maxLength="4"
+                className="input"
+                style={{ fontSize: '1.5rem', letterSpacing: '0.5em', textAlign: 'center', fontFamily: 'monospace' }}
+                value={withdrawForm.code}
+                onChange={(e) => setWithdrawForm({ ...withdrawForm, code: e.target.value })}
+                required
+                autoFocus
+                placeholder="0000"
+              />
+            </div>
+            <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setWithdrawStep(1)}>Back</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmittingWithdraw || withdrawForm.code.length !== 4}>
+                {isSubmittingWithdraw ? 'Processing...' : 'Confirm Withdrawal'}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <RecordPaymentModal

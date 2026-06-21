@@ -27,7 +27,7 @@ const invoiceSchema = z.object({
 
 const paymentSchema = z.object({
   amount: z.number().positive(),
-  payment_method: z.enum(['cash', 'mobile_money', 'bank_transfer', 'card', 'other']),
+  payment_method: z.enum(['cash', 'mobile_money', 'bank_transfer', 'card', 'customer_deposit', 'other']),
   payment_date: z.string().optional(),
   location_id: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -203,7 +203,7 @@ router.post('/invoices/:id/payments', authGuard, permissionCheck('manage_financi
   try {
     const { amount, payment_method, payment_date, location_id, notes } = req.body;
 
-    let invQuery = supabaseAdmin.from('ar_invoices').select('id, business_id, invoice_number, total_amount, amount_paid, status').eq('id', req.params.id);
+    let invQuery = supabaseAdmin.from('ar_invoices').select('id, business_id, invoice_number, total_amount, amount_paid, status, customer_id').eq('id', req.params.id);
     if (req.user.role !== 'Platform Admin') invQuery = invQuery.eq('business_id', req.user.business_id);
     const { data: invoice, error: invErr } = await invQuery.single();
     if (invErr || !invoice) return res.status(404).json({ error: 'Invoice not found' });
@@ -220,6 +220,36 @@ router.post('/invoices/:id/payments', authGuard, permissionCheck('manage_financi
     const isCashier = req.user.role === 'Salesperson' || req.user.role === 'Cashier';
     const ledgerStatus = isCashier ? 'pending' : 'approved';
     const postToLedger = ['cash', 'mobile_money'].includes(payment_method);
+
+    if (payment_method === 'customer_deposit') {
+      const { data: lastEntry } = await supabaseAdmin
+        .from('store_credit_ledger')
+        .select('balance_after')
+        .eq('customer_id', invoice.customer_id)
+        .eq('business_id', invoice.business_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const currentBalance = Number(lastEntry?.balance_after || 0);
+      if (currentBalance < amount) {
+         return res.status(400).json({ error: `Insufficient deposit balance. Available: ${currentBalance.toFixed(2)}` });
+      }
+
+      const newBalance = currentBalance - amount;
+      const { error: ledgerErr } = await supabaseAdmin
+        .from('store_credit_ledger')
+        .insert({
+          customer_id: invoice.customer_id,
+          business_id: invoice.business_id,
+          type: 'redeem',
+          amount: -amount,
+          balance_after: newBalance,
+          note: `Payment for AR Invoice #${invoice.invoice_number}`
+        });
+      
+      if (ledgerErr) throw ledgerErr;
+    }
 
     const { data, error } = await supabaseAdmin.rpc('record_ar_payment', {
       p_invoice_id: req.params.id,

@@ -123,7 +123,7 @@ export default function TillAccount() {
               </div>
               {finSummary.income?.other_income > 0 && (
                 <div className="fin-category-row">
-                  <span className="fin-category-name">Other Income</span>
+                  <span className="fin-category-name">Deposits</span>
                   <span className="fin-category-amount" style={{ color: 'var(--color-success)' }}>{fmt(finSummary.income.other_income)}</span>
                 </div>
               )}
@@ -264,10 +264,22 @@ export default function TillAccount() {
                       <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Cash Sales (In) ($)</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_sales)}</span>
                     </div>
+                    {branch.total_pay_ins > 0 && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Deposits (In) ($)</span>
+                        <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_pay_ins)}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Expenses (Out) ($)</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-error)' }}>{fmt(branch.total_expenses)}</span>
                     </div>
+                    {branch.total_ap_payments > 0 && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>AP Payments (Out) ($)</span>
+                        <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-error)' }}>{fmt(branch.total_ap_payments)}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Deposited (Out) ($)</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-accent-primary)' }}>{fmt(branch.total_deposits)}</span>

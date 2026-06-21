@@ -47,6 +47,14 @@ const storeCreditSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+const withdrawStoreCreditSchema = z.object({
+  customer_id: z.string().uuid(),
+  amount: z.number().min(0.01),
+  code: z.string().min(4),
+  location_id: z.string().uuid(),
+  note: z.string().max(500).optional(),
+});
+
 // ============================================
 // Helper: generate gift card code
 // ============================================
@@ -461,6 +469,86 @@ router.post('/store-credit', authGuard, validateBody(storeCreditSchema), async (
   } catch (err) {
     logger.error({ err }, 'Store credit error');
     res.status(500).json({ error: 'Failed to process store credit' });
+  }
+});
+
+/**
+ * POST /api/loyalty/store-credit/withdraw
+ */
+router.post('/store-credit/withdraw', authGuard, validateBody(withdrawStoreCreditSchema), async (req, res) => {
+  try {
+    const { customer_id, amount, code, location_id, note } = req.body;
+
+    // 1. Verify Code
+    const { data: customer, error: custErr } = await supabaseAdmin
+      .from('customers')
+      .select('verification_code')
+      .eq('id', customer_id)
+      .eq('business_id', req.user.business_id)
+      .single();
+
+    if (custErr || !customer) return res.status(404).json({ error: 'Customer not found' });
+    if (!customer.verification_code || customer.verification_code !== code) {
+      return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // Clear code
+    await supabaseAdmin.from('customers').update({ verification_code: null }).eq('id', customer_id);
+
+    // 2. Get current balance
+    const { data: lastEntry } = await supabaseAdmin
+      .from('store_credit_ledger')
+      .select('balance_after')
+      .eq('customer_id', customer_id)
+      .eq('business_id', req.user.business_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const currentBalance = Number(lastEntry?.balance_after || 0);
+    if (currentBalance < amount) {
+      return res.status(400).json({ error: `Insufficient deposit balance. Available: ${currentBalance.toFixed(2)}` });
+    }
+
+    const newBalance = currentBalance - amount;
+
+    // 3. Deduct store credit
+    const { data: creditEntry, error: creditErr } = await supabaseAdmin
+      .from('store_credit_ledger')
+      .insert({
+        customer_id,
+        business_id: req.user.business_id,
+        type: 'redeem',
+        amount: -amount,
+        balance_after: newBalance,
+        note: note || 'Customer Withdrawal'
+      })
+      .select()
+      .single();
+
+    if (creditErr) throw creditErr;
+
+    // 4. Record expense in business ledger (cash out of till)
+    const { error: ledgerErr } = await supabaseAdmin
+      .from('business_ledger')
+      .insert({
+        business_id: req.user.business_id,
+        location_id,
+        category: 'Customer Withdrawal',
+        type: 'expense',
+        amount,
+        payment_method: 'cash',
+        status: 'approved',
+        reference: `Withdrawal by ${customer_id.substring(0, 8)}`,
+        created_by: req.user.id
+      });
+
+    if (ledgerErr) throw ledgerErr;
+
+    res.json({ message: 'Funds withdrawn successfully', new_balance: newBalance, entry: creditEntry });
+  } catch (err) {
+    logger.error({ err }, 'Withdraw store credit error');
+    res.status(500).json({ error: 'Failed to process withdrawal' });
   }
 });
 

@@ -56,7 +56,7 @@ export default function PaymentModal({
 
           {storeCreditBalance > 0 && (
             <div className="form-group">
-              <label>Store Credit (available {fmt(storeCreditBalance)})</label>
+              <label>Deposit Balance (available {fmt(storeCreditBalance)})</label>
               <input
                 type="number"
                 step="0.01"

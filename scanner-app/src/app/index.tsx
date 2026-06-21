@@ -5,6 +5,7 @@ import { useAppTheme } from '../lib/theme-context';
 import type { AppTheme } from '../lib/theme';
 import { ThemeToggleButton } from '../components/theme-toggle-button';
 import { getToken } from '../lib/api';
+import Logo from '../components/Logo';
 
 export default function WelcomeScreen() {
   const { theme } = useAppTheme();
@@ -41,6 +42,9 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       <ThemeToggleButton style={styles.themeToggle} />
       <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <Logo size={100} />
+        </View>
         <Text style={styles.title}>
           Quad<Text style={{ color: theme.colors.brandErp }}>ERP</Text> Scanner
         </Text>
@@ -85,6 +89,9 @@ function createStyles(theme: AppTheme) {
   header: {
     marginTop: theme.spacing.xxl * 1.5,
     alignItems: 'center',
+  },
+  logoContainer: {
+    marginBottom: theme.spacing.xl,
   },
   title: {
     fontSize: 28,

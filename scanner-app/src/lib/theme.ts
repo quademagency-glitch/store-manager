@@ -26,6 +26,8 @@ const darkColors = {
   border: '#2E364F',
   accent: '#19A8CB', // Company Brand Cyan
   accentHover: '#12829F',
+  secondary: '#6366F1', // Indigo for secondary actions
+  secondaryHover: '#4F46E5',
   success: '#10B981', // Emerald
   successBackground: '#064E3B', // Dark emerald tint
   error: '#EF4444',
@@ -44,6 +46,8 @@ const lightColors = {
   border: '#E2E8F0',
   accent: '#19A8CB', // Company Brand Cyan
   accentHover: '#12829F',
+  secondary: '#6366F1', // Indigo for secondary actions
+  secondaryHover: '#4F46E5',
   success: '#10B981', // Emerald
   successBackground: '#D1FAE5', // Light emerald tint
   error: '#EF4444',

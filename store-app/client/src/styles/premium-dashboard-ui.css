@@ -46,16 +46,11 @@
 
 .highlight-text {
   font-weight: 800;
-  background: linear-gradient(135deg, #818cf8, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.2));
+  color: #818cf8;
 }
 
 [data-theme="light"] .highlight-text {
-  background: linear-gradient(135deg, #4338ca, #7c3aed);
-  filter: drop-shadow(0 1px 2px rgba(67, 56, 202, 0.15));
+  color: #4338ca;
 }
 
 .banner-subtitle {

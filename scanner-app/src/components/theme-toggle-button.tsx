@@ -1,5 +1,6 @@
-import { TouchableOpacity, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, type StyleProp, type ViewStyle, Platform } from 'react-native';
 import { SymbolView } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/lib/theme-context';
 
 export function ThemeToggleButton({ size = 22, style }: { size?: number; style?: StyleProp<ViewStyle> }) {
@@ -13,17 +14,29 @@ export function ThemeToggleButton({ size = 22, style }: { size?: number; style?:
       accessibilityRole="button"
       accessibilityLabel={scheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      <SymbolView
-        name={scheme === 'dark' ? 'sun.max.fill' : 'moon.fill'}
-        size={size}
-        tintColor={theme.colors.primaryText}
-      />
+      {Platform.OS === 'ios' ? (
+        <SymbolView
+          name={scheme === 'dark' ? 'sun.max.fill' : 'moon.fill'}
+          size={size}
+          tintColor={theme.colors.primaryText}
+        />
+      ) : (
+        <Ionicons 
+          name={scheme === 'dark' ? 'sunny' : 'moon'} 
+          size={size} 
+          color={theme.colors.primaryText} 
+        />
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    padding: 8,
+    padding: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

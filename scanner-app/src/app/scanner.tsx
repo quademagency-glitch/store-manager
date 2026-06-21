@@ -86,7 +86,6 @@ export default function ScannerScreen() {
         }
 
         es.addEventListener('message', (event: any) => {
-          if (event.data === ':ping') return;
           try {
             const data = JSON.parse(event.data);
             if (data.command === 'scan_unit') {

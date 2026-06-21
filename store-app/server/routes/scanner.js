@@ -355,10 +355,10 @@ router.get('/events', authGuard, (req, res) => {
   // Register the client
   activeClients[userId] = res;
 
-  // Keep the connection alive with a ping every 30 seconds
+  // Keep the connection alive with a ping every 15 seconds to prevent network timeouts
   const keepAlive = setInterval(() => {
-    res.write(':ping\n\n');
-  }, 30000);
+    res.write('event: ping\ndata: {"ping":true}\n\n');
+  }, 15000);
 
   // Cleanup on connection close
   req.on('close', () => {
@@ -404,8 +404,8 @@ router.get('/app-events', async (req, res) => {
     activeScanners[userId] = res;
 
     const keepAlive = setInterval(() => {
-      res.write(':ping\n\n');
-    }, 30000);
+      res.write('event: ping\ndata: {"ping":true}\n\n');
+    }, 15000);
 
     req.on('close', () => {
       clearInterval(keepAlive);

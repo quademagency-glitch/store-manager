@@ -49,6 +49,7 @@ const finalizeSaleSchema = z.object({
 router.get('/', authGuard, permissionCheck('view_sales'), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req.query);
+    const { customer_id } = req.query;
 
     let query = supabaseAdmin
       .from('sales')
@@ -69,7 +70,10 @@ router.get('/', authGuard, permissionCheck('view_sales'), async (req, res) => {
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
     }
-    
+    if (customer_id) {
+      query = query.eq('customer_id', customer_id);
+    }
+
     if (req.user.active_location_id) {
       query = query.eq('location_id', req.user.active_location_id);
     } else if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {

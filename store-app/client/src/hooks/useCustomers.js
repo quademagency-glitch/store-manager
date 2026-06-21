@@ -41,6 +41,15 @@ export function useCustomers() {
     }
   }, []);
 
+  const fetchCustomer = useCallback(async (id) => {
+    try {
+      return await api.get(`/customers/${id}`);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Fetch customer failed:', err);
+      return null;
+    }
+  }, []);
+
   const searchCustomers = useCallback(async (query) => {
     if (!query) return [];
     try {
@@ -134,6 +143,7 @@ export function useCustomers() {
     loading,
     error,
     fetchCustomers,
+    fetchCustomer,
     searchCustomers,
     createCustomer,
     updateCustomer,

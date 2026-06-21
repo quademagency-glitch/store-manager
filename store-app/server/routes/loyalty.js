@@ -42,7 +42,7 @@ const redeemGiftCardSchema = z.object({
 const storeCreditSchema = z.object({
   customer_id: z.string().uuid(),
   amount: z.number().min(0.01),
-  type: z.enum(['issue', 'refund']),
+  type: z.enum(['issue', 'refund', 'redeem']),
   sale_id: z.string().uuid().optional(),
   note: z.string().max(500).optional(),
 });
@@ -386,6 +386,30 @@ router.get('/store-credit/:customerId', authGuard, async (req, res) => {
   } catch (err) {
     logger.error({ err }, 'Store credit balance error');
     res.status(500).json({ error: 'Failed to fetch store credit balance' });
+  }
+});
+
+/**
+ * GET /api/loyalty/store-credit/:customerId/ledger
+ */
+router.get('/store-credit/:customerId/ledger', authGuard, async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { page, limit, offset } = getPagination(req.query);
+
+    const { data, error, count } = await supabaseAdmin
+      .from('store_credit_ledger')
+      .select('*', { count: 'exact' })
+      .eq('customer_id', customerId)
+      .eq('business_id', req.user.business_id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    res.json({ data, ...buildPaginationMeta(count, page, limit) });
+  } catch (err) {
+    logger.error({ err }, 'Store credit ledger error');
+    res.status(500).json({ error: 'Failed to fetch store credit ledger' });
   }
 });
 

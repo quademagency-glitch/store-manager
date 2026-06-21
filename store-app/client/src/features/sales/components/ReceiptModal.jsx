@@ -82,9 +82,15 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
           </div>
           
           {/* Payment Method */}
+          {receiptData.rewards_applied > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.9rem', color: '#475569' }}>
+              <span>Rewards Applied:</span>
+              <span style={{ fontWeight: 600 }}>-{fmt(receiptData.rewards_applied)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.9rem', color: '#475569' }}>
             <span style={{ textTransform: 'capitalize' }}>Paid via {receiptData.payment_method}:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(receiptData.total_amount)}</span>
+            <span style={{ fontWeight: 600 }}>{fmt(receiptData.total_amount - (receiptData.rewards_applied || 0))}</span>
           </div>
 
           {/* Return Policy (if business has one) */}

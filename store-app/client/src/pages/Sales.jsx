@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useCustomers } from '../hooks/useCustomers';
+import { useLoyalty } from '../hooks/useLoyalty';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
 import { Icons } from '../components/icons/Icons';
@@ -23,6 +24,7 @@ export default function Sales() {
   const { fmt } = useCurrency(business);
   const { products } = useProducts();
   const { searchCustomers, createCustomer, verifyCustomerCode } = useCustomers();
+  const loyalty = useLoyalty();
 
   // Wizard state
   const [saleType, setSaleType] = useState(null); // 'new', 'batch', 'history'
@@ -66,6 +68,10 @@ export default function Sales() {
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
+  // Customer rewards (store credit / loyalty points) applied at checkout
+  const [appliedStoreCredit, setAppliedStoreCredit] = useState('');
+  const [appliedPoints, setAppliedPoints] = useState('');
+
   // Receipt state
   const [receiptData, setReceiptData] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -99,6 +105,22 @@ export default function Sales() {
   // Currency formatting handled by useCurrency hook above
 
   const totalAmount = wizardItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+
+  const pointValue = Number(loyalty.rules?.point_value || 0);
+  const rewardsApplied = (Number(appliedStoreCredit) || 0) + (Number(appliedPoints) || 0) * pointValue;
+  const netAmountDue = Math.max(0, totalAmount - rewardsApplied);
+
+  // Fetch the selected customer's reward balances so they can be redeemed at checkout
+  useEffect(() => {
+    if (selectedCustomer?.id) {
+      loyalty.fetchStoreCredit(selectedCustomer.id);
+      loyalty.fetchBalance(selectedCustomer.id);
+      loyalty.fetchRules();
+    }
+    setAppliedStoreCredit('');
+    setAppliedPoints('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomer?.id]);
 
   // ─── Flow Navigation ───
   const startFlow = (type) => {
@@ -292,15 +314,35 @@ export default function Sales() {
 
 
   const handleFinalizeSale = async () => {
-    if (!amountPaid || isNaN(parseFloat(amountPaid))) {
+    const tendered = parseFloat(amountPaid) || 0;
+    if (netAmountDue > 0 && (!amountPaid || isNaN(tendered))) {
        setSaleError('Please enter a valid amount paid.');
        return;
     }
     if (!pendingSale) return;
     setIsProcessing(true);
     try {
-      const payload = { amount_paid: parseFloat(amountPaid) };
-      
+      // Redeem any applied customer rewards first — if this fails, the sale
+      // stays in 'pending' state so the cashier can retry without double-charging.
+      if (!pendingSale._isOffline) {
+        const storeCreditToRedeem = Number(appliedStoreCredit) || 0;
+        const pointsToRedeem = Number(appliedPoints) || 0;
+        try {
+          if (storeCreditToRedeem > 0) {
+            await loyalty.issueStoreCredit(selectedCustomer.id, storeCreditToRedeem, 'redeem', pendingSale.id, 'Redeemed at checkout');
+          }
+          if (pointsToRedeem > 0) {
+            await loyalty.redeemPoints(selectedCustomer.id, pointsToRedeem, pendingSale.id, 'Redeemed at checkout');
+          }
+        } catch (rewardErr) {
+          setSaleError(rewardErr.message || 'Failed to redeem customer rewards');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      const payload = { amount_paid: tendered + rewardsApplied };
+
       let fullReceipt = null;
 
       if (pendingSale._isOffline) {
@@ -316,7 +358,8 @@ export default function Sales() {
           ...pendingSale,
           payment_method: paymentMethod,
           total_amount: totalAmount,
-          amount_paid: parseFloat(amountPaid),
+          amount_paid: tendered + rewardsApplied,
+          rewards_applied: rewardsApplied,
           receipt_number: `OFFLINE-${pendingSale.id.split('-')[1]}`,
           sale_items: wizardItems.map(item => ({
             id: item.product.id,
@@ -332,7 +375,8 @@ export default function Sales() {
           ...pendingSale,
           payment_method: paymentMethod,
           total_amount: totalAmount,
-          amount_paid: parseFloat(amountPaid),
+          amount_paid: tendered + rewardsApplied,
+          rewards_applied: rewardsApplied,
           sale_items: wizardItems.map(item => ({
             id: item.product.id,
             quantity: item.quantity,
@@ -348,6 +392,8 @@ export default function Sales() {
       // Reset wizard
       setWizardItems([]);
       setAmountPaid('');
+      setAppliedStoreCredit('');
+      setAppliedPoints('');
       setPendingSale(null);
     } catch (err) {
       setSaleError(err.message || 'Failed to finalize sale');
@@ -828,6 +874,15 @@ export default function Sales() {
         handleFinalizePayment={handleFinalizeSale}
         isProcessing={isProcessing}
         saleError={saleError}
+        rewardsEnabled={!pendingSale?._isOffline}
+        storeCreditBalance={loyalty.storeCreditBalance}
+        pointsBalance={loyalty.pointsBalance}
+        pointValue={pointValue}
+        appliedStoreCredit={appliedStoreCredit}
+        setAppliedStoreCredit={setAppliedStoreCredit}
+        appliedPoints={appliedPoints}
+        setAppliedPoints={setAppliedPoints}
+        netAmountDue={netAmountDue}
       />
 
       <ReceiptModal

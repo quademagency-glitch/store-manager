@@ -13,6 +13,7 @@ import Alerts from './pages/Alerts';
 import Reconciliation from './pages/Reconciliation';
 import Settings from "./pages/Settings";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Returns from "./pages/Returns";
 import SalesRecord from "./pages/SalesRecord";
 import TillAccount from "./pages/TillAccount";
@@ -102,6 +103,9 @@ export default function App() {
                     } />
                     <Route path="/customers" element={
                       <ProtectedRoute><Customers /></ProtectedRoute>
+                    } />
+                    <Route path="/customers/:id" element={
+                      <ProtectedRoute><CustomerDetail /></ProtectedRoute>
                     } />
                     <Route path="/customer-orders" element={
                       <ProtectedRoute><CustomerOrders /></ProtectedRoute>

@@ -81,6 +81,32 @@ router.get('/search', authGuard, async (req, res) => {
 });
 
 /**
+ * GET /api/customers/:id
+ * Fetch a single customer
+ */
+router.get('/:id', authGuard, async (req, res) => {
+  try {
+    let query = supabaseAdmin
+      .from('customers')
+      .select('*')
+      .eq('id', req.params.id);
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Customer not found' });
+
+    res.json(data);
+  } catch (err) {
+    logger.error({ err: err }, 'Error fetching customer:');
+    res.status(500).json({ error: 'Failed to fetch customer' });
+  }
+});
+
+/**
  * POST /api/customers
  * Create a new customer
  */

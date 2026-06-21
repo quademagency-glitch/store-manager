@@ -127,10 +127,27 @@ export default function ScannerScreen() {
         setSseConnected(false);
         return;
       }
-      const delayMs = Math.min(1000 * 2 ** attempt, 30000);
-      setSseStatus('reconnecting');
-      setSseConnected(false);
-      reconnectTimerRef.current = setTimeout(() => connectSSE(attempt), delayMs);
+      
+      // Ping server to see if token is still valid
+      getMe().then(() => {
+        if (unmountedRef.current) return;
+        const delayMs = Math.min(1000 * 2 ** attempt, 30000);
+        setSseStatus('reconnecting');
+        setSseConnected(false);
+        reconnectTimerRef.current = setTimeout(() => connectSSE(attempt), delayMs);
+      }).catch((e) => {
+        if (unmountedRef.current) return;
+        if (e instanceof AuthExpiredError || (e instanceof Error && e.message.includes('not linked'))) {
+          Alert.alert('Session Expired', 'Scanner was unlinked.');
+          handleUnlink();
+        } else {
+          // Network error, keep trying
+          const delayMs = Math.min(1000 * 2 ** attempt, 30000);
+          setSseStatus('reconnecting');
+          setSseConnected(false);
+          reconnectTimerRef.current = setTimeout(() => connectSSE(attempt), delayMs);
+        }
+      });
     };
 
     connectSSE(0);

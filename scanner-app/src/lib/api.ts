@@ -29,7 +29,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
 }
 
 async function handleResponse(response: Response): Promise<any> {
-  if (response.status === 401) {
+  if (response.status === 401 || response.status === 404) {
     await removeToken();
     throw new AuthExpiredError();
   }

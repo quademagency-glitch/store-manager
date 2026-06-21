@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useSearchParams } from 'react-router-dom';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { useConfirm } from '../hooks/useConfirm';
+import { supabase } from '../lib/supabase';
 
 export default function UserProfile() {
   const { user, role } = useAuthContext();
@@ -31,8 +32,6 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const pollInterval = useRef(null);
-
   const fetchStatus = useCallback(async () => {
     try {
       const { linked } = await api.get('/scanner/status');
@@ -87,22 +86,42 @@ export default function UserProfile() {
     initialize();
   }, [fetchStatus, generateToken]);
 
-  // Polling for status
+  // SSE connection for immediate status updates
   useEffect(() => {
-    pollInterval.current = setInterval(async () => {
-      const linked = await fetchStatus();
-      if (isLinked && !linked) {
-        // Device was unlinked from the scanner app
-        await generateToken();
-      }
-    }, 3000);
-    
+    let eventSource;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const token = session?.access_token;
+      if (!token) return;
+
+      eventSource = new EventSource(`${API_BASE}/scanner/events?token=${token}`);
+
+      eventSource.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.linked) {
+            setIsLinked(true);
+            setLoading(false);
+          } else if (data && data.unlinked) {
+            // Instantly regenerate code when unlinked
+            await generateToken();
+          }
+        } catch (err) {
+          if (import.meta.env.DEV) console.error('Error parsing SSE event:', err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        if (import.meta.env.DEV) console.error('SSE connection error:', err);
+      };
+    });
+
     return () => {
-      if (pollInterval.current) {
-        clearInterval(pollInterval.current);
+      if (eventSource) {
+        eventSource.close();
       }
     };
-  }, [isLinked, fetchStatus, generateToken]);
+  }, [generateToken]);
 
   return (
     <div className="page-container">

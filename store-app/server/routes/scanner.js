@@ -116,6 +116,11 @@ router.post('/link', async (req, res) => {
 
     if (updateError) throw updateError;
 
+    const client = activeClients[user.id];
+    if (client) {
+      client.write(`data: ${JSON.stringify({ linked: true })}\n\n`);
+    }
+
     res.json({ 
       message: 'Scanner successfully linked', 
       user: {
@@ -185,6 +190,11 @@ router.post('/unlink', authGuard, async (req, res) => {
 
     if (error) throw error;
 
+    const client = activeClients[req.user.id];
+    if (client) {
+      client.write(`data: ${JSON.stringify({ unlinked: true })}\n\n`);
+    }
+
     res.json({ message: 'Scanner unlinked successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error unlinking scanner:');
@@ -205,6 +215,11 @@ router.post('/app-unlink', async (req, res) => {
       return res.status(400).json({ error: 'Token is required' });
     }
 
+    const { data: users } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('scanner_session_token', token);
+
     const { error } = await supabaseAdmin
       .from('users')
       .update({
@@ -214,6 +229,14 @@ router.post('/app-unlink', async (req, res) => {
       .eq('scanner_session_token', token);
 
     if (error) throw error;
+
+    if (users && users.length > 0) {
+      const userId = users[0].id;
+      const client = activeClients[userId];
+      if (client) {
+        client.write(`data: ${JSON.stringify({ unlinked: true })}\n\n`);
+      }
+    }
 
     res.json({ message: 'Scanner unlinked successfully' });
   } catch (err) {

@@ -193,6 +193,36 @@ router.post('/unlink', authGuard, async (req, res) => {
 });
 
 /**
+ * POST /api/scanner/app-unlink
+ * External scanner app calls this endpoint to unlink itself.
+ * Access: Public (Uses scanner session token)
+ */
+router.post('/app-unlink', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({
+        scanner_session_token: null,
+        scanner_linked_at: null
+      })
+      .eq('scanner_session_token', token);
+
+    if (error) throw error;
+
+    res.json({ message: 'Scanner unlinked successfully' });
+  } catch (err) {
+    logger.error({ err: err }, 'Error app unlinking scanner:');
+    res.status(500).json({ error: 'Failed to unlink scanner' });
+  }
+});
+
+/**
  * Active SSE connections
  * Structure: { [userId]: express.Response }
  */

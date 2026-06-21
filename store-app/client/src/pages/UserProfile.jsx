@@ -87,23 +87,22 @@ export default function UserProfile() {
     initialize();
   }, [fetchStatus, generateToken]);
 
-  // Polling for status when a token is generated and not linked
+  // Polling for status
   useEffect(() => {
-    if (scannerToken && !isLinked) {
-      pollInterval.current = setInterval(async () => {
-        const linked = await fetchStatus();
-        if (linked) {
-          clearInterval(pollInterval.current);
-        }
-      }, 3000);
-    }
+    pollInterval.current = setInterval(async () => {
+      const linked = await fetchStatus();
+      if (isLinked && !linked) {
+        // Device was unlinked from the scanner app
+        await generateToken();
+      }
+    }, 3000);
     
     return () => {
       if (pollInterval.current) {
         clearInterval(pollInterval.current);
       }
     };
-  }, [scannerToken, isLinked, fetchStatus]);
+  }, [isLinked, fetchStatus, generateToken]);
 
   return (
     <div className="page-container">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator, BackHandler } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -47,6 +47,11 @@ export default function ScannerScreen() {
 
   useEffect(() => {
     unmountedRef.current = false;
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Prevent going back to setup by catching hardware back
+      return true;
+    });
 
     const init = async () => {
       try {
@@ -133,6 +138,7 @@ export default function ScannerScreen() {
 
     return () => {
       unmountedRef.current = true;
+      backHandler.remove();
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (sseRef.current) {
         sseRef.current.close();
@@ -216,7 +222,7 @@ export default function ScannerScreen() {
     const start = timeWindow[`${action}_start` as keyof typeof timeWindow];
     const end = timeWindow[`${action}_end` as keyof typeof timeWindow];
     if (!start || !end) return null;
-    return `${isClockedIn ? 'Clock out' : 'Clock in'}: ${start} – ${end}`;
+    return `${isClockedIn ? 'Sign out' : 'Sign in'}: ${start} – ${end}`;
   };
 
   const handleClockIn = async () => {
@@ -235,7 +241,7 @@ export default function ScannerScreen() {
       await clockIn(lat, lng);
       setIsClockedIn(true);
       setClockedInSince(new Date().toISOString());
-      Alert.alert('Clocked In ✅', 'You are now clocked in.');
+      Alert.alert('Signed In ✅', 'You are now signed in.');
       fetchAttendance();
     } catch (e: any) {
       if (e instanceof AuthExpiredError) {
@@ -243,7 +249,7 @@ export default function ScannerScreen() {
         handleUnlink();
         return;
       }
-      Alert.alert('Clock In Failed', e.message || 'Could not clock in.');
+      Alert.alert('Sign In Failed', e.message || 'Could not sign in.');
     } finally {
       setAttendanceLoading(false);
     }
@@ -264,7 +270,7 @@ export default function ScannerScreen() {
       await clockOut(lat, lng);
       setIsClockedIn(false);
       setClockedInSince(null);
-      Alert.alert('Clocked Out 👋', 'You have been clocked out.');
+      Alert.alert('Signed Out 👋', 'You have been signed out.');
       fetchAttendance();
     } catch (e: any) {
       if (e instanceof AuthExpiredError) {
@@ -272,7 +278,7 @@ export default function ScannerScreen() {
         handleUnlink();
         return;
       }
-      Alert.alert('Clock Out Failed', e.message || 'Could not clock out.');
+      Alert.alert('Sign Out Failed', e.message || 'Could not sign out.');
     } finally {
       setAttendanceLoading(false);
     }
@@ -435,7 +441,7 @@ export default function ScannerScreen() {
                 {initError ? (
                   <>
                     <Text style={[styles.profileName, { color: theme.colors.error }]}>Connection Error</Text>
-                    <Text style={[styles.profileRole, { color: theme.colors.error }]}>Tap Disconnect to relink</Text>
+                    <Text style={[styles.profileRole, { color: theme.colors.error }]}>Tap Sign Out to relink</Text>
                   </>
                 ) : user ? (
                   <>
@@ -488,7 +494,7 @@ export default function ScannerScreen() {
                         tintColor="#fff" 
                       />
                       <Text style={styles.hugeScanButtonText}>
-                        {isClockedIn ? 'CLOCK OUT' : 'CLOCK IN'}
+                        {isClockedIn ? 'SIGN OUT' : 'SIGN IN'}
                       </Text>
                     </>
                   )}
@@ -574,7 +580,7 @@ export default function ScannerScreen() {
 
           <TouchableOpacity onPress={handleUnlink} style={styles.logoutButton}>
             <SymbolView name="rectangle.portrait.and.arrow.right" size={20} tintColor={theme.colors.error} />
-            <Text style={styles.logoutButtonText}>Disconnect</Text>
+            <Text style={styles.logoutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </View>

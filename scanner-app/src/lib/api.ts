@@ -49,6 +49,18 @@ export const getToken = async (): Promise<string | null> => {
 };
 
 export const removeToken = async () => {
+  const token = await AsyncStorage.getItem('scanner_token');
+  if (token) {
+    try {
+      await fetchWithTimeout(`${API_BASE}/scanner/app-unlink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      // Best-effort unlink on backend
+    }
+  }
   await AsyncStorage.removeItem('scanner_token');
 };
 

@@ -28,7 +28,7 @@ function RootLayoutNav() {
         <Stack.Screen name="setup" options={{ title: 'Setup Scanner', headerBackTitle: 'Back' }} />
         <Stack.Screen name="link-manual" options={{ title: 'Manual Link', headerBackTitle: 'Back' }} />
         <Stack.Screen name="link-camera" options={{ title: 'Scan Token', headerBackTitle: 'Back' }} />
-        <Stack.Screen name="scanner" options={{ headerShown: false }} />
+        <Stack.Screen name="scanner" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
     </>
   );

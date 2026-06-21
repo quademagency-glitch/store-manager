@@ -473,11 +473,11 @@ export default function ScannerScreen() {
             )}
             <View style={styles.actionButtonGroup}>
               {/* Attendance Button */}
-              <View style={[styles.glowRing, { borderColor: isClockedIn ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', backgroundColor: isClockedIn ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)' }]}>
+              <View style={[styles.glowRing, { borderColor: isClockedIn ? 'rgba(239, 68, 68, 0.15)' : 'rgba(25, 168, 203, 0.15)', backgroundColor: isClockedIn ? 'rgba(239, 68, 68, 0.05)' : 'rgba(25, 168, 203, 0.05)' }]}>
                 <TouchableOpacity 
                   style={[
                     styles.hugeScanButton, 
-                    { backgroundColor: isClockedIn ? theme.colors.error : theme.colors.success },
+                    { backgroundColor: isClockedIn ? theme.colors.error : theme.colors.accent },
                     ((geofenceConfigured && !isWithinGeofence) || !isWithinTimeWindow) && { opacity: 0.5 }
                   ]} 
                   onPress={isClockedIn ? handleClockOut : handleClockIn}
@@ -562,9 +562,9 @@ export default function ScannerScreen() {
                   <Text style={styles.hugeScanButtonText}>START SCAN</Text>
                 </TouchableOpacity>
               </View>
-              <View style={[styles.glowRing, { borderColor: 'rgba(16, 185, 129, 0.15)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}>
+              <View style={[styles.glowRing, { borderColor: 'rgba(25, 168, 203, 0.15)', backgroundColor: 'rgba(25, 168, 203, 0.05)' }]}>
                 <TouchableOpacity 
-                  style={[styles.hugeScanButton, { backgroundColor: theme.colors.success }]} 
+                  style={[styles.hugeScanButton, { backgroundColor: theme.colors.accent }]} 
                   onPress={handleStartStockTake}
                   activeOpacity={0.8}
                 >
@@ -900,9 +900,9 @@ function createStyles(theme: AppTheme) {
   glowRing: {
     padding: 4,
     borderRadius: theme.radius.xl,
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    backgroundColor: 'rgba(25, 168, 203, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.1)',
+    borderColor: 'rgba(25, 168, 203, 0.1)',
   },
   hugeScanButton: {
     backgroundColor: theme.colors.accent,

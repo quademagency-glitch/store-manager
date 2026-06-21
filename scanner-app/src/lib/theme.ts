@@ -24,8 +24,8 @@ const darkColors = {
   secondaryText: '#94A3B8',
   mutedText: '#64748B',
   border: '#2E364F',
-  accent: '#6366F1', // Electric Indigo
-  accentHover: '#4F46E5',
+  accent: '#19A8CB', // Company Brand Cyan
+  accentHover: '#12829F',
   success: '#10B981', // Emerald
   successBackground: '#064E3B', // Dark emerald tint
   error: '#EF4444',
@@ -42,8 +42,8 @@ const lightColors = {
   secondaryText: '#475569',
   mutedText: '#94A3B8',
   border: '#E2E8F0',
-  accent: '#6366F1', // Electric Indigo
-  accentHover: '#4F46E5',
+  accent: '#19A8CB', // Company Brand Cyan
+  accentHover: '#12829F',
   success: '#10B981', // Emerald
   successBackground: '#D1FAE5', // Light emerald tint
   error: '#EF4444',

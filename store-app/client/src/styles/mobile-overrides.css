@@ -473,6 +473,42 @@
   }
 }
 
+/* ─── Page-specific narrow-grid fixes (≤640px) ─── */
+@media (max-width: 640px) {
+  /* PriceTagPrinter: catalog + 320px preview column → stack */
+  .price-tag-layout { grid-template-columns: 1fr !important; }
+
+  /* Sales POS landing: two big choice buttons → stack */
+  .sales-landing-grid { grid-template-columns: 1fr !important; }
+
+  /* Settings: custom roles card grid */
+  .settings-roles-grid { grid-template-columns: 1fr !important; }
+
+  /* CustomerOrders: qty/price/total/remove item row → wrap to 2 cols */
+  .co-item-entry-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* BulkPriceUpdate: 4-up mode selector → 2x2 */
+  .bulk-price-mode-grid { grid-template-columns: 1fr 1fr !important; }
+
+  /* InvoiceView: print-style invoice document */
+  .invoice-preview { padding: 1.25rem !important; }
+  .invoice-header-row { flex-direction: column; gap: 1.25rem; }
+  .invoice-header-row > div:last-child { text-align: left !important; }
+  .invoice-header-row > div:last-child > div { align-items: flex-start !important; }
+  .invoice-header-row > div:last-child > div > div { justify-content: flex-start !important; }
+  .invoice-parties-row { flex-direction: column; gap: 1.5rem; }
+  .invoice-parties-row > div:last-child { text-align: left !important; }
+  .invoice-total-box { width: 100% !important; }
+
+  /* InventoryCount: list + sticky active-count panel */
+  .inv-count-active-panel {
+    min-width: 0 !important;
+    flex-basis: 100% !important;
+    position: relative !important;
+    top: auto !important;
+  }
+}
+
 /* ─── Seamless Mobile Additions (FABs, Bottom Sheets, Sticky Headers) ─── */
 @media (max-width: 768px) {
   /* Bottom Sheet Modals */

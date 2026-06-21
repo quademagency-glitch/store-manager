@@ -358,7 +358,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) 1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="co-item-entry-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr) 1fr auto', gap: '8px', alignItems: 'end' }}>
               <div>
                 <label style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Qty</label>
                 <input type="number" className="input" min="1" value={item.quantity}

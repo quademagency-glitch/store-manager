@@ -193,7 +193,7 @@ export default function Settings() {
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>System Users</h3>
                 <button className="btn btn-primary" onClick={() => openUserModal()}>+ Add User</button>
               </div>
-              <div className="table-container">
+              <div className="desktop-table-view table-container">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -220,6 +220,24 @@ export default function Settings() {
                   </tbody>
                 </table>
               </div>
+
+              <div className="mobile-card-view">
+                {users.map(u => (
+                  <div key={u.id} className="m-card">
+                    <div className="m-card-top">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="m-card-title">{u.name}</div>
+                        <div className="m-card-sub" style={{ wordBreak: 'break-word' }}>{u.email}</div>
+                      </div>
+                      <span className="badge badge-neutral" style={{ flexShrink: 0 }}>{u.roles?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="m-card-actions">
+                      <button className="btn btn-sm btn-secondary" onClick={() => openUserModal(u)} aria-label={`Edit ${u.name}`}>{Icons.edit} Edit</button>
+                      <button className="btn btn-sm btn-secondary text-error" onClick={() => handleDeleteUser(u.id)} aria-label={`Delete ${u.name}`}>{Icons.trash} Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div>
@@ -227,7 +245,7 @@ export default function Settings() {
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Custom Roles</h3>
                 <button className="btn btn-primary" onClick={() => openRoleModal()}>+ Add Role</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+              <div className="settings-roles-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
                 {roles.map(r => (
                   <div key={r.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#f8fafc' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>

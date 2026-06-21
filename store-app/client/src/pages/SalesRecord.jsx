@@ -212,7 +212,7 @@ export default function SalesRecord() {
         </button>
       </div>
 
-      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+      <div className="glass-panel sr-date-filter-row" style={{ padding: '24px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label>Start Date</label>
           <input 
@@ -339,7 +339,8 @@ export default function SalesRecord() {
           </div>
 
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-            <table className="table" style={{ width: '100%', marginBottom: '0' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="table" style={{ width: '100%', marginBottom: '0', minWidth: '480px' }}>
               <thead style={{ background: '#f8fafc' }}>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center', padding: '12px' }}>Select</th>
@@ -394,6 +395,7 @@ export default function SalesRecord() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', background: '#fef2f2', border: '1px solid #fecaca', padding: '24px', borderRadius: '12px' }}>

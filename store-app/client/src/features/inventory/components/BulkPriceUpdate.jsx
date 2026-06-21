@@ -135,7 +135,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         {/* Mode Selector */}
         <div style={{ marginBottom: '16px' }}>
           <label className="form-label" style={{ fontSize: '0.8rem' }}>Update Mode</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+          <div className="bulk-price-mode-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {modes.map(m => (
               <button
                 key={m.id}

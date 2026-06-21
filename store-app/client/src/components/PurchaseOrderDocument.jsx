@@ -128,7 +128,8 @@ export default function PurchaseOrderDocument({
       )}
 
       {/* ─── Items Table ─── */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px', minWidth: '480px' }}>
         <thead>
           <tr style={{ borderBottom: '2px solid #334155' }}>
             <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>#</th>
@@ -164,11 +165,12 @@ export default function PurchaseOrderDocument({
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* ─── Summary ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+      <div className="grn-summary-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         {/* Notes */}
-        <div style={{ flex: 1, marginRight: '40px' }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0, marginRight: '0' }}>
           {notes && (
             <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '4px' }}>Notes</div>

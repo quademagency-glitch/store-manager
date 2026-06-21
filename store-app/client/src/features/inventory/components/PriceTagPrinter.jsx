@@ -65,7 +65,7 @@ export default function PriceTagPrinter() {
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
+      <div className="price-tag-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
         {/* Left: Product Selection */}
         <div>
           {/* Filters */}

@@ -287,7 +287,8 @@ export default function Returns() {
               <strong style={{ color: 'var(--color-error)' }}>Select items and quantities to return:</strong>
             </div>
 
-            <table className="table" style={{ width: '100%', marginBottom: '24px' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="table" style={{ width: '100%', marginBottom: '24px', minWidth: '480px' }}>
               <thead>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center' }}>Select</th>
@@ -388,6 +389,7 @@ export default function Returns() {
                 })}
               </tbody>
             </table>
+            </div>
 
             <div className="form-group" style={{ marginBottom: '32px' }}>
               <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>Reason for Return</label>

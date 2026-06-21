@@ -108,17 +108,18 @@ export default function InvoiceView() {
       <div className="invoice-layout" style={{ display: 'flex', justifyContent: 'center' }}>
         
         {/* Invoice Preview */}
-        <div id="invoice-print-preview" className="invoice-preview" style={{ 
-          background: 'var(--color-bg-secondary)', 
-          border: '1px solid var(--color-border)', 
-          borderRadius: '16px', 
+        <div id="invoice-print-preview" className="invoice-preview" style={{
+          background: 'var(--color-bg-secondary)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '16px',
           padding: '4rem',
           color: 'var(--color-text-primary)',
           maxWidth: '850px',
           width: '100%',
+          boxSizing: 'border-box',
           boxShadow: 'var(--shadow-lg)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
+          <div className="invoice-header-row" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
             <div style={{ flex: 1 }}>
               <LetterheadRenderer
                 letterhead={invoice.business?.letterhead}
@@ -148,7 +149,7 @@ export default function InvoiceView() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem' }}>
+          <div className="invoice-parties-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem' }}>
             <div>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>Billed To:</h3>
               <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>{invoice.business?.name || 'Business Account'}</p>
@@ -186,7 +187,7 @@ export default function InvoiceView() {
           </table>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3rem' }}>
-            <div style={{ width: '300px' }}>
+            <div className="invoice-total-box" style={{ width: '300px', maxWidth: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 0', fontSize: '1.25rem' }}>
                 <span style={{ fontWeight: 700 }}>Total Paid</span>
                 <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{formatCurrency(invoice.amount, invoice.currency)}</span>

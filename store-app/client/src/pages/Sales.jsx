@@ -367,7 +367,7 @@ export default function Sales() {
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '2rem' }}>
         <h1 className="dashboard-title" style={{ textAlign: 'center', marginBottom: '2rem' }}>Point of Sale</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div className="sales-landing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
           
           <button 
             className="glass-panel" 

@@ -406,6 +406,22 @@ export default function CRMCommunications() {
           border: 1px solid var(--color-border);
           box-shadow: var(--shadow-lg);
         }
+
+        @media (max-width: 640px) {
+          .premium-header { padding: 1.25rem; }
+          .premium-header h1 { font-size: 1.6rem; }
+          .premium-card { padding: 1.25rem; }
+          .modern-tabs {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+          }
+          .form-grid { grid-template-columns: 1fr; }
+          .template-grid { grid-template-columns: 1fr; }
+          .gateway-row { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1rem; }
+        }
       `}} />
 
       <div className="premium-header">

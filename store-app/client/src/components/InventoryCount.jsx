@@ -367,51 +367,90 @@ export default function InventoryCount({ locations, products }) {
           <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <h3 style={{ fontWeight: 600, margin: 0 }}>Past Inventory Counts</h3>
           </div>
-          <table className="glass-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Branch</th>
-                <th>Status</th>
-                <th>Expected</th>
-                <th>Scanned</th>
-                <th>Missing</th>
-                <th>Started By</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessionsLoading ? (
-                <tr><td colSpan="8" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
-              ) : sessions.length === 0 ? (
-                <tr><td colSpan="8" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</td></tr>
-              ) : sessions.map(s => (
-                <tr key={s.id} onClick={() => handleViewSession(s.id)} style={{ cursor: 'pointer' }} className="hover-bg">
-                  <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
-                  <td>{s.location?.name || 'Unknown'}</td>
-                  <td>
-                    <span className={`badge ${s.status === 'completed' ? 'badge-success' : s.status === 'cancelled' ? 'badge-secondary' : 'badge-warning'}`}>
-                      {s.status}
-                    </span>
-                  </td>
-                  <td>{s.expected_count}</td>
-                  <td>{s.scanned_count}</td>
-                  <td style={{ color: s.missing_count > 0 ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 600 }}>{s.missing_count}</td>
-                  <td>{s.starter?.name || 'Unknown'}</td>
-                  <td>
-                    <button
-                      className="btn btn-sm btn-icon text-error"
-                      onClick={(e) => handleDeleteSession(e, s.id)}
-                      title="Delete Session"
-                      aria-label="Delete Session"
-                    >
-                      {Icons.trash}
-                    </button>
-                  </td>
+          <div className="desktop-table-view">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Branch</th>
+                  <th>Status</th>
+                  <th>Expected</th>
+                  <th>Scanned</th>
+                  <th>Missing</th>
+                  <th>Started By</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sessionsLoading ? (
+                  <tr><td colSpan="8" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
+                ) : sessions.length === 0 ? (
+                  <tr><td colSpan="8" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</td></tr>
+                ) : sessions.map(s => (
+                  <tr key={s.id} onClick={() => handleViewSession(s.id)} style={{ cursor: 'pointer' }} className="hover-bg">
+                    <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
+                    <td>{s.location?.name || 'Unknown'}</td>
+                    <td>
+                      <span className={`badge ${s.status === 'completed' ? 'badge-success' : s.status === 'cancelled' ? 'badge-secondary' : 'badge-warning'}`}>
+                        {s.status}
+                      </span>
+                    </td>
+                    <td>{s.expected_count}</td>
+                    <td>{s.scanned_count}</td>
+                    <td style={{ color: s.missing_count > 0 ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 600 }}>{s.missing_count}</td>
+                    <td>{s.starter?.name || 'Unknown'}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-icon text-error"
+                        onClick={(e) => handleDeleteSession(e, s.id)}
+                        title="Delete Session"
+                        aria-label="Delete Session"
+                      >
+                        {Icons.trash}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mobile-card-view">
+            {sessionsLoading ? (
+              <div className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></div>
+            ) : sessions.length === 0 ? (
+              <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</div>
+            ) : sessions.map(s => (
+              <div key={s.id} className="m-card" onClick={() => handleViewSession(s.id)}>
+                <div className="m-card-top">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="m-card-title">{s.location?.name || 'Unknown'}</div>
+                    <div className="m-card-sub">{new Date(s.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <span className={`badge ${s.status === 'completed' ? 'badge-success' : s.status === 'cancelled' ? 'badge-secondary' : 'badge-warning'}`} style={{ flexShrink: 0 }}>
+                    {s.status}
+                  </span>
+                </div>
+                <div className="m-card-row">
+                  <span>Expected: <strong>{s.expected_count}</strong></span>
+                  <span>Scanned: <strong>{s.scanned_count}</strong></span>
+                </div>
+                <div className="m-card-row">
+                  <span>Missing: <strong style={{ color: s.missing_count > 0 ? 'var(--color-error)' : 'var(--color-success)' }}>{s.missing_count}</strong></span>
+                  <span>By: {s.starter?.name || 'Unknown'}</span>
+                </div>
+                <div className="m-card-actions" onClick={e => e.stopPropagation()}>
+                  <button
+                    className="btn btn-sm btn-secondary text-error"
+                    onClick={(e) => handleDeleteSession(e, s.id)}
+                    aria-label="Delete Session"
+                  >
+                    {Icons.trash} Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -550,7 +589,7 @@ export default function InventoryCount({ locations, products }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+      <div className="inv-count-layout" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Left: Product List by Category */}
         <div style={{ flex: '1 1 400px', minWidth: 0 }}>
           {Object.entries(groupedProducts).map(([category, catProducts]) => (
@@ -602,7 +641,7 @@ export default function InventoryCount({ locations, products }) {
 
         {/* Right: Active Product Count Form */}
         {activeProduct && (
-          <div style={{ flex: '1 1 450px', minWidth: '350px', position: 'sticky', top: '1rem' }}>
+          <div className="inv-count-active-panel" style={{ flex: '1 1 450px', minWidth: '350px', position: 'sticky', top: '1rem' }}>
             <div className="glass-panel" style={{ padding: '1rem', borderTop: '4px solid #3b82f6' }}>
               <div style={{ marginBottom: '1rem' }}>
                 <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{activeProduct.name}</h4>

@@ -694,7 +694,18 @@ export default function InventoryCount({ locations, products }) {
                   <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scanned QR Codes</span>
                   <button
                     className="btn-icon"
-                    onClick={() => setShowScanner(!showScanner)}
+                    onClick={async () => {
+                      try {
+                        await api.post('/scanner/push-command', {
+                          command: 'start_stock_take',
+                          payload: { }
+                        });
+                        toast.info('Command sent to Scanner App. Waiting for stock take...');
+                      } catch {
+                        toast.error('Failed to send command to Scanner App.');
+                      }
+                      setShowScanner(!showScanner);
+                    }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                     title="Scan QR Code"
                     aria-label="Scan QR Code"

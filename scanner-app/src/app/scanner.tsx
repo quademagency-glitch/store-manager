@@ -9,7 +9,7 @@ import type { AppTheme } from '../lib/theme';
 import { ThemeToggleButton } from '../components/theme-toggle-button';
 import { createEventSource, pushScan, removeToken, getMe, cancelScan, getAttendanceStatus, clockIn, clockOut, AuthExpiredError } from '../lib/api';
 
-type ScanMode = 'idle' | 'list_view' | 'scanning_field' | 'stock_take_batch' | 'stock_take_summary';
+type ScanMode = 'idle' | 'list_view' | 'scanning_field' | 'stock_take_batch' | 'stock_take_list';
 type FieldType = 'serial_number' | 'pack_code' | 'product_code' | 'item_code';
 
 export default function ScannerScreen() {
@@ -26,6 +26,9 @@ export default function ScannerScreen() {
   const [initError, setInitError] = useState<string | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
   const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'reconnecting' | 'failed'>('connecting');
+  const [pendingScanTarget, setPendingScanTarget] = useState<number | null>(null);
+  const [pendingStockTake, setPendingStockTake] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const sseRef = useRef<any>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,9 +85,11 @@ export default function ScannerScreen() {
           try {
             const data = JSON.parse(event.data);
             if (data.command === 'scan_unit') {
-              setTargetIndex(data.payload.index);
-              setPayload({});
-              setMode('list_view');
+              setPendingScanTarget(data.payload.index);
+              setPendingStockTake(false);
+            } else if (data.command === 'start_stock_take') {
+              setPendingStockTake(true);
+              setPendingScanTarget(null);
             }
           } catch {
             // Ignore malformed SSE messages
@@ -355,15 +360,32 @@ export default function ScannerScreen() {
     setActiveField(null);
   };
 
+  const showAlert = (msg: string) => {
+    setAlertMessage(msg);
+    setTimeout(() => {
+      setAlertMessage(null);
+    }, 10000);
+  };
+
   const handleManualScanStart = () => {
-    setTargetIndex(null);
-    setPayload({});
-    setMode('list_view');
+    if (pendingScanTarget !== null) {
+      setTargetIndex(pendingScanTarget);
+      setPayload({});
+      setMode('list_view');
+      setPendingScanTarget(null);
+    } else {
+      showAlert('Please send a scan command from the ERP first.');
+    }
   };
 
   const handleStartStockTake = () => {
-    setScannedBatch([]);
-    setMode('stock_take_batch');
+    if (pendingStockTake) {
+      setScannedBatch([]);
+      setMode('stock_take_list');
+      setPendingStockTake(false);
+    } else {
+      showAlert('Please initiate a stock take from the ERP first.');
+    }
   };
 
   const handleStockTakeSave = async () => {
@@ -438,6 +460,11 @@ export default function ScannerScreen() {
           </View>
 
           <View style={styles.idleCenter}>
+            {alertMessage && (
+              <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: 12, borderRadius: 8, marginBottom: 16, borderColor: 'rgba(239, 68, 68, 0.3)', borderWidth: 1 }}>
+                <Text style={{ color: theme.colors.error, textAlign: 'center', fontWeight: '500' }}>{alertMessage}</Text>
+              </View>
+            )}
             <View style={styles.actionButtonGroup}>
               {/* Attendance Button */}
               <View style={[styles.glowRing, { borderColor: isClockedIn ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', backgroundColor: isClockedIn ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)' }]}>
@@ -632,37 +659,33 @@ export default function ScannerScreen() {
     );
   }
 
-  if (mode === 'stock_take_summary') {
+  if (mode === 'stock_take_list') {
     return (
       <View style={styles.listContainer}>
         <SafeAreaView style={styles.safeAreaList}>
           <View style={styles.listHeader}>
-            <Text style={styles.listHeaderTitle}>Stock Take Summary</Text>
+            <Text style={styles.listHeaderTitle}>Stock Take</Text>
             <Text style={styles.listHeaderSubtitle}>
-              {scannedBatch.length} pack codes scanned.
+              Tap "Tracking Codes" to scan units
             </Text>
           </View>
 
           <ScrollView style={styles.listContent} contentContainerStyle={styles.listContentContainer}>
-            {scannedBatch.length === 0 ? (
-              <Text style={{ textAlign: 'center', color: theme.colors.mutedText, marginTop: 40 }}>
-                No pack codes were scanned.
-              </Text>
-            ) : (
-              scannedBatch.map((code, index) => (
-                <View key={`${code}-${index}`} style={[styles.fieldCard, styles.fieldCardScanned]}>
-                  <View style={styles.fieldInfo}>
-                    <Text style={styles.fieldLabel}>Pack Code {index + 1}</Text>
-                    <Text style={styles.fieldValue}>{code}</Text>
-                  </View>
-                  <View style={styles.fieldAction}>
-                    <View style={styles.successIconWrapper}>
-                      <SymbolView name="checkmark" size={16} tintColor={theme.colors.success} />
-                    </View>
-                  </View>
-                </View>
-              ))
-            )}
+            <TouchableOpacity 
+              style={[styles.fieldCard, scannedBatch.length > 0 && styles.fieldCardScanned]}
+              onPress={() => setMode('stock_take_batch')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.fieldInfo}>
+                <Text style={styles.fieldLabel}>Tracking Codes</Text>
+                <Text style={[styles.fieldValue, scannedBatch.length === 0 && styles.fieldValueEmpty]}>
+                  {scannedBatch.length > 0 ? `Total units scanned: ${scannedBatch.length}` : 'Tap to scan tracking codes...'}
+                </Text>
+              </View>
+              <View style={styles.fieldAction}>
+                <SymbolView name="barcode.viewfinder" size={28} tintColor={theme.colors.accent} />
+              </View>
+            </TouchableOpacity>
           </ScrollView>
 
           <View style={styles.listFooter}>
@@ -670,14 +693,14 @@ export default function ScannerScreen() {
               setScannedBatch([]);
               setMode('idle');
             }}>
-              <Text style={styles.cancelListButtonText}>Discard</Text>
+              <Text style={styles.cancelListButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.saveButton, scannedBatch.length === 0 && styles.saveButtonDisabled]} 
               onPress={handleStockTakeSave}
               disabled={scannedBatch.length === 0}
             >
-              <Text style={styles.saveButtonText}>Save & Send ({scannedBatch.length})</Text>
+              <Text style={styles.saveButtonText}>Save & Send</Text>
               <SymbolView name="paperplane.fill" size={18} tintColor={scannedBatch.length === 0 ? "rgba(255,255,255,0.4)" : "#fff"} />
             </TouchableOpacity>
           </View>
@@ -752,10 +775,10 @@ export default function ScannerScreen() {
               {mode === 'stock_take_batch' ? (
                 <TouchableOpacity 
                   style={[styles.cancelScanBtn, { backgroundColor: theme.colors.success }]} 
-                  onPress={() => setMode('stock_take_summary')}
+                  onPress={() => setMode('stock_take_list')}
                 >
                   <SymbolView name="checkmark" size={20} tintColor="#fff" />
-                  <Text style={[styles.cancelScanBtnText, { color: '#fff' }]}>Done</Text>
+                  <Text style={[styles.cancelScanBtnText, { color: '#fff' }]}>Return</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity style={styles.cancelScanBtn} onPress={handleCancelScan}>

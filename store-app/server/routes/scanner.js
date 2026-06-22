@@ -26,6 +26,12 @@ const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 
+// scanner_session_token is a uuid column — a non-uuid token (stray whitespace,
+// truncated copy/paste, garbage QR data) crashes the Postgres query instead of
+// cleanly reporting "invalid token", so reject bad formats before querying.
+const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isValidToken = (token) => typeof token === 'string' && TOKEN_RE.test(token);
+
 const scanLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 60, // Limit each IP to 60 scans per minute
@@ -94,6 +100,9 @@ router.post('/link', async (req, res) => {
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
+    if (!isValidToken(token)) {
+      return res.status(404).json({ error: 'Invalid or expired token' });
+    }
 
     // Find user by token
     const { data: users, error: fetchError } = await supabaseAdmin
@@ -148,6 +157,9 @@ router.get('/me', async (req, res) => {
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
+    }
+    if (!isValidToken(token)) {
+      return res.status(404).json({ error: 'Invalid or expired token' });
     }
 
     const { data: users, error: fetchError } = await supabaseAdmin
@@ -214,6 +226,9 @@ router.post('/app-unlink', async (req, res) => {
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
+    if (!isValidToken(token)) {
+      return res.json({ message: 'Scanner unlinked successfully' });
+    }
 
     const { data: users } = await supabaseAdmin
       .from('users')
@@ -268,6 +283,9 @@ router.post('/push-scan', scanLimiter, async (req, res) => {
     if (!qr_code && !payload) {
       return res.status(400).json({ error: 'qr_code or payload is required' });
     }
+    if (!isValidToken(token)) {
+      return res.status(404).json({ error: 'Invalid or expired scanner token' });
+    }
 
     // Find user by token
     const { data: users, error: fetchError } = await supabaseAdmin
@@ -306,6 +324,9 @@ router.post('/cancel-scan', scanLimiter, async (req, res) => {
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
+    }
+    if (!isValidToken(token)) {
+      return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
     // Find user by token
@@ -404,6 +425,9 @@ router.get('/app-events', async (req, res) => {
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
+    if (!isValidToken(token)) {
+      return res.status(404).json({ error: 'Invalid or expired scanner token' });
+    }
 
     // Find user by token
     const { data: users, error: fetchError } = await supabaseAdmin
@@ -479,7 +503,7 @@ function checkTimeWindow(location, action) {
 
 /** Helper: resolve user + location from scanner token */
 async function resolveScanner(token) {
-  if (!token) return null;
+  if (!isValidToken(token)) return null;
   const { data: users, error } = await supabaseAdmin
     .from('users')
     .select('id, name, business_id, active_location_id, roles(name)')

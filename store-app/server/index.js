@@ -59,6 +59,7 @@ const allowedOrigins = [
   'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
   'https://quaderp.app',
   'https://www.quaderp.app',
+  'https://app.quaderp.app',
 ];
 
 if (process.env.APP_URL) {

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EventSource from 'react-native-sse';
 
-export const API_BASE = 'https://quaderp.app/api';
+export const API_BASE = 'https://app.quaderp.app/api';
 
 const REQUEST_TIMEOUT_MS = 12000;
 

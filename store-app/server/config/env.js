@@ -19,7 +19,7 @@ const envSchema = z.object({
   PLATFORM_ADMIN_EMAIL: z.string().email().optional().or(z.literal('')),
 
   // App
-  APP_URL: z.string().url().default('https://quaderp.app'),
+  APP_URL: z.string().url().default('https://app.quaderp.app'),
   FRONTEND_URL: z.string().url().optional(),
 
   // Paystack

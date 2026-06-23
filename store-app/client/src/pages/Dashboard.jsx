@@ -129,16 +129,18 @@ export default function Dashboard() {
               <span>View Reports</span>
             </Link>
           )}
-          <Link to="/till-account" className="action-btn">
-            <div className="action-icon action-icon-secondary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
-                <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
-                <path d="M7 14H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-            <span>Till Account</span>
-          </Link>
+          {hasPermission('manage_till') && (
+            <Link to="/till-account" className="action-btn">
+              <div className="action-icon action-icon-secondary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+                  <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
+                  <path d="M7 14H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <span>Till Account</span>
+            </Link>
+          )}
         </div>
 
         {/* Enhanced Stats Grid */}
@@ -375,7 +377,7 @@ export default function Dashboard() {
 
 
         {/* Danger Zone — admin only */}
-        {(role === 'Business Admin' || role === 'Manager') && (
+        {hasPermission('manage_business') && (
           <div style={{
             marginTop: 'var(--space-2xl)',
             padding: 'var(--space-lg) var(--space-xl)',

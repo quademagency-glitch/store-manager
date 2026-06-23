@@ -5,14 +5,38 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'manage_users', label: 'Manage Staff & Roles' },
+  // General Store Operations
+  { id: 'manage_users', label: 'Manage Staff & Team' },
   { id: 'manage_products', label: 'Manage Products' },
   { id: 'manage_inventory', label: 'Manage Inventory (Stock)' },
   { id: 'view_sales', label: 'View Sales History' },
   { id: 'create_sales', label: 'Create POS Sales' },
   { id: 'manage_sales', label: 'Manage Sales (Void/Refund)' },
   { id: 'view_analytics', label: 'View Analytics & Reports' },
-  { id: 'manage_business', label: 'Manage Business Settings' },
+  { id: 'manage_purchases', label: 'Manage Suppliers & Purchase Orders' },
+  { id: 'manage_returns', label: 'Process Returns & Reversals' },
+  
+  // Accounting & Finance
+  { id: 'manage_till', label: 'Manage Till Account' },
+  { id: 'manage_accounting', label: 'Manage Accounting Templates & Approvals' },
+  { id: 'manage_financials', label: 'Manage Receivables & Payables' },
+  { id: 'view_financial_reports', label: 'View P&L and Financial Reports' },
+
+  // CRM & HR
+  { id: 'manage_loyalty', label: 'Manage Loyalty & Rewards' },
+  { id: 'manage_marketing', label: 'Manage CRM & Communications' },
+  { id: 'manage_hr_schedules', label: 'Manage HR Schedules' },
+  { id: 'view_my_commissions', label: 'View My Commissions' },
+
+  // Business Administration
+  { id: 'manage_business', label: 'Manage Business Overview & Setup' },
+  { id: 'manage_organization', label: 'Manage Organization Settings' },
+  { id: 'manage_locations', label: 'Manage Branch Locations' },
+  { id: 'manage_roles', label: 'Manage Custom Roles' },
+  { id: 'manage_billing', label: 'Manage Subscription Billing' },
+  { id: 'view_shrinkage_report', label: 'View Shrinkage Report' },
+  { id: 'view_attendance_report', label: 'View Attendance Report' },
+  { id: 'manage_commission_rules', label: 'Manage Commission Rules' },
 ];
 
 export default function RolesManagement() {

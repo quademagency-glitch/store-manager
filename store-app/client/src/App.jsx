@@ -93,13 +93,13 @@ export default function App() {
                       <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>
                     } />
                     <Route path="/returns" element={
-                      <ProtectedRoute><Returns /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_returns"><Returns /></ProtectedRoute>
                     } />
                     <Route path="/sales-record" element={
                       <ProtectedRoute><SalesRecord /></ProtectedRoute>
                     } />
                     <Route path="/till-account" element={
-                      <ProtectedRoute><TillAccount /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_till"><TillAccount /></ProtectedRoute>
                     } />
                     <Route path="/customers" element={
                       <ProtectedRoute><Customers /></ProtectedRoute>
@@ -111,7 +111,7 @@ export default function App() {
                       <ProtectedRoute><CustomerOrders /></ProtectedRoute>
                     } />
                     <Route path="/crm-communications" element={
-                      <ProtectedRoute requiredPermission="manage_business"><CRMCommunications /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_marketing"><CRMCommunications /></ProtectedRoute>
                     } />
                     <Route path="/accounts-receivable" element={
                       <ProtectedRoute requiredPermission="manage_financials"><AccountsReceivableLedger /></ProtectedRoute>
@@ -123,33 +123,33 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_financials"><ImportWizard /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
-                      <ProtectedRoute><Inventory /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_inventory"><Inventory /></ProtectedRoute>
                     } />
                     <Route path="/alerts" element={
                       <ProtectedRoute requiredPermission="view_analytics"><Alerts /></ProtectedRoute>
                     } />
                     <Route path="/suppliers" element={
-                      <ProtectedRoute><Suppliers /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_purchases"><Suppliers /></ProtectedRoute>
                     } />
                     <Route path="/purchase-orders" element={
-                      <ProtectedRoute><PurchaseOrders /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_purchases"><PurchaseOrders /></ProtectedRoute>
                     } />
                     {/* Protected sub-routes handled within components or layout level */}
                     <Route path="/reconciliation" element={
                       <ProtectedRoute requiredPermission="view_analytics"><Reconciliation /></ProtectedRoute>
                     } />
-                    <Route path="/invoice" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
+                    <Route path="/invoice" element={<ProtectedRoute requiredPermission="manage_business"><InvoiceList /></ProtectedRoute>} />
                     <Route path="/invoice/:id" element={
-                      <ProtectedRoute><InvoiceView /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_business"><InvoiceView /></ProtectedRoute>
                     } />
                     <Route path="/accounting-templates" element={
-                      <ProtectedRoute><AccountingTemplates /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingTemplates /></ProtectedRoute>
                     } />
                     <Route path="/accounting-settings" element={
-                      <ProtectedRoute requiredPermission="manage_business"><AccountingSettings /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingSettings /></ProtectedRoute>
                     } />
                     <Route path="/accounting-approvals" element={
-                      <ProtectedRoute><AccountingApprovals /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingApprovals /></ProtectedRoute>
                     } />
                     <Route path="/settings" element={
                       <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>
@@ -163,31 +163,31 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_business"><BusinessOverview /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/organization" element={
-                      <ProtectedRoute requiredPermission="manage_business"><BusinessOrganization /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_organization"><BusinessOrganization /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/locations" element={
-                      <ProtectedRoute requiredPermission="manage_business"><BusinessLocations /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_locations"><BusinessLocations /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/team" element={
-                      <ProtectedRoute requiredPermission="manage_business"><BusinessTeam /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_users"><BusinessTeam /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/roles" element={
-                      <ProtectedRoute requiredPermission="manage_users"><BusinessRoles /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_roles"><BusinessRoles /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/billing" element={
-                      <ProtectedRoute requiredPermission="manage_business"><Billing /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_billing"><Billing /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/shrinkage" element={
-                      <ProtectedRoute requiredPermission="manage_business"><ShrinkageReport /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_shrinkage_report"><ShrinkageReport /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/attendance-report" element={
-                      <ProtectedRoute requiredPermission="manage_users"><AttendanceReport /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_attendance_report"><AttendanceReport /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/commission-rules" element={
-                      <ProtectedRoute requiredPermission="manage_business"><CommissionRules /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_commission_rules"><CommissionRules /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/setup" element={
-                      <ProtectedRoute requiredPermission="manage_business"><BusinessSetup /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_setup"><BusinessSetup /></ProtectedRoute>
                     } />
 
                     {/* HR Pages */}
@@ -195,21 +195,21 @@ export default function App() {
                       <ProtectedRoute><Attendance /></ProtectedRoute>
                     } />
                     <Route path="/hr/schedules" element={
-                      <ProtectedRoute><Schedules /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_hr_schedules"><Schedules /></ProtectedRoute>
                     } />
                     <Route path="/hr/my-commissions" element={
-                      <ProtectedRoute><MyCommissions /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_my_commissions"><MyCommissions /></ProtectedRoute>
                     } />
                     <Route path="/loyalty" element={
-                      <ProtectedRoute><Loyalty /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_loyalty"><Loyalty /></ProtectedRoute>
                     } />
 
                     {/* Reports Pages */}
                     <Route path="/reports/pnl" element={
-                      <ProtectedRoute requiredPermission="manage_business"><ProfitLoss /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_financial_reports"><ProfitLoss /></ProtectedRoute>
                     } />
                     <Route path="/reports/accounts-receivable" element={
-                      <ProtectedRoute requiredPermission="manage_business"><AccountsReceivable /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_financial_reports"><AccountsReceivable /></ProtectedRoute>
                     } />
                   </Route>
 

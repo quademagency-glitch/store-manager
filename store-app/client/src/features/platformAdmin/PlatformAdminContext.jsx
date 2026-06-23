@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
+import { FEATURE_LABELS as PLAN_FEATURE_LABELS } from '../../lib/planFeatures';
 
 const PlatformAdminContext = createContext();
 
@@ -401,7 +402,7 @@ export function PlatformAdminProvider({ children }) {
   /* ============================
      PLAN CRUD
      ============================ */
-  const FEATURE_LABELS = { analytics: 'Analytics Dashboard', multi_location: 'Multi-Location', priority_support: 'Priority Support', api_access: 'API Access' };
+  const FEATURE_LABELS = PLAN_FEATURE_LABELS;
 
   const openPlanModal = (plan = null) => {
     if (plan) {

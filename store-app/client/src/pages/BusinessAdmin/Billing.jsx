@@ -4,6 +4,7 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
+import { FEATURE_LABELS } from '../../lib/planFeatures';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -282,7 +283,7 @@ export default function Billing() {
                       <span className={`pa-plan-feature-check ${val ? 'enabled' : 'disabled'}`}>
                         {val ? '✓' : '×'}
                       </span>
-                      {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                      {FEATURE_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </div>
                   ))}
                 </div>

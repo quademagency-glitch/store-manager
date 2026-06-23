@@ -46,7 +46,7 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
       return res.status(400).json({ error: 'Name and permissions array are required' });
     }
 
-    if (req.user.role !== 'Platform Admin') {
+    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
       const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
       if (exceedsOwnPermissions) {
         return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });
@@ -113,7 +113,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
        return res.status(403).json({ error: 'Unauthorized to edit this role.' });
     }
 
-    if (req.user.role !== 'Platform Admin') {
+    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
       const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
       if (exceedsOwnPermissions) {
         return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });

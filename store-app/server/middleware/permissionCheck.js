@@ -17,7 +17,7 @@ function permissionCheck(...requiredPermissions) {
       });
     }
 
-    if (req.user.role === 'Platform Admin') {
+    if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
       return next();
     }
 

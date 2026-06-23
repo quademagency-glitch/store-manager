@@ -11,6 +11,7 @@ export default function PricingTab() {
 
   const [expandedCards, setExpandedCards] = useState({});
   const toggleFeatures = (planId) => setExpandedCards(prev => ({ ...prev, [planId]: !prev[planId] }));
+  const activePlans = plans.filter(plan => plan.is_active !== false);
 
   return (
     <>
@@ -31,7 +32,7 @@ export default function PricingTab() {
       </header>
 
       <div className="pa-pricing-grid">
-        {plans.map((plan, idx) => {
+        {activePlans.map((plan, idx) => {
           const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
           let comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
           const subCount = subscriptions.filter(s => s.plan_id === plan.id).length;
@@ -175,7 +176,7 @@ export default function PricingTab() {
             </div>
           );
         })}
-        {plans.length === 0 && (
+        {activePlans.length === 0 && (
           <div className="text-center py-xl text-muted" style={{ gridColumn: '1 / -1' }}>
             No plans created yet. Click "New Plan" to get started.
           </div>

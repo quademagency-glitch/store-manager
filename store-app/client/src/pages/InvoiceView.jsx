@@ -158,7 +158,7 @@ export default function InvoiceView() {
             <div style={{ textAlign: 'right' }}>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>From:</h3>
               <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Quadem Digital Enterprise</p>
-              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quaderp.app</p>
+              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quaderp.com</p>
             </div>
           </div>
 

@@ -18,6 +18,9 @@ export default function Billing() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [expandedCards, setExpandedCards] = useState({});
+
+  const toggleFeatures = (planId) => setExpandedCards(prev => ({ ...prev, [planId]: !prev[planId] }));
 
   const formatCurrency = (amount, currency = 'GHS') => {
     return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);
@@ -202,6 +205,13 @@ export default function Billing() {
             const isCurrent = currentPlan?.id === plan.id;
             const features = plan.features || {};
 
+            // Split features into available / not available
+            const allFeatureEntries = Object.entries(FEATURE_LABELS || {});
+            const availableFeatures = allFeatureEntries.filter(([key]) => features[key]);
+            const unavailableFeatures = allFeatureEntries.filter(([key]) => !features[key]);
+            const isExpanded = expandedCards[plan.id];
+            const isFranchise = plan.name?.toLowerCase().includes('franchise');
+
             // Promo Logic
             const promoMode = plan.promo_mode || 'none';
             const isTrial = promoMode === 'trial';
@@ -243,14 +253,20 @@ export default function Billing() {
                   <p className="pa-plan-desc" style={{ fontSize: '0.9rem' }}>{plan.description || 'No description'}</p>
                 </div>
                 <div className="pa-plan-price">
-                  <span className="pa-plan-currency" style={{ fontSize: '1.1rem' }}>{plan.currency || 'GHS'}</span>
-                  <span className="pa-plan-amount" style={{ fontSize: '2.4rem' }}>{Number(price).toLocaleString()}</span>
-                  {comparePrice && Number(comparePrice) > Number(price) && (
-                    <span style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)', fontSize: '1.1rem', marginLeft: '0.5rem' }}>
-                      {Number(comparePrice).toLocaleString()}
-                    </span>
+                  {isFranchise ? (
+                    <span className="pa-plan-amount" style={{ fontSize: '1.8rem', color: 'var(--color-primary)' }}>Custom Pricing</span>
+                  ) : (
+                    <>
+                      <span className="pa-plan-currency" style={{ fontSize: '1.1rem' }}>{plan.currency || 'GHS'}</span>
+                      <span className="pa-plan-amount" style={{ fontSize: '2.4rem' }}>{Number(price).toLocaleString()}</span>
+                      {comparePrice && Number(comparePrice) > Number(price) && (
+                        <span style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)', fontSize: '1.1rem', marginLeft: '0.5rem' }}>
+                          {Number(comparePrice).toLocaleString()}
+                        </span>
+                      )}
+                      <span className="pa-plan-period" style={{ fontSize: '0.95rem' }}>/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                    </>
                   )}
-                  <span className="pa-plan-period" style={{ fontSize: '0.95rem' }}>/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
                 </div>
 
                 {isTrial && trialValue > 0 && (
@@ -277,21 +293,66 @@ export default function Billing() {
                   <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
                   <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>
                 </div>
-                <div className="pa-plan-features">
-                  {Object.entries(features).map(([key, val]) => (
-                    <div key={key} className="pa-plan-feature">
-                      <span className={`pa-plan-feature-check ${val ? 'enabled' : 'disabled'}`}>
-                        {val ? '✓' : '×'}
-                      </span>
-                      {FEATURE_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </div>
-                  ))}
-                </div>
+                {/* Collapsible features toggle */}
+                <button 
+                  onClick={() => toggleFeatures(plan.id)}
+                  style={{
+                    width: '100%', background: 'transparent', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-sm)', padding: '0.5rem 0.75rem', cursor: 'pointer',
+                    color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginTop: 'var(--space-sm)', transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>{availableFeatures.length} of {allFeatureEntries.length} features</span>
+                  <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s ease', fontSize: '0.7rem' }}>▼</span>
+                </button>
+
+                {isExpanded && (
+                  <div style={{ marginTop: 'var(--space-sm)', animation: 'fadeIn 0.2s ease' }}>
+                    {/* Available features */}
+                    {availableFeatures.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid rgba(74, 222, 128, 0.15)' }}>
+                          ✓ Included ({availableFeatures.length})
+                        </div>
+                        {availableFeatures.map(([key, label]) => (
+                          <div key={key} className="pa-plan-feature" style={{ fontSize: '0.85rem', padding: '0.25rem 0' }}>
+                            <span className="pa-plan-feature-check enabled" style={{ fontSize: '0.9rem' }}>✓</span>
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Unavailable features */}
+                    {unavailableFeatures.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid var(--color-border)' }}>
+                          ✗ Not Included ({unavailableFeatures.length})
+                        </div>
+                        {unavailableFeatures.map(([key, label]) => (
+                          <div key={key} className="pa-plan-feature" style={{ fontSize: '0.85rem', padding: '0.25rem 0', opacity: 0.5 }}>
+                            <span className="pa-plan-feature-check disabled" style={{ fontSize: '0.9rem' }}>✗</span>
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="pa-plan-actions" style={{ marginTop: 'auto' }}>
                   {isCurrent ? (
                     <button className="btn btn-secondary btn-sm" disabled style={{ width: '100%', opacity: 0.6 }}>
                       Current Plan
                     </button>
+                  ) : isFranchise ? (
+                    <a
+                      href="mailto:info@quaderp.app?subject=Franchise%20Plan%20Inquiry"
+                      className="btn btn-primary btn-sm"
+                      style={{ width: '100%', textAlign: 'center', textDecoration: 'none' }}
+                    >
+                      Contact Sales
+                    </a>
                   ) : (
                     <button
                       className="btn btn-primary btn-sm"

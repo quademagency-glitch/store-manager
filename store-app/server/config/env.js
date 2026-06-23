@@ -15,7 +15,7 @@ const envSchema = z.object({
 
   // Email
   RESEND_API_KEY: z.string().optional(),
-  FROM_EMAIL: z.string().email().default('billing@quaderp.app'),
+  FROM_EMAIL: z.string().email().default('billing@quaderp.com'),
   PLATFORM_ADMIN_EMAIL: z.string().email().optional().or(z.literal('')),
 
   // App

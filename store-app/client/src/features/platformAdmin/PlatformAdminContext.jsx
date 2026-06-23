@@ -78,8 +78,13 @@ export function PlatformAdminProvider({ children }) {
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
     name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS',
-    max_users: -1, max_locations: 1, max_products: -1, trial_days: 7, sort_order: 0,
-    features: { analytics: false, multi_location: false, priority_support: false, api_access: false },
+    setup_fee: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
+    max_users: -1, max_locations: 1, max_products: -1,
+    promo_mode: 'none',
+    intro_price_monthly: '', intro_price_yearly: '',
+    trial_days_monthly: 0, trial_unit_monthly: 'days',
+    trial_days_yearly: 30, trial_unit_yearly: 'days',
+    sort_order: 0, features: {},
   });
 
   // ── Billing & Gateways ──
@@ -403,12 +408,26 @@ export function PlatformAdminProvider({ children }) {
       setEditingPlan(plan);
       setPlanForm({
         name: plan.name, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly,
+        setup_fee: plan.setup_fee || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
         currency: plan.currency || 'GHS', max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products,
-        trial_days: plan.trial_days ?? 7, sort_order: plan.sort_order ?? 0, features: plan.features || {},
+        promo_mode: plan.promo_mode || 'none',
+        intro_price_monthly: plan.intro_price_monthly ?? '', intro_price_yearly: plan.intro_price_yearly ?? '',
+        trial_days_monthly: plan.trial_days_monthly ?? 0, trial_unit_monthly: plan.trial_unit_monthly || 'days',
+        trial_days_yearly: plan.trial_days_yearly ?? 30, trial_unit_yearly: plan.trial_unit_yearly || 'days',
+        sort_order: plan.sort_order ?? 0, features: plan.features || {},
       });
     } else {
       setEditingPlan(null);
-      setPlanForm({ name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS', max_users: -1, max_locations: 1, max_products: -1, trial_days: 7, sort_order: 0, features: { analytics: false, multi_location: false, priority_support: false, api_access: false } });
+      setPlanForm({ 
+        name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS', 
+        setup_fee: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
+        max_users: -1, max_locations: 1, max_products: -1,
+        promo_mode: 'none',
+        intro_price_monthly: '', intro_price_yearly: '',
+        trial_days_monthly: 0, trial_unit_monthly: 'days',
+        trial_days_yearly: 30, trial_unit_yearly: 'days',
+        sort_order: 0, features: {} 
+      });
     }
     setShowPlanModal(true);
   };

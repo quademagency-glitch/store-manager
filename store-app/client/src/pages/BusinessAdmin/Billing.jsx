@@ -197,22 +197,81 @@ export default function Billing() {
         <div className="pa-pricing-grid">
           {plans.map((plan, idx) => {
             const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+            const comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
             const isCurrent = currentPlan?.id === plan.id;
             const features = plan.features || {};
+
+            // Promo Logic
+            const promoMode = plan.promo_mode || 'none';
+            const isTrial = promoMode === 'trial';
+            const isIntro = promoMode === 'intro';
+            const introPrice = billingCycle === 'yearly' ? plan.intro_price_yearly : plan.intro_price_monthly;
+            const trialValue = billingCycle === 'yearly' ? (plan.trial_days_yearly ?? 0) : (plan.trial_days_monthly ?? 0);
+            const trialUnit = billingCycle === 'yearly' ? (plan.trial_unit_yearly || 'days') : (plan.trial_unit_monthly || 'days');
+
+            // Auto-calculate discount intelligence
+            let discountLabel = null;
+            if (isIntro && introPrice !== null && introPrice !== '' && Number(introPrice) < price) {
+              const percentOff = Math.round(((price - Number(introPrice)) / price) * 100);
+              discountLabel = `Save ${percentOff}%`;
+            } else if (billingCycle === 'yearly' && plan.price_monthly > 0) {
+              const naturalYearly = plan.price_monthly * 12;
+              if (price < naturalYearly) {
+                if (!comparePrice) comparePrice = naturalYearly;
+                const monthsFree = Math.round((naturalYearly - price) / plan.price_monthly);
+                if (monthsFree > 0 && monthsFree < 12) {
+                  discountLabel = `${monthsFree} month${monthsFree > 1 ? 's' : ''} free`;
+                } else {
+                  const percentOff = Math.round(((naturalYearly - price) / naturalYearly) * 100);
+                  discountLabel = `Save ${percentOff}%`;
+                }
+              }
+            }
+
             return (
               <div key={plan.id} className={`pa-plan-card ${idx === 1 ? 'featured' : ''} ${isCurrent ? 'featured' : ''}`}>
-                {isCurrent && <span className="pa-plan-badge">Current</span>}
-                {!isCurrent && idx === 1 && <span className="pa-plan-badge">Popular</span>}
+                {(isCurrent || (!isCurrent && idx === 1) || discountLabel) && (
+                  <div style={{ position: 'absolute', top: '-12px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                    {isCurrent && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none' }}>Current</span>}
+                    {!isCurrent && idx === 1 && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none' }}>Popular</span>}
+                    {discountLabel && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none', background: 'var(--color-primary)', color: 'white' }}>{discountLabel}</span>}
+                  </div>
+                )}
                 <div className="pa-plan-header">
-                  <h3 className="pa-plan-name">{plan.name}</h3>
-                  <p className="pa-plan-desc">{plan.description || 'No description'}</p>
+                  <h3 className="pa-plan-name" style={{ fontSize: '1.3rem' }}>{plan.name}</h3>
+                  <p className="pa-plan-desc" style={{ fontSize: '0.9rem' }}>{plan.description || 'No description'}</p>
                 </div>
                 <div className="pa-plan-price">
-                  <span className="pa-plan-currency">{plan.currency || 'GHS'}</span>
-                  <span className="pa-plan-amount">{Number(price).toLocaleString()}</span>
-                  <span className="pa-plan-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                  <span className="pa-plan-currency" style={{ fontSize: '1.1rem' }}>{plan.currency || 'GHS'}</span>
+                  <span className="pa-plan-amount" style={{ fontSize: '2.4rem' }}>{Number(price).toLocaleString()}</span>
+                  {comparePrice && Number(comparePrice) > Number(price) && (
+                    <span style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)', fontSize: '1.1rem', marginLeft: '0.5rem' }}>
+                      {Number(comparePrice).toLocaleString()}
+                    </span>
+                  )}
+                  <span className="pa-plan-period" style={{ fontSize: '0.95rem' }}>/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
                 </div>
-                <div className="pa-plan-limits">
+
+                {isTrial && trialValue > 0 && (
+                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#22d3ee' }}>🧪 {trialValue} {trialUnit} free trial</span>
+                    <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.75rem' }}>
+                      Requires a GHS 1.00 card authorization
+                    </span>
+                  </div>
+                )}
+
+                {isIntro && Number(introPrice) > 0 && (
+                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#4ade80', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
+                    <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
+                      First payment: <strong style={{ color: '#4ade80' }}>{new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(introPrice)}</strong>
+                    </span>
+                  </div>
+                )}
+
+                <div className="pa-plan-limits" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
+                  <span className="pa-plan-limit"><strong>{plan.setup_fee > 0 ? new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(plan.setup_fee) : 'Free'}</strong> Setup Fee</span>
                   <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
                   <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
                   <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>

@@ -58,7 +58,10 @@ router.post('/plans', authGuard, permissionCheck('manage_platform'), async (req,
   try {
     const {
       name, description, price_monthly, price_yearly, currency,
-      max_users, max_locations, max_products, features, trial_days, sort_order
+      setup_fee, compare_at_price_monthly, compare_at_price_yearly,
+      max_users, max_locations, max_products, features, sort_order,
+      promo_mode, intro_price_monthly, intro_price_yearly,
+      trial_days_monthly, trial_unit_monthly, trial_days_yearly, trial_unit_yearly
     } = req.body;
 
     if (!name) {
@@ -72,12 +75,21 @@ router.post('/plans', authGuard, permissionCheck('manage_platform'), async (req,
         description: description || '',
         price_monthly: price_monthly || 0,
         price_yearly: price_yearly || 0,
+        setup_fee: setup_fee || 0,
+        compare_at_price_monthly: compare_at_price_monthly || null,
+        compare_at_price_yearly: compare_at_price_yearly || null,
         currency: currency || 'GHS',
         max_users: max_users ?? -1,
         max_locations: max_locations ?? 1,
         max_products: max_products ?? -1,
         features: features || {},
-        trial_days: trial_days ?? 7,
+        promo_mode: promo_mode || 'none',
+        intro_price_monthly: intro_price_monthly || null,
+        intro_price_yearly: intro_price_yearly || null,
+        trial_days_monthly: trial_days_monthly ?? 0,
+        trial_unit_monthly: trial_unit_monthly || 'days',
+        trial_days_yearly: trial_days_yearly ?? 30,
+        trial_unit_yearly: trial_unit_yearly || 'days',
         sort_order: sort_order ?? 0,
         is_active: true,
       }])
@@ -231,9 +243,14 @@ router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req
     let status = 'active';
     const amount = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
 
-    if (plan.trial_days > 0 && amount > 0) {
+    const promoMode = plan.promo_mode || 'none';
+    const trialValue = cycle === 'yearly' ? (plan.trial_days_yearly || 0) : (plan.trial_days_monthly || 0);
+    const trialUnit = cycle === 'yearly' ? (plan.trial_unit_yearly || 'days') : (plan.trial_unit_monthly || 'days');
+
+    if (promoMode === 'trial' && trialValue > 0 && amount > 0) {
       trialEndsAt = new Date(now);
-      trialEndsAt.setDate(trialEndsAt.getDate() + plan.trial_days);
+      const trialDays = trialUnit === 'months' ? trialValue * 30 : trialValue;
+      trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
       status = 'trialing';
     }
 
@@ -354,8 +371,25 @@ router.post('/initialize-paystack', authGuard, async (req, res) => {
     }
 
     const cycle = billing_cycle || 'monthly';
-    const amount = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-    const amountInPesewas = Math.round(amount * 100); // Paystack uses smallest currency unit
+    const baseAmount = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+    let finalAmount = baseAmount;
+    
+    // Promo Logic
+    const promoMode = plan.promo_mode || 'none';
+    if (promoMode === 'intro') {
+      const introPrice = cycle === 'yearly' ? plan.intro_price_yearly : plan.intro_price_monthly;
+      if (introPrice !== null && introPrice !== undefined) {
+        finalAmount = Number(introPrice);
+      }
+    } else if (promoMode === 'trial') {
+      const trialValue = cycle === 'yearly' ? (plan.trial_days_yearly || 0) : (plan.trial_days_monthly || 0);
+      if (trialValue > 0) {
+        // Charge a 1 GHS authorization fee for true free trial
+        finalAmount = 1;
+      }
+    }
+    
+    const amountInPesewas = Math.round(finalAmount * 100); // Paystack uses smallest currency unit
 
     // Initialize Paystack transaction
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {

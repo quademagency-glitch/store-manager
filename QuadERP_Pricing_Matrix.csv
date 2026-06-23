@@ -1,0 +1,53 @@
+Feature Category & Capabilities,Single Branch (GHS 250/mo),Multi-Branch (GHS 600/mo),Franchise (Custom)
+Platform Basics,,,
+Max Store Locations,1 Location,Up to 5 Locations,Unlimited Locations
+Setup Fee,GHS 1000,GHS 2500,Custom Quote
+Support Level,Standard Support,Priority Support,Dedicated Account Mgr
+,,,
+Point of Sale (POS),,,
+Max POS Terminals,Up to 3,Unlimited,Unlimited
+Touch-Optimized Register,Yes,Yes,Yes
+Multi-Payment (Cash/Card/Momo),Yes,Yes,Yes
+Returns & Refunds,Yes,Yes,Yes
+Till Management (Cash Drawer),Yes,Yes,Yes
+,,,
+Inventory & Stock Control,,,
+Real-time Stock Sync,Yes,Yes,Yes
+Low Stock Alerts,Yes,Yes,Yes
+Stock Adjustments & Reconciliation,Yes,Yes,Yes
+Multi-Store Stock Transfers,No,Yes,Yes
+Centralized Warehouse Routing,No,Yes,Yes
+,,,
+Business Dashboard & Analytics,,,
+Basic Sales Metrics & Charts,Yes,Yes,Yes
+Top Selling Products,Yes,Yes,Yes
+Advanced Loss Prevention Alerts,No,Yes,Yes
+Employee Performance Tracking,No,Yes,Yes
+Cross-Location Comparison,No,Yes,Yes
+,,,
+Integrated Accounting & Invoicing,,,
+B2B Invoicing generation,Yes,Yes,Yes
+Accounts Receivable (Who owes you),Yes,Yes,Yes
+Accounts Payable (Who you owe),Yes,Yes,Yes
+Basic Expense Logging,Yes,Yes,Yes
+,,,
+CRM & Customer Loyalty,,,
+Customer Profiles & History,Yes,Yes,Yes
+Loyalty Points & Rewards,No,Yes,Yes
+Marketing Comms (SMS/Email),No,Yes,Yes
+,,,
+Purchasing & Supply Chain,,,
+Supplier Directory,Yes,Yes,Yes
+Create Purchase Orders (POs),Yes,Yes,Yes
+Auto-Receive POs into Stock,Yes,Yes,Yes
+,,,
+Staff Management & Security,,,
+Basic Staff Profiles,Yes,Yes,Yes
+Advanced Role-Based Permissions,No,Yes,Yes
+Detailed Activity Audit Logs,No,Yes,Yes
+,,,
+Enterprise / Technical Extras,,,
+Custom API Integrations,No,No,Yes
+Legacy Data Migration,No,No,Yes
+On-site Staff Training,No,No,Yes
+Custom SLA (99.9% Uptime),No,No,Yes

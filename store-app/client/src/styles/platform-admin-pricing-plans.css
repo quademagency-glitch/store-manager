@@ -19,7 +19,6 @@
   flex-direction: column;
   gap: var(--space-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
 }
 
 .pa-plan-card::before {
@@ -29,6 +28,7 @@
   left: 0;
   right: 0;
   height: 3px;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -218,4 +218,60 @@
   background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
   color: white;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* ── Archived Plans ── */
+.pa-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  margin-top: var(--space-lg);
+}
+
+.pa-archived-toggle .chevron {
+  transition: transform 0.2s ease;
+  font-size: 0.65rem;
+}
+
+.pa-archived-toggle .chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.pa-archived-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.pa-archived-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  opacity: 0.75;
+}
+
+.pa-archived-row-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.pa-archived-row-info strong {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
 }

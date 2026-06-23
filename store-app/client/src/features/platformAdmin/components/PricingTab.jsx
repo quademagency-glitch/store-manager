@@ -5,13 +5,15 @@ import { Icons } from '../../../components/icons/Icons';
 export default function PricingTab() {
   const {
     plans, billingCycle, setBillingCycle,
-    openPlanModal, handleDeletePlan,
+    openPlanModal, handleDeletePlan, handleRestorePlan, handleDuplicatePlan,
     subscriptions, FEATURE_LABELS, formatCurrency
   } = usePlatformAdmin();
 
   const [expandedCards, setExpandedCards] = useState({});
+  const [showArchived, setShowArchived] = useState(false);
   const toggleFeatures = (planId) => setExpandedCards(prev => ({ ...prev, [planId]: !prev[planId] }));
   const activePlans = plans.filter(plan => plan.is_active !== false);
+  const archivedPlans = plans.filter(plan => plan.is_active === false);
 
   return (
     <>
@@ -80,18 +82,18 @@ export default function PricingTab() {
                 </div>
               )}
               <div className="pa-plan-header">
-                <h3 className="pa-plan-name" style={{ fontSize: '1.3rem' }}>{plan.name}</h3>
-                <p className="pa-plan-desc" style={{ fontSize: '0.9rem' }}>{plan.description || 'No description'}</p>
+                <h3 className="pa-plan-name">{plan.name}</h3>
+                <p className="pa-plan-desc">{plan.description || 'No description'}</p>
               </div>
               <div className="pa-plan-price">
-                <span className="pa-plan-currency" style={{ fontSize: '1.1rem' }}>{plan.currency || 'GHS'}</span>
-                <span className="pa-plan-amount" style={{ fontSize: '2.4rem' }}>{Number(price).toLocaleString()}</span>
+                <span className="pa-plan-currency">{plan.currency || 'GHS'}</span>
+                <span className="pa-plan-amount">{Number(price).toLocaleString()}</span>
                 {comparePrice && Number(comparePrice) > Number(price) && (
                   <span style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)', fontSize: '1.1rem', marginLeft: '0.5rem' }}>
                     {Number(comparePrice).toLocaleString()}
                   </span>
                 )}
-                <span className="pa-plan-period" style={{ fontSize: '0.95rem' }}>/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                <span className="pa-plan-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
               </div>
 
               {isTrial && trialValue > 0 && (
@@ -112,7 +114,7 @@ export default function PricingTab() {
                 </div>
               )}
 
-              <div className="pa-plan-limits" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
+              <div className="pa-plan-limits" style={{ marginTop: '1rem' }}>
                 <span className="pa-plan-limit"><strong>{plan.setup_fee > 0 ? formatCurrency(plan.setup_fee, plan.currency) : 'Free'}</strong> Setup Fee</span>
                 <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
                 <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
@@ -166,12 +168,13 @@ export default function PricingTab() {
                 </div>
               )}
 
-              <div className="pa-plan-subscribers" style={{ fontSize: '0.9rem', marginTop: 'var(--space-md)' }}>
+              <div className="pa-plan-subscribers">
                 {Icons.users} {subCount} subscriber{subCount !== 1 ? 's' : ''}
               </div>
               <div className="pa-plan-actions">
                 <button className="btn btn-secondary btn-sm" onClick={() => openPlanModal(plan)}>{Icons.edit} Edit</button>
-                <button className="btn btn-secondary btn-sm text-error" onClick={() => handleDeletePlan(plan.id, plan.name)}>{Icons.trash} Remove</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicatePlan(plan)}>{Icons.copy} Duplicate</button>
+                <button className="btn btn-secondary btn-sm text-error" onClick={() => handleDeletePlan(plan.id, plan.name)}>{Icons.trash} Deactivate</button>
               </div>
             </div>
           );
@@ -182,6 +185,28 @@ export default function PricingTab() {
           </div>
         )}
       </div>
+
+      {archivedPlans.length > 0 && (
+        <>
+          <button className="pa-archived-toggle" onClick={() => setShowArchived(prev => !prev)}>
+            <span className={`chevron ${showArchived ? 'expanded' : ''}`}>▼</span>
+            Archived Plans ({archivedPlans.length})
+          </button>
+          {showArchived && (
+            <div className="pa-archived-list">
+              {archivedPlans.map(plan => (
+                <div key={plan.id} className="pa-archived-row">
+                  <div className="pa-archived-row-info">
+                    <strong>{plan.name}</strong>
+                    <span>{plan.currency || 'GHS'} {Number(plan.price_monthly).toLocaleString()}/mo</span>
+                  </div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleRestorePlan(plan.id, plan.name)}>{Icons.restore} Restore</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }

@@ -452,6 +452,28 @@ export function PlatformAdminProvider({ children }) {
     catch (err) { toast.error(`Error: ${err.message}`); }
   };
 
+  const handleRestorePlan = async (id, name) => {
+    const confirmed = await confirmDialog({ title: 'Restore Plan', message: `Restore plan "${name}"? It will reappear in the active pricing grid.`, confirmText: 'Restore' });
+    if (!confirmed) return;
+    try { await api.put(`/subscriptions/plans/${id}`, { is_active: true }); fetchData(); }
+    catch (err) { toast.error(`Error: ${err.message}`); }
+  };
+
+  const handleDuplicatePlan = (plan) => {
+    setEditingPlan(null);
+    setPlanForm({
+      name: `${plan.name} (Copy)`, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly,
+      setup_fee: plan.setup_fee || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
+      currency: plan.currency || 'GHS', max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products,
+      promo_mode: plan.promo_mode || 'none',
+      intro_price_monthly: plan.intro_price_monthly ?? '', intro_price_yearly: plan.intro_price_yearly ?? '',
+      trial_days_monthly: plan.trial_days_monthly ?? 0, trial_unit_monthly: plan.trial_unit_monthly || 'days',
+      trial_days_yearly: plan.trial_days_yearly ?? 30, trial_unit_yearly: plan.trial_unit_yearly || 'days',
+      sort_order: plan.sort_order ?? 0, features: plan.features || {},
+    });
+    setShowPlanModal(true);
+  };
+
   /* ============================
      GATEWAY CRUD
      ============================ */
@@ -763,7 +785,7 @@ export function PlatformAdminProvider({ children }) {
     handleCreateRole, handleUpdateRole, handleDeleteRole, openEditRole,
     handleAddRole: handleCreateRole, handleEditRole: openEditRole,
     // Plan CRUD
-    handleSavePlan, handleDeletePlan, openPlanModal,
+    handleSavePlan, handleDeletePlan, handleRestorePlan, handleDuplicatePlan, openPlanModal,
     // Gateway CRUD
     handleSaveGateway, handleDeleteGateway, openGatewayModal,
     // Communications & Settings

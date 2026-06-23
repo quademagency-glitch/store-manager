@@ -186,9 +186,17 @@
 
 .pa-plan-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   padding-top: var(--space-md);
   border-top: 1px solid var(--color-border);
+}
+
+.pa-plan-actions .btn {
+  flex: 1 1 auto;
+  min-width: max-content;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* ── Billing Cycle Toggle ── */

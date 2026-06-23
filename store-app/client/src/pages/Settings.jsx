@@ -47,6 +47,7 @@ export default function Settings() {
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -55,18 +56,20 @@ export default function Settings() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   
   // Forms
-  const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '' });
+  const [userForm, setUserForm] = useState({ id: null, name: '', email: '', password: '', role_id: '', location_ids: [] });
   const [roleForm, setRoleForm] = useState({ id: null, name: '', description: '', permissions: [] });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [usersRes, rolesRes] = await Promise.all([
+      const [usersRes, rolesRes, locationsRes] = await Promise.all([
         api.get('/users'),
-        api.get('/roles')
+        api.get('/roles'),
+        api.get('/locations')
       ]);
       setUsers(usersRes);
       setRoles(rolesRes);
+      setLocations(locationsRes);
     } catch (err) {
       setError('Failed to fetch data.');
       if (import.meta.env.DEV) console.error(err);
@@ -82,9 +85,9 @@ export default function Settings() {
   // --- Users Handlers ---
   const openUserModal = (user = null) => {
     if (user) {
-      setUserForm({ id: user.id, name: user.name, email: user.email, password: '', role_id: user.role_id });
+      setUserForm({ id: user.id, name: user.name, email: user.email, password: '', role_id: user.role_id, location_ids: user.location_ids || [] });
     } else {
-      setUserForm({ id: null, name: '', email: '', password: '', role_id: roles[0]?.id || '' });
+      setUserForm({ id: null, name: '', email: '', password: '', role_id: roles[0]?.id || '', location_ids: [] });
     }
     setIsUserModalOpen(true);
   };
@@ -93,7 +96,7 @@ export default function Settings() {
     e.preventDefault();
     try {
       if (userForm.id) {
-        await api.put(`/users/${userForm.id}`, { name: userForm.name, role_id: userForm.role_id });
+        await api.put(`/users/${userForm.id}`, { name: userForm.name, role_id: userForm.role_id, location_ids: userForm.location_ids });
       } else {
         await api.post('/users/create', { 
           name: userForm.name, 
@@ -101,7 +104,7 @@ export default function Settings() {
           password: userForm.password, 
           role_id: userForm.role_id,
           role_name: roles.find(r => r.id === userForm.role_id)?.name || 'Sales Executive',
-          location_ids: []
+          location_ids: userForm.location_ids
         });
       }
       setIsUserModalOpen(false);
@@ -318,6 +321,32 @@ export default function Settings() {
             <select required className="form-input" value={userForm.role_id} onChange={e => setUserForm({...userForm, role_id: e.target.value})}>
               {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
+          </div>
+          <div className="form-group">
+            <label>Assigned Branches</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px' }}>
+              {locations.length === 0 ? (
+                <span className="text-muted" style={{ fontSize: '14px' }}>No branches available</span>
+              ) : (
+                locations.map(loc => (
+                  <label key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={userForm.location_ids.includes(loc.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setUserForm({...userForm, location_ids: [...userForm.location_ids, loc.id]});
+                        } else {
+                          setUserForm({...userForm, location_ids: userForm.location_ids.filter(id => id !== loc.id)});
+                        }
+                      }}
+                      style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                    />
+                    <span style={{ fontSize: '14px' }}>{loc.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={() => setIsUserModalOpen(false)}>Cancel</button>

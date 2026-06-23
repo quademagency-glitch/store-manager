@@ -184,6 +184,7 @@ export function useAuth() {
 
   const hasPermission = useCallback((perm) => {
     if (role === 'Platform Admin') return perm === 'manage_platform';
+    if (role === 'Business Admin') return perm !== 'manage_platform';
     return permissions.includes(perm);
   }, [permissions, role]);
 

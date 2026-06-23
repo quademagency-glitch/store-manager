@@ -197,7 +197,7 @@ export default function Billing() {
         <div className="pa-pricing-grid">
           {plans.map((plan, idx) => {
             const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-            const comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
+            let comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
             const isCurrent = currentPlan?.id === plan.id;
             const features = plan.features || {};
 

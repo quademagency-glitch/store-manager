@@ -194,13 +194,13 @@ export default function MainLayout() {
       icon: Icons.products,
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
-        { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('manage_products') },
-        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('manage_inventory') },
-        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_purchases') },
-        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: hasPermission('manage_purchases') },
+        { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('view_products') },
+        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory') },
+        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers') },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: hasPermission('view_purchases') },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: hasPermission('manage_returns') },
-        { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_analytics') },
+        { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_alerts') },
       ].filter(i => i.visible)
     };
     if (storeOps.items.length > 0) groups.push(storeOps);
@@ -211,11 +211,11 @@ export default function MainLayout() {
       icon: Icons.billing,
       items: [
         { path: '/till-account', label: 'Till Account', icon: Icons.billing, visible: hasPermission('manage_till') },
-        { path: '/accounting-templates', label: 'Templates', icon: Icons.invoice, visible: hasPermission('manage_accounting') },
-        { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: hasPermission('manage_accounting') },
-        { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: hasPermission('manage_accounting') },
+        { path: '/accounting-templates', label: 'Templates', icon: Icons.invoice, visible: hasPermission('view_accounting') },
+        { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: hasPermission('approve_accounting') },
+        { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: hasPermission('manage_accounting_settings') },
         { path: '/invoice', label: 'Subscription Invoices', icon: Icons.invoice, visible: hasPermission('manage_business') },
-        { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('view_analytics') },
+        { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('manage_reconciliation') },
         { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('view_financial_reports') },
         { path: '/reports/accounts-receivable', label: 'Accounts Receivable', icon: Icons.invoice, visible: hasPermission('view_financial_reports') },
         { path: '/accounts-receivable', label: 'Receivables & Invoices', icon: Icons.invoice, visible: hasPermission('manage_financials') },
@@ -255,7 +255,7 @@ export default function MainLayout() {
       icon: Icons.settings,
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
-        { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_setup') },
+        { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_business') },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_organization') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_locations') },
         { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_users') },

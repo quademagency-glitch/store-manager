@@ -4,40 +4,8 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 
-const AVAILABLE_PERMISSIONS = [
-  // General Store Operations
-  { id: 'manage_users', label: 'Manage Staff & Team' },
-  { id: 'manage_products', label: 'Manage Products' },
-  { id: 'manage_inventory', label: 'Manage Inventory (Stock)' },
-  { id: 'view_sales', label: 'View Sales History' },
-  { id: 'create_sales', label: 'Create POS Sales' },
-  { id: 'manage_sales', label: 'Manage Sales (Void/Refund)' },
-  { id: 'view_analytics', label: 'View Analytics & Reports' },
-  { id: 'manage_purchases', label: 'Manage Suppliers & Purchase Orders' },
-  { id: 'manage_returns', label: 'Process Returns & Reversals' },
-  
-  // Accounting & Finance
-  { id: 'manage_till', label: 'Manage Till Account' },
-  { id: 'manage_accounting', label: 'Manage Accounting Templates & Approvals' },
-  { id: 'manage_financials', label: 'Manage Receivables & Payables' },
-  { id: 'view_financial_reports', label: 'View P&L and Financial Reports' },
+import PermissionTree from '../../components/PermissionTree';
 
-  // CRM & HR
-  { id: 'manage_loyalty', label: 'Manage Loyalty & Rewards' },
-  { id: 'manage_marketing', label: 'Manage CRM & Communications' },
-  { id: 'manage_hr_schedules', label: 'Manage HR Schedules' },
-  { id: 'view_my_commissions', label: 'View My Commissions' },
-
-  // Business Administration
-  { id: 'manage_business', label: 'Manage Business Overview & Setup' },
-  { id: 'manage_organization', label: 'Manage Organization Settings' },
-  { id: 'manage_locations', label: 'Manage Branch Locations' },
-  { id: 'manage_roles', label: 'Manage Custom Roles' },
-  { id: 'manage_billing', label: 'Manage Subscription Billing' },
-  { id: 'view_shrinkage_report', label: 'View Shrinkage Report' },
-  { id: 'view_attendance_report', label: 'View Attendance Report' },
-  { id: 'manage_commission_rules', label: 'Manage Commission Rules' },
-];
 
 export default function RolesManagement() {
   const { user } = useAuthContext();
@@ -83,17 +51,11 @@ export default function RolesManagement() {
     setShowModal(true);
   };
 
-  const togglePermission = (permId) => {
+  const handlePermissionsChange = (newPermissions) => {
     if (!editingRole) return;
-    const hasPerm = editingRole.permissions.includes(permId);
-    let newPerms = [...editingRole.permissions];
-    if (hasPerm) {
-      newPerms = newPerms.filter(p => p !== permId);
-    } else {
-      newPerms.push(permId);
-    }
-    setEditingRole({ ...editingRole, permissions: newPerms });
+    setEditingRole({ ...editingRole, permissions: newPermissions });
   };
+
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -220,22 +182,10 @@ export default function RolesManagement() {
               </div>
 
               <div className="form-group" style={{ marginTop: '16px' }}>
-                <label style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '12px', display: 'block' }}>
-                  Permissions
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {AVAILABLE_PERMISSIONS.map(perm => (
-                    <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={editingRole.permissions.includes(perm.id)}
-                        onChange={() => togglePermission(perm.id)}
-                        style={{ width: '16px', height: '16px' }}
-                      />
-                      {perm.label}
-                    </label>
-                  ))}
-                </div>
+                <PermissionTree 
+                  selectedPermissions={editingRole.permissions} 
+                  onChange={handlePermissionsChange} 
+                />
               </div>
 
               <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>

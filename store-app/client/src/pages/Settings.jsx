@@ -5,40 +5,10 @@ import Modal from '../components/Modal';
 import { useConfirm } from '../hooks/useConfirm';
 import { Icons } from '../components/icons/Icons';
 
-const AVAILABLE_PERMISSIONS = [
-  // General Store Operations
-  { id: 'manage_users', label: 'Manage Staff & Team' },
-  { id: 'manage_products', label: 'Manage Products' },
-  { id: 'manage_inventory', label: 'Manage Inventory (Stock)' },
-  { id: 'view_sales', label: 'View Sales History' },
-  { id: 'create_sales', label: 'Create POS Sales' },
-  { id: 'manage_sales', label: 'Manage Sales (Void/Refund)' },
-  { id: 'view_analytics', label: 'View Analytics & Reports' },
-  { id: 'manage_purchases', label: 'Manage Suppliers & Purchase Orders' },
-  { id: 'manage_returns', label: 'Process Returns & Reversals' },
-  
-  // Accounting & Finance
-  { id: 'manage_till', label: 'Manage Till Account' },
-  { id: 'manage_accounting', label: 'Manage Accounting Templates & Approvals' },
-  { id: 'manage_financials', label: 'Manage Receivables & Payables' },
-  { id: 'view_financial_reports', label: 'View P&L and Financial Reports' },
+import { getFlatPermissions } from '../constants/permissions';
+import PermissionTree from '../components/PermissionTree';
 
-  // CRM & HR
-  { id: 'manage_loyalty', label: 'Manage Loyalty & Rewards' },
-  { id: 'manage_marketing', label: 'Manage CRM & Communications' },
-  { id: 'manage_hr_schedules', label: 'Manage HR Schedules' },
-  { id: 'view_my_commissions', label: 'View My Commissions' },
-
-  // Business Administration
-  { id: 'manage_business', label: 'Manage Business Overview & Setup' },
-  { id: 'manage_organization', label: 'Manage Organization Settings' },
-  { id: 'manage_locations', label: 'Manage Branch Locations' },
-  { id: 'manage_roles', label: 'Manage Custom Roles' },
-  { id: 'manage_billing', label: 'Manage Subscription Billing' },
-  { id: 'view_shrinkage_report', label: 'View Shrinkage Report' },
-  { id: 'view_attendance_report', label: 'View Attendance Report' },
-  { id: 'manage_commission_rules', label: 'Manage Commission Rules' },
-];
+const AVAILABLE_PERMISSIONS = getFlatPermissions();
 
 export default function Settings() {
   const { hasPermission } = useAuthContext();
@@ -171,13 +141,9 @@ export default function Settings() {
     }
   };
 
-  const togglePermission = (permId) => {
-    setRoleForm(prev => {
-      const perms = prev.permissions.includes(permId)
-        ? prev.permissions.filter(p => p !== permId)
-        : [...prev.permissions, permId];
-      return { ...prev, permissions: perms };
-    });
+  // We will just replace permissions completely in onChange
+  const handlePermissionsChange = (newPermissions) => {
+    setRoleForm(prev => ({ ...prev, permissions: newPermissions }));
   };
 
   if (!hasPermission('manage_users')) {
@@ -368,18 +334,11 @@ export default function Settings() {
           </div>
           <div className="form-group">
             <label>Permissions</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              {AVAILABLE_PERMISSIONS.map(p => (
-                <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={roleForm.permissions.includes(p.id)}
-                    onChange={() => togglePermission(p.id)}
-                    style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
-                  />
-                  <span>{p.label}</span>
-                </label>
-              ))}
+            <div style={{ marginTop: '8px' }}>
+              <PermissionTree 
+                selectedPermissions={roleForm.permissions} 
+                onChange={handlePermissionsChange} 
+              />
             </div>
           </div>
           <div className="modal-footer">

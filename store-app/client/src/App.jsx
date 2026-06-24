@@ -123,33 +123,33 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_financials"><ImportWizard /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
-                      <ProtectedRoute requiredPermission="manage_inventory"><Inventory /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_inventory"><Inventory /></ProtectedRoute>
                     } />
                     <Route path="/alerts" element={
-                      <ProtectedRoute requiredPermission="view_analytics"><Alerts /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_alerts"><Alerts /></ProtectedRoute>
                     } />
                     <Route path="/suppliers" element={
-                      <ProtectedRoute requiredPermission="manage_purchases"><Suppliers /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_suppliers"><Suppliers /></ProtectedRoute>
                     } />
                     <Route path="/purchase-orders" element={
-                      <ProtectedRoute requiredPermission="manage_purchases"><PurchaseOrders /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_purchases"><PurchaseOrders /></ProtectedRoute>
                     } />
                     {/* Protected sub-routes handled within components or layout level */}
                     <Route path="/reconciliation" element={
-                      <ProtectedRoute requiredPermission="view_analytics"><Reconciliation /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_reconciliation"><Reconciliation /></ProtectedRoute>
                     } />
                     <Route path="/invoice" element={<ProtectedRoute requiredPermission="manage_business"><InvoiceList /></ProtectedRoute>} />
                     <Route path="/invoice/:id" element={
                       <ProtectedRoute requiredPermission="manage_business"><InvoiceView /></ProtectedRoute>
                     } />
                     <Route path="/accounting-templates" element={
-                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingTemplates /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="view_accounting"><AccountingTemplates /></ProtectedRoute>
                     } />
                     <Route path="/accounting-settings" element={
-                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingSettings /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_accounting_settings"><AccountingSettings /></ProtectedRoute>
                     } />
                     <Route path="/accounting-approvals" element={
-                      <ProtectedRoute requiredPermission="manage_accounting"><AccountingApprovals /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="approve_accounting"><AccountingApprovals /></ProtectedRoute>
                     } />
                     <Route path="/settings" element={
                       <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>
@@ -187,7 +187,7 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_commission_rules"><CommissionRules /></ProtectedRoute>
                     } />
                     <Route path="/business-admin/setup" element={
-                      <ProtectedRoute requiredPermission="manage_setup"><BusinessSetup /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission="manage_business"><BusinessSetup /></ProtectedRoute>
                     } />
 
                     {/* HR Pages */}

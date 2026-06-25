@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
+import { useBusinessBranding } from '../hooks/useBusinessBranding';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,9 +10,10 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { signIn, isAuthenticated, loading } = useAuthContext();
+  const { signIn, signOut, isAuthenticated, loading } = useAuthContext();
+  const { slug, business, loading: brandingLoading } = useBusinessBranding();
 
-  if (loading) {
+  if (loading || brandingLoading) {
     return (
       <div className="loading-screen">
         <div className="loading-spinner">
@@ -39,17 +41,45 @@ export default function Login() {
 
     setSubmitting(true);
 
-    const { error: signInError } = await signIn(email, password);
+    const { error: signInError, businessId } = await signIn(email, password);
 
     if (signInError) {
       setError(signInError.message || 'Invalid credentials. Please try again.');
       setSubmitting(false);
+      return;
     }
-    // If successful, we do NOT navigate here or reset submitting. 
+
+    // On a business-branded subdomain, the signed-in account must actually
+    // belong to that business — otherwise bounce them back out rather than
+    // letting them land on someone else's portal.
+    if (slug && business && businessId !== business.id) {
+      await signOut();
+      setError(`This account isn't part of ${business.name}. Please use your business's own link.`);
+      setSubmitting(false);
+      return;
+    }
+    // If successful, we do NOT navigate here or reset submitting.
     // The AuthContext will react to the onAuthStateChange event,
     // update the global state, and the component will re-render
     // and trigger the <Navigate to="/dashboard" />.
   };
+
+  // A slug resolved from the subdomain but no matching (or active) business
+  // was found — this is not a generic login attempt, so don't show the form.
+  if (slug && (!business || business.status === 'banned')) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div className="login-card">
+            <div className="login-header">
+              <h1 className="login-title">Quad<span className="brand-erp">ERP</span></h1>
+              <p className="login-subtitle">This business link isn't valid or is no longer active.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
@@ -62,26 +92,32 @@ export default function Login() {
         <div className="login-card">
           {/* Logo / Brand */}
           <div className="login-header">
-            <div className="login-logo">
-              <svg width="40" height="40" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="login-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
-                  <linearGradient id="login-logo-ring" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
-                  <linearGradient id="login-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
-                  <linearGradient id="login-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
-                  <linearGradient id="login-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
-                </defs>
-                <rect width="512" height="512" rx="118" fill="url(#login-logo-bg)" />
-                <circle cx="256" cy="248" r="150" fill="none" stroke="url(#login-logo-ring)" strokeWidth="30" />
-                <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
-                <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
-                <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#login-logo-ring)" />
-                <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#login-logo-b1)" />
-                <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#login-logo-b2)" />
-                <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#login-logo-b3)" />
-              </svg>
-            </div>
-            <h1 className="login-title">Quad<span className="brand-erp">ERP</span></h1>
+            {business?.logo_url ? (
+              <div className="login-logo">
+                <img src={business.logo_url} alt={business.name} width="40" height="40" style={{ borderRadius: '8px', objectFit: 'cover' }} />
+              </div>
+            ) : (
+              <div className="login-logo">
+                <svg width="40" height="40" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="login-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
+                    <linearGradient id="login-logo-ring" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
+                    <linearGradient id="login-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
+                    <linearGradient id="login-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
+                    <linearGradient id="login-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
+                  </defs>
+                  <rect width="512" height="512" rx="118" fill="url(#login-logo-bg)" />
+                  <circle cx="256" cy="248" r="150" fill="none" stroke="url(#login-logo-ring)" strokeWidth="30" />
+                  <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
+                  <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
+                  <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#login-logo-ring)" />
+                  <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#login-logo-b1)" />
+                  <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#login-logo-b2)" />
+                  <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#login-logo-b3)" />
+                </svg>
+              </div>
+            )}
+            <h1 className="login-title">{business ? business.name : (<>Quad<span className="brand-erp">ERP</span></>)}</h1>
             <p className="login-subtitle">Sign in to your account</p>
           </div>
 

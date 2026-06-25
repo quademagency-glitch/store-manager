@@ -8,6 +8,30 @@ const { resolveCurrency } = require('../utils/currency');
 const router = express.Router();
 
 /**
+ * GET /api/businesses/by-slug/:slug
+ * Public lookup used to brand the login page on a business's subdomain
+ * (e.g. acme-hardware.quaderp.app). Deliberately returns only the minimal
+ * fields needed for branding, never the full business record.
+ * Access: Public (no auth)
+ */
+router.get('/by-slug/:slug', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('businesses')
+      .select('id, name, logo_url, status')
+      .eq('slug', req.params.slug)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Business not found' });
+
+    res.json({ id: data.id, name: data.name, logo_url: data.logo_url, status: data.status });
+  } catch (err) {
+    logger.error({ err: err }, 'Error looking up business by slug:');
+    res.status(500).json({ error: 'Failed to look up business' });
+  }
+});
+
+/**
  * GET /api/businesses/me
  * Fetch the current user's business profile
  * Access: Authenticated users

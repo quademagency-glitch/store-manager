@@ -70,7 +70,7 @@ export function useAuth() {
         }
       }
 
-      return { role: roleName, permissions: userPermissions, locationIds: userLocations };
+      return { role: roleName, permissions: userPermissions, locationIds: userLocations, businessId: data.business_id || null };
     } catch (err) {
       if (import.meta.env.DEV) console.error('Unexpected error fetching role:', err);
       setRole(null);
@@ -143,16 +143,17 @@ export function useAuth() {
       }
       
       // Eagerly update state to avoid race condition with onAuthStateChange
+      let roleResult = null;
       if (data.session) {
         setSession(data.session);
         setUser(data.user);
         if (data.user) {
-          await fetchRole(data.user.id);
+          roleResult = await fetchRole(data.user.id);
         }
       }
-      
+
       setLoading(false);
-      return { data };
+      return { data, businessId: roleResult?.businessId ?? null };
     } catch (err) {
       if (import.meta.env.DEV) console.error('Sign in error:', err);
       setLoading(false);

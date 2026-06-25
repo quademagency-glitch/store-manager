@@ -65,3 +65,16 @@ export const api = {
   // For multipart uploads — pass a FormData instance, never JSON.stringify it.
   postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),
 };
+
+// Unauthenticated lookup used to brand the login page on a business's
+// subdomain — there is no session yet at that point, so this bypasses
+// fetchWithAuth entirely. Returns null if the slug doesn't resolve.
+export async function getBusinessBySlug(slug) {
+  try {
+    const response = await fetch(`${API_BASE}/businesses/by-slug/${encodeURIComponent(slug)}`);
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}

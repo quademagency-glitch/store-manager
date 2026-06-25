@@ -99,7 +99,6 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
       toast.info('Command sent to Scanner App. Waiting for scan...');
     } catch {
       // In case they don't have a scanner app linked, we just open the modal.
-      console.log('No active scanner app connected or error pushing command.');
     }
     setActiveScanIndex(index);
     setIsScannerOpen(true);

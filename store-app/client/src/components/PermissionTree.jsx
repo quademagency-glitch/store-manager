@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { PERMISSION_TREE, getLeafIds } from '../constants/permissions';
 
 const CheckboxIcon = ({ checked, indeterminate }) => (

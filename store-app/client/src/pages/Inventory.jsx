@@ -170,7 +170,7 @@ export default function Inventory() {
     if (activeTab === 'transfers') fetchTransfers();
     if (activeTab === 'audits') fetchAudits();
     if (activeTab === 'batches') fetchBatches();
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab]);  
 
   // Low stock products
   const lowStockProducts = useMemo(() => {

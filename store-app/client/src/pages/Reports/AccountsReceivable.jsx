@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useReports } from '../../hooks/useReports';
-import { useToast } from '../../hooks/useToast';
 import '../../styles/reports.css';
 
 export default function AccountsReceivable() {
-  const toast = useToast();
   const { loading, arAging, fetchArAging } = useReports();
 
   useEffect(() => {

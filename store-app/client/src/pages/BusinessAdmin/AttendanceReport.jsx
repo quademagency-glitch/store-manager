@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
-import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { api } from '../../lib/api';
 import '../../styles/hr.css';
 
 export default function AttendanceReport() {
-  const { hasPermission } = useAuthContext();
   const toast = useToast();
-  const { loading, attendanceLogs, fetchAttendanceLogs, exportPayroll } = useHR();
+  const { attendanceLogs, fetchAttendanceLogs, exportPayroll } = useHR();
 
   const [users, setUsers] = useState([]);
   const [locations, setLocations] = useState([]);

@@ -127,7 +127,7 @@ export default function CRMCommunications() {
         await api.delete(`/crm-communications/templates/${id}`);
         showToast('Template deleted', 'success');
         fetchData();
-      } catch (err) {
+      } catch {
         showToast('Failed to delete template', 'error');
       }
     }
@@ -176,7 +176,7 @@ export default function CRMCommunications() {
         await api.delete(`/crm-communications/gateways/${id}`);
         showToast('Gateway removed', 'success');
         fetchData();
-      } catch (err) {
+      } catch {
         showToast('Failed to remove gateway', 'error');
       }
     }

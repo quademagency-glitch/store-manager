@@ -14,7 +14,7 @@ export default function Loyalty() {
   const {
     loading, rules, pointsBalance, pointsLedger, giftCards, storeCreditBalance,
     fetchRules, saveRules, fetchBalance, fetchLedger, redeemPoints,
-    fetchGiftCards, issueGiftCard, lookupGiftCard, redeemGiftCard,
+    fetchGiftCards, issueGiftCard, lookupGiftCard,
     fetchStoreCredit, issueStoreCredit,
   } = useLoyalty();
 

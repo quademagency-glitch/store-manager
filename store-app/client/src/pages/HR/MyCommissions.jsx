@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
-import { useAuthContext } from '../../lib/AuthContext';
-import { useToast } from '../../hooks/useToast';
 import '../../styles/hr.css';
 
 export default function MyCommissions() {
-  const { user } = useAuthContext();
-  const toast = useToast();
-  const { loading, commissions, fetchCommissions } = useHR();
+  const { commissions, fetchCommissions } = useHR();
 
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [unpaidOnly, setUnpaidOnly] = useState(false);

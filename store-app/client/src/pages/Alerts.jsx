@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
-import { Icons } from '../components/icons/Icons';
 
 export default function Alerts() {
   const { user } = useAuthContext();

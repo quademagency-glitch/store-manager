@@ -1,14 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
-import { useAuthContext } from '../../lib/AuthContext';
-import { useToast } from '../../hooks/useToast';
 import '../../styles/hr.css';
 
 export default function Attendance() {
-  const { user, hasPermission } = useAuthContext();
-  const toast = useToast();
   const {
-    loading,
     attendanceStatus,
     myAttendance,
     fetchAttendanceStatus,

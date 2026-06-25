@@ -29,7 +29,7 @@ export default function RolesManagement() {
 
   useEffect(() => {
     fetchRoles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   const handleEdit = (role) => {
     if (role.business_id === null && user.role !== 'Platform Admin') {

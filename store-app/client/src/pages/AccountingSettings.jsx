@@ -64,7 +64,7 @@ export default function AccountingSettings() {
   useEffect(() => {
     fetchTemplates();
     fetchRoles();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   const markDirty = () => setIsDirty(true);
 

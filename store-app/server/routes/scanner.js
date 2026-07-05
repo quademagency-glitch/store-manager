@@ -506,10 +506,16 @@ async function resolveScanner(token) {
   if (!isValidToken(token)) return null;
   const { data: users, error } = await supabaseAdmin
     .from('users')
-    .select('id, name, business_id, active_location_id, roles(name)')
+    .select('id, name, business_id, user_locations(location_id), roles(name)')
     .eq('scanner_session_token', token);
-  if (error || !users?.length) return null;
-  return users[0];
+  if (error || !users?.length) {
+    if (error) logger.error({ err: error }, 'resolveScanner error');
+    return null;
+  }
+  
+  const user = users[0];
+  user.active_location_id = user.user_locations && user.user_locations.length > 0 ? user.user_locations[0].location_id : null;
+  return user;
 }
 
 /**

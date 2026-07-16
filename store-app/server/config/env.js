@@ -10,8 +10,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
 
-  // Auth cache — set to 0 to disable caching (safer in multi-instance deployments)
-  AUTH_CACHE_TTL_MS: z.coerce.number().int().min(0).default(30000),
+  // Auth cache — how long to cache user roles/permissions after DB lookup.
+  // Default bumped to 5 min (300s) since local JWT verification makes the
+  // cache the primary guard against repeated DB hits. invalidateUserCache()
+  // still evicts immediately on role/ban changes.
+  AUTH_CACHE_TTL_MS: z.coerce.number().int().min(0).default(300000),
 
   // Email
   RESEND_API_KEY: z.string().optional(),

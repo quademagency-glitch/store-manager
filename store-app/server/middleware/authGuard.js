@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../db/supabase');
+const { verifyToken } = require('../utils/jwtVerifier');
 const logger = require('../utils/logger');
 
 // In-memory cache: userId → { user, expiresAt }
@@ -6,7 +7,7 @@ const logger = require('../utils/logger');
 // This creates a window (up to AUTH_CACHE_TTL_MS) where stale roles/ban-status can be
 // served. Set AUTH_CACHE_TTL_MS=0 to disable, or replace with Redis for strict consistency.
 const userCache = new Map();
-const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '30000', 10);
+const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '300000', 10); // Default: 5 minutes
 
 // Periodic cleanup every 5 minutes
 if (CACHE_TTL_MS > 0) {
@@ -44,19 +45,30 @@ async function authGuard(req, res, next) {
       });
     }
 
-    // Verify the JWT first to get the stable userId; this is always fast (crypto only)
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid or expired token.',
-      });
+    // ── Step 1: Verify JWT locally (pure crypto, ~0.1ms) ──────────
+    // Previously: called supabaseAdmin.auth.getUser(token) which was an
+    // HTTP round-trip to Supabase (~300-500ms) — the #1 bottleneck at scale.
+    let userId;
+    try {
+      const claims = await verifyToken(token);
+      userId = claims.userId;
+    } catch (jwtErr) {
+      // If local verification fails (e.g., JWKS not loaded yet), fall back
+      // to Supabase API as a safety net during startup/key rotation.
+      logger.debug({ err: jwtErr.message }, 'Local JWT verify failed, falling back to Supabase');
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+      if (error || !user) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid or expired token.',
+        });
+      }
+      userId = user.id;
     }
 
-    // Check cache by userId (stable key, not raw JWT)
+    // ── Step 2: Check cache for user data ─────────────────────────
     if (CACHE_TTL_MS > 0) {
-      const cached = userCache.get(user.id);
+      const cached = userCache.get(userId);
       if (cached && cached.expiresAt > Date.now()) {
         req.user = cached.user;
         attachLocation(req);
@@ -64,7 +76,7 @@ async function authGuard(req, res, next) {
       }
     }
 
-    // Fetch user record with role & locations
+    // ── Step 3: Fetch user record with role & locations ───────────
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select(`
@@ -83,7 +95,7 @@ async function authGuard(req, res, next) {
         ),
         user_locations(location_id)
       `)
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (userError || !userData) {
@@ -94,7 +106,7 @@ async function authGuard(req, res, next) {
     }
 
     if (userData.status === 'banned') {
-      invalidateUserCache(user.id);
+      invalidateUserCache(userId);
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Your account has been banned. Please contact support.',
@@ -102,7 +114,7 @@ async function authGuard(req, res, next) {
     }
 
     if (userData.businesses && userData.businesses.status === 'banned') {
-      invalidateUserCache(user.id);
+      invalidateUserCache(userId);
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Your business has been banned. Please contact support.',
@@ -122,7 +134,7 @@ async function authGuard(req, res, next) {
     };
 
     if (CACHE_TTL_MS > 0) {
-      userCache.set(user.id, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });
+      userCache.set(userId, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
     attachLocation(req);

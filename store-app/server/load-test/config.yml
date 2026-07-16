@@ -1,0 +1,178 @@
+config:
+  # Target: Production API on Railway
+  target: "https://store-manager-api-production-c330.up.railway.app"
+  
+  # Load phases — ramp to ~1,000 concurrent users
+  phases:
+    # Phase 1: Warm-up — gentle start
+    - name: "Warm-up"
+      duration: 30
+      arrivalRate: 5
+      rampTo: 30
+
+    # Phase 2: Ramp — climb to peak load
+    - name: "Ramp to peak"
+      duration: 60
+      arrivalRate: 30
+      rampTo: 150
+
+    # Phase 3: Sustained peak — hold ~1,000 concurrent
+    # At 150 arrivals/sec with avg scenario duration ~5-7s ≈ 750-1050 concurrent
+    - name: "Sustained peak (1000 concurrent)"
+      duration: 90
+      arrivalRate: 150
+
+  # Processor for custom JS functions (auth token management)
+  processor: "./processor.js"
+
+  # Default headers for all requests
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+  # Performance thresholds — fail the test if breached
+  ensure:
+    thresholds:
+      - http.response_time.p50: 500
+      - http.response_time.p95: 3000
+      - http.response_time.p99: 10000
+    conditions:
+      - expression: "http.codes.5xx / http.response_time.count < 0.05"
+        strict: true
+
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+# ──────────────────────────────────────────────────
+# Scenarios — weighted by real-world usage patterns
+# ──────────────────────────────────────────────────
+scenarios:
+
+  # ── 1. Dashboard Load (40% of traffic) ──────────
+  # User opens the app → auth check → dashboard summary
+  - name: "Dashboard Load"
+    weight: 40
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+      - think: 1
+      - get:
+          url: "/api/analytics/summary"
+          name: "GET /api/analytics/summary"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # ── 2. Browse Sales (20% of traffic) ────────────
+  # User navigates to Sales page
+  - name: "Browse Sales"
+    weight: 20
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - think: 1
+      - get:
+          url: "/api/sales?page=1&limit=50"
+          name: "GET /api/sales (paginated)"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # ── 3. View Inventory (15% of traffic) ──────────
+  # User checks products and stock levels
+  - name: "View Inventory"
+    weight: 15
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - think: 1
+      - get:
+          url: "/api/products?page=1&limit=50"
+          name: "GET /api/products (paginated)"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # ── 4. View Customers (10% of traffic) ──────────
+  - name: "View Customers"
+    weight: 10
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - think: 1
+      - get:
+          url: "/api/customers?page=1&limit=50"
+          name: "GET /api/customers (paginated)"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # ── 5. Health Check Baseline (5% of traffic) ────
+  # Unauthenticated — measures raw server responsiveness
+  - name: "Health Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/health"
+          name: "GET /api/health"
+          expect:
+            - statusCode: 200
+
+  # ── 6. View Ledger (5% of traffic) ──────────────
+  - name: "View Ledger"
+    weight: 5
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - think: 1
+      - get:
+          url: "/api/ledger?page=1&limit=50"
+          name: "GET /api/ledger (paginated)"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # ── 7. View HR (5% of traffic) ──────────────────
+  - name: "View HR"
+    weight: 5
+    beforeScenario: "setAuthToken"
+    flow:
+      - get:
+          url: "/api/auth/me"
+          name: "GET /api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - think: 1
+      - get:
+          url: "/api/hr/employees"
+          name: "GET /api/hr/employees"
+          headers:
+            Authorization: "Bearer {{ authToken }}"

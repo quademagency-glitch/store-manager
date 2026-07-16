@@ -236,12 +236,17 @@ app.use((err, req, res, next) => {
 // Start server
 // ============================================
 
-// Start server if this file is run directly (e.g. via `node index.js`)
-// This ensures it starts on Railway but skips when imported as a module (e.g. Vercel)
+// Start server if this file is run directly (e.g. via `node index.js`).
+// When run via cluster.js, workers import this as a module — they call
+// app.listen() themselves and the primary process handles the cron.
 if (require.main === module) {
+  const cluster = require('node:cluster');
   app.listen(PORT, () => {
     logger.info({ port: PORT }, 'Store Manager API started');
-    initSubscriptionCron();
+    // Only init cron if running standalone (not via cluster.js)
+    if (!cluster.isWorker) {
+      initSubscriptionCron();
+    }
   });
 }
 

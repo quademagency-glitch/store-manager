@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 // This creates a window (up to AUTH_CACHE_TTL_MS) where stale roles/ban-status can be
 // served. Set AUTH_CACHE_TTL_MS=0 to disable, or replace with Redis for strict consistency.
 const userCache = new Map();
+const fetchPromises = new Map();
 const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '300000', 10); // Default: 5 minutes
 
 // Periodic cleanup every 5 minutes
@@ -76,62 +77,55 @@ async function authGuard(req, res, next) {
       }
     }
 
-    // ── Step 3: Fetch user record with role & locations ───────────
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select(`
-        id,
-        name,
-        email,
-        business_id,
-        status,
-        role_id,
-        roles:role_id (
-          name,
-          permissions
-        ),
-        businesses (
-          status
-        ),
-        user_locations(location_id)
-      `)
-      .eq('id', userId)
-      .single();
+    // ── Step 3: Fetch user record with coalescing ─────────────────
+    let userDataObj;
+    if (fetchPromises.has(userId)) {
+      userDataObj = await fetchPromises.get(userId);
+    } else {
+      const promise = (async () => {
+        const { data, error } = await supabaseAdmin
+          .from('users')
+          .select(`
+            id, name, email, business_id, status, role_id,
+            roles:role_id (name, permissions),
+            businesses (status),
+            user_locations(location_id)
+          `)
+          .eq('id', userId)
+          .single();
 
-    if (userError || !userData) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User record not found. Please contact your manager.',
+        if (error || !data) return { error: 'Unauthorized', message: 'User record not found.' };
+        if (data.status === 'banned') return { error: 'Forbidden', message: 'Your account has been banned.' };
+        if (data.businesses && data.businesses.status === 'banned') return { error: 'Forbidden', message: 'Your business has been banned.' };
+
+        const user = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          business_id: data.business_id,
+          status: data.status,
+          role: data.roles ? data.roles.name : 'Unknown',
+          role_id: data.role_id,
+          permissions: data.roles ? data.roles.permissions : [],
+          location_ids: data.user_locations ? data.user_locations.map(ul => ul.location_id) : [],
+        };
+        return { user };
+      })();
+      
+      fetchPromises.set(userId, promise);
+      userDataObj = await promise;
+      fetchPromises.delete(userId);
+    }
+
+    if (userDataObj.error) {
+      if (userDataObj.error === 'Forbidden') invalidateUserCache(userId);
+      return res.status(userDataObj.error === 'Unauthorized' ? 401 : 403).json({
+        error: userDataObj.error,
+        message: userDataObj.message,
       });
     }
 
-    if (userData.status === 'banned') {
-      invalidateUserCache(userId);
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Your account has been banned. Please contact support.',
-      });
-    }
-
-    if (userData.businesses && userData.businesses.status === 'banned') {
-      invalidateUserCache(userId);
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Your business has been banned. Please contact support.',
-      });
-    }
-
-    req.user = {
-      id: userData.id,
-      name: userData.name,
-      email: userData.email,
-      business_id: userData.business_id,
-      status: userData.status,
-      role: userData.roles ? userData.roles.name : 'Unknown',
-      role_id: userData.role_id,
-      permissions: userData.roles ? userData.roles.permissions : [],
-      location_ids: userData.user_locations ? userData.user_locations.map(ul => ul.location_id) : [],
-    };
+    req.user = userDataObj.user;
 
     if (CACHE_TTL_MS > 0) {
       userCache.set(userId, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });

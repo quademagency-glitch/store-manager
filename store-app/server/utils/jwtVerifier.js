@@ -59,45 +59,55 @@ function jwkToPem(jwk) {
  * Fetch the JWKS from Supabase and extract the signing public key.
  * Caches the key in memory and refreshes every hour.
  */
+let jwksFetchPromise = null;
+
 async function getPublicKey() {
   const now = Date.now();
   if (cachedPublicKey && (now - jwksLastFetched) < JWKS_REFRESH_INTERVAL_MS) {
     return cachedPublicKey;
   }
 
-  try {
-    const response = await fetch(JWKS_URL);
-    if (!response.ok) {
-      throw new Error(`JWKS fetch failed: ${response.status} ${response.statusText}`);
-    }
-
-    const jwks = await response.json();
-    const keys = jwks.keys || [];
-
-    // Find the key matching our expected KID, or use the first key
-    let targetKey = keys.find(k => k.kid === EXPECTED_KID);
-    if (!targetKey && keys.length > 0) {
-      targetKey = keys[0];
-      logger.warn({ expectedKid: EXPECTED_KID, foundKid: targetKey.kid },
-        'JWKS: Expected KID not found, using first available key');
-    }
-
-    if (!targetKey) {
-      throw new Error('No usable keys found in JWKS response');
-    }
-
-    cachedPublicKey = jwkToPem(targetKey);
-    jwksLastFetched = now;
-    logger.info({ kid: targetKey.kid }, '🔑 JWKS public key loaded');
-    return cachedPublicKey;
-  } catch (err) {
-    // If we have a cached key, keep using it even if refresh fails
-    if (cachedPublicKey) {
-      logger.warn({ err: err.message }, 'JWKS refresh failed, using cached key');
-      return cachedPublicKey;
-    }
-    throw err;
+  if (jwksFetchPromise) {
+    return jwksFetchPromise;
   }
+
+  jwksFetchPromise = (async () => {
+    try {
+      const response = await fetch(JWKS_URL);
+      if (!response.ok) {
+        throw new Error(`JWKS fetch failed: ${response.status} ${response.statusText}`);
+      }
+
+      const jwks = await response.json();
+      const keys = jwks.keys || [];
+
+      let targetKey = keys.find(k => k.kid === EXPECTED_KID);
+      if (!targetKey && keys.length > 0) {
+        targetKey = keys[0];
+        logger.warn({ expectedKid: EXPECTED_KID, foundKid: targetKey.kid },
+          'JWKS: Expected KID not found, using first available key');
+      }
+
+      if (!targetKey) {
+        throw new Error('No usable keys found in JWKS response');
+      }
+
+      cachedPublicKey = jwkToPem(targetKey);
+      jwksLastFetched = Date.now();
+      logger.info({ kid: targetKey.kid }, '🔑 JWKS public key loaded');
+      return cachedPublicKey;
+    } catch (err) {
+      if (cachedPublicKey) {
+        logger.warn({ err: err.message }, 'JWKS refresh failed, using cached key');
+        return cachedPublicKey;
+      }
+      throw err;
+    } finally {
+      jwksFetchPromise = null;
+    }
+  })();
+
+  return jwksFetchPromise;
 }
 
 /**

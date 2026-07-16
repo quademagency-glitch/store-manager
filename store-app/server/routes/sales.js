@@ -7,6 +7,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const crypto = require('crypto');
 const { runChecks } = require('../services/lossPreventionEngine');
 
@@ -46,7 +47,7 @@ const finalizeSaleSchema = z.object({
  * Fetch all sales with line items and product names.
  * Access: All authenticated staff
  */
-router.get('/', authGuard, permissionCheck('view_sales'), async (req, res) => {
+router.get('/', authGuard, permissionCheck('view_sales'), apiCache(5), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req.query);
     const { customer_id } = req.query;
@@ -104,7 +105,7 @@ router.get('/', authGuard, permissionCheck('view_sales'), async (req, res) => {
  * Fetch historical sales with date range filtering.
  * Access: All authenticated staff (scoped to their location)
  */
-router.get('/history', authGuard, permissionCheck('view_sales'), async (req, res) => {
+router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const { page, limit, offset } = getPagination(req.query);
@@ -458,6 +459,9 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       logger.error({ err: loyaltyErr }, 'Loyalty points earn failed (non-critical)');
     }
 
+    // Invalidate sales cache for this worker
+    invalidateCachePrefix('/api/sales');
+
     return res.status(201).json({
       message: 'Sale recorded successfully',
       sale: saleData,
@@ -550,6 +554,9 @@ router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, 
 
     // Trigger detection engine
     runChecks('void', { userId: req.user.id, businessId: sale.business_id, locationId: sale.location_id });
+
+    // Invalidate sales cache for this worker
+    invalidateCachePrefix('/api/sales');
 
     res.json({ message: 'Sale voided successfully' });
   } catch (err) {
@@ -791,6 +798,9 @@ router.delete('/:id', authGuard, async (req, res) => {
       .eq('id', saleId);
     
     if (deleteError) throw deleteError;
+
+    // Invalidate sales cache for this worker
+    invalidateCachePrefix('/api/sales');
 
     res.json({ message: 'Sale deleted successfully' });
   } catch (err) {

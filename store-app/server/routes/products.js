@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ const router = express.Router();
  * Fetch all products
  * Access: All authenticated staff
  */
-router.get('/', authGuard, async (req, res) => {
+router.get('/', authGuard, apiCache(5), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('products')
@@ -37,7 +38,7 @@ router.get('/', authGuard, async (req, res) => {
  * Look up a product by its QR code data.
  * Access: All authenticated staff
  */
-router.get('/lookup', authGuard, async (req, res) => {
+router.get('/lookup', authGuard, apiCache(5), async (req, res) => {
   try {
     const { qr } = req.query;
     if (!qr) return res.status(400).json({ error: 'Missing qr query parameter.' });
@@ -65,7 +66,7 @@ router.get('/lookup', authGuard, async (req, res) => {
  * Fetch a single product
  * Access: All authenticated staff
  */
-router.get('/:id', authGuard, async (req, res) => {
+router.get('/:id', authGuard, apiCache(5), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('products')
@@ -153,6 +154,7 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
       }
     }
 
+    invalidateCachePrefix('/api/products');
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error creating product:');
@@ -194,6 +196,7 @@ router.put('/:id', authGuard, permissionCheck('manage_products'), async (req, re
     
     if (!data) return res.status(404).json({ error: 'Product not found' });
 
+    invalidateCachePrefix('/api/products');
     res.json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error updating product:');
@@ -222,6 +225,7 @@ router.delete('/:id', authGuard, permissionCheck('manage_products'), async (req,
     if (error) throw error;
     if (count === 0) return res.status(404).json({ error: 'Product not found' });
 
+    invalidateCachePrefix('/api/products');
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error deleting product:');

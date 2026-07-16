@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { apiCache } = require('../middleware/apiCache');
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ function applyLocationFilter(query, req) {
  * GET /api/analytics/summary
  * Fetch high-level stats for the Dashboard.
  */
-router.get('/summary', authGuard, async (req, res) => {
+router.get('/summary', authGuard, apiCache(60), async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -90,7 +91,7 @@ router.get('/summary', authGuard, async (req, res) => {
  * GET /api/analytics/sales-trend
  * Fetch the last 7 days of sales
  */
-router.get('/sales-trend', authGuard, async (req, res) => {
+router.get('/sales-trend', authGuard, apiCache(60), async (req, res) => {
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -140,7 +141,7 @@ router.get('/sales-trend', authGuard, async (req, res) => {
 /**
  * GET /api/analytics/shrinkage
  */
-router.get('/shrinkage', authGuard, async (req, res) => {
+router.get('/shrinkage', authGuard, apiCache(60), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('stock_movements')
@@ -175,7 +176,7 @@ router.get('/shrinkage', authGuard, async (req, res) => {
 /**
  * GET /api/analytics/reconciliation
  */
-router.get('/reconciliation', authGuard, async (req, res) => {
+router.get('/reconciliation', authGuard, apiCache(60), async (req, res) => {
   try {
     const dateParam = req.query.date;
     const targetDate = dateParam ? new Date(dateParam) : new Date();
@@ -269,7 +270,7 @@ router.get('/reconciliation', authGuard, async (req, res) => {
 /**
  * GET /api/analytics/recent-activity
  */
-router.get('/recent-activity', authGuard, async (req, res) => {
+router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
   try {
     let salesQuery = supabaseAdmin
       .from('sales')
@@ -404,7 +405,7 @@ router.delete('/reset', authGuard, async (req, res) => {
  * GET /api/analytics/top-products
  * Top 5 products by revenue this month
  */
-router.get('/top-products', authGuard, async (req, res) => {
+router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -467,7 +468,7 @@ router.get('/top-products', authGuard, async (req, res) => {
  * GET /api/analytics/inventory-health
  * Stock status counts: in-stock, low-stock, out-of-stock
  */
-router.get('/inventory-health', authGuard, async (req, res) => {
+router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('products')
@@ -504,7 +505,7 @@ router.get('/inventory-health', authGuard, async (req, res) => {
  * GET /api/analytics/staff-performance
  * Per-salesperson metrics this week
  */
-router.get('/staff-performance', authGuard, async (req, res) => {
+router.get('/staff-performance', authGuard, apiCache(60), async (req, res) => {
   try {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());

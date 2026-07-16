@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -11,7 +12,7 @@ const router = express.Router();
  * GET /api/customers
  * Fetch all customers for the business
  */
-router.get('/', authGuard, async (req, res) => {
+router.get('/', authGuard, apiCache(5), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req.query);
 
@@ -44,7 +45,7 @@ router.get('/', authGuard, async (req, res) => {
  * GET /api/customers/search
  * Search customers based on role permissions
  */
-router.get('/search', authGuard, async (req, res) => {
+router.get('/search', authGuard, apiCache(5), async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -84,7 +85,7 @@ router.get('/search', authGuard, async (req, res) => {
  * GET /api/customers/:id
  * Fetch a single customer
  */
-router.get('/:id', authGuard, async (req, res) => {
+router.get('/:id', authGuard, apiCache(5), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('customers')
@@ -141,6 +142,7 @@ router.post('/', authGuard, async (req, res) => {
       throw error;
     }
 
+    invalidateCachePrefix('/api/customers');
     res.status(201).json({ message: 'Customer created successfully', customer: data });
   } catch (err) {
     logger.error({ err: err }, 'Error creating customer:');
@@ -188,6 +190,7 @@ router.put('/:id', authGuard, async (req, res) => {
       throw error;
     }
 
+    invalidateCachePrefix('/api/customers');
     res.json({ message: 'Customer updated successfully', customer: data });
   } catch (err) {
     logger.error({ err: err }, 'Error updating customer:');
@@ -227,6 +230,7 @@ router.delete('/:id', authGuard, async (req, res) => {
 
     if (error) throw error;
 
+    invalidateCachePrefix('/api/customers');
     res.json({ message: 'Customer deleted successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error deleting customer:');

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
+import { getBusinessUrl } from '../../lib/subdomain';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -235,14 +236,15 @@ export function PlatformAdminProvider({ children }) {
         .from('businesses').insert([{ name: newBusinessName }]).select().single();
       if (businessError) throw businessError;
 
+      const businessUrl = getBusinessUrl(businessData.slug);
       if (adminEmail && adminPassword) {
         await api.post('/users/create', {
           email: adminEmail, password: adminPassword, name: 'Business Admin',
           business_id: businessData.id, role_name: 'Business Admin',
         });
-        toast.success(`Business "${newBusinessName}" and admin account created successfully!`);
+        toast.success(`Business "${newBusinessName}" created at ${businessUrl}. A welcome email was sent to ${adminEmail}.`);
       } else {
-        toast.success(`Business "${newBusinessName}" created successfully!`);
+        toast.success(`Business "${newBusinessName}" created at ${businessUrl}.`);
       }
       setShowAddBusinessModal(false);
       setNewBusinessName(''); setAdminEmail(''); setAdminPassword('');
@@ -287,8 +289,23 @@ export function PlatformAdminProvider({ children }) {
       if (err.message && err.message.includes('users_business_id_fkey')) {
         toast.error(`Cannot delete business "${name}" because there are users associated with it. Please "Ban" the business instead, or delete its users first.`);
       } else {
-        toast.error(`Error deleting business: ${err.message}`); 
+        toast.error(`Error deleting business: ${err.message}`);
       }
+    }
+  };
+
+  const handleSendWelcome = async (business) => {
+    const confirmed = await confirmDialog({
+      title: 'Send Welcome Email',
+      message: `Send the branded welcome email (with a fresh "set your password" link) to the admin of "${business.name}"?`,
+      confirmText: 'Send Email',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await api.post(`/businesses/${business.id}/send-welcome`);
+      toast.success(res?.message || `Welcome email sent to ${business.name}.`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to send welcome email.');
     }
   };
 
@@ -773,7 +790,7 @@ export function PlatformAdminProvider({ children }) {
     ALL_PERMISSIONS,
     fetchData,
     // Business CRUD
-    handleCreateBusiness, handleUpdateBusiness, handleToggleBusinessBan, handleDeleteBusiness, handleViewBusiness, openEditBusiness,
+    handleCreateBusiness, handleUpdateBusiness, handleToggleBusinessBan, handleDeleteBusiness, handleViewBusiness, openEditBusiness, handleSendWelcome,
     // Aliases used by tab components
     handleAddBusiness: handleCreateBusiness, handleEditBusiness: handleUpdateBusiness,
     handleBanBusiness: handleToggleBusinessBan, handleUnbanBusiness: handleToggleBusinessBan,

@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { resolveCurrency } = require('../utils/currency');
+const { sendBusinessWelcomeEmail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -172,6 +173,83 @@ router.put('/:id/setup-status/dismiss', authGuard, permissionCheck('manage_busin
   } catch (err) {
     logger.error({ err: err }, 'Error dismissing setup checklist:');
     res.status(500).json({ error: 'Failed to dismiss setup checklist' });
+  }
+});
+
+/**
+ * POST /api/businesses/:id/send-welcome
+ * Re-send the branded welcome email to a business's admin. Regenerates a fresh
+ * "set your password" link. Recipient is the business's Business Admin, or an
+ * explicit { email } in the body (must belong to the business).
+ * Access: Platform Admin only.
+ */
+router.post('/:id/send-welcome', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email: overrideEmail } = req.body || {};
+
+    const { data: business, error: bizErr } = await supabaseAdmin
+      .from('businesses')
+      .select('id, name, slug, subscription_plan_id')
+      .eq('id', id)
+      .single();
+
+    if (bizErr || !business) return res.status(404).json({ error: 'Business not found' });
+
+    // Resolve the recipient: explicit email (verified to belong to the business),
+    // otherwise the business's Business Admin account.
+    let recipient;
+    if (overrideEmail) {
+      const { data: u } = await supabaseAdmin
+        .from('users')
+        .select('name, email')
+        .eq('business_id', id)
+        .eq('email', overrideEmail)
+        .maybeSingle();
+      if (!u) return res.status(400).json({ error: 'That email does not belong to this business.' });
+      recipient = u;
+    } else {
+      const { data: admins } = await supabaseAdmin
+        .from('users')
+        .select('name, email, roles:role_id!inner(name)')
+        .eq('business_id', id)
+        .eq('roles.name', 'Business Admin')
+        .limit(1);
+      recipient = admins && admins[0];
+      if (!recipient) {
+        return res.status(400).json({ error: 'No Business Admin found for this business. Pass an explicit email.' });
+      }
+    }
+
+    let planName = null;
+    if (business.subscription_plan_id) {
+      const { data: plan } = await supabaseAdmin
+        .from('platform_plans')
+        .select('name')
+        .eq('id', business.subscription_plan_id)
+        .single();
+      planName = plan?.name || null;
+    }
+
+    const result = await sendBusinessWelcomeEmail(
+      business,
+      { name: recipient.name, email: recipient.email },
+      { planName },
+    );
+
+    if (!result.success) {
+      return res.status(502).json({ error: result.error || 'Failed to send welcome email' });
+    }
+
+    res.json({
+      message: result.simulated
+        ? `Welcome email simulated for ${recipient.email} (email provider not configured).`
+        : `Welcome email sent to ${recipient.email}.`,
+      recipients: result.recipients,
+    });
+  } catch (err) {
+    logger.error({ err: err }, 'Error sending welcome email:');
+    res.status(500).json({ error: 'Failed to send welcome email' });
   }
 });
 

@@ -17,3 +17,10 @@ export function getBusinessSlugFromHost(hostname = window.location.hostname) {
 
   return slug;
 }
+
+// The unique branded URL for a business, e.g. https://acme.app.quaderp.app.
+// Mirrors the server's resolveBusinessLoginUrl so both sides agree.
+export function getBusinessUrl(slug) {
+  if (!slug) return null;
+  return `https://${slug}.${BASE_DOMAIN}`;
+}

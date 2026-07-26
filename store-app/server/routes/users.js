@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { sendBusinessWelcomeEmail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -108,6 +109,41 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
         location_id: locId
       }));
       await supabaseAdmin.from('user_locations').insert(locationInserts);
+    }
+
+    // Send the branded welcome email when a business owner account is created.
+    // Non-blocking: a failed email must never fail user creation.
+    if (role_name === 'Business Admin' && assigned_business_id) {
+      try {
+        const { data: biz } = await supabaseAdmin
+          .from('businesses')
+          .select('id, name, slug, subscription_plan_id')
+          .eq('id', assigned_business_id)
+          .single();
+
+        if (biz) {
+          let planName = null;
+          if (biz.subscription_plan_id) {
+            const { data: plan } = await supabaseAdmin
+              .from('platform_plans')
+              .select('name')
+              .eq('id', biz.subscription_plan_id)
+              .single();
+            planName = plan?.name || null;
+          }
+
+          const result = await sendBusinessWelcomeEmail(
+            biz,
+            { name, email },
+            { planName },
+          );
+          if (!result.success) {
+            logger.warn({ business: biz.name, email, error: result.error }, 'Welcome email not sent');
+          }
+        }
+      } catch (welcomeErr) {
+        logger.error({ err: welcomeErr, email }, 'Welcome email step failed (user still created)');
+      }
     }
 
     res.json({ message: 'User created successfully', user: data.user });

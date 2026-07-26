@@ -1,10 +1,11 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { getBusinessUrl } from '../../../lib/subdomain';
 
 export default function BusinessesTab() {
   const {
     filteredBusinesses, businessSearchTerm, setBusinessSearchTerm, setShowAddBusinessModal,
-    handleViewBusiness, openEditBusiness, handleToggleBusinessBan, handleDeleteBusiness,
+    handleViewBusiness, openEditBusiness, handleToggleBusinessBan, handleDeleteBusiness, handleSendWelcome,
     users,
   } = usePlatformAdmin();
 
@@ -49,7 +50,21 @@ export default function BusinessesTab() {
                         <div className="product-avatar" style={{ background: b.status === 'banned' ? '#666' : 'linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary))' }}>
                           {(b.name || 'U').charAt(0).toUpperCase()}
                         </div>
-                        <span style={{ fontWeight: 500 }}>{b.name || 'Unnamed Business'}</span>
+                        <div>
+                          <div style={{ fontWeight: 500 }}>{b.name || 'Unnamed Business'}</div>
+                          {b.slug && (
+                            <a
+                              href={getBusinessUrl(b.slug)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontSize: '0.78rem', color: 'var(--color-accent-primary)', textDecoration: 'none' }}
+                              title="Open this business's URL"
+                            >
+                              {getBusinessUrl(b.slug).replace('https://', '')}
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td><span className="badge badge-neutral">{userCount}</span></td>
@@ -68,6 +83,9 @@ export default function BusinessesTab() {
                         </button>
                         <button className="btn-icon" onClick={() => openEditBusiness(b)} title="Edit" aria-label={`Edit ${b.name}`}>
                           {Icons.edit}
+                        </button>
+                        <button className="btn-icon" onClick={() => handleSendWelcome(b)} title="Send welcome email" aria-label={`Send welcome email to ${b.name}`}>
+                          {Icons.email}
                         </button>
                         <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleBusinessBan(b)} title={b.status === 'banned' ? 'Unban' : 'Ban'} aria-label={b.status === 'banned' ? `Unban ${b.name}` : `Ban ${b.name}`}>
                           {Icons.ban}

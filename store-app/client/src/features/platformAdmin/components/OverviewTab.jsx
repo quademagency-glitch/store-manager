@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { EmptyStateRow, PageHeader } from '../../../components/ui';
 
 export default function OverviewTab() {
   const {
@@ -12,24 +13,22 @@ export default function OverviewTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Platform Overview</h1>
-          <p className="dashboard-subtitle">
-            Welcome back, <strong>{user?.email?.split('@')[0] || 'Admin'}</strong> — here's how the platform is performing.
-          </p>
-        </div>
-        <div className="dashboard-role-badge">
-          <span className="role-badge" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(249,115,22,0.05))', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+      <PageHeader
+        title="Platform Overview"
+        subtitle={<>Welcome back, <strong>{user?.email?.split('@')[0] || 'Admin'}</strong> — here's how the platform is performing.</>}
+        actions={
+            <div className="dashboard-role-badge">
+            <span className="role-badge" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(249,115,22,0.05))', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
             Platform Admin
-          </span>
-        </div>
-      </header>
+            </span>
+            </div>
+        }
+      />
 
       <div className="dashboard-content">
         {/* ── Stats Cards ── */}
         <div className="stats-grid pa-stats-grid">
-          <div className="stat-card pa-stat-card" style={{ cursor: 'pointer' }} onClick={() => { setBusinessSearchTerm(''); setActiveTab('businesses'); }}>
+          <div className="stat-card pa-stat-card cursor-pointer" onClick={() => { setBusinessSearchTerm(''); setActiveTab('businesses'); }}>
             <div className="stat-icon stat-icon-products">
               {Icons.business}
             </div>
@@ -40,7 +39,7 @@ export default function OverviewTab() {
             </div>
           </div>
 
-          <div className="stat-card pa-stat-card" style={{ cursor: 'pointer' }} onClick={() => { setUserSearchTerm(''); setActiveTab('users'); }}>
+          <div className="stat-card pa-stat-card cursor-pointer" onClick={() => { setUserSearchTerm(''); setActiveTab('users'); }}>
             <div className="stat-icon stat-icon-sales">
               {Icons.users}
             </div>
@@ -51,7 +50,7 @@ export default function OverviewTab() {
             </div>
           </div>
 
-          <div className="stat-card pa-stat-card" style={{ cursor: 'pointer' }} onClick={() => { setUserSearchTerm('Business Admin'); setActiveTab('users'); }}>
+          <div className="stat-card pa-stat-card cursor-pointer" onClick={() => { setUserSearchTerm('Business Admin'); setActiveTab('users'); }}>
             <div className="stat-icon" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))', color: 'var(--color-warning)' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -66,7 +65,7 @@ export default function OverviewTab() {
             </div>
           </div>
 
-          <div className="stat-card pa-stat-card" style={{ cursor: 'pointer' }} onClick={() => { setBusinessSearchTerm(''); setActiveTab('businesses'); }}>
+          <div className="stat-card pa-stat-card cursor-pointer" onClick={() => { setBusinessSearchTerm(''); setActiveTab('businesses'); }}>
             <div className="stat-icon" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05))', color: '#a78bfa' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -89,7 +88,7 @@ export default function OverviewTab() {
             System Health & Usage
           </h2>
           <div className="pa-health-grid">
-            <div className="pa-health-card" style={{ cursor: 'pointer' }} onClick={() => setShowHealthModal(true)}>
+            <div className="pa-health-card cursor-pointer" onClick={() => setShowHealthModal(true)}>
               <div className="pa-health-indicator pa-health-good"></div>
               <div className="pa-health-info">
                 <span className="pa-health-label">Uptime</span>
@@ -97,21 +96,21 @@ export default function OverviewTab() {
               </div>
               <span className="pa-health-badge pa-health-badge-good">Operational</span>
             </div>
-            <div className="pa-health-card" style={{ cursor: 'pointer' }} onClick={() => setShowHealthModal(true)}>
+            <div className="pa-health-card cursor-pointer" onClick={() => setShowHealthModal(true)}>
               <div className="pa-health-indicator pa-health-neutral"></div>
               <div className="pa-health-info">
                 <span className="pa-health-label">Last Downtime</span>
                 <span className="pa-health-value">{uptimeStats.lastDowntime}</span>
               </div>
             </div>
-            <div className="pa-health-card" style={{ cursor: 'pointer' }} onClick={() => setShowHealthModal(true)}>
+            <div className="pa-health-card cursor-pointer" onClick={() => setShowHealthModal(true)}>
               <div className="pa-health-indicator pa-health-good"></div>
               <div className="pa-health-info">
                 <span className="pa-health-label">Avg Response</span>
                 <span className="pa-health-value">{uptimeStats.avgResponseTime}</span>
               </div>
             </div>
-            <div className="pa-health-card" style={{ cursor: 'pointer' }} onClick={() => setShowHealthModal(true)}>
+            <div className="pa-health-card cursor-pointer" onClick={() => setShowHealthModal(true)}>
               <div className="pa-health-indicator pa-health-good"></div>
               <div className="pa-health-info">
                 <span className="pa-health-label">Requests Today</span>
@@ -128,8 +127,8 @@ export default function OverviewTab() {
                 <h3 className="modal-title">Detailed System Health</h3>
                 <button className="btn-close" onClick={() => setShowHealthModal(false)}>×</button>
               </div>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <p style={{ color: 'var(--color-text-secondary)' }}>The platform is currently operating normally across all primary services. No major outages detected in the last 48 hours.</p>
+              <div className="modal-body flex flex-col gap-md">
+                <p className="text-secondary">The platform is currently operating normally across all primary services. No major outages detected in the last 48 hours.</p>
                 <div style={{ padding: '1rem', background: 'var(--color-bg-tertiary)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                   <strong>API Latency:</strong> ~142ms (Stable)<br/>
                   <strong>Database Load:</strong> 12% (Healthy)<br/>
@@ -172,7 +171,7 @@ export default function OverviewTab() {
                           <div className="product-avatar" style={{ background: b.status === 'banned' ? '#666' : 'linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary))' }}>
                             {(b.name || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <span style={{ fontWeight: 500 }}>{b.name || 'Unnamed Business'}</span>
+                          <span className="font-medium">{b.name || 'Unnamed Business'}</span>
                         </div>
                       </td>
                       <td>
@@ -182,7 +181,7 @@ export default function OverviewTab() {
                           <span className="badge badge-neutral" style={{ color: '#4ade80', borderColor: '#4ade80' }}>Active</span>
                         )}
                       </td>
-                      <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(b.created_at).toLocaleDateString()}</td>
+                      <td className="text-secondary">{new Date(b.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
                         <button className="btn btn-secondary btn-sm" onClick={() => handleViewBusiness(b)}>
                           {Icons.eye} View
@@ -191,7 +190,7 @@ export default function OverviewTab() {
                     </tr>
                   ))}
                   {businesses.filter(b => b.name !== 'Pending Assignment').length === 0 && (
-                    <tr><td colSpan="4" className="text-center py-xl text-muted">No businesses registered yet.</td></tr>
+                    <EmptyStateRow colSpan={4} icon="business" title="No businesses registered yet" />
                   )}
                 </tbody>
               </table>

@@ -8,7 +8,7 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 
 export default function Returns() {
-  const { user } = useAuthContext();
+  const { user, role: contextRole } = useAuthContext();
   const toast = useToast();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
@@ -30,7 +30,7 @@ export default function Returns() {
   const [refundReceiptData, setRefundReceiptData] = useState(null);
 
   // Security Check: Only Admins
-  const role = user?.user_metadata?.role || '';
+  const role = contextRole || user?.user_metadata?.role || '';
   const isDoubleMode = business?.qr_tracking_mode === 'double';
   const isAdmin = role === 'Business Admin' || role === 'Platform Admin';
 
@@ -175,20 +175,20 @@ export default function Returns() {
   return (
     <div className="container" style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--color-error-bg)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
         </div>
         <div>
-          <h1 className="dashboard-title" style={{ margin: 0 }}>Returns & Reversals</h1>
-          <p className="text-muted" style={{ margin: 0 }}>Process customer refunds and inventory restocks.</p>
+          <h1 className="dashboard-title m-0">Returns & Reversals</h1>
+          <p className="text-muted m-0">Process customer refunds and inventory restocks.</p>
         </div>
       </div>
 
       <div className="glass-panel" style={{ padding: '24px', marginBottom: '2rem', background: 'var(--color-bg-secondary)' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <form onSubmit={handleSearch} className="flex gap-md items-center">
           <div style={{ flex: 1, position: 'relative' }}>
             <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -223,26 +223,26 @@ export default function Returns() {
             <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: 'var(--color-bg-secondary)' }}>
                 <tr>
-                  <th style={{ padding: '16px' }}>Date</th>
-                  <th style={{ padding: '16px' }}>Receipt #</th>
-                  <th style={{ padding: '16px' }}>Customer</th>
-                  <th style={{ padding: '16px' }}>Status</th>
-                  <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
+                  <th className="p-md">Date</th>
+                  <th className="p-md">Receipt #</th>
+                  <th className="p-md">Customer</th>
+                  <th className="p-md">Status</th>
+                  <th className="p-md text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {searchResults.map(sale => (
-                  <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '16px' }}>{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
-                    <td style={{ padding: '16px' }}>
-                      <button onClick={() => openReturnModal(sale)} className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                  <tr key={sale.id} className="border-b">
+                    <td className="p-md">{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</td>
+                    <td className="p-md">
+                      <button onClick={() => openReturnModal(sale)} className="btn btn-sm" style={{ background: 'var(--color-border)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
                         {sale.receipt_number || sale.id.substring(0, 8)}
                       </button>
                     </td>
-                    <td style={{ padding: '16px' }}>
-                      {sale.customers ? (<div><div style={{ fontWeight: 600 }}>{sale.customers.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customers.phone}</div></div>) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
+                    <td className="p-md">
+                      {sale.customers ? (<div><div className="font-bold">{sale.customers.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customers.phone}</div></div>) : <span className="text-muted">Walk-in Customer</span>}
                     </td>
-                    <td style={{ padding: '16px' }}>
+                    <td className="p-md">
                       <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
                         {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
                       </span>
@@ -258,7 +258,7 @@ export default function Returns() {
             {searchResults.map(sale => (
               <div key={sale.id} className="m-card">
                 <div className="m-card-top">
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <div className="m-card-title">{sale.customers ? sale.customers.name : 'Walk-in Customer'}</div>
                     {sale.customers?.phone && <div className="m-card-sub">{sale.customers.phone}</div>}
                     <div className="m-card-meta">{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })} · #{sale.receipt_number || sale.id.substring(0, 8)}</div>
@@ -283,7 +283,7 @@ export default function Returns() {
       <Modal isOpen={showReturnModal} onClose={() => setShowReturnModal(false)} title={`Process Return: ${selectedSale?.receipt_number || ''}`}>
         {selectedSale && (
           <div style={{ padding: '0.5rem' }}>
-            <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ marginBottom: '24px', padding: '16px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-bg)', borderRadius: 'var(--radius-md)' }}>
               <strong style={{ color: 'var(--color-error)' }}>Select items and quantities to return:</strong>
             </div>
 
@@ -314,8 +314,8 @@ export default function Returns() {
 
                   return (
                     <React.Fragment key={item.id}>
-                      <tr style={{ background: isChecked ? 'rgba(239, 68, 68, 0.05)' : 'transparent' }}>
-                        <td style={{ textAlign: 'center' }}>
+                      <tr style={{ background: isChecked ? 'var(--color-error-bg)' : 'transparent' }}>
+                        <td className="text-center">
                           <input 
                             type="checkbox" 
                             checked={isChecked}
@@ -324,11 +324,11 @@ export default function Returns() {
                           />
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
+                          <div className="font-bold">{item.product?.name}</div>
                           <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: {item.product?.sku}</div>
                         </td>
-                        <td style={{ fontWeight: 500 }}>{fmt(item.unit_price)}</td>
-                        <td style={{ fontWeight: 500 }}>{item.quantity}</td>
+                        <td className="font-medium">{fmt(item.unit_price)}</td>
+                        <td className="font-medium">{item.quantity}</td>
                         <td style={{ width: '120px' }}>
                           <input 
                             type="number" 
@@ -342,36 +342,36 @@ export default function Returns() {
                         </td>
                       </tr>
                       {isChecked && (
-                        <tr style={{ background: 'rgba(239, 68, 68, 0.02)' }}>
+                        <tr style={{ background: 'var(--color-error-bg)' }}>
                           <td colSpan="5" style={{ padding: '12px 24px' }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-error)', marginBottom: '8px' }}>Scan Items to Return</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div className="flex flex-col gap-sm">
                               {scansList.map((scan, idx) => (
-                                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <div key={idx} className="flex gap-sm items-center">
                                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', width: '60px' }}>Unit #{idx + 1}</span>
                                   {isDoubleMode ? (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', flex: 1 }}>
-                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Pack Code *</div>
-                                        <div style={{ fontSize: '14px', color: scan.pack_code ? '#0f172a' : '#94a3b8', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.pack_code || 'Awaiting scan...'}</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : 'var(--color-border)'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px var(--color-border)' }}>
+                                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Pack Code *</div>
+                                        <div style={{ fontSize: '14px', color: scan.pack_code ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.pack_code || 'Awaiting scan...'}</div>
                                         <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan QR</button>
                                       </div>
                                       
-                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Serial Number *</div>
-                                        <div style={{ fontSize: '14px', color: scan.serial_number ? '#0f172a' : '#94a3b8', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.serial_number || 'Awaiting scan...'}</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : 'var(--color-border)'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px var(--color-border)' }}>
+                                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Serial Number *</div>
+                                        <div style={{ fontSize: '14px', color: scan.serial_number ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.serial_number || 'Awaiting scan...'}</div>
                                         <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan QR</button>
                                       </div>
 
-                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.product_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.product_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Product Code (Opt)</div>
-                                        <div style={{ fontSize: '14px', color: scan.product_code ? '#0f172a' : '#94a3b8', fontWeight: scan.product_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.product_code || 'Awaiting scan...'}</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.product_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.product_code ? '#bbf7d0' : 'var(--color-border)'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px var(--color-border)' }}>
+                                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Product Code (Opt)</div>
+                                        <div style={{ fontSize: '14px', color: scan.product_code ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: scan.product_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.product_code || 'Awaiting scan...'}</div>
                                         <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for product code...')} title="Scan Product Code">Scan QR</button>
                                       </div>
 
-                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Item Code *</div>
-                                        <div style={{ fontSize: '14px', color: scan.item_code ? '#0f172a' : '#94a3b8', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.item_code || 'Awaiting scan...'}</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : 'var(--color-border)'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px var(--color-border)' }}>
+                                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Item Code *</div>
+                                        <div style={{ fontSize: '14px', color: scan.item_code ? 'var(--color-text-primary)' : 'var(--color-text-muted)', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.item_code || 'Awaiting scan...'}</div>
                                         <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan QR</button>
                                       </div>
                                     </div>
@@ -392,7 +392,7 @@ export default function Returns() {
             </div>
 
             <div className="form-group" style={{ marginBottom: '32px' }}>
-              <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>Reason for Return</label>
+              <label className="font-bold mb-sm block">Reason for Return</label>
               <textarea 
                 className="input" 
                 rows="3" 
@@ -410,7 +410,7 @@ export default function Returns() {
                   {fmt(calculateTotalRefund())}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div className="flex gap-md">
                 <button className="btn btn-outline" style={{ padding: '12px 24px' }} onClick={() => setShowReturnModal(false)} disabled={isProcessing}>Cancel</button>
                 <button className="btn btn-primary" style={{ background: 'var(--color-error)', border: 'none', padding: '12px 24px', fontWeight: 700 }} onClick={processReturn} disabled={isProcessing || calculateTotalRefund() === 0}>
                   {isProcessing ? 'Processing...' : 'Confirm Return'}
@@ -425,7 +425,7 @@ export default function Returns() {
       <Modal isOpen={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Refund Receipt">
         {refundReceiptData && (
           <div style={{ padding: '0.5rem' }}>
-            <div id="refund-receipt-print-area" className="printable-area" style={{ padding: '32px', background: 'white', color: '#1e293b', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: '"Inter", -apple-system, sans-serif' }}>
+            <div id="refund-receipt-print-area" className="printable-area" style={{ padding: '32px', background: 'white', color: '#1e293b', borderRadius: '8px', border: '1px solid var(--color-border)', fontFamily: '"Inter", -apple-system, sans-serif' }}>
               
               {/* Letterhead */}
               <LetterheadRenderer
@@ -436,16 +436,16 @@ export default function Returns() {
 
               {/* Document Title */}
               <div style={{ textAlign: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '2px dashed #cbd5e1' }}>
-                <h2 style={{ margin: '12px 0 8px 0', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#dc2626' }}>
+                <h2 style={{ margin: '12px 0 8px 0', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--color-error-text)' }}>
                   REFUND NOTE
                 </h2>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                   Original Receipt #: {refundReceiptData.receiptNumber}
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                   Date: {new Date(refundReceiptData.date).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                   Customer: {refundReceiptData.customerName}
                 </div>
               </div>
@@ -453,19 +453,19 @@ export default function Returns() {
               {/* Items Table */}
               <table style={{ width: '100%', marginBottom: '24px', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Item</th>
-                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>SKU</th>
-                    <th style={{ textAlign: 'center', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Qty</th>
-                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Unit Price</th>
-                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Total</th>
+                  <tr className="border-b">
+                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Item</th>
+                    <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>SKU</th>
+                    <th style={{ textAlign: 'center', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Unit Price</th>
+                    <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {refundReceiptData.items.map((item, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 8px', fontWeight: 600 }}>{item.name}</td>
-                      <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{item.sku || '—'}</td>
+                      <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{item.sku || '—'}</td>
                       <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600 }}>{item.qty}</td>
                       <td style={{ textAlign: 'right', padding: '10px 8px', fontFamily: 'monospace' }}>{fmt(item.price)}</td>
                       <td style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, fontFamily: 'monospace' }}>{fmt(item.total)}</td>
@@ -475,21 +475,21 @@ export default function Returns() {
               </table>
 
               {/* Total Refund */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #334155', paddingTop: '16px', fontWeight: 800, fontSize: '1.2rem', color: '#dc2626' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #334155', paddingTop: '16px', fontWeight: 800, fontSize: '1.2rem', color: 'var(--color-error-text)' }}>
                 <span>TOTAL REFUND</span>
                 <span>{fmt(refundReceiptData.totalRefund)}</span>
               </div>
               
               {/* Reason */}
               {refundReceiptData.reason && (
-                <div style={{ marginTop: '20px', padding: '12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#991b1b', marginBottom: '4px' }}>Reason for Return</div>
+                <div style={{ marginTop: '20px', padding: '12px', background: 'var(--color-error-bg)', borderRadius: '6px', border: '1px solid var(--color-error-border)' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-error-text)', marginBottom: '4px' }}>Reason for Return</div>
                   <div style={{ fontSize: '0.9rem', color: '#475569' }}>{refundReceiptData.reason}</div>
                 </div>
               )}
 
               {/* Processed By */}
-              <div style={{ marginTop: '20px', fontSize: '0.82rem', color: '#64748b' }}>
+              <div style={{ marginTop: '20px', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
                 Processed by: <strong>{refundReceiptData.processedBy}</strong>
               </div>
 
@@ -498,9 +498,9 @@ export default function Returns() {
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '24px' }}>
+            <div className="flex justify-end gap-md mt-lg">
               <button className="btn btn-outline" onClick={() => setShowReceiptModal(false)}>Close</button>
-              <button className="btn btn-primary" onClick={handlePrintRefund} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-primary flex items-center gap-sm" onClick={handlePrintRefund}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Print Refund Note
               </button>

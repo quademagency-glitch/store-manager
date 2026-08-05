@@ -5,12 +5,14 @@ import { useToast } from '../../hooks/useToast';
 import LetterheadBuilder from '../../components/LetterheadBuilder';
 import { Icons } from '../../components/icons/Icons';
 import { CURRENCY_OPTIONS } from '../../utils/currencyOptions';
+import { ErrorBanner, PageHeader } from '../../components/ui';
 
 export default function Organization() {
   const { user } = useAuthContext();
   const toast = useToast();
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -20,6 +22,7 @@ export default function Organization() {
         setBusiness(data);
       } catch (err) {
         if (import.meta.env.DEV) console.error("Error loading business", err);
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -90,12 +93,12 @@ export default function Organization() {
 
   return (
     <div className="page-container">
-      <header className="page-header" style={{ marginBottom: 'var(--space-xl)' }}>
-        <div>
-          <h1 className="page-title">Organization Settings</h1>
-          <p className="page-subtitle">Manage your company profile, branding, and document letterhead.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Organization Settings"
+        subtitle="Manage your company profile, branding, and document letterhead."
+      />
+
+      <ErrorBanner error={error} />
 
       <form onSubmit={handleSave}>
         <div className="org-settings-page">
@@ -200,8 +203,8 @@ export default function Organization() {
                     <span aria-hidden="true">{Icons.image}</span>
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="flex-1">
+                  <div className="form-group mb-0">
                     <label htmlFor="org-logo">Logo URL</label>
                     <input
                       id="org-logo"

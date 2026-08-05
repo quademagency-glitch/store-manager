@@ -4,12 +4,14 @@ import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import { Icons } from '../components/icons/Icons';
+import { ErrorBanner, PageHeader } from '../components/ui';
 
 export default function AccountingSettings() {
   const toast = useToast();
   const confirm = useConfirm();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
@@ -41,6 +43,7 @@ export default function AccountingSettings() {
       setTemplates(data);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -56,6 +59,7 @@ export default function AccountingSettings() {
       setAvailableRoles(roleNames);
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to fetch roles:', err);
+      setError(err);
       // Fallback to defaults if roles endpoint fails
       setAvailableRoles(['Salesperson', 'Cashier', 'Manager', 'Business Admin']);
     }
@@ -228,19 +232,21 @@ export default function AccountingSettings() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Accounting Template Settings</h1>
-          <p className="page-subtitle">Build and manage your dynamic accounting templates (Forms).</p>
-        </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="btn btn-primary"
-          aria-label="Create a new template"
-        >
-          + Create Template
-        </button>
-      </header>
+      <PageHeader
+        title="Accounting Template Settings"
+        subtitle="Build and manage your dynamic accounting templates (Forms)."
+        actions={
+            <button
+            onClick={() => handleOpenModal()}
+            className="btn btn-primary"
+            aria-label="Create a new template"
+            >
+            + Create Template
+            </button>
+        }
+      />
+
+      <ErrorBanner error={error} onRetry={fetchTemplates} />
       
       {loading ? (
         <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--color-text-secondary)' }}>Loading templates...</div>
@@ -480,7 +486,7 @@ export default function AccountingSettings() {
             <div className="acct-form-section">
               <h4 className="acct-form-section-title">Role Assignment</h4>
               <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>Select which roles can use this template.</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="flex flex-wrap gap-sm">
                 {availableRoles.map(r => (
                   <button
                     key={r}

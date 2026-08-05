@@ -23,11 +23,6 @@
   box-shadow: var(--shadow-md);
 }
 
-[data-theme="dark"] .org-section {
-  background: rgba(18, 18, 24, 0.5);
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
 .org-section-header {
   display: flex;
   align-items: center;
@@ -35,10 +30,6 @@
   padding: var(--space-lg) var(--space-xl);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg-secondary);
-}
-
-[data-theme="dark"] .org-section-header {
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .org-section-icon {
@@ -106,10 +97,10 @@
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Border colour only. The ring itself comes from a11y.css, so
+   every field in the app draws the same one. */
 .org-form-grid .form-input:focus {
-  outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .org-form-grid .form-input::placeholder {
@@ -228,10 +219,6 @@
   background: var(--color-bg-secondary);
 }
 
-[data-theme="dark"] .org-save-bar {
-  background: rgba(255, 255, 255, 0.02);
-}
-
 /* ---- Letterhead Builder ---- */
 .lh-builder {
   display: grid;
@@ -266,9 +253,7 @@
 }
 
 .lh-form-panel .form-input:focus {
-  outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 2px var(--color-accent-glow);
 }
 
 .lh-toggle-row {
@@ -373,14 +358,14 @@
 
 .lh-preview-tagline {
   font-size: 0.7rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
 .lh-preview-contact {
   text-align: right;
   font-size: 0.65rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   line-height: 1.6;
 }
 
@@ -406,7 +391,7 @@
   text-align: center;
   padding-top: 1rem;
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .lh-preview-footer.with-border {

@@ -6,6 +6,7 @@ getEnv(); // Validate env vars at startup
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const logger = require('./utils/logger');
 const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
@@ -41,10 +42,28 @@ const importsRoutes = require('./routes/imports');
 const hrRoutes = require('./routes/hr');
 const loyaltyRoutes = require('./routes/loyalty');
 const reportsRoutes = require('./routes/reports');
+const publicApiRoutes = require('./routes/publicApi');
+const integrationsRoutes = require('./routes/integrations');
+const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
+const { initWebhookRetryCron } = require('./services/webhookRetryCron');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Per-business rate limit for the public storefront API. Keyed by the
+// resolved business (from apiKeyGuard, which must run before this), not
+// IP — several storefront requests can legitimately share an IP (a
+// server-side integration). req.ip is only a fallback for the (rare)
+// case apiKeyGuard let a request through with no req.business.
+const publicApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  keyGenerator: (req) => req.business?.id || rateLimit.ipKeyGenerator(req.ip),
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // Middleware
@@ -54,6 +73,8 @@ const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
   'http://localhost:5173', 
   'http://127.0.0.1:5173',
+  'http://localhost:5178',
+  'http://127.0.0.1:5178',
   'http://localhost:3000',
   'https://store-manager-app-one.vercel.app',
   'https://store-manager-app-quademagency-glitchs-projects.vercel.app',
@@ -211,6 +232,13 @@ app.use('/api/loyalty', loyaltyRoutes);
 // Reports routes
 app.use('/api/reports', reportsRoutes);
 
+// Ecommerce integrations — admin CRUD for API keys/webhooks (staff auth)
+app.use('/api/integrations', integrationsRoutes);
+
+// Public storefront API — API-key auth, not staff JWT. apiKeyGuard must run
+// before publicApiLimiter so the limiter can key by req.business.id.
+app.use('/api/v1/public', apiKeyGuard, publicApiLimiter, publicApiRoutes);
+
 // ============================================
 // Error handling
 // ============================================
@@ -246,6 +274,7 @@ if (require.main === module) {
     // Only init cron if running standalone (not via cluster.js)
     if (!cluster.isWorker) {
       initSubscriptionCron();
+      initWebhookRetryCron();
     }
   });
 }

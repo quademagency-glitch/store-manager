@@ -2,31 +2,34 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
+/** Keep the browser UI colour in step with the canvas. */
+function syncThemeColor(theme) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#020617' : '#eef2f7');
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  syncThemeColor(theme);
+}
+
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('light'); // default until evaluated
+  // Seed from the attribute the inline pre-paint script in index.html already
+  // set. Re-deriving it here would repaint a second time on every load.
+  const [theme, setTheme] = useState(
+    () => document.documentElement.getAttribute('data-theme') || 'light',
+  );
 
   useEffect(() => {
-    // Check localStorage first
-    const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      return;
-    }
-
-    // Check system preference
+    // The pre-paint script owns the initial value; this only tracks later OS
+    // changes, and only while the user has expressed no explicit preference.
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const systemTheme = mediaQuery.matches ? 'dark' : 'light';
-    setTheme(systemTheme);
-    document.documentElement.setAttribute('data-theme', systemTheme);
 
-    // Listen for system changes if no explicit preference is set
     const handleChange = (e) => {
-      if (!localStorage.getItem('app-theme')) {
-        const newTheme = e.matches ? 'dark' : 'light';
-        setTheme(newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-      }
+      if (localStorage.getItem('app-theme')) return;
+      const newTheme = e.matches ? 'dark' : 'light';
+      setTheme(newTheme);
+      applyTheme(newTheme);
     };
 
     mediaQuery.addEventListener('change', handleChange);
@@ -34,10 +37,10 @@ export function ThemeProvider({ children }) {
   }, []);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => {
+    setTheme((prevTheme) => {
       const newTheme = prevTheme === 'light' ? 'dark' : 'light';
       localStorage.setItem('app-theme', newTheme);
-      document.documentElement.setAttribute('data-theme', newTheme);
+      applyTheme(newTheme);
       return newTheme;
     });
   };

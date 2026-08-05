@@ -1,26 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ErrorBanner, PageHeader } from '../../components/ui';
 
 const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
 export default function ShrinkageReport() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Hoisted out of the effect so the error banner can offer a retry.
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/analytics/shrinkage');
+      setEvents(res || []);
+      setError(null);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Error fetching shrinkage events:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await api.get('/analytics/shrinkage');
-        setEvents(res || []);
-      } catch (err) {
-        if (import.meta.env.DEV) console.error("Error fetching shrinkage events:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   if (loading) return <div className="p-xl text-center">Loading loss prevention data...</div>;
 
@@ -46,12 +53,12 @@ export default function ShrinkageReport() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Loss Prevention (Shrinkage)</h1>
-          <p className="dashboard-subtitle">Track and analyze inventory losses due to theft, damage, or errors.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Loss Prevention (Shrinkage)"
+        subtitle="Track and analyze inventory losses due to theft, damage, or errors."
+      />
+
+      <ErrorBanner error={error} onRetry={fetchData} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '24px' }}>
         {/* Breakdown Chart */}
@@ -108,7 +115,7 @@ export default function ShrinkageReport() {
                   {events.map(e => (
                     <tr key={e.id}>
                       <td style={{ whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleDateString()}</td>
-                      <td style={{ fontWeight: 500 }}>{e.product?.name || 'Unknown'}</td>
+                      <td className="font-medium">{e.product?.name || 'Unknown'}</td>
                       <td>{e.user?.name || e.user?.email || 'Unknown'}</td>
                       <td style={{ color: 'var(--color-error)', fontWeight: 'bold' }}>{Math.abs(e.quantity_change)}</td>
                       <td>${e.value_lost.toFixed(2)}</td>

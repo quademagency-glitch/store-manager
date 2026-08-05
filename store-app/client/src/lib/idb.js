@@ -54,6 +54,12 @@ export const getCustomersFromIDB = async () => {
 };
 
 // --- Offline Queue (Pending API Calls) ---
+
+// After this many failed replays an item is dead-lettered: it stops being
+// retried automatically and is surfaced in the UI for manual attention, rather
+// than silently re-failing on every sync forever.
+export const MAX_SYNC_ATTEMPTS = 5;
+
 export const addToOfflineQueue = async (endpoint, method, payload) => {
   const db = await getDB();
   const item = {
@@ -61,7 +67,9 @@ export const addToOfflineQueue = async (endpoint, method, payload) => {
     method,
     payload,
     timestamp: Date.now(),
-    status: 'pending' // 'pending', 'syncing', 'failed'
+    attempts: 0,
+    errorMsg: '',
+    status: 'pending' // 'pending' | 'failed'
   };
   return db.add('offline_queue', item);
 };
@@ -76,15 +84,20 @@ export const removeFromOfflineQueue = async (id) => {
   return db.delete('offline_queue', id);
 };
 
-export const updateOfflineQueueStatus = async (id, status, errorMsg = '') => {
+/**
+ * Merge a patch into a queued item. Used to persist replay progress and
+ * failure detail so neither is lost across reloads.
+ */
+export const updateOfflineQueueItem = async (id, patch) => {
   const db = await getDB();
   const tx = db.transaction('offline_queue', 'readwrite');
   const store = tx.objectStore('offline_queue');
   const item = await store.get(id);
   if (item) {
-    item.status = status;
-    item.errorMsg = errorMsg;
-    await store.put(item);
+    await store.put({ ...item, ...patch });
   }
   await tx.done;
 };
+
+export const updateOfflineQueueStatus = (id, status, errorMsg = '') =>
+  updateOfflineQueueItem(id, { status, errorMsg });

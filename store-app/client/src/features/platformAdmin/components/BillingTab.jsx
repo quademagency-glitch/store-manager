@@ -1,5 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { EmptyStateRow, PageHeader } from '../../../components/ui';
 
 export default function BillingTab() {
   const {
@@ -12,20 +13,20 @@ export default function BillingTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Billing & Payments</h1>
-          <p className="dashboard-subtitle">Payment gateways, revenue overview, and invoice management.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn btn-secondary" onClick={() => setShowRecordPaymentModal(true)}>
+      <PageHeader
+        title="Billing & Payments"
+        subtitle="Payment gateways, revenue overview, and invoice management."
+        actions={
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-secondary" onClick={() => setShowRecordPaymentModal(true)}>
             {Icons.plus} Record Payment
-          </button>
-          <button className="btn btn-primary" onClick={() => { setShowAssignPlanModal(true); setAssignForm({ business_id: '', plan_id: '', billing_cycle: 'monthly' }); }}>
+            </button>
+            <button className="btn btn-primary" onClick={() => { setShowAssignPlanModal(true); setAssignForm({ business_id: '', plan_id: '', billing_cycle: 'monthly' }); }}>
             {Icons.pricing} Assign Plan
-          </button>
-        </div>
-      </header>
+            </button>
+            </div>
+        }
+      />
 
       <div className="dashboard-content">
         {/* Revenue Stats */}
@@ -55,7 +56,7 @@ export default function BillingTab() {
         {/* Payment Gateways */}
         <div style={{ marginBottom: 'var(--space-2xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-            <h2 className="pa-section-title" style={{ marginBottom: 0 }}>
+            <h2 className="pa-section-title mb-0">
               {Icons.billing} Payment Gateways
             </h2>
             <button className="btn btn-secondary btn-sm" onClick={() => openGatewayModal()}>
@@ -130,11 +131,11 @@ export default function BillingTab() {
                     <tr key={inv.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{inv.invoice_number}</td>
                       <td>{inv.businesses?.name || '—'}</td>
-                      <td style={{ fontWeight: 600 }}>{formatCurrency(inv.amount, inv.currency)}</td>
+                      <td className="font-bold">{formatCurrency(inv.amount, inv.currency)}</td>
                       <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
                       <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                       <td className="text-right">
-                        <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                        <div className="action-buttons justify-end">
                           <button className="btn btn-secondary btn-sm" onClick={() => window.open(`/invoice/${inv.id}`, '_blank')} title="View Invoice">
                             {Icons.eye} View
                           </button>
@@ -148,7 +149,7 @@ export default function BillingTab() {
                     </tr>
                   ))}
                   {invoices.length === 0 && (
-                    <tr><td colSpan="6" className="text-center py-xl text-muted">No invoices yet.</td></tr>
+                    <EmptyStateRow colSpan={6} icon="billing" title="No invoices yet" />
                   )}
                 </tbody>
               </table>

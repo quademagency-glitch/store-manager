@@ -20,30 +20,18 @@ body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   line-height: 1.6;
-  min-height: 100vh;
-  overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100dvh;
+  /* No `overflow-x: hidden`. It was hiding real layout overflow instead of
+     fixing it, and it creates a scroll container that breaks `position:
+     sticky` on the sidebar. Overflow is asserted in
+     tests/invariants/layout.spec.ts instead. */
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
-/* Elegant, non-dramatic glassmorphism */
-.glass-panel {
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition: all var(--transition-normal);
-}
-
-[data-theme="dark"] .glass-panel {
-  background: rgba(18, 18, 18, 0.55);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 6px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="light"] .glass-panel {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
-}
+/* `.glass-panel` was defined here AND in premium-ui-utilities.css, with
+   these two [data-theme] variants out-specifying both — a three-way
+   cascade fight across 73 call sites. It now has exactly one definition,
+   in surfaces.css, as an alias of `.surface-1`. */
 
 a {
   color: inherit;
@@ -63,7 +51,12 @@ input {
   font-family: inherit;
   font-size: inherit;
   border: none;
-  outline: none;
   background: none;
   color: inherit;
+  /* No `outline: none` here. It stripped the focus ring from every
+     text field in the app and put nothing back, which is not a
+     reset — the UA outline is the only focus indicator an input
+     has until a component draws its own. Components that replace
+     it with a border-and-glow still may; a11y.css restores a ring
+     for the ones that don't. */
 }

@@ -99,7 +99,7 @@ export default function SalesHistory() {
   };
 
   return (
-    <div className="glass-panel" style={{ marginTop: '1rem' }}>
+    <div className="glass-panel mt-md">
       <table className="glass-table">
         <thead>
           <tr>
@@ -178,11 +178,11 @@ export default function SalesHistory() {
       </table>
 
       {totalPages > 1 && (
-        <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="p-md border-t flex justify-between items-center">
           <div className="text-sm text-muted">
             Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalSales)} of {totalSales} sales
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex gap-sm">
             <button 
               className="btn btn-secondary btn-sm" 
               onClick={() => fetchSales(Math.max(1, page - 1))}
@@ -217,7 +217,7 @@ export default function SalesHistory() {
               autoFocus
             />
           </div>
-          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+          <div className="modal-footer flex justify-between mt-lg">
             <button type="button" className="btn btn-outline" onClick={requestApprovalVoid}>
               Submit for Approval
             </button>

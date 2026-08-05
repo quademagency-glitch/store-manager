@@ -6,8 +6,6 @@
 .dashboard-welcome-banner {
   position: relative;
   background: var(--color-bg-card);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl) var(--space-2xl);
@@ -16,20 +14,10 @@
   justify-content: space-between;
   align-items: center;
   box-shadow: var(--shadow-md);
-  transition: all var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
   overflow: hidden;
-}
-
-[data-theme="dark"] .dashboard-welcome-banner {
-  background: rgba(18, 18, 24, 0.45);
-  border-color: rgba(99, 102, 241, 0.15);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="light"] .dashboard-welcome-banner {
-  background: rgba(255, 255, 255, 0.6);
-  border-color: rgba(99, 102, 241, 0.1);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5), 0 8px 24px rgba(99, 102, 241, 0.05);
 }
 
 .banner-content {
@@ -46,11 +34,7 @@
 
 .highlight-text {
   font-weight: 800;
-  color: #818cf8;
-}
-
-[data-theme="light"] .highlight-text {
-  color: #4338ca;
+  color: var(--color-accent-text);
 }
 
 .banner-subtitle {
@@ -88,7 +72,7 @@
 .banner-glow-2 {
   width: 200px;
   height: 200px;
-  background: #c084fc;
+  background: var(--color-accent-secondary);
   bottom: -60px;
   left: 15%;
   animation: float 16s ease-in-out infinite reverse;
@@ -107,37 +91,22 @@
   align-items: center;
   gap: var(--space-md);
   background: var(--color-bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   font-weight: 600;
   color: var(--color-text-primary);
-  transition: all var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
   box-shadow: var(--shadow-sm);
-}
-
-[data-theme="dark"] .action-btn {
-  background: rgba(25, 25, 30, 0.5);
-  border-color: rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-}
-
-[data-theme="light"] .action-btn {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(0, 0, 0, 0.04);
 }
 
 .action-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--color-border-focus);
-}
-
-[data-theme="dark"] .action-btn:hover {
-  background: rgba(30, 30, 35, 0.7);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .action-icon {
@@ -185,6 +154,11 @@
 .trend-neutral { background: var(--color-bg-tertiary); color: var(--color-text-secondary); border-color: var(--color-border); }
 
 /* Bento Box & Activity Feed */
+@keyframes cascadeFadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 .dashboard-bento {
   display: grid;
   grid-template-columns: 1fr;
@@ -192,26 +166,33 @@
   margin-bottom: var(--space-2xl);
 }
 
+/* Background, border and shadow come from `.surface-1` (surfaces.css);
+   only the things specific to a bento card are set here.
+
+   `display`/`flex-direction` came from the deleted premium-ui-utilities
+   copy. The cascade resolves per *declaration*, not per rule, so a
+   property the losing rule declared alone still applied — dropping the
+   duplicate without folding those two in would silently turn every
+   bento card back into a block. */
 .bento-card {
-  background: var(--color-bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
-  box-shadow: var(--shadow-md);
+  animation: cascadeFadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
 }
 
-[data-theme="dark"] .bento-card {
-  background: rgba(20, 20, 25, 0.6);
-  border-color: rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 4px 20px rgba(0, 0, 0, 0.4);
-}
+/* Stagger animations for cards */
+.dashboard-bento > .bento-card:nth-child(1) { animation-delay: 0.1s; }
+.dashboard-bento > .bento-card:nth-child(2) { animation-delay: 0.2s; }
+.dashboard-bento > .bento-card:nth-child(3) { animation-delay: 0.3s; }
 
-[data-theme="light"] .bento-card {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+.bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-accent-glow);
 }
 
 .bento-header {
@@ -222,21 +203,22 @@
 }
 
 .bento-title {
+  /* Same story: font-size and font-weight were the only two properties
+     the two copies disagreed on. Everything else here was live from the
+     copy that "lost". */
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  color: var(--color-text-primary);
   font-size: 1.25rem;
   font-weight: 600;
 }
 
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.8rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-tertiary);
-}
-
-.btn-sm:hover {
-  background: var(--color-border);
-}
+/* `.btn-sm` is defined once, in buttons.css. This copy and the one in
+   platform-admin-dashboard.css disagreed, so across 148 call sites the
+   border and background came from one rule and the padding from the
+   other depending on import order. */
 
 .activity-feed {
   display: flex;

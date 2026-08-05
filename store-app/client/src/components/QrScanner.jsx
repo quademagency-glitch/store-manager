@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { API_BASE } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
-export default function QrScanner({ onScan, onClose, isOpen, continuous = false }) {
+export default function QrScanner({ onScan, onClose, isOpen, continuous = false, label }) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -54,7 +54,7 @@ export default function QrScanner({ onScan, onClose, isOpen, continuous = false 
     <div className="qr-scanner-overlay" onClick={onClose}>
       <div className="qr-scanner-container" onClick={e => e.stopPropagation()}>
         <div className="qr-scanner-header">
-          <h3>Scan QR Code</h3>
+          <h3>{label ? `Scan ${label}` : 'Scan QR Code'}</h3>
           <button className="btn-icon" onClick={onClose} aria-label="Close scanner">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -69,8 +69,18 @@ export default function QrScanner({ onScan, onClose, isOpen, continuous = false 
             Waiting for external Scanner App...
           </p>
           <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
-            Please scan the item using your linked mobile device.
+            {label
+              ? `Scan the ${label} for this unit using your linked mobile device.`
+              : 'Please scan the item using your linked mobile device.'}
           </p>
+          {import.meta.env.DEV && (
+            <button 
+              className="btn btn-outline mt-xl" 
+              onClick={() => onScan('TEST-QR-CODE-' + Date.now())}
+            >
+              [DEV] Simulate Scan
+            </button>
+          )}
         </div>
       </div>
     </div>

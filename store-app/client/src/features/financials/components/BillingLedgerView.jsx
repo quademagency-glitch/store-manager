@@ -5,6 +5,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { api } from '../../../lib/api';
 import BillingDocumentModal from './BillingDocumentModal';
 import RecordPaymentModal from './RecordPaymentModal';
+import { EmptyStateRow, PageHeader, SkeletonRows, TabPanel, Tabs } from '../../../components/ui';
 
 const STATUS_BADGE = {
   open: 'badge-secondary',
@@ -124,38 +125,33 @@ export default function BillingLedgerView({ kind, parties }) {
 
   return (
     <div>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="dashboard-title">{kind === 'ar' ? 'Accounts Receivable' : 'Accounts Payable'}</h1>
-          <p className="dashboard-subtitle">
-            {kind === 'ar' ? 'Money owed to you by customers.' : 'Money you owe to suppliers.'}
-          </p>
-        </div>
-        <button className="btn btn-primary" onClick={() => { setError(null); setIsCreateOpen(true); }}>
-          New {docLabel}
-        </button>
-      </header>
+      <PageHeader
+        title={kind === 'ar' ? 'Accounts Receivable' : 'Accounts Payable'}
+        subtitle={kind === 'ar' ? 'Money owed to you by customers.' : 'Money you owe to suppliers.'}
+        actions={
+            <button className="btn btn-primary" onClick={() => { setError(null); setIsCreateOpen(true); }}>
+            New {docLabel}
+            </button>
+        }
+      />
 
-      <div className="tabs mt-lg mb-lg" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)' }}>
-        <button
-          className={`btn btn-sm ${activeTab === 'documents' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('documents')}
-        >
-          {docLabel}s
-        </button>
-        <button
-          className={`btn btn-sm ${activeTab === 'aging' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setActiveTab('aging')}
-        >
-          Aging Report
-        </button>
-      </div>
+      <Tabs
+        idPrefix="ledger"
+        variant="underline"
+        items={[
+          { id: 'documents', label: `${docLabel}s` },
+          { id: 'aging', label: 'Aging Report' },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel={`${docLabel} sections`}
+      />
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
-      {activeTab === 'documents' && (
+      <TabPanel idPrefix="ledger" id="documents" value={activeTab}>
         <>
-          <div className="mb-lg" style={{ display: 'flex', gap: '8px' }}>
+          <div className="mb-lg flex gap-sm">
             <select className="form-input" style={{ maxWidth: '220px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">All statuses</option>
               {statuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
@@ -172,20 +168,20 @@ export default function BillingLedgerView({ kind, parties }) {
                   <th>Outstanding</th>
                   <th>Due Date</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto"></div></td></tr>
+                  <SkeletonRows rows={4} cols={7} />
                 ) : documents.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No {docLabel.toLowerCase()}s found.</td></tr>
+                  <EmptyStateRow colSpan={7} icon="billing" title={`No ${docLabel.toLowerCase()}s found`} hint={statusFilter ? 'Try clearing the status filter.' : `New ${docLabel.toLowerCase()}s will appear here.`} />
                 ) : (
                   documents.map(doc => {
                     const outstanding = Number(doc[amountField]) - Number(doc.amount_paid);
                     return (
                       <tr key={doc.id}>
-                        <td style={{ fontWeight: 600 }}>
+                        <td className="font-bold">
                           {doc[docNumberKey]}
                           {doc.is_opening_balance && <span className="badge badge-secondary ml-sm" style={{ fontSize: '0.65rem' }}>Opening</span>}
                         </td>
@@ -194,7 +190,7 @@ export default function BillingLedgerView({ kind, parties }) {
                         <td>${outstanding.toFixed(2)}</td>
                         <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
                         <td><span className={`badge ${STATUS_BADGE[doc.status] || 'badge-secondary'}`}>{doc.status}</span></td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td className="text-right">
                           {doc.status !== 'void' && doc.status !== 'paid' && (
                             <button className="btn btn-sm btn-outline mr-sm" onClick={() => setPaymentTarget({ ...doc, outstanding })}>Record Payment</button>
                           )}
@@ -210,9 +206,9 @@ export default function BillingLedgerView({ kind, parties }) {
             </table>
 
             {totalPages > 1 && (
-              <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="p-md border-t flex justify-between items-center">
                 <div className="text-sm text-muted">Page {page} of {totalPages} ({total} total)</div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="flex gap-sm">
                   <button className="btn btn-secondary btn-sm" onClick={() => loadDocuments(Math.max(1, page - 1))} disabled={page === 1}>Previous</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => loadDocuments(Math.min(totalPages, page + 1))} disabled={page === totalPages}>Next</button>
                 </div>
@@ -220,9 +216,9 @@ export default function BillingLedgerView({ kind, parties }) {
             )}
           </div>
         </>
-      )}
+      </TabPanel>
 
-      {activeTab === 'aging' && (
+      <TabPanel idPrefix="ledger" id="aging" value={activeTab}>
         <div>
           <div className="stats-grid mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-lg)' }}>
             {AGING_BUCKETS.map(bucket => (
@@ -265,7 +261,7 @@ export default function BillingLedgerView({ kind, parties }) {
             );
           })}
         </div>
-      )}
+      </TabPanel>
 
       <BillingDocumentModal
         isOpen={isCreateOpen}

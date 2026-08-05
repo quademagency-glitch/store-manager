@@ -1,40 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
-@import './styles/design-tokens-custom-properties.css';
-@import './styles/global-reset-base.css';
-@import './styles/loading-screen.css';
-@import './styles/access-denied.css';
-@import './styles/login-page.css';
-@import './styles/dashboard-layout.css';
-@import './styles/premium-dashboard-ui.css';
-@import './styles/responsive.css';
-@import './styles/pages-layouts.css';
-@import './styles/buttons.css';
-@import './styles/badges-alerts.css';
-@import './styles/toolbar-search.css';
-@import './styles/data-table.css';
-@import './styles/modal-forms.css';
-@import './styles/sales-page-pos-layout.css';
-@import './styles/platform-admin-dashboard.css';
-@import './styles/platform-admin-pricing-plans.css';
-@import './styles/platform-admin-payment-gateways.css';
-@import './styles/platform-admin-revenue-billing-stats.css';
-@import './styles/platform-admin-invoice-badges.css';
-@import './styles/platform-admin-subscription-card.css';
-@import './styles/platform-admin-communications.css';
-@import './styles/premium-ui-utilities.css';
-@import './styles/ultra-premium-pos-additions.css';
-@import './styles/qr-scanner-overlay.css';
-@import './styles/inventory-tabs.css';
-@import './styles/qr-print-label.css';
-@import './styles/admin-layout-top-nav.css';
-@import './styles/toast-notifications.css';
-@import './styles/confirm-dialog.css';
-@import './styles/accounting-templates.css';
-@import './styles/organization-settings.css';
-@import './styles/print.css';
-@import './styles/mobile-overrides.css';
-@import './styles/hr.css';
-@import './styles/loyalty.css';
-@import './styles/reports.css';
+/* ============================================================
+   Cascade layers — declared first, so this order wins over
+   import order and over source order within the document.
+
+   Everything is layered. Unlayered CSS beats ALL layered CSS,
+   so a single unlayered file would silently out-rank the whole
+   system — if you add a stylesheet, give it a layer.
+
+   tokens      custom properties only
+   base        reset, element defaults
+   tailwind    utility framework (declares its own inner layers)
+   layout      app shell: sidebar, main, page scaffolding
+   components  reusable surfaces, buttons, tables, modals
+   pages       page- and module-specific styling
+   utilities   single-purpose helpers (.text-muted, .mb-lg)
+   responsive  breakpoint overrides — later layer, so these win
+               regardless of which file happens to import last
+   print       @media print — must beat screen styling
+   a11y        focus rings, reduced motion, touch targets. Last,
+               because these are guarantees: no page stylesheet
+               gets to turn a focus ring off by being specific.
+   overrides   escape hatch. Empty, and worth keeping empty — the
+               layer stays declared so that anything genuinely
+               unavoidable lands somewhere visible instead of
+               unlayered, where it would outrank the whole system.
+   ============================================================ */
+@layer tokens, base, tailwind, layout, components, pages, utilities, responsive, print, a11y, overrides;
+
+@import 'tailwindcss' layer(tailwind);
+
+/* --- tokens --- */
+@import './styles/design-tokens-custom-properties.css' layer(tokens);
+
+/* --- base --- */
+@import './styles/global-reset-base.css' layer(base);
+
+/* --- layout --- */
+@import './styles/dashboard-layout.css' layer(layout);
+@import './styles/admin-layout-top-nav.css' layer(layout);
+@import './styles/pages-layouts.css' layer(layout);
+
+/* --- components ---
+   surfaces.css first: it establishes the glass tiers every other
+   component surface is expressed in terms of. */
+@import './styles/surfaces.css' layer(components);
+@import './styles/ui-primitives.css' layer(components);
+@import './styles/loading-screen.css' layer(components);
+@import './styles/buttons.css' layer(components);
+@import './styles/badges-alerts.css' layer(components);
+@import './styles/toolbar-search.css' layer(components);
+@import './styles/data-table.css' layer(components);
+@import './styles/modal-forms.css' layer(components);
+@import './styles/premium-ui-utilities.css' layer(components);
+@import './styles/ultra-premium-pos-additions.css' layer(components);
+@import './styles/toast-notifications.css' layer(components);
+@import './styles/confirm-dialog.css' layer(components);
+@import './styles/danger-zone.css' layer(components);
+@import './styles/qr-scanner-overlay.css' layer(components);
+@import './styles/inventory-module.css' layer(components);
+/* after surfaces.css, so `.mobile-card-view` wins over `.glass-panel` */
+@import './styles/mobile-card-views.css' layer(components);
+
+/* --- pages --- */
+@import './styles/access-denied.css' layer(pages);
+@import './styles/login-page.css' layer(pages);
+@import './styles/premium-dashboard-ui.css' layer(pages);
+@import './styles/sales-page-pos-layout.css' layer(pages);
+@import './styles/platform-admin-dashboard.css' layer(pages);
+@import './styles/platform-admin-pricing-plans.css' layer(pages);
+@import './styles/platform-admin-payment-gateways.css' layer(pages);
+@import './styles/platform-admin-revenue-billing-stats.css' layer(pages);
+@import './styles/platform-admin-invoice-badges.css' layer(pages);
+@import './styles/platform-admin-subscription-card.css' layer(pages);
+@import './styles/platform-admin-communications.css' layer(pages);
+/* after platform-admin-communications.css: both define `.premium-card`,
+   and the CRM copy is scoped to `.crm-comms-container` so it no longer
+   competes for it. */
+@import './styles/crm-communications.css' layer(pages);
+@import './styles/accounting-templates.css' layer(pages);
+@import './styles/organization-settings.css' layer(pages);
+@import './styles/hr.css' layer(pages);
+@import './styles/loyalty.css' layer(pages);
+@import './styles/reports.css' layer(pages);
+@import './styles/qr-print-label.css' layer(pages);
+
+/* --- utilities --- */
+@import './styles/utilities.css' layer(utilities);
+
+/* --- responsive --- */
+@import './styles/responsive.css' layer(responsive);
+
+/* --- print --- */
+@import './styles/print.css' layer(print);
+
+/* --- a11y --- */
+@import './styles/a11y.css' layer(a11y);

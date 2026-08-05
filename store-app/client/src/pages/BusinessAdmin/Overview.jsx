@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ErrorBanner, PageHeader } from '../../components/ui';
 
 export default function Overview() {
   const navigate = useNavigate();
@@ -14,36 +15,41 @@ export default function Overview() {
   const [trendData, setTrendData] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [setupStatus, setSetupStatus] = useState(null);
   const [setupBannerHidden, setSetupBannerHidden] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [summaryRes, trendRes, activityRes] = await Promise.all([
-          api.get('/analytics/summary').catch(() => ({})),
-          api.get('/analytics/sales-trend').catch(() => []),
-          api.get('/analytics/recent-activity').catch(() => [])
-        ]);
+  // Hoisted out of the effect so the error banner can offer a retry.
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [summaryRes, trendRes, activityRes] = await Promise.all([
+        api.get('/analytics/summary').catch(() => ({})),
+        api.get('/analytics/sales-trend').catch(() => []),
+        api.get('/analytics/recent-activity').catch(() => [])
+      ]);
 
-        setStats({
-          todaySalesTotal: summaryRes.todaySalesTotal || 0,
-          totalProducts: summaryRes.totalProducts || 0,
-          lowStockCount: summaryRes.lowStockCount || 0,
-          theftAlertsCount: summaryRes.theftAlertsCount || 0
-        });
-        setTrendData(Array.isArray(trendRes) ? trendRes : []);
-        setRecentActivity(Array.isArray(activityRes) ? activityRes : []);
-      } catch (err) {
-        if (import.meta.env.DEV) console.error("Error fetching overview stats", err);
-      } finally {
-        setLoading(false);
-      }
+      setStats({
+        todaySalesTotal: summaryRes.todaySalesTotal || 0,
+        totalProducts: summaryRes.totalProducts || 0,
+        lowStockCount: summaryRes.lowStockCount || 0,
+        theftAlertsCount: summaryRes.theftAlertsCount || 0
+      });
+      setTrendData(Array.isArray(trendRes) ? trendRes : []);
+      setRecentActivity(Array.isArray(activityRes) ? activityRes : []);
+      setError(null);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Error fetching overview stats', err);
+      setError(err);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-
-    api.get('/businesses/me/setup-status').then(setSetupStatus).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchData();
+    api.get('/businesses/me/setup-status').then(setSetupStatus).catch(() => {});
+  }, [fetchData]);
 
   if (loading) return <div className="p-xl text-center">Loading overview...</div>;
 
@@ -63,15 +69,15 @@ export default function Overview() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Business Overview</h1>
-          <p className="dashboard-subtitle">High-level metrics across all your locations.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Business Overview"
+        subtitle="High-level metrics across all your locations."
+      />
+
+      <ErrorBanner error={error} onRetry={fetchData} />
 
       {showSetupBanner && (
-        <div className="alert alert-info mb-xl" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+        <div className="alert alert-info mb-xl flex justify-between items-center gap-md">
           <span>{setupComplete} of {setupTotal} setup steps complete — finish setting up your business.</span>
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             <button className="btn btn-sm btn-primary" onClick={() => navigate('/business-admin/setup')}>Finish Setup</button>
@@ -132,14 +138,14 @@ export default function Overview() {
         <div className="content-card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', fontWeight: '600' }}>Recent Activity</h2>
           {recentActivity.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="flex flex-col gap-md">
               {recentActivity.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
                   <div style={{ 
                     width: '10px', height: '10px', borderRadius: '50%', marginTop: '6px',
                     background: item.status === 'success' ? 'var(--color-success)' : item.status === 'error' ? 'var(--color-error)' : 'var(--color-warning)' 
                   }}></div>
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{item.title}</p>
                     <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>{new Date(item.time).toLocaleString()}</p>
                   </div>

@@ -83,12 +83,12 @@ export default function InvoiceView() {
 
   return (
     <div className="invoice-generator-page" style={{ padding: '0 1rem 2rem' }}>
-      <header className="page-header no-print" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <header className="page-header no-print mb-lg flex justify-between items-end">
         <div>
           <h1 className="dashboard-title">Invoice Receipt</h1>
           <p className="dashboard-subtitle">Platform Subscription Billing</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="flex gap-md">
           <button className="btn btn-secondary" onClick={() => navigate('/business-admin/billing')}>
             Back to Billing
           </button>
@@ -105,7 +105,7 @@ export default function InvoiceView() {
         </div>
       </header>
 
-      <div className="invoice-layout" style={{ display: 'flex', justifyContent: 'center' }}>
+      <div className="invoice-layout flex justify-center">
         
         {/* Invoice Preview */}
         <div id="invoice-print-preview" className="invoice-preview" style={{
@@ -120,7 +120,7 @@ export default function InvoiceView() {
           boxShadow: 'var(--shadow-lg)'
         }}>
           <div className="invoice-header-row" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--color-border)', paddingBottom: '2rem', marginBottom: '2rem' }}>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1">
               <LetterheadRenderer
                 letterhead={invoice.business?.letterhead}
                 logoUrl={invoice.business?.logo_url}
@@ -128,19 +128,19 @@ export default function InvoiceView() {
               />
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', marginTop: '4px', fontSize: '0.85rem' }}>Platform Subscription Receipt</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div className="text-right">
               <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-text-muted)', letterSpacing: '2px' }}>INVOICE</h2>
               <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Invoice No:</span>
+                <div className="flex justify-end gap-md">
+                  <span className="text-secondary">Invoice No:</span>
                   <span style={{ fontWeight: 600, minWidth: '100px', fontFamily: 'monospace' }}>{invoice.invoice_number}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Date:</span>
+                <div className="flex justify-end gap-md">
+                  <span className="text-secondary">Date:</span>
                   <span style={{ fontWeight: 600, minWidth: '100px' }}>{new Date(invoice.created_at).toLocaleDateString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Status:</span>
+                <div className="flex justify-end gap-md">
+                  <span className="text-secondary">Status:</span>
                   <span style={{ fontWeight: 600, minWidth: '100px', color: invoice.status === 'paid' ? 'var(--color-success)' : 'var(--color-warning)', textTransform: 'uppercase' }}>
                     {invoice.status}
                   </span>
@@ -153,9 +153,9 @@ export default function InvoiceView() {
             <div>
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>Billed To:</h3>
               <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>{invoice.business?.name || 'Business Account'}</p>
-              <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{invoice.business?.contact_email || 'No email provided'}</p>
+              <p className="m-0 text-secondary">{invoice.business?.contact_email || 'No email provided'}</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div className="text-right">
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>From:</h3>
               <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Quadem Digital Enterprise</p>
               <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quaderp.com</p>
@@ -164,13 +164,13 @@ export default function InvoiceView() {
 
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+              <tr className="border-b text-left">
                 <th style={{ padding: '1rem 0', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Description</th>
                 <th style={{ padding: '1rem 0', textAlign: 'right', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '1px' }}>Amount</th>
               </tr>
             </thead>
             <tbody>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <tr className="border-b">
                 <td style={{ padding: '2rem 0', fontWeight: 500, fontSize: '1.1rem' }}>
                   {invoice.description || 'Platform Subscription Payment'}
                   {invoice.payment_method && (

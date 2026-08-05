@@ -11,14 +11,16 @@
 .pa-plan-card {
   position: relative;
   background: var(--color-bg-card);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
 }
 
 .pa-plan-card::before {
@@ -31,7 +33,7 @@
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-normal);
 }
 
 .pa-plan-card:hover {
@@ -101,10 +103,8 @@
 .pa-plan-amount {
   font-size: 2.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  /* Solid: gradient text has no measurable contrast and prints blank. */
+  color: var(--color-accent-text);
   line-height: 1;
 }
 
@@ -167,7 +167,7 @@
 
 .pa-plan-feature-check.enabled {
   background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
+  color: var(--color-success-text);
 }
 
 .pa-plan-feature-check.disabled {
@@ -219,7 +219,10 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .pa-cycle-btn.active {
@@ -244,7 +247,7 @@
 }
 
 .pa-archived-toggle .chevron {
-  transition: transform 0.2s ease;
+  transition: transform var(--transition-fast);
   font-size: 0.65rem;
 }
 

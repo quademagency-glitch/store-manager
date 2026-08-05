@@ -4,6 +4,15 @@ import './index.css'
 import App from './App.jsx'
 import 'virtual:pwa-register'
 
+// Lets the Playwright harness prove it is talking to the dev server *it*
+// started. A leftover server from an earlier run serves pre-edit modules, and
+// the whole suite then passes against stale baselines without a single
+// failure — see tests/helpers.ts. Statically replaced at build time, so this
+// folds to `undefined` and drops out of a production bundle.
+if (import.meta.env.VITE_TEST_NONCE) {
+  window.__TEST_NONCE__ = import.meta.env.VITE_TEST_NONCE;
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);

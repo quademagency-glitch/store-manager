@@ -3,6 +3,7 @@ import { useProducts } from '../../../hooks/useProducts';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
 import { api } from '../../../lib/api';
+import { EmptyStateRow } from '../../../components/ui';
 
 const LAYOUTS = {
   'small-labels': { label: 'Small Labels', desc: '6 per page (3×2 grid)', cols: 3, rows: 2, icon: '▦' },
@@ -64,7 +65,7 @@ export default function PriceTagPrinter() {
   };
 
   return (
-    <div style={{ marginTop: '1rem' }}>
+    <div className="mt-md">
       <div className="price-tag-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
         {/* Left: Product Selection */}
         <div>
@@ -99,7 +100,7 @@ export default function PriceTagPrinter() {
                 <tr>
                   <th style={{ width: '32px' }}></th>
                   <th>Product</th><th>SKU</th><th>Category</th>
-                  <th style={{ textAlign: 'right' }}>Price</th>
+                  <th className="text-right">Price</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,11 +110,11 @@ export default function PriceTagPrinter() {
                     <td className="font-medium">{p.name}</td>
                     <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
                     <td><span className="badge badge-neutral">{p.category}</span></td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(p.price)}</td>
+                    <td className="text-right font-bold">{fmt(p.price)}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan="5" className="text-center py-xl text-muted">No products found.</td></tr>
+                  <EmptyStateRow colSpan={5} icon="clipboard" title="No products found" />
                 )}
               </tbody>
             </table>
@@ -124,7 +125,7 @@ export default function PriceTagPrinter() {
         <div>
           <div className="glass-panel" style={{ padding: '20px', marginBottom: '16px' }}>
             <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '16px' }}>Tag Layout</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            <div className="flex flex-col gap-sm mb-md">
               {Object.entries(LAYOUTS).map(([key, cfg]) => (
                 <button
                   key={key}
@@ -179,7 +180,7 @@ export default function PriceTagPrinter() {
       </div>
 
       {/* ═══ PRINTABLE AREA ═══ */}
-      <div id="price-tags-print" className="printable-area" style={{ display: 'none' }}>
+      <div id="price-tags-print" className="printable-area hidden">
         <style>{`
           @media print {
             #price-tags-print { display: block !important; }

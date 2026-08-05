@@ -46,7 +46,7 @@ export default function PaymentModal({
   return (
     <Modal isOpen={isOpen} onClose={() => !isProcessing && onClose()} title="Complete Payment">
       <div className="card" style={{ marginBottom: '1.5rem', background: 'var(--surface-50)' }}>
-        <h3 className="text-xl font-bold" style={{ marginBottom: '0.5rem' }}>Subtotal: {fmt(grossAmount)}</h3>
+        <h3 className="text-xl font-bold mb-sm">Subtotal: {fmt(grossAmount)}</h3>
         <p className="text-muted">Sale #{pendingSale.id.substring(0, 8)}</p>
       </div>
 
@@ -118,7 +118,7 @@ export default function PaymentModal({
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="sr-only"
                 />
-                <span className="font-medium" style={{ textTransform: 'capitalize' }}>{method}</span>
+                <span className="font-medium capitalize">{method}</span>
               </label>
             ))}
           </div>
@@ -146,7 +146,7 @@ export default function PaymentModal({
         </div>
 
         {amountPaid && (
-          <div className={`card ${balance <= 0 ? 'bg-success-light' : 'bg-warning-light'}`} style={{ padding: '1rem' }}>
+          <div className={`card p-md ${balance <= 0 ? 'bg-success-light' : 'bg-warning-light'}`}>
             <div className="flex justify-between items-center">
               <span className="font-bold">{balance <= 0 ? 'Change Due:' : 'Remaining Balance:'}</span>
               <span className={`text-xl font-bold ${balance <= 0 ? 'text-success' : 'text-warning'}`}>

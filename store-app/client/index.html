@@ -6,13 +6,29 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="description" content="Store Management App — Manage sales, inventory, staff, and theft alerts in real time." />
-    <meta name="theme-color" content="#0D0A28" />
+    <meta name="theme-color" content="#eef2f7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="QuadERP" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>QuadERP</title>
+    <script>
+      // Resolve the theme BEFORE first paint. This ran in a React effect
+      // previously, so the first frame had no data-theme at all and rendered
+      // as an unstyled white page. Must stay synchronous and inline.
+      (function () {
+        try {
+          var stored = localStorage.getItem('app-theme');
+          var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#020617' : '#eef2f7');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

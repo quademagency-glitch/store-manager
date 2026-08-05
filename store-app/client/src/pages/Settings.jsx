@@ -3,17 +3,26 @@ import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useConfirm } from '../hooks/useConfirm';
+import { useToast } from '../hooks/useToast';
 import { Icons } from '../components/icons/Icons';
 
 import { getFlatPermissions } from '../constants/permissions';
 import PermissionTree from '../components/PermissionTree';
+import { EmptyStateRow, PageHeader, TabPanel, Tabs } from '../components/ui';
 
 const AVAILABLE_PERMISSIONS = getFlatPermissions();
 
 export default function Settings() {
-  const { hasPermission } = useAuthContext();
+  const { role, hasPermission } = useAuthContext();
   const confirm = useConfirm();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('users');
+
+  // Admins only, matching the server guard on DELETE /analytics/reset. This
+  // hides the control; it is not the security boundary — the endpoint rejects
+  // anyone else regardless of what the client renders.
+  const canResetData = role === 'Business Admin' || role === 'Platform Admin';
+  const [isResetting, setIsResetting] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -146,43 +155,68 @@ export default function Settings() {
     setRoleForm(prev => ({ ...prev, permissions: newPermissions }));
   };
 
+  // Lived in Dashboard.jsx with no control wired to it, under a comment
+  // claiming it had already been moved here. It hadn't.
+  const handleResetData = async () => {
+    const confirmed = await confirm({
+      title: 'Reset Transaction Data',
+      message:
+        'This permanently deletes every sale, stock movement and alert for this business. ' +
+        'Product and inventory levels are left untouched. This cannot be undone.',
+      variant: 'danger',
+      confirmText: 'Delete all transaction data',
+    });
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    try {
+      await api.delete('/analytics/reset');
+      toast.success('Transaction data has been reset.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to reset transaction data');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (!hasPermission('manage_users')) {
     return <div className="page-container">Access Denied.</div>;
   }
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Settings & Access Control</h1>
-          <p className="page-subtitle">Manage users, custom roles, and permissions.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Settings & Access Control"
+        subtitle="Manage users, custom roles, and permissions."
+      />
 
       {error && <div className="alert alert-error mb-lg"><p>{error}</p></div>}
 
       <div className="content-card" style={{ padding: '0' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'users' ? 'white' : 'transparent', border: 'none', borderBottom: activeTab === 'users' ? '2px solid #6366f1' : '2px solid transparent', fontWeight: activeTab === 'users' ? '600' : '500', color: activeTab === 'users' ? '#6366f1' : '#64748b', cursor: 'pointer', fontSize: '16px' }}
-            onClick={() => setActiveTab('users')}
-          >
-            Users
-          </button>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'roles' ? 'white' : 'transparent', border: 'none', borderBottom: activeTab === 'roles' ? '2px solid #6366f1' : '2px solid transparent', fontWeight: activeTab === 'roles' ? '600' : '500', color: activeTab === 'roles' ? '#6366f1' : '#64748b', cursor: 'pointer', fontSize: '16px' }}
-            onClick={() => setActiveTab('roles')}
-          >
-            Roles & Permissions
-          </button>
-        </div>
+        {/* Was two buttons styled with inline hex — `background: 'white'`
+            on the active tab in particular meant a white slab in dark
+            mode, since it never consulted a token. */}
+        <Tabs
+          idPrefix="settings"
+          variant="underline"
+          items={[
+            { id: 'users', label: 'Users' },
+            { id: 'roles', label: 'Roles & Permissions' },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Settings sections"
+          className="is-flush"
+        />
 
-        <div style={{ padding: '24px' }}>
+        <div className="p-lg">
           {loading ? (
             <div className="text-center py-xl text-muted">Loading data...</div>
-          ) : activeTab === 'users' ? (
+          ) : (
+            <>
+            <TabPanel idPrefix="settings" id="users" value={activeTab}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div className="flex justify-between mb-md">
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>System Users</h3>
                 <button className="btn btn-primary" onClick={() => openUserModal()}>+ Add User</button>
               </div>
@@ -197,6 +231,14 @@ export default function Settings() {
                     </tr>
                   </thead>
                   <tbody>
+                    {users.length === 0 && (
+                      <EmptyStateRow
+                        colSpan={4}
+                        icon="users"
+                        title="No users yet"
+                        hint="Add a user to give someone access to this business."
+                      />
+                    )}
                     {users.map(u => (
                       <tr key={u.id}>
                         <td className="font-medium">{u.name}</td>
@@ -218,7 +260,7 @@ export default function Settings() {
                 {users.map(u => (
                   <div key={u.id} className="m-card">
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex-1 min-w-0">
                         <div className="m-card-title">{u.name}</div>
                         <div className="m-card-sub" style={{ wordBreak: 'break-word' }}>{u.email}</div>
                       </div>
@@ -232,33 +274,36 @@ export default function Settings() {
                 ))}
               </div>
             </div>
-          ) : (
+            </TabPanel>
+            <TabPanel idPrefix="settings" id="roles" value={activeTab}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div className="flex justify-between mb-md">
                 <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Custom Roles</h3>
                 <button className="btn btn-primary" onClick={() => openRoleModal()}>+ Add Role</button>
               </div>
               <div className="settings-roles-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
                 {roles.map(r => (
-                  <div key={r.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', background: '#f8fafc' }}>
+                  <div key={r.id} style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '16px', background: 'var(--color-bg-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                      <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>{r.name}</h4>
+                      <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: 'var(--color-text-primary)' }}>{r.name}</h4>
                       <div>
                         <button className="btn-icon" onClick={() => openRoleModal(r)} aria-label={`Edit ${r.name}`}>{Icons.edit}</button>
                         <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteRole(r.id)} aria-label={`Delete ${r.name}`}>{Icons.trash}</button>
                       </div>
                     </div>
-                    <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '16px' }}>{r.description || 'No description'}</p>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', marginBottom: '16px' }}>{r.description || 'No description'}</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {r.permissions.map(p => {
                         const permLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label || p;
-                        return <span key={p} className="badge" style={{ background: '#e0e7ff', color: '#4338ca', fontSize: '12px', border: 'none' }}>{permLabel}</span>
+                        return <span key={p} className="badge" style={{ background: '#e0e7ff', color: 'var(--color-accent-text)', fontSize: '12px', border: 'none' }}>{permLabel}</span>
                       })}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+            </TabPanel>
+            </>
           )}
         </div>
       </div>
@@ -290,12 +335,12 @@ export default function Settings() {
           </div>
           <div className="form-group">
             <label>Assigned Branches</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '12px' }}>
               {locations.length === 0 ? (
                 <span className="text-muted" style={{ fontSize: '14px' }}>No branches available</span>
               ) : (
                 locations.map(loc => (
-                  <label key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <label key={loc.id} className="flex items-center gap-sm cursor-pointer">
                     <input 
                       type="checkbox" 
                       checked={userForm.location_ids.includes(loc.id)}
@@ -306,7 +351,7 @@ export default function Settings() {
                           setUserForm({...userForm, location_ids: userForm.location_ids.filter(id => id !== loc.id)});
                         }
                       }}
-                      style={{ width: '16px', height: '16px', accentColor: '#6366f1' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--color-accent-text)' }}
                     />
                     <span style={{ fontSize: '14px' }}>{loc.name}</span>
                   </label>
@@ -321,6 +366,33 @@ export default function Settings() {
         </form>
       </Modal>
 
+      {/* Deliberately last on the page and outside the tabbed card, rather
+          than sharing a row with routine actions — an irreversible wipe should
+          not sit one misclick away from "Add User". */}
+      {canResetData && (
+        <section className="danger-zone" aria-labelledby="danger-zone-heading">
+          <h2 id="danger-zone-heading" className="danger-zone-title">Danger Zone</h2>
+          <div className="danger-zone-row">
+            <div className="danger-zone-copy">
+              <h3>Reset transaction data</h3>
+              <p>
+                Permanently deletes every sale, stock movement and alert for this
+                business. Products and inventory levels are kept. This cannot be undone.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleResetData}
+              disabled={isResetting}
+              aria-busy={isResetting}
+            >
+              {isResetting ? 'Resetting…' : 'Reset data'}
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* Role Modal */}
       <Modal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} title={roleForm.id ? 'Edit Role' : 'Add New Role'}>
         <form onSubmit={handleRoleSubmit} className="form-layout">
@@ -334,7 +406,7 @@ export default function Settings() {
           </div>
           <div className="form-group">
             <label>Permissions</label>
-            <div style={{ marginTop: '8px' }}>
+            <div className="mt-sm">
               <PermissionTree 
                 selectedPermissions={roleForm.permissions} 
                 onChange={handlePermissionsChange} 

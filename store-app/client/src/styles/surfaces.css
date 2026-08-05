@@ -1,0 +1,246 @@
+/* ============================================================
+   Glass surface tiers
+
+   Every panel, card, table and overlay in the app resolves to
+   one of four tiers. A tier is not just a background — it also
+   RE-DECLARES the text tokens it can guarantee at AA on itself.
+   That is what makes the system tractable: a component author
+   never has to ask "what am I sitting on?", because the surface
+   answers for them, and the "looks fine on the dashboard,
+   illegible in the modal" class of bug becomes impossible.
+
+   Contrast is computed against the COMPOSITED colour (the glass
+   alpha over the actual canvas), not the rgba token. Because the
+   canvas is a flat base plus a fixed, low-frequency ambient wash,
+   that composite is predictable — and each tier ships a `-solid`
+   token that IS the computed composite. So the no-backdrop-filter
+   fallback is pixel-identical and one set of contrast numbers
+   covers both paths. See design-tokens-custom-properties.css.
+
+   BLUR BUDGET — at most ~6 blurred elements on screen.
+   `backdrop-filter` promotes an element to its own compositing
+   layer and re-rasterises the backdrop on every paint. 73
+   .glass-panel + 41 .glass-table + 15 .pos-glass-card all
+   blurring would be 129 layers and guaranteed jank on table
+   scroll. Tier 1 therefore uses translucency ONLY: blurring a
+   fixed gradient with no high-frequency detail is a visual no-op
+   that costs frames and buys nothing. Blur is spent only where
+   something genuinely moves behind the surface — the sidebar,
+   sticky headers, and tier-3 overlays.
+   ============================================================ */
+
+/* --- Tier 1: bulk surfaces --------------------------------- */
+.surface-1,
+.glass-panel,
+.content-card,
+.bento-card,
+.pos-glass-card,
+.stat-card,
+.dashboard-welcome-banner {
+  background-color: var(--surface-1-solid);
+  border: 1px solid var(--surface-1-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* --- Tier 2: raised / interactive --------------------------- */
+.surface-2 {
+  background-color: var(--surface-2-solid);
+  border: 1px solid var(--surface-2-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* --- Tier 3: overlays ---------------------------------------
+   Always portaled to <body>, so tier 3 can never nest inside
+   tier 1 and compound alpha. */
+.surface-3,
+.modal-content,
+.confirm-dialog,
+.toast,
+.user-dropdown-menu,
+.branch-dropdown-menu {
+  background-color: var(--surface-3-solid);
+  border: 1px solid var(--surface-3-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Dark tier 2/3 are lighter than tier 1, so two tokens that pass
+   on tier 1 drop below 4.5:1 by tier 3. Re-declared here rather
+   than audited per component. */
+[data-theme='dark'] .surface-2 {
+  --color-text-muted: #a3b0c2;
+  --color-success-text: #22c5a0;
+}
+
+[data-theme='dark'] .surface-3,
+[data-theme='dark'] .modal-content,
+[data-theme='dark'] .confirm-dialog,
+[data-theme='dark'] .toast,
+[data-theme='dark'] .user-dropdown-menu,
+[data-theme='dark'] .branch-dropdown-menu {
+  --color-text-muted: #b0bccc;
+  --color-success-text: #34d399;
+  --color-border-strong: #8494a9;
+}
+
+/* --- Glass upgrade -------------------------------------------
+   Opaque is the DEFAULT declaration and glass is the
+   enhancement, so anything that can't do backdrop-filter — old
+   Safari, forced colors, print — gets the accessible state
+   rather than a broken one. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface-1,
+  .glass-panel,
+  .content-card,
+  .bento-card,
+  .pos-glass-card,
+  .stat-card,
+  .dashboard-welcome-banner {
+    background-color: var(--surface-1-bg);
+  }
+
+  .surface-2 {
+    background-color: var(--surface-2-bg);
+  }
+
+  .surface-3,
+  .modal-content,
+  .confirm-dialog,
+  .toast,
+  .user-dropdown-menu,
+  .branch-dropdown-menu {
+    background-color: var(--surface-3-bg);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  }
+
+  /* Opt-in blur for the handful of surfaces with real motion
+     behind them. Keep this list short — it is the blur budget. */
+  .surface--blur {
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  }
+}
+
+/* --- Nesting guard -------------------------------------------
+   Tiers are absolute, never relative: a card inside a panel is
+   tier 2, not a second tier 1. Stacking equal tiers would
+   compound alpha (0.72 inside 0.72 = 0.92) and silently break
+   both the elevation ramp and the verified contrast. This
+   catches the mistake instead of relying on discipline. */
+.surface-1 .surface-1,
+.glass-panel .glass-panel,
+.glass-panel .content-card,
+.content-card .content-card {
+  background-color: var(--surface-2-solid);
+  border-color: var(--surface-2-border);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface-1 .surface-1,
+  .glass-panel .glass-panel,
+  .glass-panel .content-card,
+  .content-card .content-card {
+    background-color: var(--surface-2-bg);
+  }
+}
+
+/* --- Tables ---------------------------------------------------
+   Header and hover are tier 2 against a tier-1 table shell. */
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.glass-table thead th {
+  background-color: var(--surface-2-solid);
+  border-bottom: 1px solid var(--surface-2-border);
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.glass-table tbody td {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.glass-table tbody tr:hover td {
+  background-color: var(--color-accent-glow);
+}
+
+/* --- Sticky regions ------------------------------------------
+   Genuinely worth a compositing layer: rows scroll underneath. */
+.glass-table thead.is-sticky th,
+.toolbar.is-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-table thead.is-sticky th,
+  .toolbar.is-sticky {
+    background-color: var(--surface-2-bg);
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  }
+}
+
+/* --- Sidebar --------------------------------------------------
+   The main column scrolls behind it, so blur reads as depth here. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dashboard-sidebar {
+    background-color: var(--surface-2-bg);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    /* Own layer, promoted once. Never use `will-change` on glass —
+       it pins a permanent layer per element. */
+    transform: translateZ(0);
+  }
+}
+
+/* --- Reduced transparency / high contrast / print -------------
+   All three collapse to the `-solid` values, which are the exact
+   composites the glass produces — so nothing shifts perceptually,
+   it just stops being translucent. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .surface-1,
+  .glass-panel,
+  .content-card,
+  .bento-card,
+  .pos-glass-card,
+  .stat-card,
+  .dashboard-welcome-banner,
+  .dashboard-sidebar {
+    background-color: var(--surface-1-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .surface-2,
+  .glass-table thead th,
+  .toolbar.is-sticky {
+    background-color: var(--surface-2-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .surface-3,
+  .modal-content,
+  .confirm-dialog,
+  .toast,
+  .user-dropdown-menu,
+  .branch-dropdown-menu {
+    background-color: var(--surface-3-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: var(--color-border-strong);
+  }
+}

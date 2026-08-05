@@ -5,6 +5,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { ErrorBanner } from '../components/ui';
 
 export default function AccountingApprovals() {
   const { role, businessId } = useAuthContext();
@@ -12,6 +13,7 @@ export default function AccountingApprovals() {
   const confirm = useConfirm();
   const [pendingEntries, setPendingEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   const fetchPendingEntries = async () => {
@@ -37,6 +39,7 @@ export default function AccountingApprovals() {
       setPendingEntries(data || []);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -83,7 +86,10 @@ export default function AccountingApprovals() {
         setSelectedReceipt(data.publicUrl);
       }
     } catch (err) {
+      // An action, not a page load: a failed receipt lookup should not pin a
+      // banner that outlives it.
       if (import.meta.env.DEV) console.error(err);
+      toast.error('Could not open that receipt.');
     }
   };
 
@@ -106,15 +112,17 @@ export default function AccountingApprovals() {
   };
 
   if (!['Manager', 'Business Admin', 'Platform Admin'].includes(role)) {
-    return <div className="p-6 text-center" style={{ color: 'var(--color-text-primary)' }}>You do not have permission to view approvals.</div>;
+    return <div className="p-6 text-center text-primary">You do not have permission to view approvals.</div>;
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto" style={{ color: 'var(--color-text-primary)' }}>
+    <div className="p-6 max-w-6xl mx-auto text-primary">
+      <ErrorBanner error={error} onRetry={fetchPendingEntries} />
+
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Pending Accounting Approvals</h1>
-          <p style={{ color: 'var(--color-text-tertiary)' }}>Review and approve ledger entries submitted by staff.</p>
+          <h1 className="text-2xl font-bold text-primary">Pending Accounting Approvals</h1>
+          <p className="text-tertiary">Review and approve ledger entries submitted by staff.</p>
         </div>
         <button 
           onClick={downloadAllReceipts}
@@ -128,10 +136,10 @@ export default function AccountingApprovals() {
         </button>
       </div>
       
-      {loading ? <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p> : (
+      {loading ? <p className="text-secondary">Loading...</p> : (
         <div className="rounded-xl shadow overflow-hidden" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
           {pendingEntries.length === 0 ? (
-            <div className="p-12 text-center" style={{ color: 'var(--color-text-tertiary)' }}>
+            <div className="p-12 text-center text-tertiary">
               <svg className="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -155,12 +163,12 @@ export default function AccountingApprovals() {
                 </thead>
                 <tbody style={{ borderColor: 'var(--color-border)' }}>
                   {pendingEntries.map(entry => (
-                    <tr key={entry.id} className="transition-colors" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <tr key={entry.id} className="transition-colors border-b">
                       <td className="p-4 text-sm">{entry.date}</td>
                       <td className="p-4 text-sm">{entry.locations?.name || 'Unknown'}</td>
                       <td className="p-4 text-sm">
                         <div>{entry.users?.name || 'Unknown'}</div>
-                        <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{entry.users?.email}</div>
+                        <div className="text-xs text-muted">{entry.users?.email}</div>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2 mb-1">
@@ -170,8 +178,8 @@ export default function AccountingApprovals() {
                         </div>
                         <div className="text-sm">{entry.description}</div>
                         {entry.metadata && Object.keys(entry.metadata).length > 0 && (
-                          <div className="mt-2 text-xs space-y-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
-                            {Object.entries(entry.metadata).map(([k, v]) => (<div key={k}><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{k}:</span> {v}</div>))}
+                          <div className="mt-2 text-xs space-y-0.5 text-tertiary">
+                            {Object.entries(entry.metadata).map(([k, v]) => (<div key={k}><span className="font-semibold text-secondary">{k}:</span> {v}</div>))}
                           </div>
                         )}
                       </td>
@@ -182,7 +190,7 @@ export default function AccountingApprovals() {
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             View
                           </button>
-                        ) : <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>None</span>}
+                        ) : <span className="text-xs text-muted">None</span>}
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
@@ -201,7 +209,7 @@ export default function AccountingApprovals() {
               {pendingEntries.map(entry => (
                 <div key={entry.id} className="m-card">
                   <div className="m-card-top">
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                         <span className="m-card-title" style={{ fontSize: '0.9rem' }}>{entry.users?.name || 'Unknown'}</span>
                         <span className="px-2 py-0.5 rounded font-bold uppercase" style={{ fontSize: '0.65rem', background: entry.type === 'expense' ? 'var(--color-error-bg)' : 'rgba(34,197,94,0.1)', color: entry.type === 'expense' ? 'var(--color-error)' : 'var(--color-success)', flexShrink: 0 }}>
@@ -232,7 +240,7 @@ export default function AccountingApprovals() {
           <div className="p-4 flex justify-center" style={{ background: 'var(--color-bg-tertiary)' }}>
             <img src={selectedReceipt} alt="Receipt" className="max-w-full max-h-[70vh] object-contain rounded" />
           </div>
-          <div className="p-4 flex justify-end" style={{ borderTop: '1px solid var(--color-border)' }}>
+          <div className="p-4 flex justify-end border-t">
             <a 
               href={selectedReceipt} 
               target="_blank" 

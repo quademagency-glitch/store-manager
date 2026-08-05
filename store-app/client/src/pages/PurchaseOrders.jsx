@@ -11,6 +11,7 @@ import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 import PurchaseOrderForm from '../features/inventory/components/PurchaseOrderForm';
 import ReceiveGoodsModal from '../features/inventory/components/ReceiveGoodsModal';
 import { api } from '../lib/api';
+import { EmptyStateRow } from '../components/ui';
 
 export default function PurchaseOrders() {
   const toast = useToast();
@@ -203,7 +204,7 @@ export default function PurchaseOrders() {
           <h1 className="page-title">Purchase Orders</h1>
           <p className="page-subtitle">Create, track, and receive purchase orders from suppliers.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreate} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+        <button className="btn btn-primary" onClick={handleCreate} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px var(--color-accent-glow)' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           Create PO
         </button>
@@ -236,42 +237,42 @@ export default function PurchaseOrders() {
                 <thead>
                   <tr>
                     <th>PO #</th><th>Supplier</th><th>Date</th>
-                    <th style={{ textAlign: 'right' }}>Total</th><th>Status</th>
+                    <th className="text-right">Total</th><th>Status</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan="6" className="text-center py-xl text-muted">No purchase orders found.</td></tr>
+                    <EmptyStateRow colSpan={6} icon="dollar" title="No purchase orders found" />
                   ) : (
                     orders.map(po => (
                       <tr
                         key={po.id}
-                        style={{ cursor: 'pointer', background: selectedPO?.id === po.id ? 'rgba(99,102,241,0.06)' : undefined }}
+                        style={{ cursor: 'pointer', background: selectedPO?.id === po.id ? 'var(--color-accent-glow)' : undefined }}
                         onClick={() => viewPODetail(po)}
                       >
                         <td><code style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{po.po_number}</code></td>
                         <td className="font-medium">{po.supplier?.name || '—'}</td>
                         <td className="text-muted">{formatDate(po.created_at)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(po.total_amount)}</td>
+                        <td className="text-right font-bold">{fmt(po.total_amount)}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(po.status)}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
                             {po.status}
                           </span>
                         </td>
                         <td className="text-right" onClick={e => e.stopPropagation()}>
-                          <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                          <div className="action-buttons justify-end">
                             {po.status === 'draft' && (
                               <>
                                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)} title="Edit">Edit</button>
-                                <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none', cursor: 'pointer' }}>Send</button>
+                                <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none', cursor: 'pointer' }}>Send</button>
                               </>
                             )}
                             {(po.status === 'sent' || po.status === 'partial') && (
                               <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                             )}
                             {['draft', 'sent'].includes(po.status) && (
-                              <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                              <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none', cursor: 'pointer' }}>Cancel</button>
                             )}
                           </div>
                         </td>
@@ -286,9 +287,9 @@ export default function PurchaseOrders() {
                 {orders.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No purchase orders found.</div>
                 ) : orders.map(po => (
-                  <div key={po.id} className="m-card" style={{ background: selectedPO?.id === po.id ? 'rgba(99,102,241,0.06)' : undefined, cursor: 'pointer' }} onClick={() => viewPODetail(po)}>
+                  <div key={po.id} className="m-card" style={{ background: selectedPO?.id === po.id ? 'var(--color-accent-glow)' : undefined, cursor: 'pointer' }} onClick={() => viewPODetail(po)}>
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex-1 min-w-0">
                         <div className="m-card-title" style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{po.po_number}</div>
                         <div className="m-card-sub">{po.supplier?.name || '—'}</div>
                         <div className="m-card-meta">{formatDate(po.created_at)}</div>
@@ -301,13 +302,13 @@ export default function PurchaseOrders() {
                     <div className="m-card-actions" onClick={e => e.stopPropagation()}>
                       {po.status === 'draft' && (<>
                         <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)}>Edit</button>
-                        <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none' }}>Send</button>
+                        <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none' }}>Send</button>
                       </>)}
                       {(po.status === 'sent' || po.status === 'partial') && (
                         <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                       )}
                       {['draft', 'sent'].includes(po.status) && (
-                        <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: 'none' }}>Cancel</button>
+                        <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none' }}>Cancel</button>
                       )}
                     </div>
                   </div>
@@ -316,9 +317,9 @@ export default function PurchaseOrders() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="p-md border-t flex justify-between items-center">
                   <div className="text-sm text-muted">Page {page} of {totalPages} ({totalOrders} orders)</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="flex gap-sm">
                     <button className="btn btn-secondary btn-sm" onClick={() => fetchOrders(Math.max(1, page - 1), statusFilter)} disabled={page === 1}>Previous</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => fetchOrders(Math.min(totalPages, page + 1), statusFilter)} disabled={page === totalPages}>Next</button>
                   </div>
@@ -330,12 +331,12 @@ export default function PurchaseOrders() {
 
         {/* PO Detail Panel */}
         {selectedPO && (
-          <div className="glass-panel" style={{ padding: '24px' }}>
+          <div className="glass-panel p-lg">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
                   <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: 0, fontFamily: 'monospace' }}>{selectedPO.po_number}</h2>
-                  <span className={`badge ${getStatusBadgeClass(selectedPO.status)}`} style={{ textTransform: 'uppercase' }}>{selectedPO.status}</span>
+                  <span className={`badge uppercase ${getStatusBadgeClass(selectedPO.status)}`}>{selectedPO.status}</span>
                 </div>
                 <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
                   {selectedPO.supplier?.name || 'No supplier'} • Created {formatDate(selectedPO.created_at)}
@@ -370,10 +371,10 @@ export default function PurchaseOrders() {
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th style={{ textAlign: 'center' }}>Ordered</th>
-                      <th style={{ textAlign: 'center' }}>Received</th>
-                      <th style={{ textAlign: 'right' }}>Unit Cost</th>
-                      <th style={{ textAlign: 'right' }}>Total</th>
+                      <th className="text-center">Ordered</th>
+                      <th className="text-center">Received</th>
+                      <th className="text-right">Unit Cost</th>
+                      <th className="text-right">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -385,21 +386,21 @@ export default function PurchaseOrders() {
                             <div className="font-medium">{item.product?.name || 'Unknown'}</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{item.product?.sku}</div>
                           </td>
-                          <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.quantity}</td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td className="text-center font-bold">{item.quantity}</td>
+                          <td className="text-center">
                             <span style={{ fontWeight: 600, color: isComplete ? 'var(--color-success)' : item.received_quantity > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
                               {item.received_quantity || 0}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right' }}>{fmt(item.unit_cost)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(item.total || (item.quantity * item.unit_cost))}</td>
+                          <td className="text-right">{fmt(item.unit_cost)}</td>
+                          <td className="text-right font-bold">{fmt(item.total || (item.quantity * item.unit_cost))}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
                     <tr style={{ borderTop: '2px solid var(--color-border)' }}>
-                      <td colSpan="4" style={{ textAlign: 'right', fontWeight: 600 }}>Grand Total</td>
+                      <td colSpan="4" className="text-right font-bold">Grand Total</td>
                       <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-primary)', fontSize: '1.05rem' }}>{fmt(selectedPO.total_amount)}</td>
                     </tr>
                   </tfoot>
@@ -466,7 +467,7 @@ export default function PurchaseOrders() {
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="btn btn-outline" onClick={() => setShowGrnModal(false)}>Close</button>
-              <button className="btn btn-primary" onClick={() => printElement('printable-grn', 'a4')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-primary flex items-center gap-sm" onClick={() => printElement('printable-grn', 'a4')}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Print GRN
               </button>

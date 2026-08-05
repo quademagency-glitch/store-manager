@@ -1,98 +1,273 @@
-/* ============================================
-   Design Tokens & Custom Properties
-   ============================================ */
-[data-theme="light"] {
-  --color-bg-primary: #f4f5f8; /* Crisp, cool off-white background */
-  --color-bg-secondary: #ffffff; /* Pure white panels */
-  --color-bg-tertiary: #f1f5f9;
-  --color-bg-card: #ffffff;
-  
-  --color-text-primary: #0f172a; /* Deep, almost black slate for high contrast */
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
-  --color-text-muted: #94a3b8;
-  
-  --color-border: #e2e8f0; /* Sharp, clean border */
-  --color-border-focus: #4f46e5;
-  
-  --color-accent-primary: #4338ca; /* Slightly deeper indigo for light mode contrast */
-  --color-accent-secondary: #4338ca;
-  --color-accent-hover: #3730a3;
-  --color-accent-glow: rgba(67, 56, 202, 0.08);
-  
-  --color-success: #059669;
-  --color-success-border: #34d399;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
-  
-  --color-error-bg: rgba(220, 38, 38, 0.05);
-  --color-error-border: rgba(220, 38, 38, 0.2);
+/* ============================================================
+   Design Tokens
 
-  --color-border: #e2e8f0;
-  --color-border-focus: #4f46e5;
+   `:root` is the COMPLETE contract and carries the light theme,
+   so a page painted before any JS runs is already valid and
+   styled. `[data-theme="dark"]` may only OVERRIDE keys that
+   already exist here — never introduce new ones. That rule is
+   enforced by tests/invariants/tokens.spec.ts, and it is what
+   stopped `--shadow-glow` from silently vanishing in dark mode.
 
-  /* Shadows for Light Mode */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.09), 0 4px 8px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 4px 16px rgba(67, 56, 202, 0.2);
-  --color-bg-glass: rgba(255, 255, 255, 0.9);
-}
+   Colour values are chosen against the COMPOSITED surface
+   colour (see surfaces.css), not against the raw canvas, and
+   every text/background pair below is verified to meet WCAG AA.
+   Contrast ratios in comments are vs. the surface named.
+   ============================================================ */
 
 :root {
-  /* Global Spacing */
+  color-scheme: light;
+
+  /* --- Canvas -------------------------------------------------
+     Deepened from the old #f8fafc so translucent tier-1 surfaces
+     have something to separate from. */
+  --color-bg-primary: #eef2f7;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+
+  /* --- Glass tiers ---------------------------------------------
+     Each tier ships the alpha value AND the opaque colour it
+     composites to. The `-solid` value is what non-supporting
+     browsers, reduced-transparency users and print all get, so
+     one set of contrast numbers covers every path. */
+  --surface-1-bg: rgba(255, 255, 255, 0.72);
+  --surface-1-solid: #fafbfd;
+  --surface-2-bg: rgba(255, 255, 255, 0.86);
+  --surface-2-solid: #fdfdfe;
+  --surface-3-bg: rgba(255, 255, 255, 0.94);
+  --surface-3-solid: #fefeff;
+
+  --surface-1-border: rgba(15, 23, 42, 0.09);
+  --surface-2-border: rgba(15, 23, 42, 0.12);
+  --surface-3-border: rgba(15, 23, 42, 0.14);
+
+  /* Ambient canvas wash — fixed and low-frequency, which is what
+     keeps each tier's composite predictable. */
+  --ambient-1: rgba(99, 102, 241, 0.06);
+  --ambient-2: rgba(56, 189, 248, 0.05);
+
+  /* --- Text ----------------------------------------------------
+     Ratios vs. --surface-1-solid (#FAFBFD), the darkest surface
+     text sits on in this theme. */
+  --color-text-primary: #0f172a;   /* 17.24:1  AAA */
+  --color-text-secondary: #334155; /* 10.00:1  AAA */
+  --color-text-tertiary: #475569;  /*  7.32:1  AAA */
+  --color-text-muted: #5a6577;     /*  5.69:1  AA  — was #94a3b8 at 2.48:1 */
+
+  /* --- Borders -------------------------------------------------
+     `--color-border` is decorative. Anything that must be
+     perceivable as a control boundary uses `-strong`, which
+     holds the 3:1 non-text minimum. */
+  --color-border: rgba(15, 23, 42, 0.09);
+  --color-border-strong: #7c8899;  /* 3.47:1 vs surface-1 */
+  --color-border-focus: #4338ca;
+  --color-focus-ring: #4338ca;     /* 7.63:1 vs surface-1 */
+
+  /* --- Accent --------------------------------------------------
+     `-solid` is the filled-button surface and is identical in
+     both themes: white text on it is 6.29:1. The old dark-mode
+     #6366f1 gave white text only 4.47:1, a fail. */
+  --color-accent-solid: #4f46e5;
+  --color-accent-primary: #4338ca;
+  --color-accent-secondary: #6366f1;
+  --color-accent-hover: #3730a3;
+  --color-accent-glow: rgba(67, 56, 202, 0.15);
+  --color-accent-text: #4338ca;    /* 7.63:1 — accent used AS text */
+
+  /* --- Status --------------------------------------------------
+     `-text` meets 4.5:1 for labels; `-solid` is the saturated
+     brand value, for fills, dots and icon strokes where 3:1
+     applies. Using -solid as text is what made the old success
+     (#059669, 3.64:1) and warning (#d97706, 3.08:1) fail. */
+  --color-success: #047857;        /* 5.30:1 */
+  --color-success-text: #047857;
+  --color-success-solid: #059669;
+  --color-success-bg: rgba(5, 150, 105, 0.1);
+  --color-success-border: rgba(5, 150, 105, 0.2);
+
+  --color-warning: #b45309;        /* 4.85:1 */
+  --color-warning-text: #b45309;
+  --color-warning-solid: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.1);
+  --color-warning-border: rgba(180, 83, 9, 0.2);
+
+  --color-error: #dc2626;          /* 4.66:1 */
+  --color-error-text: #dc2626;
+  --color-error-solid: #dc2626;
+  --color-error-bg: rgba(220, 38, 38, 0.08);
+  --color-error-border: rgba(220, 38, 38, 0.15);
+  /* Comma-separated: consumed as rgba(var(--color-error-rgb), .2) */
+  --color-error-rgb: 220, 38, 38;
+
+  /* --- Elevation ----------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.06), 0 4px 8px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 8px 24px rgba(67, 56, 202, 0.25);
+
+  /* --- Skeleton ------------------------------------------------ */
+  --skeleton-base: #e3e8ef;
+  --skeleton-sheen: #f1f5f9;
+
+  /* --- Typography ---------------------------------------------- */
+  --font-family-display: 'Outfit', sans-serif;
+  --font-family-body: 'Inter', sans-serif;
+
+  /* --- Spacing -------------------------------------------------- */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
-  --space-2xl: 3rem;
+  --space-2xl: 3.5rem;
+  --space-3xl: 5rem;
 
-  /* Global Border Radius - Sharp */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
+  /* --- Radius --------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* Global Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* --- Motion ---------------------------------------------------
+     The spring curve overshoots, so it is reserved for `transform`
+     only. Applying it to `all` made cards visibly jitter and
+     forced layout every frame. */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-slow: 500ms cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Global Settings */
-  --sidebar-width: 260px;
-
-  /* Brand wordmark — fixed color from the QuadERP logo, same in light/dark */
+  /* --- Shell ----------------------------------------------------
+     `--drawer-width` is fixed: the off-canvas drawer keeps its full
+     width regardless of how narrow the docked rail gets. Both were
+     previously hardcoded as `280px`/`-280px` in six places. */
+  --sidebar-width: 280px;
+  --drawer-width: 280px;
+  --page-max-width: 1600px;
   --color-brand-erp: #19a8cb;
+
+  /* ============================================================
+     Deprecated aliases.
+
+     These names are referenced across the app but were never
+     defined anywhere — 80 references that silently invalidated
+     their whole declaration, which is why the "Adjust Stock"
+     button rendered with no background and the search input was
+     invisible. Defining them here heals every call site at once.
+
+     Migrate to the canonical name on the right; removed once the
+     page sweep is done.
+     ============================================================ */
+  --color-primary: var(--color-accent-solid);      /* @deprecated → --color-accent-solid */
+  --color-primary-light: var(--color-accent-secondary); /* @deprecated */
+  --primary-500: var(--color-accent-solid);        /* @deprecated */
+  --color-accent: var(--color-accent-solid);       /* @deprecated → --color-accent-solid */
+  --color-text: var(--color-text-primary);         /* @deprecated */
+  --border-color: var(--color-border);             /* @deprecated */
+  --surface-50: var(--surface-1-solid);            /* @deprecated → --surface-1-solid */
+  --color-bg-surface: var(--surface-1-solid);      /* @deprecated */
+  --color-bg-base: var(--color-bg-primary);        /* @deprecated */
+  --color-bg-card: var(--surface-1-bg);            /* @deprecated → .surface-1 */
+  --color-bg-glass: var(--surface-3-bg);           /* @deprecated → .surface-3 */
 }
 
-[data-theme="dark"] {
-  --color-bg-primary: #0a0a0a;
-  --color-bg-secondary: #121212;
-  --color-bg-tertiary: #171717;
-  --color-bg-card: #0a0a0a;
+[data-theme='dark'] {
+  color-scheme: dark;
 
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #cbd5e1;
-  --color-text-tertiary: #94a3b8;
-  --color-text-muted: #64748b;
+  --color-bg-primary: #020617;
+  --color-bg-secondary: #0f172a;
+  --color-bg-tertiary: #1e293b;
 
-  --color-accent-primary: #6366f1; /* Lighter Indigo for Dark Mode */
+  /* The dark ramp ASCENDS in lightness: canvas → #161E35 → #28334A
+     → #313E53. The previous tokens inverted this at the overlay
+     level, which is why dropdowns read as holes rather than as
+     panels floating above the page. */
+  --surface-1-bg: rgba(30, 41, 59, 0.55);
+  --surface-1-solid: #161e35;
+  --surface-2-bg: rgba(51, 65, 85, 0.72);
+  --surface-2-solid: #28334a;
+  --surface-3-bg: rgba(51, 65, 85, 0.94);
+  --surface-3-solid: #313e53;
+
+  --surface-1-border: rgba(255, 255, 255, 0.1);
+  --surface-2-border: rgba(255, 255, 255, 0.13);
+  --surface-3-border: rgba(255, 255, 255, 0.16);
+
+  --ambient-1: rgba(99, 102, 241, 0.1);
+  --ambient-2: rgba(14, 165, 233, 0.07);
+
+  /* Ratios vs. --surface-1-solid (#161E35). Tier 2 and 3 are
+     lighter, so surfaces.css re-declares the two tokens that
+     would otherwise drop below 4.5:1 there. */
+  --color-text-primary: #f8fafc;   /* 15.79:1 */
+  --color-text-secondary: #cbd5e1; /* 11.13:1 */
+  --color-text-tertiary: #b0bccc;  /*  8.58:1 */
+  --color-text-muted: #94a3b8;     /*  6.44:1 */
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: #8494a9;  /* 5.34:1 */
+  --color-border-focus: #818cf8;
+  --color-focus-ring: #818cf8;     /* 5.54:1 */
+
+  --color-accent-primary: #6366f1;
   --color-accent-secondary: #818cf8;
   --color-accent-hover: #4f46e5;
+  --color-accent-glow: rgba(99, 102, 241, 0.25);
+  --color-accent-text: #a5b4fc;    /* 8.29:1 */
 
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  
-  --color-error-bg: rgba(239, 68, 68, 0.1);
+  --color-success: #10b981;        /* 6.51:1 */
+  --color-success-text: #10b981;
+  --color-success-solid: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-success-border: rgba(16, 185, 129, 0.3);
+
+  --color-warning: #f59e0b;        /* 7.69:1 */
+  --color-warning-text: #f59e0b;
+  --color-warning-solid: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+
+  --color-error: #fca5a5;          /* 8.70:1 */
+  --color-error-text: #fca5a5;
+  --color-error-solid: #ef4444;
+  --color-error-bg: rgba(239, 68, 68, 0.15);
   --color-error-border: rgba(239, 68, 68, 0.3);
+  --color-error-rgb: 239, 68, 68;
 
-  --color-border: #262626;
-  --color-border-focus: #6366f1;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  --shadow-glow: 0 8px 24px rgba(99, 102, 241, 0.35);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --skeleton-base: #1c2537;
+  --skeleton-sheen: #2a3550;
+}
+
+body {
+  font-family: var(--font-family-body);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient canvas wash. Fixed, so it never scrolls and never
+   introduces high-frequency detail behind a glass surface —
+   which is precisely what makes tier-1 translucency readable
+   without spending a compositing layer on blur. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 60rem at 0% 0%, var(--ambient-1), transparent 60%),
+    radial-gradient(50rem 50rem at 100% 100%, var(--ambient-2), transparent 60%);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-display);
 }

@@ -1,6 +1,19 @@
-/* ============================================
+/* ============================================================
    Buttons
-   ============================================ */
+
+   The base `.btn` previously set no background, border or colour,
+   so any variant that wasn't defined rendered as bare text. Four
+   were used in JSX and never defined for screen — `.btn-outline`
+   (69 uses across 22 files, defined only inside print.css's
+   `@media print { display: none }`), `.btn-gradient` (8, defined
+   only in a <style dangerouslySetInnerHTML> that leaked globally
+   once CRMCommunications mounted), `.btn-danger` (2) and
+   `.btn-close` (1) — 80 buttons rendering as plain text.
+
+   There was also no `:focus-visible`, no `:active`, no size
+   scale and no busy state anywhere in the file.
+   ============================================================ */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -8,35 +21,163 @@
   gap: var(--space-xs);
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
+  font-family: inherit;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all var(--transition-fast);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  /* A real default, so an unknown variant degrades to a visible
+     secondary button rather than to invisible text. */
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-.btn:disabled {
+.btn:focus-visible,
+.btn-icon:focus-visible,
+.btn-close:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  color: white;
+/* Busy state — `aria-busy` drives both the visuals and the
+   assistive-tech announcement from one attribute. */
+.btn[aria-busy='true'] {
+  cursor: progress;
+  color: transparent;
+  position: relative;
 }
+
+.btn[aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  width: 1em;
+  height: 1em;
+  border-radius: var(--radius-full);
+  border: 2px solid currentcolor;
+  border-block-start-color: transparent;
+  color: var(--color-text-primary);
+  animation: btn-spin 0.6s linear infinite;
+}
+
+.btn-primary[aria-busy='true']::after,
+.btn-danger[aria-busy='true']::after,
+.btn-gradient[aria-busy='true']::after {
+  color: #fff;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Variants ------------------------------------------------ */
+
+.btn-primary {
+  background-image: linear-gradient(135deg, var(--color-accent-solid), #6d28d9);
+  background-color: var(--color-accent-solid);
+  color: #fff;
+  border-color: transparent;
+}
+
 .btn-primary:hover:not(:disabled) {
   box-shadow: var(--shadow-glow);
   transform: translateY(-1px);
 }
 
-.btn-secondary {
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-primary);
-}
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg-tertiary);
-  border-color: rgba(148, 148, 184, 0.25);
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
+.btn-secondary {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-accent-secondary);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--color-accent-glow);
+  border-color: var(--color-accent-secondary);
+  color: var(--color-accent-text);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.btn-danger {
+  background-color: var(--color-error-solid);
+  color: #fff;
+  border-color: transparent;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-gradient {
+  background-image: linear-gradient(135deg, var(--color-accent-solid), #6d28d9);
+  color: #fff;
+  border-color: transparent;
+}
+
+.btn-gradient:hover:not(:disabled) {
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+/* --- Sizes ---------------------------------------------------
+   `.btn-sm` had two conflicting definitions (premium-dashboard-ui
+   and platform-admin-dashboard) across 148 call sites, so its
+   border and background leaked from one rule while padding came
+   from the other. Single definition now. */
+.btn-sm {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-lg {
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+}
+
+/* --- Icon buttons -------------------------------------------- */
 .btn-icon {
   display: inline-flex;
   align-items: center;
@@ -45,25 +186,78 @@
   min-height: 2.5rem;
   padding: 0.4rem;
   border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
-}
-.btn-icon:hover {
-  color: var(--color-text-primary);
-  background: var(--color-bg-tertiary);
-}
-.text-error { color: var(--color-error); }
-.hover-bg-error:hover {
-  background: var(--color-error-bg);
-  color: #fca5a5;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-[data-theme="light"] .hover-bg-error:hover {
-  color: var(--color-error);
+.btn-icon:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-tertiary);
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-close {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-close:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-tertiary);
+}
+
+/* --- Touch targets -------------------------------------------
+   44px minimum on touch pointers only, so a mouse-driven desktop
+   keeps its compact density. */
+@media (pointer: coarse) {
+  .btn,
+  .btn-icon,
+  .btn-close {
+    min-height: 44px;
+  }
+  .btn-icon,
+  .btn-close {
+    min-width: 44px;
+  }
+  .btn-sm {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+  .btn[aria-busy='true']::after {
+    animation-duration: 1.5s;
+  }
 }
 
 /* FAB specific icon logic */
-.fab-icon { display: none; }
+.fab-icon {
+  display: none;
+}
+
 @media (max-width: 768px) {
-  .fab-icon { display: block; }
+  .fab-icon {
+    display: block;
+  }
 }

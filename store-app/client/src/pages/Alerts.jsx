@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { EmptyStateRow, PageHeader, SkeletonRows } from '../components/ui';
 
 export default function Alerts() {
   const { user } = useAuthContext();
@@ -143,24 +144,23 @@ export default function Alerts() {
 
   return (
     <div className="alerts-page page-container py-xl">
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="page-title">Loss Prevention Alerts</h1>
-          <p className="page-subtitle">Track voids, discounts, suspicious patterns, and stock take results.</p>
-        </div>
-        
-        <div className="filter-group" style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('pending')}>
+      <PageHeader
+        title="Loss Prevention Alerts"
+        subtitle="Track voids, discounts, suspicious patterns, and stock take results."
+        actions={
+            <div className="filter-group flex gap-sm">
+            <button className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('pending')}>
             Pending {pendingCount > 0 && <span style={{ marginLeft: '4px', background: 'rgba(255,255,255,0.2)', padding: '1px 6px', borderRadius: '10px', fontSize: '0.8rem' }}>{pendingCount}</span>}
-          </button>
-          <button className={`btn ${filter === 'resolved' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('resolved')}>Resolved</button>
-          <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('all')}>All</button>
-        </div>
-      </header>
+            </button>
+            <button className={`btn ${filter === 'resolved' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('resolved')}>Resolved</button>
+            <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('all')}>All</button>
+            </div>
+        }
+      />
 
       {/* Stats Bar */}
       {filter === 'pending' && pendingCount > 0 && (
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div className="flex gap-md mb-md flex-wrap">
           {criticalCount > 0 && (
             <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'color-mix(in srgb, var(--color-error) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-error)' }}>
               {criticalCount} Critical
@@ -171,14 +171,14 @@ export default function Alerts() {
               {highCount} High
             </div>
           )}
-          <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', fontSize: '0.85rem' }}>
+          <div style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--color-accent-glow)', border: '1px solid var(--color-accent-glow)', fontSize: '0.85rem' }}>
             {pendingCount} pending total
           </div>
         </div>
       )}
 
       {/* Type Filter */}
-      <div className={`alerts-type-filter-wrap ${typeFilterFade.left ? 'fade-left' : ''} ${typeFilterFade.right ? 'fade-right' : ''}`} style={{ marginBottom: '1rem' }}>
+      <div className={`alerts-type-filter-wrap mb-md ${typeFilterFade.left ? 'fade-left' : ''} ${typeFilterFade.right ? 'fade-right' : ''}`}>
         <div
           ref={typeFilterRef}
           onScroll={updateTypeFilterFade}
@@ -215,9 +215,17 @@ export default function Alerts() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm"></div><p>Loading alerts...</p></td></tr>
+                <SkeletonRows rows={4} cols={canResolve && filter !== 'resolved' ? 7 : 6} />
               ) : filteredAlerts.length === 0 ? (
-                <tr><td colSpan={canResolve && filter !== 'resolved' ? 7 : 6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.5 }} aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V6l8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div><p>No {filter !== 'all' ? filter : ''} alerts found.</p></td></tr>
+                <EmptyStateRow
+                  colSpan={canResolve && filter !== 'resolved' ? 7 : 6}
+                  icon="shield"
+                  variant={filter === 'all' ? 'success' : 'default'}
+                  title={filter === 'all' ? 'No alerts' : `No ${filter} alerts`}
+                  hint={filter === 'all'
+                    ? 'Nothing needs your attention right now.'
+                    : 'Try a different filter to see other alerts.'}
+                />
               ) : filteredAlerts.map(alertItem => (
                 <tr key={alertItem.id} style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid var(--color-error)' : alertItem.severity === 'high' ? '3px solid var(--color-warning)' : 'none' }}>
                   <td className="text-muted">{formatDate(alertItem.created_at)}</td>
@@ -266,16 +274,16 @@ export default function Alerts() {
         {/* Mobile cards */}
         <div className="mobile-card-view">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading alerts...</p></div>
+            <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading alerts...</p></div>
           ) : filteredAlerts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.5 }} aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V6l8-4z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
               <p>No {filter !== 'all' ? filter : ''} alerts found.</p>
             </div>
           ) : filteredAlerts.map(alertItem => (
-            <div key={alertItem.id} className="m-card" style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid #ef4444' : alertItem.severity === 'high' ? '3px solid #f97316' : undefined }}>
+            <div key={alertItem.id} className="m-card" style={{ borderLeft: alertItem.severity === 'critical' ? '3px solid var(--color-error-text)' : alertItem.severity === 'high' ? '3px solid #f97316' : undefined }}>
               <div className="m-card-top">
-                <div style={{ flex: 1 }}>
+                <div className="flex-1">
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
                     {getSeverityBadge(alertItem.severity)}
                     {getTypeBadge(alertItem.type)}
@@ -298,8 +306,8 @@ export default function Alerts() {
                 <div className="m-card-actions">
                   {alertItem.type === 'VOID_REQUEST' ? (
                     <>
-                      <button className="btn btn-sm" style={{ background: '#22c55e', color: 'white' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
-                      <button className="btn btn-sm" style={{ background: '#ef4444', color: 'white' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
+                      <button className="btn btn-sm" style={{ background: 'var(--color-success-text)', color: 'white' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
+                      <button className="btn btn-sm" style={{ background: 'var(--color-error-text)', color: 'white' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
                     </>
                   ) : (
                     <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>

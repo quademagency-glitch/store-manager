@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
 
 /**
@@ -19,7 +19,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -32,7 +32,9 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
     },
   });
 
-  const isOpeningBalance = watch('is_opening_balance');
+  /* See RecordPaymentModal — `watch()` blocks React Compiler memoization
+     for the whole component; `useWatch` subscribes via `control` instead. */
+  const isOpeningBalance = useWatch({ control, name: 'is_opening_balance' });
 
   useEffect(() => {
     if (isOpen) {
@@ -108,9 +110,9 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
           </div>
         </div>
 
-        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="form-group flex items-center gap-sm">
           <input type="checkbox" id="doc-opening" {...register('is_opening_balance')} style={{ width: 'auto' }} />
-          <label htmlFor="doc-opening" style={{ margin: 0 }}>This is an opening balance carried over from before go-live</label>
+          <label htmlFor="doc-opening" className="m-0">This is an opening balance carried over from before go-live</label>
         </div>
 
         {isOpeningBalance && (
@@ -129,7 +131,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
           </div>
         )}
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%' }}>
+        <div className="modal-footer flex justify-end gap-sm w-full">
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : `Save ${docLabel}`}

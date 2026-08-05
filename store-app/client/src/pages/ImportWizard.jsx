@@ -152,7 +152,7 @@ export default function ImportWizard() {
         <p className="dashboard-subtitle">Upload a CSV or Excel file to bulk-create {config.label.toLowerCase()}.</p>
       </header>
 
-      <div className="mb-xl" style={{ display: 'flex', gap: '8px' }}>
+      <div className="mb-xl flex gap-sm">
         {STEPS.map((label, i) => (
           <div
             key={label}
@@ -167,7 +167,7 @@ export default function ImportWizard() {
         <div className="glass-panel" style={{ padding: 'var(--space-xl)' }}>
           <p>Upload a .csv or .xlsx file. Required columns: <strong>{config.requiredFields.join(', ')}</strong>.</p>
           <p className="text-muted">Optional columns: {config.optionalFields.join(', ')}.</p>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={loading} className="form-input" style={{ marginTop: '16px' }} />
+          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={loading} className="form-input mt-md" />
           {loading && <p className="text-muted mt-sm">Reading file...</p>}
         </div>
       )}
@@ -178,14 +178,14 @@ export default function ImportWizard() {
           <p className="text-muted mb-lg">We matched what we could automatically — confirm or adjust each field below.</p>
 
           {allFields.map(field => (
-            <div key={field} className="form-row mb-md" style={{ alignItems: 'center' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+            <div key={field} className="form-row mb-md items-center">
+              <div className="form-group mb-0">
                 <label>
                   {field} {config.requiredFields.includes(field) && <span className="text-error">*</span>}
                 </label>
-                {config.fieldHints[field] && <small className="text-muted" style={{ display: 'block' }}>{config.fieldHints[field]}</small>}
+                {config.fieldHints[field] && <small className="text-muted block">{config.fieldHints[field]}</small>}
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group mb-0">
                 <select
                   className="form-input"
                   value={fieldToHeader[field] || ''}
@@ -198,7 +198,7 @@ export default function ImportWizard() {
             </div>
           ))}
 
-          <div className="modal-footer mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <div className="modal-footer mt-xl flex justify-end gap-sm">
             <button className="btn btn-secondary" onClick={reset}>Start Over</button>
             <button className="btn btn-primary" onClick={handleValidate} disabled={loading}>
               {loading ? 'Validating...' : 'Validate Rows'}
@@ -257,7 +257,7 @@ export default function ImportWizard() {
             </div>
           )}
 
-          <div className="modal-footer mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <div className="modal-footer mt-xl flex justify-end gap-sm">
             <button className="btn btn-secondary" onClick={() => setStep(1)}>Back to Mapping</button>
             <button className="btn btn-primary" onClick={handleCommit} disabled={loading || validation.valid_count === 0}>
               {loading ? 'Importing...' : `Import ${validation.valid_count} Rows`}
@@ -294,7 +294,7 @@ export default function ImportWizard() {
             </div>
           )}
 
-          <div className="modal-footer mt-xl" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+          <div className="modal-footer mt-xl flex justify-between gap-sm">
             {!isUndone && commitResult.batch.success_count > 0 && (
               <button className="btn btn-outline text-error" onClick={handleUndo}>Undo This Import</button>
             )}

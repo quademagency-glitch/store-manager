@@ -75,7 +75,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
     } finally {
       setLoading(false);
     }
-  }, [product, selectedLocationId, isDoubleMode]);
+  }, [product, selectedLocationId]);
 
   useEffect(() => {
     if (isOpen && selectedLocationId) {
@@ -269,13 +269,13 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
   return (
     <>
       <Modal isOpen={isOpen} onClose={handleClose} title="Product Tracking" size="xl">
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="mb-md">
+          <div className="flex justify-between items-start">
             <div>
               <h4 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>{product.name}</h4>
-              <p style={{ color: '#64748b' }}>SKU: {product.sku}</p>
+              <p className="text-muted">SKU: {product.sku}</p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-sm">
               <button className="btn btn-primary" onClick={() => setIsAssignModalOpen(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M12 5v14M5 12h14"/></svg>
                 Assign Tracking
@@ -294,7 +294,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
         </div>
 
         {(!activeLocationFilter || activeLocationFilter === 'all') && (
-          <div className="form-group" style={{ marginBottom: '24px' }}>
+          <div className="form-group mb-lg">
             <label>Select Location</label>
             <select 
               className="form-input" 
@@ -338,7 +338,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                 {saveSuccess && <div className="alert alert-success mb-lg"><p>{saveSuccess}</p></div>}
 
                 <div className="table-responsive">
-                  <table className="data-table" style={{ marginTop: '16px' }}>
+                  <table className="data-table mt-md">
                     <thead>
                       <tr>
                         <th style={{ padding: '12px', width: '40px' }}>
@@ -363,7 +363,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                     <tbody>
                       {combinedUnits.length === 0 ? (
                         <tr>
-                          <td colSpan={isDoubleMode ? 5 : 3} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-secondary)' }}>
+                          <td colSpan={isDoubleMode ? 5 : 3} className="text-center p-lg text-secondary">
                             No individual products found at this location.
                           </td>
                         </tr>
@@ -443,17 +443,17 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
           <p className="text-muted">All items at this location are currently tracked. No units to assign.</p>
         ) : (
           <div>
-            <p style={{ marginBottom: '16px', color: 'var(--color-text-secondary)' }}>Assign codes to the {untrackedSlots.length} untracked items at {locations.find(l => l.id === selectedLocationId)?.name}.</p>
+            <p className="mb-md text-secondary">Assign codes to the {untrackedSlots.length} untracked items at {locations.find(l => l.id === selectedLocationId)?.name}.</p>
             {untrackedSlots.map((slot, index) => (
               <div key={index} style={{ padding: '12px', background: 'var(--color-bg-tertiary)', borderRadius: '8px', marginBottom: '12px', border: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div className="flex items-center">
                     <div style={{ width: '24px', height: '24px', background: 'var(--color-border)', color: 'var(--color-text-primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', marginRight: '8px' }}>
                       {index + 1}
                     </div>
                     <span style={{ fontWeight: '500', fontSize: '14px' }}>{product.name} #{index + 1}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="flex gap-sm">
                     <button 
                       className="btn btn-secondary btn-sm" 
                       style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }} 
@@ -469,26 +469,26 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.pack_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.pack_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.pack_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.pack_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px var(--color-border)' }}>
                     <div style={{ fontSize: '10px', color: slot.pack_code ? 'rgba(255,255,255,0.8)' : 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '2px' }}>
                       Pack Code *
                     </div>
                     <div style={{ fontSize: '12px', color: slot.pack_code ? 'white' : 'var(--color-text-muted)', fontWeight: slot.pack_code ? '600' : 'normal', wordBreak: 'break-all', minHeight: '16px' }}>{slot.pack_code || 'Awaiting scan...'}</div>
                   </div>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.serial_number ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.serial_number ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.serial_number ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.serial_number ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px var(--color-border)' }}>
                     <div style={{ fontSize: '10px', color: slot.serial_number ? 'rgba(255,255,255,0.8)' : 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '2px' }}>
                       Serial Number *
                     </div>
                     <div style={{ fontSize: '12px', color: slot.serial_number ? 'white' : 'var(--color-text-muted)', fontWeight: slot.serial_number ? '600' : 'normal', wordBreak: 'break-all', minHeight: '16px' }}>{slot.serial_number || 'Awaiting scan...'}</div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.product_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.product_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.product_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.product_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px var(--color-border)' }}>
                     <div style={{ fontSize: '10px', color: slot.product_code ? 'rgba(255,255,255,0.8)' : 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '2px' }}>Product Code *</div>
                     <div style={{ fontSize: '12px', color: slot.product_code ? 'white' : 'var(--color-text-muted)', fontWeight: slot.product_code ? '600' : 'normal', wordBreak: 'break-all', minHeight: '16px' }}>{slot.product_code || 'Awaiting scan...'}</div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.item_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.item_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', background: slot.item_code ? 'var(--color-success)' : 'var(--color-bg-card)', color: slot.item_code ? 'white' : 'inherit', border: `1px solid var(--color-border)`, padding: '8px', borderRadius: '6px', boxShadow: '0 1px 2px var(--color-border)' }}>
                     <div style={{ fontSize: '10px', color: slot.item_code ? 'rgba(255,255,255,0.8)' : 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: '600', marginBottom: '2px' }}>
                       Item Code (Opt)
                     </div>
@@ -497,7 +497,7 @@ export default function TrackingModal({ isOpen, onClose, product, locations, isD
                 </div>
               </div>
             ))}
-            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="mt-md flex justify-end gap-sm">
               <button className="btn btn-secondary" onClick={() => setIsAssignModalOpen(false)}>Cancel</button>
               <button 
                 className="btn btn-primary" 

@@ -10,12 +10,19 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:visual": "VITE_USE_MOCKS=true playwright test --project=visual",
+    "test:invariants": "VITE_USE_MOCKS=true playwright test --project=invariants",
+    "test:visual:full": "VITE_USE_MOCKS=true FULL_MATRIX=1 playwright test --project=visual",
+    "test:visual:update": "VITE_USE_MOCKS=true playwright test --project=visual --update-snapshots",
+    "test:empty": "VITE_USE_MOCKS=empty playwright test --project=invariants",
+    "test:e2e": "playwright test --project=e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/vite": "^4.3.0",
     "idb": "^8.0.3",
+    "libphonenumber-js": "^1.13.10",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -27,6 +34,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

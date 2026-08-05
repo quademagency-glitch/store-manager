@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { PageHeader } from '../../../components/ui';
 
 export default function PricingTab() {
   const {
@@ -17,21 +18,21 @@ export default function PricingTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Pricing & Plans</h1>
-          <p className="dashboard-subtitle">Define subscription tiers and pricing for your tenants.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div className="pa-cycle-toggle">
+      <PageHeader
+        title="Pricing & Plans"
+        subtitle="Define subscription tiers and pricing for your tenants."
+        actions={
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div className="pa-cycle-toggle">
             <button className={`pa-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
             <button className={`pa-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`} onClick={() => setBillingCycle('yearly')}>Yearly</button>
-          </div>
-          <button className="btn btn-primary" onClick={() => openPlanModal()}>
+            </div>
+            <button className="btn btn-primary" onClick={() => openPlanModal()}>
             {Icons.plus} New Plan
-          </button>
-        </div>
-      </header>
+            </button>
+            </div>
+        }
+      />
 
       <div className="pa-pricing-grid">
         {activePlans.map((plan, idx) => {
@@ -106,15 +107,15 @@ export default function PricingTab() {
               )}
 
               {isIntro && Number(introPrice) > 0 && (
-                <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                  <span style={{ color: '#4ade80', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
+                <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'var(--color-success-bg)', border: '1px solid var(--color-success-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--color-success-text)', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
                   <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
-                    First payment: <strong style={{ color: '#4ade80' }}>{formatCurrency(introPrice, plan.currency)}</strong>
+                    First payment: <strong style={{ color: 'var(--color-success-text)' }}>{formatCurrency(introPrice, plan.currency)}</strong>
                   </span>
                 </div>
               )}
 
-              <div className="pa-plan-limits" style={{ marginTop: '1rem' }}>
+              <div className="pa-plan-limits mt-md">
                 <span className="pa-plan-limit"><strong>{plan.setup_fee > 0 ? formatCurrency(plan.setup_fee, plan.currency) : 'Free'}</strong> Setup Fee</span>
                 <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
                 <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
@@ -140,7 +141,7 @@ export default function PricingTab() {
                   {/* Available features */}
                   {availableFeatures.length > 0 && (
                     <div style={{ marginBottom: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid rgba(74, 222, 128, 0.15)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid var(--color-success-bg)' }}>
                         ✓ Included ({availableFeatures.length})
                       </div>
                       {availableFeatures.map(([key, label]) => (

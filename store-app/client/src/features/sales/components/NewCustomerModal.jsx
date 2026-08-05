@@ -1,13 +1,29 @@
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
+import { isValidPhone, describePhone, callingCodeFor, resolveCountry } from '../../../lib/phone';
 
-export default function NewCustomerModal({ isOpen, onClose, onSubmit }) {
+export default function NewCustomerModal({ isOpen, onClose, onSubmit, country: countryProp }) {
+  // The caller passes the business/location country when it has one; the
+  // device locale stands in while that is still loading or unset.
+  const country = countryProp || resolveCountry();
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors }
   } = useForm();
+
+  // Shown as the number is typed, so a mistyped number is caught at the
+  // counter rather than when an SMS silently fails to arrive.
+  //
+  // `useWatch` rather than the `watch()` returned by useForm: that one cannot
+  // be memoized safely and re-renders the whole form on every keystroke in any
+  // field, not just this one.
+  const phone = useWatch({ control, name: 'phone' });
+  const parsed = describePhone(phone, country);
+  const dialCode = callingCodeFor(country);
 
   const handleFormSubmit = (data) => {
     onSubmit(data);
@@ -34,17 +50,31 @@ export default function NewCustomerModal({ isOpen, onClose, onSubmit }) {
             type="tel" 
             id="cust-phone" 
             className="form-input" 
-            placeholder="+1234567890"
-            {...register('phone', { 
+            placeholder="024 123 4567"
+            inputMode="tel"
+            autoComplete="tel"
+            {...register('phone', {
               required: 'Phone Number is required',
-              pattern: {
-                value: /^\+?[1-9]\d{1,14}$/,
-                message: 'Invalid phone number format (E.164)'
-              }
+              validate: (v) =>
+                isValidPhone(v, country) ||
+                'Enter a valid number, or include the country code (e.g. +233…)',
             })}
           />
-          {errors.phone && <small className="text-error">{errors.phone.message}</small>}
-          <small className="text-muted">Must include country code (e.g. +1...)</small>
+          {/* Echo back what was understood — the country code is applied
+              automatically, so the number that gets stored should never be a
+              surprise. A typed `+…` overrides the branch's country. */}
+          {errors.phone ? (
+            <small className="text-error">{errors.phone.message}</small>
+          ) : parsed ? (
+            <small className="text-success">
+              {parsed.formatted}
+              {parsed.network ? ` · ${parsed.network}` : ''}
+            </small>
+          ) : (
+            <small className="text-muted">
+              {dialCode ? `${dialCode} applied automatically — or type a country code` : 'Include a country code if not local'}
+            </small>
+          )}
         </div>
         <div className="modal-footer">
           <button type="button" className="btn btn-secondary" onClick={() => { reset(); onClose(); }}>Cancel</button>

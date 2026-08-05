@@ -1,0 +1,64 @@
+/* ============================================================
+   Danger Zone
+
+   The container for irreversible, destructive actions. Kept
+   visually distinct and physically last on a page so a
+   destructive control never sits in the same scan path as a
+   routine one.
+
+   Colours come from the error token family rather than raw hex,
+   so the panel reads correctly in both themes — the audit found
+   21 stylesheets that hardcoded dark values and rendered
+   unreadable in the default light theme.
+   ============================================================ */
+
+.danger-zone {
+  margin-top: var(--space-xl);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-error-bg);
+  padding: var(--space-lg);
+}
+
+.danger-zone-title {
+  margin: 0 0 var(--space-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-error-text);
+}
+
+.danger-zone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.danger-zone-copy {
+  flex: 1;
+  min-width: 260px;
+}
+
+.danger-zone-copy h3 {
+  margin: 0 0 var(--space-xs);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.danger-zone-copy p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  max-width: 60ch;
+}
+
+/* The button must not shrink below its label when the row wraps on
+   a narrow screen. */
+.danger-zone-row .btn {
+  flex-shrink: 0;
+}

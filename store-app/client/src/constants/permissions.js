@@ -146,6 +146,7 @@ export const PERMISSION_TREE = [
         children: [
           { id: 'manage_roles', label: 'Create & Edit Custom Roles' },
           { id: 'manage_commission_rules', label: 'Set Global Commission Rules' },
+          { id: 'manage_integrations', label: 'Manage Ecommerce Integrations (API Keys & Webhooks)' },
         ]
       },
       {

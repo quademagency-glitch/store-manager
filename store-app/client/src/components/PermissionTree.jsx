@@ -48,7 +48,7 @@ const TreeNode = ({ node, selectedPermissions, onChange, level = 0 }) => {
           </div>
         )}
         {isLeaf && <div style={{ width: '28px' }} />}
-        <div onClick={handleToggle} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        <div onClick={handleToggle} className="flex items-center flex-1">
           <CheckboxIcon checked={checked} indeterminate={indeterminate} />
           <span style={{ 
             fontSize: level === 0 ? '1rem' : (isLeaf ? '0.9rem' : '0.95rem'), 
@@ -105,7 +105,7 @@ export default function PermissionTree({ selectedPermissions, onChange }) {
   return (
     <div className="permission-tree" style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
-        <h4 style={{ margin: 0, color: 'var(--color-text-primary)' }}>Granular Permissions</h4>
+        <h4 className="m-0 text-primary">Granular Permissions</h4>
         <button 
           type="button"
           onClick={handleToggleAll} 
@@ -116,7 +116,7 @@ export default function PermissionTree({ selectedPermissions, onChange }) {
         </button>
       </div>
 
-      <div style={{ marginTop: '8px' }}>
+      <div className="mt-sm">
         {PERMISSION_TREE.map(node => (
           <TreeNode 
             key={node.id} 

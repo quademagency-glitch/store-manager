@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Icons } from '../../components/icons/Icons';
+import { EmptyStateRow, PageHeader } from '../../components/ui';
 
 export default function TeamManagement() {
   const { hasPermission } = useAuthContext();
@@ -147,21 +148,19 @@ export default function TeamManagement() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Team Management</h1>
-          <p className="dashboard-subtitle">Manage staff members and assign roles across your business.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Team Management"
+        subtitle="Manage staff members and assign roles across your business."
+      />
 
       {error && <div className="alert alert-error mb-lg"><p>{error}</p></div>}
 
-      <div className="content-card" style={{ padding: '24px' }}>
+      <div className="content-card p-lg">
         {loading ? (
           <div className="text-center py-xl text-muted">Loading data...</div>
         ) : (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div className="flex justify-between mb-md">
               <h3 style={{ fontSize: '18px', fontWeight: '600' }}>System Users</h3>
               <button className="btn btn-primary" onClick={() => openUserModal()}>+ Add User</button>
             </div>
@@ -177,6 +176,14 @@ export default function TeamManagement() {
                   </tr>
                 </thead>
                 <tbody>
+                  {users.length === 0 && (
+                    <EmptyStateRow
+                      colSpan={5}
+                      icon="users"
+                      title="No team members yet"
+                      hint="Invite someone to give them access to this business."
+                    />
+                  )}
                   {users.map(u => (
                     <tr key={u.id}>
                       <td className="font-medium">{u.name}</td>

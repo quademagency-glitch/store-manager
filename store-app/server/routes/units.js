@@ -116,9 +116,22 @@ router.post('/assign', authGuard, permissionCheck('manage_inventory'), async (re
     
     const isDoubleMode = business?.qr_tracking_mode === 'double';
 
+    // Whether a serial number is required is a per-product setting (double mode only).
+    let requiresSerial = true;
     if (isDoubleMode) {
-      if (!pack_code || !serial_number) {
-        return res.status(400).json({ error: 'Bad request', message: 'pack_code and serial_number are required in Double QR Tracking Mode.' });
+      const { data: prodRow } = await supabaseAdmin
+        .from('products')
+        .select('requires_serial')
+        .eq('id', product_id)
+        .single();
+      requiresSerial = prodRow?.requires_serial !== false;
+    }
+
+    if (isDoubleMode) {
+      if (!pack_code || (requiresSerial && !serial_number)) {
+        return res.status(400).json({ error: 'Bad request', message: requiresSerial
+          ? 'pack_code and serial_number are required in Double QR Tracking Mode.'
+          : 'pack_code is required in Double QR Tracking Mode.' });
       }
     } else {
       if (!qr_code) {

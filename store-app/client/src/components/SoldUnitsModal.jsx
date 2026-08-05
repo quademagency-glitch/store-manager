@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from './Modal';
@@ -13,7 +13,10 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
 
   const isBusinessAdmin = role === 'Business Admin' || role === 'Platform Admin';
 
-  const fetchSoldUnits = async () => {
+  // Memoized so the effect below can depend on it by identity instead of
+  // re-listing what it closes over. Its deps are the same `product` and
+  // `activeLocationId` the effect used before, so when it refetches is unchanged.
+  const fetchSoldUnits = useCallback(async () => {
     try {
       setLoading(true);
       const url = activeLocationId
@@ -27,13 +30,13 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [product, activeLocationId]);
 
   useEffect(() => {
     if (isOpen && product) {
       fetchSoldUnits();
     }
-  }, [isOpen, product, activeLocationId]);
+  }, [isOpen, product, fetchSoldUnits]);
 
   const handleReceiptClick = (receiptNumber) => {
     if (isBusinessAdmin && receiptNumber) {
@@ -47,7 +50,7 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Sold Units - ${product.name}`} size="large">
-      <div style={{ marginBottom: '16px' }}>
+      <div className="mb-md">
         <p className="text-muted">Viewing history of sold items for this product. Privacy controls are enforced based on your role.</p>
       </div>
 
@@ -57,8 +60,8 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
         <div className="text-center py-xl text-muted">No sold units found for this product.</div>
       ) : (
         <div style={{ background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          <table className="table" style={{ width: '100%', marginBottom: 0 }}>
-            <thead style={{ background: '#f8fafc' }}>
+          <table className="table w-full mb-0">
+            <thead style={{ background: 'var(--color-bg-primary)' }}>
               <tr>
                 <th style={{ padding: '12px' }}>Sale Date</th>
                 <th style={{ padding: '12px' }}>QR Code</th>
@@ -70,7 +73,7 @@ export default function SoldUnitsModal({ isOpen, onClose, product }) {
             </thead>
             <tbody>
               {units.map((unit) => (
-                <tr key={unit.id} style={{ borderTop: '1px solid var(--color-border)' }}>
+                <tr key={unit.id} className="border-t">
                   <td style={{ padding: '12px' }}>
                     {unit.sold_at ? new Date(unit.sold_at).toLocaleString() : 'N/A'}
                   </td>

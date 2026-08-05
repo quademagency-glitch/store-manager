@@ -1,5 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { EmptyStateRow, PageHeader } from '../../../components/ui';
 
 export default function UsersTab() {
   const {
@@ -9,15 +10,15 @@ export default function UsersTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">System Users</h1>
-          <p className="dashboard-subtitle">Manage all users across every business on the platform.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowAddUserModal(true)}>
-          {Icons.plus} New User
-        </button>
-      </header>
+      <PageHeader
+        title="System Users"
+        subtitle="Manage all users across every business on the platform."
+        actions={
+            <button className="btn btn-primary" onClick={() => setShowAddUserModal(true)}>
+            {Icons.plus} New User
+            </button>
+        }
+      />
 
       <div className="content-card">
         <div className="toolbar">
@@ -42,8 +43,8 @@ export default function UsersTab() {
               {filteredUsers.map((u) => (
                 <tr key={u.id} style={{ opacity: u.status === 'banned' ? 0.6 : 1 }}>
                   <td>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 500 }}>{u.name || 'Unnamed User'}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{u.name || 'Unnamed User'}</span>
                       <span style={{ fontSize: '0.85em', color: 'var(--color-text-tertiary)' }}>{u.email}</span>
                     </div>
                   </td>
@@ -64,7 +65,7 @@ export default function UsersTab() {
                     )}
                   </td>
                   <td className="text-right">
-                    <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                    <div className="action-buttons justify-end">
                       <button className="btn-icon" onClick={() => openEditUser(u)} title="Edit" aria-label={`Edit ${u.email}`}>{Icons.edit}</button>
                       <button className="btn-icon text-warning hover-bg-warning" onClick={() => handleToggleUserBan(u)} title={u.status === 'banned' ? 'Unban' : 'Ban'} aria-label={u.status === 'banned' ? `Unban ${u.email}` : `Ban ${u.email}`}>{Icons.ban}</button>
                       <button className="btn-icon text-error hover-bg-error" onClick={() => handleDeleteUser(u.id, u.email)} title="Delete" aria-label={`Delete ${u.email}`}>{Icons.trash}</button>
@@ -73,7 +74,7 @@ export default function UsersTab() {
                 </tr>
               ))}
               {filteredUsers.length === 0 && (
-                <tr><td colSpan="5" className="text-center py-xl text-muted">No users found.</td></tr>
+                <EmptyStateRow colSpan={5} icon="users" title="No users found" />
               )}
             </tbody>
           </table>

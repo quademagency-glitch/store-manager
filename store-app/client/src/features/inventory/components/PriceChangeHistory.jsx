@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../lib/api';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
@@ -14,7 +14,9 @@ export default function PriceChangeHistory() {
   const [loading, setLoading] = useState(true);
   const [filterBatch, setFilterBatch] = useState('');
 
-  const fetchHistory = async (p = 1) => {
+  // Memoized on `filterBatch`, the only value it closes over — so the effect
+  // below fires on exactly the same condition it did before.
+  const fetchHistory = useCallback(async (p = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: p, limit: 50 });
@@ -31,11 +33,11 @@ export default function PriceChangeHistory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterBatch]);
 
   useEffect(() => {
     fetchHistory(1);
-  }, [filterBatch]);
+  }, [fetchHistory]);
 
   const getChangeLabel = (type) => {
     switch (type) {
@@ -57,7 +59,7 @@ export default function PriceChangeHistory() {
   });
 
   return (
-    <div style={{ marginTop: '1rem' }}>
+    <div className="mt-md">
       {/* Filters */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <span style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
@@ -74,7 +76,7 @@ export default function PriceChangeHistory() {
         {loading ? (
           <div className="table-loading"><div className="spinner"></div><p>Loading history...</p></div>
         ) : history.length === 0 ? (
-          <div className="text-center py-xl text-muted" style={{ padding: '48px 0' }}>
+          <div className="text-center py-xl text-muted">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3, margin: '0 auto 12px' }}>
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M12 8v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -88,7 +90,7 @@ export default function PriceChangeHistory() {
               const isBulk = batch.entries.length > 1;
 
               return (
-                <div key={batchKey} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <div key={batchKey} className="border-b">
                   {/* Batch Header */}
                   {isBulk && (
                     <div style={{
@@ -117,14 +119,14 @@ export default function PriceChangeHistory() {
                   )}
 
                   {/* Entries */}
-                  <table className="glass-table" style={{ marginBottom: 0 }}>
+                  <table className="glass-table mb-0">
                     {!isBulk && (
                       <thead>
                         <tr>
                           <th>Date</th><th>Product</th><th>SKU</th><th>Type</th>
-                          <th style={{ textAlign: 'right' }}>Old Price</th>
-                          <th style={{ textAlign: 'right' }}>New Price</th>
-                          <th style={{ textAlign: 'right' }}>Change</th>
+                          <th className="text-right">Old Price</th>
+                          <th className="text-right">New Price</th>
+                          <th className="text-right">Change</th>
                           <th>Reason</th>
                         </tr>
                       </thead>
@@ -169,9 +171,9 @@ export default function PriceChangeHistory() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="p-md flex justify-between items-center">
                 <span className="text-sm text-muted">Page {page} of {totalPages}</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="flex gap-sm">
                   <button className="btn btn-secondary btn-sm" onClick={() => fetchHistory(Math.max(1, page - 1))} disabled={page === 1}>Previous</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => fetchHistory(Math.min(totalPages, page + 1))} disabled={page === totalPages}>Next</button>
                 </div>

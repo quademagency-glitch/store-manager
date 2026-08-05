@@ -56,8 +56,8 @@ BEGIN
         v_new_stock := v_current_stock - v_quantity;
 
         -- Insert sale item
-        INSERT INTO sale_items (sale_id, product_id, quantity, unit_price)
-        VALUES (v_sale_id, v_product_id, v_quantity, v_unit_price);
+        INSERT INTO sale_items (sale_id, business_id, product_id, quantity, unit_price)
+        VALUES (v_sale_id, p_business_id, v_product_id, v_quantity, v_unit_price);
 
         -- Update product inventory
         UPDATE product_inventory 

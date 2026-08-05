@@ -6,6 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Icons } from '../../components/icons/Icons';
 import { CURRENCY_OPTIONS } from '../../utils/currencyOptions';
+import { EmptyStateRow, PageHeader } from '../../components/ui';
 
 export default function Locations() {
   const { user } = useAuthContext();
@@ -132,15 +133,15 @@ export default function Locations() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Locations & Branches</h1>
-          <p className="dashboard-subtitle">Manage physical stores or branches for your organization.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => openModal()} disabled={!!error}>
-          + Add Location
-        </button>
-      </header>
+      <PageHeader
+        title="Locations & Branches"
+        subtitle="Manage physical stores or branches for your organization."
+        actions={
+            <button className="btn btn-primary" onClick={() => openModal()} disabled={!!error}>
+            + Add Location
+            </button>
+        }
+      />
 
       {error ? (
         <div className="alert alert-error">
@@ -183,9 +184,7 @@ export default function Locations() {
                   </tr>
                 ))}
                 {locations.length === 0 && (
-                  <tr>
-                    <td colSpan="6" className="text-center p-xl text-muted">No locations found.</td>
-                  </tr>
+                  <EmptyStateRow colSpan={6} icon="clipboard" title="No locations found" />
                 )}
               </tbody>
             </table>
@@ -270,7 +269,7 @@ export default function Locations() {
               Set coordinates and a radius to enforce location-based clock in/out. Staff must be within the radius to clock in.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group mb-0">
                 <label>Latitude</label>
                 <input
                   type="number"
@@ -281,7 +280,7 @@ export default function Locations() {
                   onChange={e => setFormData({...formData, latitude: e.target.value})}
                 />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group mb-0">
                 <label>Longitude</label>
                 <input
                   type="number"
@@ -302,7 +301,7 @@ export default function Locations() {
                 step="50"
                 value={formData.geofence_radius_m}
                 onChange={e => setFormData({...formData, geofence_radius_m: parseInt(e.target.value)})}
-                style={{ width: '100%' }}
+                className="w-full"
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
                 <span>50m</span>
@@ -319,7 +318,7 @@ export default function Locations() {
                 Set time windows to restrict when staff can clock in and clock out. Leave empty for no restriction.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group mb-0">
                   <label>Clock-In Start</label>
                   <input
                     type="time"
@@ -328,7 +327,7 @@ export default function Locations() {
                     onChange={e => setFormData({...formData, clock_in_start: e.target.value})}
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group mb-0">
                   <label>Clock-In End</label>
                   <input
                     type="time"
@@ -337,7 +336,7 @@ export default function Locations() {
                     onChange={e => setFormData({...formData, clock_in_end: e.target.value})}
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group mb-0">
                   <label>Clock-Out Start</label>
                   <input
                     type="time"
@@ -346,7 +345,7 @@ export default function Locations() {
                     onChange={e => setFormData({...formData, clock_out_start: e.target.value})}
                   />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
+                <div className="form-group mb-0">
                   <label>Clock-Out End</label>
                   <input
                     type="time"

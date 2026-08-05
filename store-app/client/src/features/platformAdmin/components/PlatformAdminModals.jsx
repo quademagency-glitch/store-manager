@@ -247,7 +247,7 @@ export default function PlatformAdminModals() {
 {showPlanModal && (
   <Modal isOpen={true} title={editingPlan ? 'Edit Plan' : 'Create Plan'} onClose={() => setShowPlanModal(false)}>
     <form onSubmit={handleSavePlan}>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
           <label className="form-label">Plan Name</label>
           <input className="form-input" value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} required placeholder="e.g., Starter" />
@@ -263,11 +263,11 @@ export default function PlatformAdminModals() {
           </select>
         </div>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Description</label>
         <textarea className="form-input" rows="2" value={planForm.description} onChange={e => setPlanForm({ ...planForm, description: e.target.value })} placeholder="Brief plan description..." />
       </div>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
           <label className="form-label">Monthly Price</label>
           <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_monthly} onChange={e => {
@@ -280,9 +280,9 @@ export default function PlatformAdminModals() {
           <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_yearly} onChange={e => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })} />
         </div>
       </div>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
-          <label className="form-label">Max Users <span style={{ color: 'var(--color-text-tertiary)' }}>(-1 = unlimited)</span></label>
+          <label className="form-label">Max Users <span className="text-tertiary">(-1 = unlimited)</span></label>
           <input className="form-input" type="number" value={planForm.max_users} onChange={e => setPlanForm({ ...planForm, max_users: Number(e.target.value) })} />
         </div>
         <div className="form-group">
@@ -290,13 +290,13 @@ export default function PlatformAdminModals() {
           <input className="form-input" type="number" min="1" value={planForm.max_locations} onChange={e => setPlanForm({ ...planForm, max_locations: Number(e.target.value) })} />
         </div>
       </div>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
-          <label className="form-label">Max Products <span style={{ color: 'var(--color-text-tertiary)' }}>(-1 = unlimited)</span></label>
+          <label className="form-label">Max Products <span className="text-tertiary">(-1 = unlimited)</span></label>
           <input className="form-input" type="number" value={planForm.max_products} onChange={e => setPlanForm({ ...planForm, max_products: Number(e.target.value) })} />
         </div>
         <div className="form-group">
-          <label className="form-label">Max Products <span style={{ color: 'var(--color-text-tertiary)' }}>(-1 = unlimited)</span></label>
+          <label className="form-label">Max Products <span className="text-tertiary">(-1 = unlimited)</span></label>
           <input className="form-input" type="number" value={planForm.max_products} onChange={e => setPlanForm({ ...planForm, max_products: Number(e.target.value) })} />
         </div>
       </div>
@@ -304,7 +304,7 @@ export default function PlatformAdminModals() {
       <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(6, 182, 212, 0.06)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-md)' }}>
         <label className="form-label" style={{ color: '#22d3ee', marginBottom: '0.5rem', fontSize: '0.85rem' }}>🎁 Introductory Promotion</label>
         
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <div className="flex gap-md mb-md">
           <label className="checkbox-label" style={{ fontSize: '0.85rem' }}>
             <input type="radio" name="promo_mode" checked={planForm.promo_mode === 'none'} onChange={() => setPlanForm({ ...planForm, promo_mode: 'none' })} />
             No Promotion
@@ -326,8 +326,8 @@ export default function PlatformAdminModals() {
             </span>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Trial Days (Monthly Plan) <span style={{ color: 'var(--color-text-tertiary)' }}>(usually 0)</span></label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label className="form-label">Trial Days (Monthly Plan) <span className="text-tertiary">(usually 0)</span></label>
+                <div className="flex gap-sm">
                   <input className="form-input" type="number" min="0" value={planForm.trial_days_monthly} onChange={e => setPlanForm({ ...planForm, trial_days_monthly: Number(e.target.value) })} />
                   <select className="form-input" style={{ width: '100px' }} value={planForm.trial_unit_monthly} onChange={e => setPlanForm({ ...planForm, trial_unit_monthly: e.target.value })}>
                     <option value="days">Days</option>
@@ -336,8 +336,8 @@ export default function PlatformAdminModals() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Trial Days (Yearly Plan) <span style={{ color: 'var(--color-text-tertiary)' }}>(e.g. 1 month)</span></label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label className="form-label">Trial Days (Yearly Plan) <span className="text-tertiary">(e.g. 1 month)</span></label>
+                <div className="flex gap-sm">
                   <input className="form-input" type="number" min="0" value={planForm.trial_days_yearly} onChange={e => setPlanForm({ ...planForm, trial_days_yearly: Number(e.target.value) })} />
                   <select className="form-input" style={{ width: '100px' }} value={planForm.trial_unit_yearly} onChange={e => setPlanForm({ ...planForm, trial_unit_yearly: e.target.value })}>
                     <option value="days">Days</option>
@@ -356,18 +356,18 @@ export default function PlatformAdminModals() {
             </span>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">First Payment (Monthly Plan) <span style={{ color: 'var(--color-text-tertiary)' }}>(Normal: {planForm.price_monthly})</span></label>
+                <label className="form-label">First Payment (Monthly Plan) <span className="text-tertiary">(Normal: {planForm.price_monthly})</span></label>
                 <input className="form-input" type="number" min="0" step="0.01" value={planForm.intro_price_monthly} onChange={e => setPlanForm({ ...planForm, intro_price_monthly: e.target.value })} />
               </div>
               <div className="form-group">
-                <label className="form-label">First Payment (Yearly Plan) <span style={{ color: 'var(--color-text-tertiary)' }}>(Normal: {planForm.price_yearly})</span></label>
+                <label className="form-label">First Payment (Yearly Plan) <span className="text-tertiary">(Normal: {planForm.price_yearly})</span></label>
                 <input className="form-input" type="number" min="0" step="0.01" value={planForm.intro_price_yearly} onChange={e => setPlanForm({ ...planForm, intro_price_yearly: e.target.value })} />
               </div>
             </div>
           </div>
         )}
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Features</label>
         <div className="checkbox-grid">
           {Object.entries(FEATURE_LABELS).map(([key, label]) => (
@@ -392,7 +392,7 @@ export default function PlatformAdminModals() {
 {showGatewayModal && (
   <Modal isOpen={true} title={editingGateway ? 'Edit Gateway' : 'Add Payment Gateway'} onClose={() => setShowGatewayModal(false)}>
     <form onSubmit={handleSaveGateway}>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
           <label className="form-label">Provider</label>
           <select className="form-input" value={gatewayForm.provider} onChange={e => setGatewayForm({ ...gatewayForm, provider: e.target.value })}>
@@ -406,19 +406,19 @@ export default function PlatformAdminModals() {
           <input className="form-input" value={gatewayForm.display_name} onChange={e => setGatewayForm({ ...gatewayForm, display_name: e.target.value })} required />
         </div>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Public Key</label>
         <input className="form-input" value={gatewayForm.public_key} onChange={e => setGatewayForm({ ...gatewayForm, public_key: e.target.value })} placeholder="pk_test_..." />
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Secret Key</label>
         <input className="form-input" type="password" value={gatewayForm.secret_key} onChange={e => setGatewayForm({ ...gatewayForm, secret_key: e.target.value })} placeholder="sk_test_..." />
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
-        <label className="form-label">Webhook Secret <span style={{ color: 'var(--color-text-tertiary)' }}>(optional)</span></label>
+      <div className="form-group mb-md">
+        <label className="form-label">Webhook Secret <span className="text-tertiary">(optional)</span></label>
         <input className="form-input" type="password" value={gatewayForm.webhook_secret} onChange={e => setGatewayForm({ ...gatewayForm, webhook_secret: e.target.value })} placeholder="whsec_..." />
       </div>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <label className="checkbox-label">
           <input type="checkbox" checked={gatewayForm.is_active} onChange={e => setGatewayForm({ ...gatewayForm, is_active: e.target.checked })} />
           Active
@@ -442,21 +442,21 @@ export default function PlatformAdminModals() {
 {showAssignPlanModal && (
   <Modal isOpen={true} title="Assign Plan to Business" onClose={() => setShowAssignPlanModal(false)}>
     <form onSubmit={handleAssignPlan}>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Business</label>
         <select className="form-input" value={assignForm.business_id} onChange={e => setAssignForm({ ...assignForm, business_id: e.target.value })} required>
           <option value="">Select a business...</option>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Plan</label>
         <select className="form-input" value={assignForm.plan_id} onChange={e => setAssignForm({ ...assignForm, plan_id: e.target.value })} required>
           <option value="">Select a plan...</option>
           {plans.filter(p => p.is_active).map(p => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price_monthly, p.currency)}/mo</option>)}
         </select>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Billing Cycle</label>
         <select className="form-input" value={assignForm.billing_cycle} onChange={e => setAssignForm({ ...assignForm, billing_cycle: e.target.value })}>
           <option value="monthly">Monthly</option>
@@ -492,14 +492,14 @@ export default function PlatformAdminModals() {
 {showRecordPaymentModal && (
   <Modal isOpen={true} title="Record Manual Payment" onClose={() => setShowRecordPaymentModal(false)}>
     <form onSubmit={handleRecordPayment}>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Business</label>
         <select className="form-input" value={paymentForm.business_id} onChange={e => setPaymentForm({ ...paymentForm, business_id: e.target.value })} required>
           <option value="">Select a business...</option>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </div>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
           <label className="form-label">Amount</label>
           <input className="form-input" type="number" step="0.01" min="0.01" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} required placeholder="0.00" />
@@ -513,7 +513,7 @@ export default function PlatformAdminModals() {
           </select>
         </div>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Payment Method</label>
         <select className="form-input" value={paymentForm.payment_method} onChange={e => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
           <option value="bank_transfer">Bank Transfer</option>
@@ -523,8 +523,8 @@ export default function PlatformAdminModals() {
           <option value="other">Other</option>
         </select>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
-        <label className="form-label">Description <span style={{ color: 'var(--color-text-tertiary)' }}>(optional)</span></label>
+      <div className="form-group mb-md">
+        <label className="form-label">Description <span className="text-tertiary">(optional)</span></label>
         <input className="form-input" value={paymentForm.description} onChange={e => setPaymentForm({ ...paymentForm, description: e.target.value })} placeholder="e.g., Bank transfer for Pro plan renewal" />
       </div>
       <div className="modal-actions">
@@ -558,8 +558,8 @@ export default function PlatformAdminModals() {
           <input className="form-input" value={templateForm.subject} onChange={e => setTemplateForm({ ...templateForm, subject: e.target.value })} required={templateForm.type === 'email'} placeholder="Catchy email subject..." style={{ padding: '0.75rem' }} />
         </div>
       )}
-      <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div className="form-group mb-lg">
+        <label className="form-label flex justify-between">
           <span>Message Content</span>
           {templateForm.type === 'sms' && <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem' }}>{templateForm.content.length} chars</span>}
         </label>
@@ -579,7 +579,7 @@ export default function PlatformAdminModals() {
 {showCommsGatewayModal && (
   <Modal isOpen={true} title={editingCommsGateway ? 'Edit Communication Gateway' : 'Add Communication Gateway'} onClose={() => setShowCommsGatewayModal(false)}>
     <form onSubmit={handleSaveCommsGateway}>
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <div className="form-group">
           <label className="form-label">Gateway Type</label>
           <select className="form-input" value={commsGatewayForm.type} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, type: e.target.value, provider: e.target.value === 'sms' ? 'arkesel' : 'resend' })}>
@@ -611,31 +611,31 @@ export default function PlatformAdminModals() {
           </select>
         </div>
       </div>
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">Display Name</label>
         <input className="form-input" value={commsGatewayForm.display_name} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, display_name: e.target.value })} required placeholder="e.g. Arkesel Primary" />
       </div>
       
       {commsGatewayForm.type === 'sms' && (
-        <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <div className="form-group mb-md">
           <label className="form-label">Sender ID</label>
           <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. QUADERP (max 11 chars)" maxLength={11} />
         </div>
       )}
 
       {commsGatewayForm.type === 'email' && commsGatewayForm.provider === 'resend' && (
-        <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <div className="form-group mb-md">
           <label className="form-label">From Email Address</label>
           <input className="form-input" value={commsGatewayForm.sender_id} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, sender_id: e.target.value })} placeholder="e.g. Acme Corp <updates@acme.com>" />
         </div>
       )}
       
-      <div className="form-group" style={{ marginBottom: '1rem' }}>
+      <div className="form-group mb-md">
         <label className="form-label">API Key</label>
         <input className="form-input" type="password" value={commsGatewayForm.api_key} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, api_key: e.target.value })} placeholder="Enter API Key" />
       </div>
       
-      <div className="form-row" style={{ marginBottom: '1rem' }}>
+      <div className="form-row mb-md">
         <label className="checkbox-label">
           <input type="checkbox" checked={commsGatewayForm.is_active} onChange={e => setCommsGatewayForm({ ...commsGatewayForm, is_active: e.target.checked })} />
           Active

@@ -3,6 +3,7 @@ import { useLoyalty } from '../hooks/useLoyalty';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { api } from '../lib/api';
+import { EmptyStateRow, TabPanel, Tabs } from '../components/ui';
 import '../styles/loyalty.css';
 
 const TABS = ['rules', 'points', 'gift-cards', 'store-credit'];
@@ -141,24 +142,20 @@ export default function Loyalty() {
       </div>
 
       {/* Tabs */}
-      <div className="loyalty-tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            className={`loyalty-tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {TAB_LABELS[tab]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idPrefix="loyalty"
+        items={TABS.map(tab => ({ id: tab, label: TAB_LABELS[tab] }))}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Loyalty sections"
+      />
 
       {/* ─── Rules Config ─── */}
-      {activeTab === 'rules' && (
+      <TabPanel idPrefix="loyalty" id="rules" value={activeTab}>
         <div className="loyalty-section">
           <div className="loyalty-card">
             <h3>Loyalty Program Configuration</h3>
-            <p className="text-muted" style={{ marginBottom: '24px' }}>Configure how customers earn and redeem loyalty points.</p>
+            <p className="text-muted mb-lg">Configure how customers earn and redeem loyalty points.</p>
             <div className="form-group">
               <label>Points per $1 spent</label>
               <input type="number" step="0.1" className="form-input" value={ruleForm.points_per_currency_unit}
@@ -166,12 +163,12 @@ export default function Loyalty() {
               <span className="form-hint">How many points customers earn per dollar spent</span>
             </div>
             <div className="form-row">
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group flex-1">
                 <label>Minimum Points to Redeem</label>
                 <input type="number" className="form-input" value={ruleForm.min_points_to_redeem}
                   onChange={e => setRuleForm(p => ({ ...p, min_points_to_redeem: e.target.value }))} />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group flex-1">
                 <label>Point Value ($)</label>
                 <input type="number" step="0.001" className="form-input" value={ruleForm.point_value}
                   onChange={e => setRuleForm(p => ({ ...p, point_value: e.target.value }))} />
@@ -192,10 +189,10 @@ export default function Loyalty() {
             )}
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ─── Customer Points ─── */}
-      {activeTab === 'points' && (
+      <TabPanel idPrefix="loyalty" id="points" value={activeTab}>
         <div className="loyalty-section">
           <div className="loyalty-customer-search">
             <input type="text" className="form-input" placeholder="Search customer by name, email, or phone..."
@@ -229,8 +226,8 @@ export default function Loyalty() {
               {/* Redeem */}
               <div className="loyalty-card">
                 <h4>Redeem Points</h4>
-                <div className="form-row" style={{ alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-row items-end">
+                  <div className="form-group flex-1">
                     <label>Points to Redeem</label>
                     <input type="number" className="form-input" value={redeemForm.points}
                       onChange={e => setRedeemForm({ points: e.target.value })} />
@@ -250,7 +247,7 @@ export default function Loyalty() {
                   <thead><tr><th>Date</th><th>Type</th><th>Points</th><th>Balance</th><th>Note</th></tr></thead>
                   <tbody>
                     {(pointsLedger?.data || []).length === 0 ? (
-                      <tr><td colSpan="5" className="empty-state">No points history.</td></tr>
+                      <EmptyStateRow colSpan={5} icon="clipboard" title="No points history" />
                     ) : (
                       pointsLedger.data.map(e => (
                         <tr key={e.id}>
@@ -268,22 +265,22 @@ export default function Loyalty() {
             </>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* ─── Gift Cards ─── */}
-      {activeTab === 'gift-cards' && (
+      <TabPanel idPrefix="loyalty" id="gift-cards" value={activeTab}>
         <div className="loyalty-section">
           {/* Issue Card */}
           {hasPermission('manage_business') && (
             <div className="loyalty-card">
               <h3>Issue Gift Card</h3>
-              <div className="form-row" style={{ alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-row items-end">
+                <div className="form-group flex-1">
                   <label>Amount</label>
                   <input type="number" step="0.01" className="form-input" placeholder="50.00"
                     value={gcForm.amount} onChange={e => setGcForm(p => ({ ...p, amount: e.target.value }))} />
                 </div>
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group flex-1">
                   <label>Expires (optional)</label>
                   <input type="date" className="form-input"
                     value={gcForm.expires_at} onChange={e => setGcForm(p => ({ ...p, expires_at: e.target.value }))} />
@@ -298,8 +295,8 @@ export default function Loyalty() {
           {/* Lookup Card */}
           <div className="loyalty-card">
             <h3>Look Up Gift Card</h3>
-            <div className="form-row" style={{ alignItems: 'flex-end' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-row items-end">
+              <div className="form-group flex-1">
                 <input type="text" className="form-input" placeholder="Enter gift card code..."
                   value={gcLookupCode} onChange={e => setGcLookupCode(e.target.value)} />
               </div>
@@ -337,7 +334,7 @@ export default function Loyalty() {
               </thead>
               <tbody>
                 {(giftCards?.data || []).length === 0 ? (
-                  <tr><td colSpan="6" className="empty-state">No gift cards issued yet.</td></tr>
+                  <EmptyStateRow colSpan={6} icon="clipboard" title="No gift cards issued yet" />
                 ) : (
                   giftCards.data.map(gc => (
                     <tr key={gc.id}>
@@ -354,10 +351,10 @@ export default function Loyalty() {
             </table>
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ─── Store Credit ─── */}
-      {activeTab === 'store-credit' && (
+      <TabPanel idPrefix="loyalty" id="store-credit" value={activeTab}>
         <div className="loyalty-section">
           <div className="loyalty-customer-search">
             <input type="text" className="form-input" placeholder="Search customer..."
@@ -390,15 +387,15 @@ export default function Loyalty() {
 
               <div className="loyalty-card">
                 <h4>Issue / Refund Store Credit</h4>
-                <div className="form-row" style={{ alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-row items-end">
+                  <div className="form-group flex-1">
                     <label>Type</label>
                     <select className="form-input" value={scForm.type} onChange={e => setScForm(p => ({ ...p, type: e.target.value }))}>
                       <option value="issue">Issue Credit</option>
                       <option value="refund">Refund to Credit</option>
                     </select>
                   </div>
-                  <div className="form-group" style={{ flex: 1 }}>
+                  <div className="form-group flex-1">
                     <label>Amount</label>
                     <input type="number" step="0.01" className="form-input" value={scForm.amount}
                       onChange={e => setScForm(p => ({ ...p, amount: e.target.value }))} />
@@ -415,7 +412,7 @@ export default function Loyalty() {
             </>
           )}
         </div>
-      )}
+      </TabPanel>
     </div>
   );
 }

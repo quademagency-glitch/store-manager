@@ -13,25 +13,28 @@
   padding: 0.1rem 0.4rem;
   font-size: 0.65rem;
 }
+/* All four hardcoded dark-mode-tuned pale text (#fbbf24, #f87171,
+   #4ade80) on translucent-white fills — unreadable on a light canvas.
+   Now token-driven, so both themes are correct from one definition. */
 .badge-neutral {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
 }
 .badge-warning {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
 }
 .badge-error {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
 }
 .badge-success {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
 }
 
 .alert {
@@ -39,9 +42,79 @@
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   margin-bottom: var(--space-md);
+  border: 1px solid transparent;
 }
 .alert-error {
   background: var(--color-error-bg);
-  border: 1px solid var(--color-error-border);
-  color: #fca5a5;
+  border-color: var(--color-error-border);
+  color: var(--color-error-text);
+}
+/* These three were used in JSX but never defined, so they rendered as
+   unstyled text. */
+.alert-success {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+}
+.alert-warning {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+.alert-info {
+  background: var(--color-accent-glow);
+  border-color: var(--color-accent-secondary);
+  color: var(--color-accent-text);
+}
+
+/* --- Offline queue status pill (OfflineStatus.jsx) --- */
+.offline-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+button.offline-status-pill {
+  cursor: pointer;
+}
+
+button.offline-status-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.offline-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-warning);
+  flex-shrink: 0;
+}
+
+.offline-status-pill--offline {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.offline-status-pill--ready {
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.offline-status-pill--error {
+  background: var(--color-error-bg);
+  border-color: var(--color-error);
+  color: var(--color-error);
 }

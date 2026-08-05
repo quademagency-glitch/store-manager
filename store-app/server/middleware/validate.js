@@ -11,6 +11,7 @@ function validateBody(schema) {
       next();
     } catch (err) {
       if (err instanceof z.ZodError) {
+        console.error('Zod Validation Error details:', JSON.stringify(err.issues, null, 2));
         return res.status(400).json({
           error: 'Validation Error',
           details: (err.issues ?? err.errors ?? []).map(e => ({

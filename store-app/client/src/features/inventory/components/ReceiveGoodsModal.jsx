@@ -67,7 +67,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
         <div style={{ display: 'flex', gap: '24px', padding: '16px', background: 'var(--color-bg-tertiary)', borderRadius: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>Supplier</div>
-            <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{purchaseOrder.supplier?.name || 'Unknown'}</div>
+            <div className="font-bold text-primary">{purchaseOrder.supplier?.name || 'Unknown'}</div>
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>PO Number</div>
@@ -75,7 +75,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>Status</div>
-            <div style={{ fontWeight: 600 }}>{purchaseOrder.status}</div>
+            <div className="font-bold">{purchaseOrder.status}</div>
           </div>
         </div>
 
@@ -98,9 +98,9 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th style={{ textAlign: 'center' }}>Ordered</th>
-                  <th style={{ textAlign: 'center' }}>Received</th>
-                  <th style={{ textAlign: 'center' }}>Remaining</th>
+                  <th className="text-center">Ordered</th>
+                  <th className="text-center">Received</th>
+                  <th className="text-center">Remaining</th>
                   <th style={{ textAlign: 'center', minWidth: '100px' }}>Receive Now</th>
                 </tr>
               </thead>
@@ -113,21 +113,21 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
                   return (
                     <tr key={item.item_id} style={{ opacity: isComplete ? 0.5 : 1 }}>
                       <td>
-                        <div style={{ fontWeight: 500 }}>{item.product_name}</div>
+                        <div className="font-medium">{item.product_name}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{item.product_sku}</div>
                       </td>
-                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.ordered}</td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="text-center font-bold">{item.ordered}</td>
+                      <td className="text-center">
                         <span style={{ color: item.already_received > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
                           {item.already_received}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="text-center">
                         <span style={{ color: item.remaining > 0 ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 600 }}>
                           {item.remaining}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="text-center">
                         {isComplete ? (
                           <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>Complete</span>
                         ) : (
@@ -154,7 +154,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
         </div>
 
         {/* Notes */}
-        <div className="form-group" style={{ marginBottom: '24px' }}>
+        <div className="form-group mb-lg">
           <label className="form-label">Receiving Notes</label>
           <textarea
             className="form-input"

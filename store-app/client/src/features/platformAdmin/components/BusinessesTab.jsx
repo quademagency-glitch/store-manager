@@ -1,6 +1,7 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
 import { getBusinessUrl } from '../../../lib/subdomain';
+import { EmptyStateRow, PageHeader } from '../../../components/ui';
 
 export default function BusinessesTab() {
   const {
@@ -11,15 +12,15 @@ export default function BusinessesTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Businesses</h1>
-          <p className="dashboard-subtitle">Manage all registered tenants on the platform.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowAddBusinessModal(true)}>
-          {Icons.plus} New Business
-        </button>
-      </header>
+      <PageHeader
+        title="Businesses"
+        subtitle="Manage all registered tenants on the platform."
+        actions={
+            <button className="btn btn-primary" onClick={() => setShowAddBusinessModal(true)}>
+            {Icons.plus} New Business
+            </button>
+        }
+      />
 
       <div className="content-card">
         <div className="toolbar">
@@ -51,7 +52,7 @@ export default function BusinessesTab() {
                           {(b.name || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 500 }}>{b.name || 'Unnamed Business'}</div>
+                          <div className="font-medium">{b.name || 'Unnamed Business'}</div>
                           {b.slug && (
                             <a
                               href={getBusinessUrl(b.slug)}
@@ -75,9 +76,9 @@ export default function BusinessesTab() {
                         <span className="badge badge-neutral" style={{ color: '#4ade80', borderColor: '#4ade80' }}>Active</span>
                       )}
                     </td>
-                    <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(b.created_at).toLocaleDateString()}</td>
+                    <td className="text-secondary">{new Date(b.created_at).toLocaleDateString()}</td>
                     <td className="text-right">
-                      <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                      <div className="action-buttons justify-end">
                         <button className="btn-icon" onClick={() => handleViewBusiness(b)} title="View Details" aria-label={`View details for ${b.name}`}>
                           {Icons.eye}
                         </button>
@@ -99,7 +100,7 @@ export default function BusinessesTab() {
                 );
               })}
               {filteredBusinesses.filter(b => b.name !== 'Pending Assignment').length === 0 && (
-                <tr><td colSpan="5" className="text-center py-xl text-muted">No businesses found.</td></tr>
+                <EmptyStateRow colSpan={5} icon="business" title="No businesses found" />
               )}
             </tbody>
           </table>

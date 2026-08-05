@@ -5,6 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 
 import PermissionTree from '../../components/PermissionTree';
+import { PageHeader, PageState, EmptyStateRow, SkeletonTable } from '../../components/ui';
 
 
 export default function RolesManagement() {
@@ -13,15 +14,22 @@ export default function RolesManagement() {
   const confirm = useConfirm();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   const fetchRoles = async () => {
+    setLoading(true);
     try {
       const data = await api.get('/roles');
       setRoles(data);
+      setError(null);
     } catch (err) {
+      // Previously swallowed with a DEV-only console.error, so a failed
+      // fetch was indistinguishable from a business genuinely having no
+      // custom roles: the user got bare column headers and no explanation.
       if (import.meta.env.DEV) console.error('Error fetching roles:', err);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -84,20 +92,24 @@ export default function RolesManagement() {
     }
   };
 
-  if (loading) return <div className="p-xl text-center">Loading roles...</div>;
-
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Roles & Permissions</h1>
-          <p className="dashboard-subtitle">Manage custom roles and access levels for your team.</p>
-        </div>
-        <button className="btn btn-primary" onClick={handleCreate}>
-          + Create Custom Role
-        </button>
-      </header>
+      <PageHeader
+        title="Roles & Permissions"
+        subtitle="Manage custom roles and access levels for your team."
+        actions={
+          <button className="btn btn-primary" onClick={handleCreate}>
+            + Create Custom Role
+          </button>
+        }
+      />
 
+      <PageState
+        loading={loading}
+        error={error}
+        onRetry={fetchRoles}
+        skeleton={<div className="glass-panel"><SkeletonTable rows={4} cols={5} /></div>}
+      >
       <div className="glass-panel">
         <table className="glass-table">
           <thead>
@@ -110,6 +122,14 @@ export default function RolesManagement() {
             </tr>
           </thead>
           <tbody>
+            {roles.length === 0 && (
+              <EmptyStateRow
+                colSpan={5}
+                icon="roles"
+                title="No roles yet"
+                hint="Create a custom role to control what your team can see and do."
+              />
+            )}
             {roles.map(role => (
               <tr key={role.id}>
                 <td className="font-bold">{role.name}</td>
@@ -145,6 +165,7 @@ export default function RolesManagement() {
           </tbody>
         </table>
       </div>
+      </PageState>
 
       {showModal && editingRole && (
         <div className="modal-overlay">
@@ -181,7 +202,7 @@ export default function RolesManagement() {
                 />
               </div>
 
-              <div className="form-group" style={{ marginTop: '16px' }}>
+              <div className="form-group mt-md">
                 <PermissionTree 
                   selectedPermissions={editingRole.permissions} 
                   onChange={handlePermissionsChange} 

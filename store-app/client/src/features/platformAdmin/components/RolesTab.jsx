@@ -1,5 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { PageHeader } from '../../../components/ui';
 
 export default function RolesTab() {
   const {
@@ -8,15 +9,15 @@ export default function RolesTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Roles & Permissions</h1>
-          <p className="dashboard-subtitle">Define roles and control what each role can do on the platform.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
-          {Icons.plus} New Role
-        </button>
-      </header>
+      <PageHeader
+        title="Roles & Permissions"
+        subtitle="Define roles and control what each role can do on the platform."
+        actions={
+            <button className="btn btn-primary" onClick={() => setShowAddRoleModal(true)}>
+            {Icons.plus} New Role
+            </button>
+        }
+      />
 
       <div className="pa-roles-grid">
         {roles.map(r => {

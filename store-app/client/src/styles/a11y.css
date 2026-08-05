@@ -1,0 +1,181 @@
+/* ============================================================
+   Accessibility floor — focus, motion, touch targets
+
+   A late layer on purpose. Everything in here is a guarantee that
+   has to hold regardless of what a page stylesheet says, and
+   cascade layers resolve by layer order *before* specificity — so
+   a one-line `outline: none` in `pages` can no longer take the
+   focus ring back off a control, however specific its selector.
+
+   That is exactly how the ring was lost the first time. The base
+   reset carried `input { outline: none }` with nothing in its
+   place, and six page stylesheets repeated the pattern, so every
+   text field in the app was keyboard-invisible.
+
+   No `!important` anywhere below, and that is deliberate: inside
+   a layer system, `!important` resolves in *reverse* layer order,
+   so marking these would make them lose to any earlier `!important`
+   instead of winning. Plain declarations in a late layer already
+   beat every normal declaration before them.
+
+   The one thing that still outranks this file is unlayered CSS.
+   Keep it that way — `tests/invariants/a11y.spec.ts` fails the
+   build if a stylesheet is imported without a `layer()`, or if a
+   component injects screen CSS through a <style> tag.
+
+   Selectors are wrapped in :where() so they contribute zero
+   specificity. Within this layer nothing needs to out-rank
+   anything, and it keeps a component free to restyle the *shape*
+   of its ring without having to out-specify this file.
+   ============================================================ */
+
+/* --- Focus ---------------------------------------------------
+   :focus-visible only, never :focus — a mouse user clicking a
+   button should not get a ring, a keyboard user must. Browsers
+   already resolve that distinction correctly for text inputs,
+   which show a ring on click too because they accept typing. */
+:where(
+  a[href],
+  area[href],
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  iframe,
+  [contenteditable]:not([contenteditable='false']),
+  [tabindex]:not([tabindex^='-']),
+  [role='button'],
+  [role='link'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='menuitemcheckbox'],
+  [role='menuitemradio'],
+  [role='option'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='textbox'],
+  [role='searchbox'],
+  [role='combobox'],
+  [role='slider'],
+  [role='spinbutton']
+):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* One exception, and the reason it is spelled out rather than
+   generalised: `.acct-amount-input` is a bordered wrapper holding
+   a currency prefix and a borderless field, and it already draws
+   the ring itself on :focus-within. Letting the inner field draw a
+   second one puts a ring inside a ring. The parent class is left
+   outside :where() so this out-ranks the rule above on specificity
+   rather than on source order. */
+.acct-amount-input :where(input):focus-visible {
+  outline: none;
+}
+
+/* Windows High Contrast recolours everything to the user's own
+   palette and drops author colours, taking `--color-focus-ring`
+   with them. `Highlight` is the system keyword that survives. */
+@media (forced-colors: active) {
+  :where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex^='-'])):focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* --- Motion --------------------------------------------------
+   Collapsed to 1ms rather than removed. `transition: none` looks
+   equivalent but silently breaks any component that reveals
+   itself *through* a transition — an element animating up from
+   opacity 0 never arrives, and `transitionend` never fires, so
+   handlers waiting on it stall. A 1ms duration keeps the end
+   state and the event, and removes the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+    transition-duration: 1ms;
+    transition-delay: 0ms;
+    scroll-behavior: auto;
+  }
+
+  /* Progress indicators are the deliberate exception. An infinite
+     spinner is reporting "still working" — stopping it removes
+     information rather than decoration, and leaves the user
+     looking at a frozen UI with no way to tell it apart from a
+     hang. Slowed to a non-vestibular rate instead, matching what
+     buttons.css already does for its aria-busy spinner. */
+  .spinner,
+  .spinner-ring,
+  .loading-spinner,
+  .acct-spinner,
+  .login-button-spinner,
+  .spin-slow,
+  [aria-busy='true']::after {
+    animation-duration: 1.5s;
+  }
+
+  /* Ambient loops are the opposite case: drifting orbs, a pulsing
+     logo and a breathing status dot carry no state, so a 1ms
+     duration would leave them jittering one frame per cycle
+     forever. They stop outright. */
+  .banner-glow-1,
+  .banner-glow-2,
+  .login-bg-orb,
+  .login-logo,
+  .clock-pulse,
+  .pa-health-good::after {
+    animation: none;
+  }
+}
+
+/* --- Touch targets -------------------------------------------
+   44px minimum under a coarse pointer only, so a mouse-driven
+   desktop keeps its compact density. buttons.css already does
+   this for `.btn`, `.btn-icon` and `.btn-close`; this extends the
+   same floor to the control families it does not cover.
+
+   Links inside running text are intentionally absent. WCAG 2.5.8
+   exempts inline targets, and forcing a 44px block size onto them
+   would break the line box of every paragraph that contains one. */
+@media (pointer: coarse) {
+  /* `button` is here as the element, not just `.btn`. buttons.css only
+     reaches elements that carry the class, and the audit found icon
+     buttons rendering at 24×24 and a sidebar close control at 33×33
+     because they are bare <button>s. */
+  :where(
+    button,
+    select,
+    summary,
+    .tab,
+    .sidebar-link,
+    [role='button'],
+    [role='tab'],
+    [role='menuitem'],
+    [role='switch'],
+    input[type='button'],
+    input[type='submit'],
+    input[type='reset']
+  ) {
+    min-block-size: 44px;
+  }
+
+  /* Text fields get the same floor: a 28px-tall input is as hard
+     to tap accurately as a small button, and several modules set
+     their own compact heights. */
+  :where(input:not([type='checkbox']):not([type='radio']):not([type='range']), textarea) {
+    min-block-size: 44px;
+  }
+
+  /* Checkboxes and radios are sized by the UA and shrink-wrap to
+     ~13px. Growing the box itself is the only lever without
+     restructuring every label in the app. */
+  :where(input[type='checkbox'], input[type='radio']) {
+    inline-size: 20px;
+    block-size: 20px;
+  }
+}

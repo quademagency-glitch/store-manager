@@ -190,7 +190,7 @@ export default function SalesRecord() {
 
   return (
     <div className="sales-record-page">
-      <div className="page-header" style={{ marginBottom: '24px' }}>
+      <div className="page-header mb-lg">
         <div>
           <h1 className="page-title">Sales Record</h1>
           <p className="page-subtitle">
@@ -212,8 +212,8 @@ export default function SalesRecord() {
         </button>
       </div>
 
-      <div className="glass-panel sr-date-filter-row" style={{ padding: '24px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
+      <div className="glass-panel sr-date-filter-row p-lg mb-lg flex gap-md items-end flex-wrap">
+        <div className="form-group mb-0">
           <label>Start Date</label>
           <input 
             type="date" 
@@ -223,7 +223,7 @@ export default function SalesRecord() {
             disabled={!canViewHistory}
           />
         </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
+        <div className="form-group mb-0">
           <label>End Date</label>
           <input 
             type="date" 
@@ -238,7 +238,7 @@ export default function SalesRecord() {
         </button>
       </div>
 
-      {error && <div className="alert alert-error" style={{ marginBottom: '24px' }}>{error}</div>}
+      {error && <div className="alert alert-error mb-lg">{error}</div>}
 
       <div className="glass-panel">
         {loading ? (
@@ -252,31 +252,31 @@ export default function SalesRecord() {
             <table className="glass-table">
               <thead>
                 <tr>
-                  <th style={{ padding: '16px' }}>Date</th>
-                  <th style={{ padding: '16px' }}>Receipt #</th>
-                  <th style={{ padding: '16px' }}>Customer</th>
-                  <th style={{ padding: '16px' }}>Status</th>
-                  <th style={{ padding: '16px', textAlign: 'right' }}>Total</th>
+                  <th className="p-md">Date</th>
+                  <th className="p-md">Receipt #</th>
+                  <th className="p-md">Customer</th>
+                  <th className="p-md">Status</th>
+                  <th className="p-md text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {sales.map(sale => {
                   const isHighlighted = highlightId && sale.id === highlightId;
                   return (
-                    <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: isHighlighted ? 'rgba(79,70,229,0.05)' : 'transparent' }}>
-                      <td style={{ padding: '16px' }}>
+                    <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: isHighlighted ? 'var(--color-accent-glow)' : 'transparent' }}>
+                      <td className="p-md">
                         {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
                         {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
                       </td>
-                      <td style={{ padding: '16px' }}>
-                        <button onClick={() => openReceiptModal(sale)} className="btn btn-sm" style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                      <td className="p-md">
+                        <button onClick={() => openReceiptModal(sale)} className="btn btn-sm" style={{ background: 'var(--color-border)', color: 'var(--color-primary)', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
                           {sale.receipt_number || sale.id.substring(0, 8)}
                         </button>
                       </td>
-                      <td style={{ padding: '16px' }}>
-                        {sale.customer ? (<div><div style={{ fontWeight: 600 }}>{sale.customer.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div></div>) : <span style={{ color: 'var(--color-text-muted)' }}>Walk-in Customer</span>}
+                      <td className="p-md">
+                        {sale.customer ? (<div><div className="font-bold">{sale.customer.name}</div><div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{sale.customer.phone}</div></div>) : <span className="text-muted">Walk-in Customer</span>}
                       </td>
-                      <td style={{ padding: '16px' }}>
+                      <td className="p-md">
                         <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`}>
                           {sale.return_status === 'partial' ? 'Partial Return' : sale.return_status === 'full' ? 'Fully Returned' : 'Completed'}
                         </span>
@@ -294,9 +294,9 @@ export default function SalesRecord() {
             {sales.map(sale => {
               const isHighlighted = highlightId && sale.id === highlightId;
               return (
-                <div key={sale.id} className="m-card" style={isHighlighted ? { background: 'rgba(79,70,229,0.05)' } : {}}>
+                <div key={sale.id} className="m-card" style={isHighlighted ? { background: 'var(--color-accent-glow)' } : {}}>
                   <div className="m-card-top">
-                    <div style={{ flex: 1 }}>
+                    <div className="flex-1">
                       <button onClick={() => openReceiptModal(sale)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>
                         #{sale.receipt_number || sale.id.substring(0, 8)}
                       </button>
@@ -318,9 +318,9 @@ export default function SalesRecord() {
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="p-md border-t flex justify-between items-center">
               <div className="text-sm text-muted">Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, totalSales)} of {totalSales}</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex gap-sm">
                 <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</button>
                 <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>
               </div>
@@ -333,7 +333,7 @@ export default function SalesRecord() {
       {/* Returns Modal */}
       {selectedSale && (
         <Modal isOpen={isReturnModalOpen} onClose={closeReturnModal} title="Return Processing" size="large">
-          <div style={{ marginBottom: '24px' }}>
+          <div className="mb-lg">
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Receipt #{selectedSale.receipt_number || selectedSale.id.substring(0,8)}</h3>
             <p className="text-muted">Select items below to process a return. You can return the full purchased quantity or just a partial amount.</p>
           </div>
@@ -341,7 +341,7 @@ export default function SalesRecord() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="table" style={{ width: '100%', marginBottom: '0', minWidth: '480px' }}>
-              <thead style={{ background: '#f8fafc' }}>
+              <thead style={{ background: 'var(--color-bg-primary)' }}>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center', padding: '12px' }}>Select</th>
                   <th style={{ padding: '12px' }}>Product</th>
@@ -364,7 +364,7 @@ export default function SalesRecord() {
                   };
 
                   return (
-                    <tr key={item.id} style={{ background: isChecked ? 'rgba(239, 68, 68, 0.05)' : 'transparent', borderTop: '1px solid var(--color-border)' }}>
+                    <tr key={item.id} style={{ background: isChecked ? 'var(--color-error-bg)' : 'transparent', borderTop: '1px solid var(--color-border)' }}>
                       <td style={{ textAlign: 'center', padding: '12px' }}>
                         <input 
                           type="checkbox" 
@@ -374,7 +374,7 @@ export default function SalesRecord() {
                         />
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
+                        <div className="font-bold">{item.product?.name}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: {item.product?.sku}</div>
                       </td>
                       <td style={{ fontWeight: 500, padding: '12px' }}>{fmt(item.unit_price)}</td>
@@ -387,7 +387,7 @@ export default function SalesRecord() {
                           max={item.quantity}
                           value={currentQty === 0 ? '' : currentQty}
                           onChange={(e) => handleQuantityChange(item.id, item.quantity, e.target.value)}
-                          style={{ width: '100%', padding: '10px', fontSize: '1.1rem', textAlign: 'center', background: isChecked ? 'white' : '#f8fafc', border: '1px solid #cbd5e1' }}
+                          style={{ width: '100%', padding: '10px', fontSize: '1.1rem', textAlign: 'center', background: isChecked ? 'white' : 'var(--color-bg-primary)', border: '1px solid #cbd5e1' }}
                         />
                       </td>
                     </tr>
@@ -398,10 +398,10 @@ export default function SalesRecord() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', background: '#fef2f2', border: '1px solid #fecaca', padding: '24px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', padding: '24px', borderRadius: '12px' }}>
             <div>
-              <div style={{ fontSize: '0.85rem', color: '#991b1b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Total Refund Amount</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#dc2626' }}>{fmt(calculateTotalRefund())}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-error-text)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Total Refund Amount</div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-error-text)' }}>{fmt(calculateTotalRefund())}</div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button className="btn btn-secondary" onClick={closeReturnModal} disabled={isProcessing}>Cancel</button>
@@ -409,7 +409,7 @@ export default function SalesRecord() {
                 className="btn btn-primary" 
                 onClick={handleReturnSubmit} 
                 disabled={isProcessing || calculateTotalRefund() === 0}
-                style={{ background: '#dc2626', color: 'white', border: 'none', padding: '0 24px', fontSize: '1.1rem' }}
+                style={{ background: 'var(--color-error-text)', color: 'white', border: 'none', padding: '0 24px', fontSize: '1.1rem' }}
               >
                 {isProcessing ? 'Processing...' : 'Confirm Return'}
               </button>
@@ -445,7 +445,7 @@ export default function SalesRecord() {
                   className="btn" 
                   onClick={() => handleVoidSale(selectedReceiptSale)}
                   disabled={isProcessing}
-                  style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  style={{ background: 'var(--color-accent-glow)', color: 'var(--color-accent-text)', border: '1px solid var(--color-accent-glow)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
                   Void Sale

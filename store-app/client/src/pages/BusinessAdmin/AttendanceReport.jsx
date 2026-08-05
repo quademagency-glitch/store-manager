@@ -3,6 +3,7 @@ import { useHR } from '../../hooks/useHR';
 import { useToast } from '../../hooks/useToast';
 import { api } from '../../lib/api';
 import '../../styles/hr.css';
+import { EmptyStateRow } from '../../components/ui';
 
 export default function AttendanceReport() {
   const toast = useToast();
@@ -134,7 +135,7 @@ export default function AttendanceReport() {
           </thead>
           <tbody>
             {(attendanceLogs?.data || []).length === 0 ? (
-              <tr><td colSpan="7" className="empty-state">No attendance records found.</td></tr>
+              <EmptyStateRow colSpan={7} icon="clipboard" title="No attendance records found" />
             ) : (
               (attendanceLogs.data).map(log => (
                 <tr key={log.id}>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
@@ -24,6 +24,7 @@ import PriceTagPrinter from '../features/inventory/components/PriceTagPrinter';
 import PriceListPrint from '../features/inventory/components/PriceListPrint';
 import PriceChangeHistory from '../features/inventory/components/PriceChangeHistory';
 import { useExportCsv } from '../hooks/useExportCsv';
+import { EmptyStateRow, SkeletonRows, TabPanel, Tabs } from '../components/ui';
 
 function PricingTabContent({ refreshProducts }) {
   const [activeSection, setActiveSection] = useState('bulk-update');
@@ -35,23 +36,26 @@ function PricingTabContent({ refreshProducts }) {
   ];
 
   return (
-    <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {sections.map(s => (
-          <button
-            key={s.id}
-            className={`btn btn-sm ${activeSection === s.id ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveSection(s.id)}
-            style={activeSection === s.id ? { background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' } : {}}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-      {activeSection === 'bulk-update' && <BulkPriceUpdate onComplete={refreshProducts} />}
-      {activeSection === 'price-tags' && <PriceTagPrinter />}
-      {activeSection === 'price-list' && <PriceListPrint />}
-      {activeSection === 'history' && <PriceChangeHistory />}
+    <div className="mt-4">
+      <Tabs
+        idPrefix="pricing"
+        items={sections}
+        value={activeSection}
+        onChange={setActiveSection}
+        ariaLabel="Pricing tools"
+      />
+      <TabPanel idPrefix="pricing" id="bulk-update" value={activeSection}>
+        <BulkPriceUpdate onComplete={refreshProducts} />
+      </TabPanel>
+      <TabPanel idPrefix="pricing" id="price-tags" value={activeSection}>
+        <PriceTagPrinter />
+      </TabPanel>
+      <TabPanel idPrefix="pricing" id="price-list" value={activeSection}>
+        <PriceListPrint />
+      </TabPanel>
+      <TabPanel idPrefix="pricing" id="history" value={activeSection}>
+        <PriceChangeHistory />
+      </TabPanel>
     </div>
   );
 }
@@ -124,6 +128,11 @@ export default function Inventory() {
   const [showGrnModal, setShowGrnModal] = useState(false);
   const [grnData, setGrnData] = useState(null);
 
+  // `locationFilter` is read to seed a default for non-admins ("if they have
+  // not picked a branch, pick their first one"), not to drive the fetch. Adding
+  // it to the deps would re-request /locations every time the user changes the
+  // branch filter, purely to re-answer a question that only matters before they
+  // have chosen.
   useEffect(() => {
     fetchMovements(stockPage);
     api.get('/locations').then(res => {
@@ -135,6 +144,7 @@ export default function Inventory() {
         }
       }
     }).catch(() => setLocations([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchMovements, stockPage, isManagerOrAdmin, locationIds]);
 
 
@@ -464,20 +474,6 @@ export default function Inventory() {
     { id: 'pricing', label: 'Pricing' },
   ];
 
-  const tabsScrollRef = useRef(null);
-  const [tabsFade, setTabsFade] = useState({ left: false, right: false });
-
-  const updateTabsFade = () => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    setTabsFade({
-      left: el.scrollLeft > 4,
-      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
-    });
-  };
-
-  useEffect(() => { updateTabsFade(); }, []);
-
   return (
     <div className="inventory-page">
       <div className="inventory-header page-header">
@@ -530,12 +526,12 @@ export default function Inventory() {
             </svg>
             Low Stock Alerts ({lowStockProducts.length})
           </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="flex flex-wrap gap-sm">
             {lowStockProducts.map((p, idx) => (
               <div key={`${p.id}-${idx}`} style={{ padding: '6px 10px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.825rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{p.name}</span>
+                <span className="font-bold text-primary">{p.name}</span>
                 <span style={{ color: p.quantity === 0 ? 'var(--color-error)' : 'var(--color-warning)', fontWeight: 700 }}>{p.quantity} left</span>
-                {locations.length > 1 && <span style={{ color: 'var(--color-text-muted)' }}>@ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown'}</span>}
+                {locations.length > 1 && <span className="text-muted">@ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown'}</span>}
               </div>
             ))}
           </div>
@@ -543,23 +539,17 @@ export default function Inventory() {
       )}
 
       {/* Tab Navigation */}
-      <div className={`inventory-tabs-wrap ${tabsFade.left ? 'fade-left' : ''} ${tabsFade.right ? 'fade-right' : ''}`}>
-        <div className="inventory-tabs" ref={tabsScrollRef} onScroll={updateTabsFade}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`inventory-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Tabs
+        idPrefix="inventory"
+        items={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Inventory sections"
+      />
       {/* ═══ PRODUCTS TAB ═══ */}
-      {activeTab === 'products' && (
+      <TabPanel idPrefix="inventory" id="products" value={activeTab}>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="flex justify-between items-center mb-md">
             <div className="search-bar" style={{ flex: 1, maxWidth: '400px' }}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="search-icon">
                 <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
@@ -597,7 +587,7 @@ export default function Inventory() {
                 <option value="out_of_stock">Out of Stock</option>
               </select>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div className="flex gap-sm items-center">
               <span className="badge badge-neutral">{filteredProducts.length} items</span>
               {hasPermission('manage_products') && (
                 <button className="btn btn-primary fab-mobile" onClick={openAddProductModal} title="Add Product">
@@ -625,7 +615,7 @@ export default function Inventory() {
                 </thead>
                 <tbody>
                   {filteredProducts.length === 0 ? (
-                    <tr><td colSpan={3} className="text-center py-xl text-muted">No products found.</td></tr>
+                    <EmptyStateRow colSpan={3} icon="clipboard" title="No products found" />
                   ) : (
                     filteredProducts.map(product => {
                       const displayStock = locationFilter === 'all'
@@ -646,7 +636,7 @@ export default function Inventory() {
                               <div className="product-info">
                                 <span className="product-name">{product.name}</span>
                                 {product.product_code && (
-                                  <span className="text-muted text-sm" style={{display: 'block'}}>{product.product_code}</span>
+                                  <span className="text-muted text-sm block">{product.product_code}</span>
                                 )}
                                 {isLowStock && <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>}
                               </div>
@@ -691,7 +681,7 @@ export default function Inventory() {
                     >
                       <div className="m-card-top">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                          <div style={{ minWidth: 0 }}>
+                          <div className="min-w-0">
                             <div className="m-card-title">{product.name}</div>
                             {isLowStock && <span className="badge badge-warning badge-sm">Low Stock</span>}
                             <div className="m-card-meta">
@@ -721,11 +711,11 @@ export default function Inventory() {
             </>)}
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ═══ LEDGER TAB ═══ */}
-      {activeTab === 'ledger' && (
-        <div className="glass-panel" style={{ marginTop: '1rem' }}>
+      <TabPanel idPrefix="inventory" id="ledger" value={activeTab}>
+        <div className="glass-panel mt-md">
           <div className="desktop-table-view">
           <table className="glass-table">
             <thead>
@@ -735,9 +725,9 @@ export default function Inventory() {
             </thead>
             <tbody>
               {stockLoading ? (
-                <tr><td colSpan="6" className="text-center py-xl text-muted">Loading movements...</td></tr>
+                <SkeletonRows rows={3} cols={6} />
               ) : movements.length === 0 ? (
-                <tr><td colSpan="6" className="text-center py-xl text-muted">No stock movements found.</td></tr>
+                <EmptyStateRow colSpan={6} icon="clipboard" title="No stock movements found" />
               ) : (
                 movements.map(m => (
                   <tr key={m.id}>
@@ -766,13 +756,13 @@ export default function Inventory() {
           </div>
           <div className="mobile-card-view">
             {stockLoading ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+              <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
             ) : movements.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No stock movements found.</div>
             ) : movements.map(m => (
               <div key={m.id} className="m-card">
                 <div className="m-card-top">
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex-1 min-w-0">
                     <div className="m-card-title">{m.product?.name || 'Unknown'}</div>
                     <div className="m-card-meta"><code>{m.product?.sku}</code> · {m.user?.email?.split('@')[0] || 'Unknown'}</div>
                     <div className="m-card-meta">{formatDate(m.created_at)}</div>
@@ -791,11 +781,11 @@ export default function Inventory() {
 
           {/* Pagination Controls */}
           {stockTotalPages > 1 && (
-            <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="p-md border-t flex justify-between items-center">
               <div className="text-sm text-muted">
                 Showing {(stockPage - 1) * 50 + 1} to {Math.min(stockPage * 50, totalMovements)} of {totalMovements} movements
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex gap-sm">
                 <button 
                   className="btn btn-secondary btn-sm" 
                   onClick={() => fetchMovements(Math.max(1, stockPage - 1))}
@@ -814,13 +804,13 @@ export default function Inventory() {
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* ═══ TRANSFERS TAB ═══ */}
-      {activeTab === 'transfers' && (
+      <TabPanel idPrefix="inventory" id="transfers" value={activeTab}>
         <div>
           {hasPermission('manage_inventory') && (
-            <div style={{ marginBottom: '1rem' }}>
+            <div className="mb-md">
               <button className="btn btn-primary" onClick={() => setIsTransferModalOpen(true)}>+ New Transfer</button>
             </div>
           )}
@@ -834,9 +824,9 @@ export default function Inventory() {
               </thead>
               <tbody>
                 {transfersLoading ? (
-                  <tr><td colSpan="6" className="text-center py-xl text-muted">Loading...</td></tr>
+                  <SkeletonRows rows={3} cols={6} />
                 ) : transfers.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-xl text-muted">No transfers found.</td></tr>
+                  <EmptyStateRow colSpan={6} icon="restore" title="No transfers found" />
                 ) : (
                   transfers.map(t => (
                     <tr key={t.id}>
@@ -847,7 +837,7 @@ export default function Inventory() {
                       <td><span className={`transfer-status ${t.status.toLowerCase()}`}>{t.status}</span></td>
                       <td>
                         {t.status === 'PENDING' && hasPermission('manage_inventory') && (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <div className="flex gap-sm">
                             <button className="btn btn-sm btn-primary" onClick={() => handleTransferAction(t.id, 'complete')}>Receive</button>
                             <button className="btn btn-sm btn-secondary" onClick={() => handleTransferAction(t.id, 'cancel')}>Cancel</button>
                           </div>
@@ -861,13 +851,13 @@ export default function Inventory() {
             </div>
             <div className="mobile-card-view">
               {transfersLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+                <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
               ) : transfers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No transfers found.</div>
               ) : transfers.map(t => (
                 <div key={t.id} className="m-card">
                   <div className="m-card-top">
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1 min-w-0">
                       <div className="m-card-title">{t.product?.name}</div>
                       <div className="m-card-meta"><code>{t.product?.sku}</code></div>
                       <div className="m-card-sub">{t.from_location?.name} → {t.to_location?.name}</div>
@@ -889,19 +879,19 @@ export default function Inventory() {
             </div>
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ═══ INVENTORY COUNT TAB ═══ */}
-      {activeTab === 'inventorycount' && (
+      <TabPanel idPrefix="inventory" id="inventorycount" value={activeTab}>
         <InventoryCount locations={locations} products={products} />
-      )}
+      </TabPanel>
 
       {/* ═══ CYCLE COUNTS TAB ═══ */}
-      {activeTab === 'audits' && (
+      <TabPanel idPrefix="inventory" id="audits" value={activeTab}>
         <div>
-          <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
-            <h3 style={{ marginBottom: '1rem', fontWeight: 600 }}>New Cycle Count</h3>
-            <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <div className="glass-panel p-lg mb-md">
+            <h3 className="mb-md font-bold">New Cycle Count</h3>
+            <div className="form-group mb-md">
               <label>Select Location</label>
               <select className="form-input" value={auditLocationId} onChange={e => { setAuditLocationId(e.target.value); setAuditCounts({}); setAuditResults(null); }}>
                 <option value="">Choose a location...</option>
@@ -914,8 +904,8 @@ export default function Inventory() {
                 <div className="audit-grid">
                   <div className="audit-row" style={{ background: 'transparent', border: 'none', fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
                     <span>Product</span>
-                    <span style={{ textAlign: 'center' }}>System Qty</span>
-                    <span style={{ textAlign: 'center' }}>Physical Count</span>
+                    <span className="text-center">System Qty</span>
+                    <span className="text-center">Physical Count</span>
                   </div>
                   {auditProducts.map(p => (
                     <div key={p.id} className="audit-row">
@@ -931,7 +921,7 @@ export default function Inventory() {
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="mt-md flex justify-end">
                   <button className="btn btn-primary" disabled={submittingAudit} onClick={handleAuditSubmit}>
                     {submittingAudit ? 'Submitting...' : 'Submit Cycle Count'}
                   </button>
@@ -964,18 +954,18 @@ export default function Inventory() {
               </thead>
               <tbody>
                 {auditsLoading ? (
-                  <tr><td colSpan="7" className="text-center py-xl text-muted">Loading...</td></tr>
+                  <SkeletonRows rows={3} cols={7} />
                 ) : audits.length === 0 ? (
-                  <tr><td colSpan="7" className="text-center py-xl text-muted">No audits yet.</td></tr>
+                  <EmptyStateRow colSpan={7} icon="clipboard" title="No audits yet" />
                 ) : (
                   audits.map(a => (
                     <tr key={a.id}>
                       <td className="text-muted">{formatDate(a.created_at)}</td>
                       <td className="font-medium">{a.product?.name}</td>
                       <td>{a.location?.name}</td>
-                      <td style={{ textAlign: 'center' }}>{a.expected_quantity}</td>
-                      <td style={{ textAlign: 'center' }}>{a.counted_quantity}</td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="text-center">{a.expected_quantity}</td>
+                      <td className="text-center">{a.counted_quantity}</td>
+                      <td className="text-center">
                         <span className={a.discrepancy > 0 ? 'discrepancy-positive' : a.discrepancy < 0 ? 'discrepancy-negative' : 'discrepancy-zero'}>
                           {a.discrepancy > 0 ? '+' : ''}{a.discrepancy}
                         </span>
@@ -989,13 +979,13 @@ export default function Inventory() {
             </div>
             <div className="mobile-card-view">
               {auditsLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+                <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
               ) : audits.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No audits yet.</div>
               ) : audits.map(a => (
                 <div key={a.id} className="m-card">
                   <div className="m-card-top">
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1 min-w-0">
                       <div className="m-card-title">{a.product?.name}</div>
                       <div className="m-card-sub">{a.location?.name}</div>
                       <div className="m-card-meta">{formatDate(a.created_at)} · {a.auditor?.email?.split('@')[0]}</div>
@@ -1011,13 +1001,13 @@ export default function Inventory() {
             </div>
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ═══ BATCHES TAB ═══ */}
-      {activeTab === 'batches' && (
+      <TabPanel idPrefix="inventory" id="batches" value={activeTab}>
         <div>
           {hasPermission('manage_inventory') && (
-            <div style={{ marginBottom: '1rem' }}>
+            <div className="mb-md">
               <button className="btn btn-primary" onClick={() => setIsBatchModalOpen(true)}>+ Register Batch</button>
             </div>
           )}
@@ -1029,9 +1019,9 @@ export default function Inventory() {
               </thead>
               <tbody>
                 {batchesLoading ? (
-                  <tr><td colSpan="6" className="text-center py-xl text-muted">Loading...</td></tr>
+                  <SkeletonRows rows={3} cols={6} />
                 ) : batches.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-xl text-muted">No batches registered.</td></tr>
+                  <EmptyStateRow colSpan={6} icon="clipboard" title="No batches registered" />
                 ) : (
                   batches.map(b => {
                     const status = getExpiryStatus(b.expiry_date);
@@ -1052,7 +1042,7 @@ export default function Inventory() {
             </div>
             <div className="mobile-card-view">
               {batchesLoading ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+                <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
               ) : batches.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No batches registered.</div>
               ) : batches.map(b => {
@@ -1060,7 +1050,7 @@ export default function Inventory() {
                 return (
                   <div key={b.id} className={`m-card${status.rowClass ? ' ' + status.rowClass : ''}`}>
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex-1 min-w-0">
                         <div className="m-card-title">{b.product?.name}</div>
                         <div className="m-card-meta"><code>{b.product?.sku}</code> · <code>{b.batch_number}</code></div>
                         <div className="m-card-sub">{b.location?.name}</div>
@@ -1080,17 +1070,17 @@ export default function Inventory() {
             </div>
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* ═══ ANALYTICS TAB ═══ */}
-      {activeTab === 'analytics' && (
+      <TabPanel idPrefix="inventory" id="analytics" value={activeTab}>
         <InventoryAnalytics />
-      )}
+      </TabPanel>
 
       {/* ═══ PRICING TAB ═══ */}
-      {activeTab === 'pricing' && (
+      <TabPanel idPrefix="inventory" id="pricing" value={activeTab}>
         <PricingTabContent refreshProducts={fetchProducts} />
-      )}
+      </TabPanel>
 
       {/* ═══ MODALS ═══ */}
 
@@ -1182,7 +1172,7 @@ export default function Inventory() {
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
               <button className="btn btn-outline" onClick={() => setShowGrnModal(false)}>Close</button>
-              <button className="btn btn-primary" onClick={() => printElement('printable-grn', 'a4')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn btn-primary flex items-center gap-sm" onClick={() => printElement('printable-grn', 'a4')}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Print GRN
               </button>

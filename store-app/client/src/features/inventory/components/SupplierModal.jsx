@@ -51,7 +51,7 @@ export default function SupplierModal({ isOpen, onClose, onSubmit, editingSuppli
           </div>
         )}
 
-        <div className="form-group" style={{ marginBottom: '16px' }}>
+        <div className="form-group mb-md">
           <label className="form-label">Supplier Name *</label>
           <input
             type="text"
@@ -89,7 +89,7 @@ export default function SupplierModal({ isOpen, onClose, onSubmit, editingSuppli
           </div>
         </div>
 
-        <div className="form-group" style={{ marginBottom: '16px' }}>
+        <div className="form-group mb-md">
           <label className="form-label">Email</label>
           <input
             type="email"
@@ -101,7 +101,7 @@ export default function SupplierModal({ isOpen, onClose, onSubmit, editingSuppli
           />
         </div>
 
-        <div className="form-group" style={{ marginBottom: '16px' }}>
+        <div className="form-group mb-md">
           <label className="form-label">Address</label>
           <textarea
             name="address"
@@ -142,7 +142,7 @@ export default function SupplierModal({ isOpen, onClose, onSubmit, editingSuppli
           </div>
         </div>
 
-        <div className="form-group" style={{ marginBottom: '24px' }}>
+        <div className="form-group mb-lg">
           <label className="form-label">Notes</label>
           <textarea
             name="notes"

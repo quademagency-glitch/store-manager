@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
 import '../../styles/hr.css';
+import { EmptyStateRow } from '../../components/ui';
 
 export default function MyCommissions() {
   const { commissions, fetchCommissions } = useHR();
@@ -39,7 +40,7 @@ export default function MyCommissions() {
       {/* Summary Cards */}
       <div className="hr-summary-grid">
         <div className="hr-summary-card">
-          <div className="hr-summary-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+          <div className="hr-summary-icon" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-text)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2V22" strokeLinecap="round" /><path d="M17 7H9.5C7.57 7 6 8.57 6 10.5S7.57 14 9.5 14h5c1.93 0 3.5 1.57 3.5 3.5S16.43 21 14.5 21H6" strokeLinecap="round" />
             </svg>
@@ -50,7 +51,7 @@ export default function MyCommissions() {
           </div>
         </div>
         <div className="hr-summary-card">
-          <div className="hr-summary-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+          <div className="hr-summary-icon" style={{ background: 'var(--color-accent-glow)', color: 'var(--color-accent-text)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="12" r="10" />
             </svg>
@@ -61,7 +62,7 @@ export default function MyCommissions() {
           </div>
         </div>
         <div className="hr-summary-card">
-          <div className="hr-summary-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+          <div className="hr-summary-icon" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" strokeLinecap="round" />
             </svg>
@@ -101,7 +102,7 @@ export default function MyCommissions() {
           </thead>
           <tbody>
             {(commissions?.data || []).length === 0 ? (
-              <tr><td colSpan="5" className="empty-state">No commissions found.</td></tr>
+              <EmptyStateRow colSpan={5} icon="dollar" title="No commissions found" />
             ) : (
               (commissions.data).map(c => (
                 <tr key={c.id}>

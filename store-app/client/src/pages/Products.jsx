@@ -4,6 +4,7 @@ import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
 import { api } from '../lib/api';
 import { useConfirm } from '../hooks/useConfirm';
+import { EmptyStateRow, PageHeader } from '../components/ui';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
@@ -34,7 +35,8 @@ export default function Products() {
     initialQuantity: '',
     locationId: '',
     qr_code_data: '',
-    product_code: ''
+    product_code: '',
+    requires_serial: true
   });
 
   // Filter products based on search term and stock filter
@@ -78,7 +80,8 @@ export default function Products() {
       initialQuantity: '',
       locationId: locations.length > 0 ? locations[0].id : '',
       qr_code_data: '',
-      product_code: ''
+      product_code: '',
+      requires_serial: true
     });
     setFormError('');
     setIsModalOpen(true);
@@ -94,7 +97,8 @@ export default function Products() {
       initialQuantity: '',
       locationId: '',
       qr_code_data: product.qr_code_data || '',
-      product_code: product.product_code || ''
+      product_code: product.product_code || '',
+      requires_serial: product.requires_serial !== false
     });
     setFormError('');
     setIsModalOpen(true);
@@ -120,7 +124,8 @@ export default function Products() {
       initialQuantity: formData.initialQuantity,
       locationId: formData.locationId,
       qr_code_data: formData.qr_code_data || formData.sku,
-      product_code: formData.product_code || null
+      product_code: formData.product_code || null,
+      requires_serial: formData.requires_serial
     };
 
     let result;
@@ -150,12 +155,10 @@ export default function Products() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Products</h1>
-          <p className="page-subtitle">Manage products, pricing, and stock levels.</p>
-        </div>
-        {hasPermission('manage_products') && (
+      <PageHeader
+        title="Products"
+        subtitle="Manage products, pricing, and stock levels."
+        actions={hasPermission('manage_products') && (
           <button className="btn btn-primary fab-mobile" onClick={openAddModal}>
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="fab-icon">
               <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -163,9 +166,9 @@ export default function Products() {
             <span className="fab-text">Add Product</span>
           </button>
         )}
-      </header>
+      />
 
-      <div className="glass-panel" style={{ marginTop: '1rem' }}>
+      <div className="glass-panel mt-md">
         {/* Toolbar */}
         <div className="toolbar">
           <div className="search-bar">
@@ -181,7 +184,7 @@ export default function Products() {
               className="search-input"
             />
           </div>
-          <div className="filter-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="filter-group flex gap-sm flex-wrap">
             <select 
               className="form-input" 
               value={locationFilter} 
@@ -237,11 +240,7 @@ export default function Products() {
               </thead>
               <tbody>
                 {filteredProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-xl text-muted">
-                      No products found matching your search.
-                    </td>
-                  </tr>
+                  <EmptyStateRow colSpan={5} icon="clipboard" title="No products found matching your search" />
                 ) : (
                   filteredProducts.map(product => {
                     const displayStock = locationFilter === 'all'
@@ -268,13 +267,13 @@ export default function Products() {
                             <div className="product-info">
                               <span className="product-name">{product.name}</span>
                               {product.product_code && (
-                                <span className="text-muted text-sm" style={{display: 'block'}}>{product.product_code}</span>
+                                <span className="text-muted text-sm block">{product.product_code}</span>
                               )}
                             </div>
                           </div>
                         </td>
                         <td>
-                          <span className="badge badge-neutral" style={{ fontWeight: 500 }}>
+                          <span className="badge badge-neutral font-medium">
                             {product.category || '—'}
                           </span>
                         </td>
@@ -284,7 +283,7 @@ export default function Products() {
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div className="flex items-center gap-sm">
                             <span className={`stock-count ${isOutOfStock ? 'text-error font-bold' : isLowStock ? 'text-warning font-bold' : ''}`}>
                               {displayStock}
                             </span>
@@ -307,12 +306,12 @@ export default function Products() {
         {/* Mobile cards */}
         <div className="mobile-card-view">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div className="text-center p-xl">
               <div className="spinner mx-auto" />
               <p className="mt-sm text-muted">Loading inventory...</p>
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+            <div className="text-center p-xl text-secondary">
               No products found matching your search.
             </div>
           ) : filteredProducts.map(product => {
@@ -334,7 +333,7 @@ export default function Products() {
               >
                 <div className="m-card-top">
                   <div className="product-avatar" style={{ flexShrink: 0 }}>{product.name.charAt(0).toUpperCase()}</div>
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <div className="m-card-title">
                       {product.name}
                       {isOutOfStock ? (
@@ -349,7 +348,7 @@ export default function Products() {
                     </div>
                   </div>
                 </div>
-                <div className="m-card-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className="m-card-row flex justify-between">
                   <span style={{ color: isOutOfStock ? 'var(--color-error)' : isLowStock ? 'var(--color-warning)' : 'var(--color-text-secondary)', fontWeight: isLowStock ? 700 : undefined }}>
                     Stock: {displayStock}
                   </span>
@@ -428,6 +427,24 @@ export default function Products() {
           </div>
 
           <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={formData.requires_serial}
+                onChange={(e) => setFormData({ ...formData, requires_serial: e.target.checked })}
+                style={{ marginTop: '3px', flexShrink: 0 }}
+              />
+              <span>
+                <span className="font-medium">Require serial number scan at sale</span>
+                <small className="text-muted" style={{ display: 'block', marginTop: '2px' }}>
+                  Applies in Double QR tracking mode. When on, a serial number must be scanned for
+                  each unit at intake and checkout. Turn off for item types that have no serial.
+                </small>
+              </span>
+            </label>
+          </div>
+
+          <div className="form-group">
             <label htmlFor="price">Price ($) *</label>
             <div className="input-prefix-wrapper">
               <span className="input-prefix">$</span>
@@ -502,7 +519,7 @@ export default function Products() {
                 Delete Product
               </button>
             )}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-sm">
               <button 
                 type="button" 
                 className="btn btn-secondary" 

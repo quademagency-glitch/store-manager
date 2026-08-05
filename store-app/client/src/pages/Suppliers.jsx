@@ -8,6 +8,7 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import SupplierModal from '../features/inventory/components/SupplierModal';
+import { EmptyStateRow } from '../components/ui';
 
 export default function Suppliers() {
   const toast = useToast();
@@ -125,7 +126,7 @@ export default function Suppliers() {
               Import
             </button>
           )}
-          <button className="btn btn-primary" onClick={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+          <button className="btn btn-primary" onClick={handleAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px var(--color-accent-glow)' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
             Add Supplier
           </button>
@@ -162,17 +163,17 @@ export default function Suppliers() {
               </thead>
               <tbody>
                 {filteredSuppliers.length === 0 ? (
-                  <tr><td colSpan="5" className="text-center py-xl text-muted">No suppliers found.</td></tr>
+                  <EmptyStateRow colSpan={5} icon="business" title="No suppliers found" />
                 ) : (
                   filteredSuppliers.map(supplier => (
                     <tr
                       key={supplier.id}
-                      style={{ cursor: 'pointer', opacity: supplier.is_active ? 1 : 0.6, background: selectedSupplier?.id === supplier.id ? 'rgba(99,102,241,0.06)' : undefined }}
+                      style={{ cursor: 'pointer', opacity: supplier.is_active ? 1 : 0.6, background: selectedSupplier?.id === supplier.id ? 'var(--color-accent-glow)' : undefined }}
                       onClick={() => viewSupplierDetail(supplier)}
                     >
                       <td>
                         <div className="product-cell">
-                          <div className="product-avatar" style={{ background: supplier.is_active ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#94a3b8' }}>
+                          <div className="product-avatar" style={{ background: supplier.is_active ? 'linear-gradient(135deg, var(--color-accent-text), #8b5cf6)' : 'var(--color-text-muted)' }}>
                             {supplier.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="product-info">
@@ -186,7 +187,7 @@ export default function Suppliers() {
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{supplier.phone || supplier.email || ''}</div>
                       </td>
                       <td><span className="badge badge-neutral">{supplier.payment_terms || 'Net 30'}</span></td>
-                      <td style={{ fontWeight: 600 }}>{supplier.po_count || 0}</td>
+                      <td className="font-bold">{supplier.po_count || 0}</td>
                       <td className="text-right" onClick={e => e.stopPropagation()}>
                         <div className="action-buttons">
                           <button className="btn-icon" onClick={() => handleEdit(supplier)} title="Edit">
@@ -215,13 +216,13 @@ export default function Suppliers() {
               {filteredSuppliers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No suppliers found.</div>
               ) : filteredSuppliers.map(supplier => (
-                <div key={supplier.id} className="m-card" style={{ opacity: supplier.is_active ? 1 : 0.6, cursor: 'pointer', background: selectedSupplier?.id === supplier.id ? 'rgba(99,102,241,0.06)' : undefined }} onClick={() => viewSupplierDetail(supplier)}>
+                <div key={supplier.id} className="m-card" style={{ opacity: supplier.is_active ? 1 : 0.6, cursor: 'pointer', background: selectedSupplier?.id === supplier.id ? 'var(--color-accent-glow)' : undefined }} onClick={() => viewSupplierDetail(supplier)}>
                   <div className="m-card-top">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                      <div className="product-avatar" style={{ background: supplier.is_active ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#94a3b8', flexShrink: 0 }}>
+                      <div className="product-avatar" style={{ background: supplier.is_active ? 'linear-gradient(135deg, var(--color-accent-text), #8b5cf6)' : 'var(--color-text-muted)', flexShrink: 0 }}>
                         {supplier.name.charAt(0).toUpperCase()}
                       </div>
-                      <div style={{ minWidth: 0 }}>
+                      <div className="min-w-0">
                         <div className="m-card-title">{supplier.name}</div>
                         {!supplier.is_active && <span className="badge badge-neutral badge-sm">Archived</span>}
                         <div className="m-card-sub">{supplier.contact_person || '—'}</div>
@@ -235,7 +236,7 @@ export default function Suppliers() {
                   </div>
                   <div className="m-card-actions" onClick={e => e.stopPropagation()}>
                     <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(supplier)}>Edit</button>
-                    <button className="btn btn-sm" onClick={() => handleArchive(supplier)} style={supplier.is_active ? { background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)', border: 'none' } : { background: 'rgba(34,197,94,0.1)', color: 'var(--color-success)', border: 'none' }}>
+                    <button className="btn btn-sm" onClick={() => handleArchive(supplier)} style={supplier.is_active ? { background: 'var(--color-warning-bg)', color: 'var(--color-warning)', border: 'none' } : { background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none' }}>
                       {supplier.is_active ? 'Archive' : 'Reactivate'}
                     </button>
                   </div>
@@ -248,7 +249,7 @@ export default function Suppliers() {
 
         {/* Supplier Detail Panel */}
         {selectedSupplier && (
-          <div className="glass-panel" style={{ padding: '24px' }}>
+          <div className="glass-panel p-lg">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 4px 0' }}>{selectedSupplier.name}</h2>
@@ -280,11 +281,11 @@ export default function Suppliers() {
 
                 {/* Stats */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' }}>
-                  <div style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, var(--color-accent-glow), rgba(139,92,246,0.08))', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>{supplierDetail.po_count || 0}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Total POs</div>
                   </div>
-                  <div style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(22,163,74,0.08))', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, var(--color-success-bg), rgba(22,163,74,0.08))', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(supplierDetail.total_spend || 0)}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Total Spend</div>
                   </div>
@@ -303,8 +304,8 @@ export default function Suppliers() {
                               {new Date(po.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 600 }}>{fmt(po.total_amount)}</div>
+                          <div className="text-right">
+                            <div className="font-bold">{fmt(po.total_amount)}</div>
                             <span className={`badge badge-sm ${
                               po.status === 'received' ? 'badge-success' :
                               po.status === 'sent' ? 'badge-warning' :

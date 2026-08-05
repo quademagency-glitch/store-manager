@@ -180,14 +180,14 @@ export default function CommissionRules() {
                 <input type="text" className="form-input" placeholder="e.g. Standard 5% Commission" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
               </div>
               <div className="form-row">
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group flex-1">
                   <label>Type</label>
                   <select className="form-input" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
                     <option value="percentage">Percentage (%)</option>
                     <option value="flat">Flat Amount ($)</option>
                   </select>
                 </div>
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group flex-1">
                   <label>Value</label>
                   <input type="number" step="0.01" className="form-input" placeholder={form.type === 'percentage' ? '5' : '10.00'} value={form.value} onChange={e => setForm(p => ({ ...p, value: e.target.value }))} />
                 </div>

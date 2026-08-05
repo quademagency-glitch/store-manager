@@ -14,9 +14,14 @@ export default function ProfitLoss() {
     locationId: '',
   });
 
+  // Loads the default period once. Deliberately mount-only: the date inputs
+  // are applied explicitly via handleApply(), so depending on filters.startDate
+  // / filters.endDate would refire the report on every keystroke in a date
+  // field rather than when the user is done choosing.
   useEffect(() => {
     api.get('/locations').then(res => setLocations(Array.isArray(res) ? res : [])).catch(() => {});
     fetchPnl(filters.startDate, filters.endDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleApply = () => {

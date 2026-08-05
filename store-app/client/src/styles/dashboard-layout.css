@@ -1,23 +1,38 @@
 /* ============================================
    Dashboard Layout
    ============================================ */
+/* App shell.
+
+   A grid, not flex-plus-fixed. The sidebar occupies a real grid
+   track and is `sticky` rather than `fixed`, so the track both
+   reserves its width AND pins it on scroll. There is no
+   `margin-left` to be overridden and no way for main content to
+   slide underneath — which is exactly what used to happen when
+   `.admin-main-content { margin: 0 auto }` cancelled
+   `.dashboard-main { margin-left: var(--sidebar-width) }`,
+   hiding 280px of every page beneath the opaque sidebar.
+
+   Never apply `backdrop-filter` to this element: it would become
+   the containing block for fixed/absolute descendants and
+   reposition the nav dropdowns and OfflineStatus. */
 .dashboard-page {
-  display: flex;
-  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
   background-color: var(--color-bg-primary);
 }
 
 /* Sidebar */
 .dashboard-sidebar {
+  grid-column: 1;
   width: var(--sidebar-width);
-  height: 100vh;
+  height: 100dvh;
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
   z-index: 100;
 }
 
@@ -76,7 +91,9 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
   margin-top: 4px;
 }
 
@@ -129,23 +146,55 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: 0.5rem var(--space-md);
+  padding: 0.6rem var(--space-md);
   border-radius: var(--radius-md);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
+  transition:
+    color var(--transition-normal),
+    transform var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-link::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--color-bg-tertiary);
+  opacity: 0;
+  transform: scaleX(0.95);
+  transform-origin: left;
+  transition:
+    opacity var(--transition-normal),
+    transform var(--transition-normal),
+    background-color var(--transition-normal),
+    border-left-color var(--transition-normal);
+  z-index: -1;
+  border-radius: inherit;
 }
 
 .sidebar-link:hover:not(.disabled) {
-  background: var(--color-bg-tertiary);
   color: var(--color-text-primary);
+  transform: translateX(4px);
+}
+
+.sidebar-link:hover:not(.disabled)::before {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
-  color: var(--color-accent-hover);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--color-accent-primary);
+  font-weight: 600;
+}
+
+.sidebar-link.active::before {
+  opacity: 1;
+  transform: scaleX(1);
+  background: linear-gradient(90deg, var(--color-accent-glow), transparent);
+  border-left: 3px solid var(--color-accent-primary);
 }
 
 .sidebar-link.disabled {
@@ -212,7 +261,9 @@
   font-weight: 500;
   color: var(--color-text-tertiary);
   width: 100%;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .sidebar-signout:hover {
@@ -238,8 +289,7 @@
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  outline: none;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 [data-theme="dark"] .branch-selector {
@@ -248,11 +298,10 @@
 
 .branch-selector:focus {
   border-color: var(--color-accent-primary);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 /* Larger Touch Targets on Mobile Drawer */
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .sidebar-link {
     padding: 0.7rem var(--space-md);
     font-size: 0.95rem;
@@ -263,11 +312,38 @@
   }
 }
 
-/* Main Content */
+/* Main Content.
+
+   `min-width: 0` is load-bearing: without it a wide table sets
+   the grid track's min-content width and blows the column out
+   past the viewport. */
 .dashboard-main {
-  flex: 1;
-  margin-left: var(--sidebar-width);
+  grid-column: 2;
+  min-width: 0;
   padding: var(--space-2xl);
+}
+
+/* Centres wide content without touching the shell's geometry.
+   This is the job `.admin-main-content`'s `margin: 0 auto` was
+   trying to do from the wrong element. */
+.page-shell {
+  max-width: var(--page-max-width);
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Offline/sync pill. Sits in normal flow at the end of the header row
+   rather than absolutely positioned over the page, so it can never
+   overlap a page's own header actions. */
+.offline-status-slot {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-sm);
+  min-height: 0;
+}
+
+.offline-status-slot:empty {
+  display: none;
 }
 
 /* Mobile-only sidebar topbar — hidden by default, shown via responsive.css */
@@ -322,7 +398,6 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(12px);
 }
 
 .topbar-logo {
@@ -399,7 +474,9 @@
   font-weight: 500;
   cursor: pointer;
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .sidebar-signout:hover {
@@ -407,26 +484,8 @@
   color: #ef4444;
 }
 
-.dashboard-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 var(--space-xs) 0;
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
-}
-
-.dashboard-subtitle {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  font-weight: 500;
-  margin: 0;
-}
-
-.dashboard-subtitle strong {
-  color: var(--color-text-primary);
-}
+/* `.dashboard-title` / `.dashboard-subtitle` / `.dashboard-header` are
+   defined once, aliased to their `.page-*` twins, in pages-layouts.css. */
 
 .role-badge {
   display: inline-flex;
@@ -459,15 +518,16 @@
 
 .stat-card {
   background: var(--color-bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
-  transition: all var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
   box-shadow: var(--shadow-sm);
   color: inherit;
   text-decoration: none;
@@ -553,32 +613,21 @@
   margin-top: var(--space-xs);
 }
 
-/* Empty State */
+/* Empty State — `.empty-state` and `.empty-state-icon` are owned by
+   ui-primitives.css. The copy that lived here animated the icon with a
+   2s infinite bounce, which is a lot of perpetual motion for a "nothing
+   to show" state and ignored prefers-reduced-motion. */
 .dashboard-empty-state {
   text-align: center;
   padding: var(--space-2xl) var(--space-xl);
-  background: var(--color-bg-card);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
+  background: var(--surface-1-bg);
+  border: 1px dashed var(--surface-1-border);
   border-radius: var(--radius-xl);
-  border-style: dashed;
 }
 
-.empty-state-icon {
-  display: flex;
-  justify-content: center;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-md);
-  animation: bounce 2s ease-in-out infinite;
-}
 .empty-state-icon svg {
-  width: 3rem;
-  height: 3rem;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .dashboard-empty-state h2 {
@@ -595,4 +644,14 @@
 
 .dashboard-empty-state strong {
   color: var(--color-accent-hover);
+}
+
+/* Suspense fallback for code-split routes.
+
+   Holds the viewport height while a route chunk loads so the page does not
+   collapse to zero and bounce the scroll position back to the top. Empty on
+   purpose — each route renders its own loading state once mounted, and a
+   second loader in front of it read as a flash. */
+.route-suspense-fallback {
+  min-height: 100dvh;
 }

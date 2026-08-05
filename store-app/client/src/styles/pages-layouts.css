@@ -6,7 +6,13 @@
   margin: 0 auto;
 }
 
-.page-header {
+/* `.page-header` and `.dashboard-header` were byte-identical apart from
+   `.dashboard-header` lacking flex-wrap and gap — which is why every
+   consumer of it hand-added `style={{ marginBottom: '24px' }}`. Aliased
+   here so the ~40 existing call sites keep working unchanged while the
+   <PageHeader> component rolls out. */
+.page-header,
+.dashboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -15,27 +21,45 @@
   gap: var(--space-md);
 }
 
-.page-title {
+/* Right-aligned action slot. No such class existed, so every page built
+   its own inline-styled flex div. */
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* Solid, not gradient. `-webkit-text-fill-color: transparent` renders
+   text that has no measurable contrast for any audit tool, disappears
+   entirely under forced-colors, and prints blank. */
+.page-title,
+.dashboard-title {
   font-size: 2rem;
   font-weight: 700;
   margin: 0 0 var(--space-xs) 0;
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent-hover) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--color-text-primary);
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
-.page-subtitle {
-  color: var(--color-text-muted);
+.page-subtitle,
+.dashboard-subtitle {
+  color: var(--color-text-tertiary);
   font-size: 0.95rem;
   font-weight: 500;
   margin: 0;
 }
 
+.page-subtitle strong,
+.dashboard-subtitle strong {
+  color: var(--color-text-primary);
+}
+
 .content-card {
-  background: var(--color-bg-card);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
+  background: var(--surface-1-bg);
+  border: 1px solid var(--surface-1-border);
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-md);

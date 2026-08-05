@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useInventoryAnalytics } from '../../../hooks/useInventoryAnalytics';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
+import { EmptyStateRow } from '../../../components/ui';
 
 export default function InventoryAnalytics() {
   const { summary, valuation, turnover, deadStock, reorderSuggestions, loading, fetchAll } = useInventoryAnalytics();
@@ -31,15 +32,15 @@ export default function InventoryAnalytics() {
   }
 
   return (
-    <div style={{ marginTop: '1rem' }}>
+    <div className="mt-md">
       {/* Section Pills */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <div className="flex gap-sm mb-lg flex-wrap">
         {sections.map(s => (
           <button
             key={s.id}
             className={`btn btn-sm ${activeSection === s.id ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveSection(s.id)}
-            style={activeSection === s.id ? { background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)' } : {}}
+            style={activeSection === s.id ? { background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 2px 8px var(--color-accent-glow)' } : {}}
           >
             {s.label}
           </button>
@@ -71,8 +72,8 @@ export default function InventoryAnalytics() {
           {/* Valuation by Category (Preview) */}
           {valuation?.by_category?.length > 0 && (
             <div className="glass-panel" style={{ padding: '20px' }}>
-              <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Value by Category</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h3 className="font-bold mb-md">Value by Category</h3>
+              <div className="flex flex-col gap-sm">
                 {valuation.by_category.slice(0, 6).map(cat => {
                   const pct = valuation.total_value > 0 ? (cat.value / valuation.total_value) * 100 : 0;
                   return (
@@ -105,18 +106,18 @@ export default function InventoryAnalytics() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             {/* By Category */}
             <div className="glass-panel" style={{ padding: '20px' }}>
-              <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>By Category</h3>
+              <h3 className="font-bold mb-md">By Category</h3>
               <table className="glass-table">
                 <thead>
-                  <tr><th>Category</th><th style={{ textAlign: 'right' }}>Items</th><th style={{ textAlign: 'right' }}>Units</th><th style={{ textAlign: 'right' }}>Value</th></tr>
+                  <tr><th>Category</th><th className="text-right">Items</th><th className="text-right">Units</th><th className="text-right">Value</th></tr>
                 </thead>
                 <tbody>
                   {(valuation.by_category || []).map(cat => (
                     <tr key={cat.category}>
                       <td className="font-medium">{cat.category}</td>
-                      <td style={{ textAlign: 'right' }}>{cat.item_count}</td>
-                      <td style={{ textAlign: 'right' }}>{cat.total_units}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(cat.value)}</td>
+                      <td className="text-right">{cat.item_count}</td>
+                      <td className="text-right">{cat.total_units}</td>
+                      <td className="text-right font-bold">{fmt(cat.value)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,17 +133,17 @@ export default function InventoryAnalytics() {
 
             {/* By Location */}
             <div className="glass-panel" style={{ padding: '20px' }}>
-              <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>By Location</h3>
+              <h3 className="font-bold mb-md">By Location</h3>
               <table className="glass-table">
                 <thead>
-                  <tr><th>Location</th><th style={{ textAlign: 'right' }}>Items</th><th style={{ textAlign: 'right' }}>Value</th></tr>
+                  <tr><th>Location</th><th className="text-right">Items</th><th className="text-right">Value</th></tr>
                 </thead>
                 <tbody>
                   {(valuation.by_location || []).map(loc => (
                     <tr key={loc.location}>
                       <td className="font-medium">{loc.location}</td>
-                      <td style={{ textAlign: 'right' }}>{loc.item_count}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(loc.value)}</td>
+                      <td className="text-right">{loc.item_count}</td>
+                      <td className="text-right font-bold">{fmt(loc.value)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -155,19 +156,19 @@ export default function InventoryAnalytics() {
       {/* ═══ TURNOVER ═══ */}
       {activeSection === 'turnover' && turnover && (
         <div className="glass-panel" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontWeight: 600, margin: 0 }}>Stock Turnover ({turnover.period_days} days)</h3>
+          <div className="flex justify-between items-center mb-md">
+            <h3 className="font-bold m-0">Stock Turnover ({turnover.period_days} days)</h3>
           </div>
           <table className="glass-table">
             <thead>
               <tr>
                 <th>Product</th>
                 <th>Category</th>
-                <th style={{ textAlign: 'center' }}>Stock</th>
-                <th style={{ textAlign: 'center' }}>Sold</th>
-                <th style={{ textAlign: 'center' }}>Turnover</th>
-                <th style={{ textAlign: 'center' }}>Daily Rate</th>
-                <th style={{ textAlign: 'center' }}>Days of Stock</th>
+                <th className="text-center">Stock</th>
+                <th className="text-center">Sold</th>
+                <th className="text-center">Turnover</th>
+                <th className="text-center">Daily Rate</th>
+                <th className="text-center">Days of Stock</th>
               </tr>
             </thead>
             <tbody>
@@ -180,13 +181,13 @@ export default function InventoryAnalytics() {
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{p.sku}</div>
                     </td>
                     <td><span className="badge badge-neutral">{p.category}</span></td>
-                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{p.current_stock}</td>
-                    <td style={{ textAlign: 'center' }}>{p.total_sold}</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="text-center font-bold">{p.current_stock}</td>
+                    <td className="text-center">{p.total_sold}</td>
+                    <td className="text-center">
                       <span style={{ fontWeight: 700, color: turnoverColor }}>{p.turnover_rate}×</span>
                     </td>
-                    <td style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{p.daily_sales_rate}/day</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td className="text-center text-secondary">{p.daily_sales_rate}/day</td>
+                    <td className="text-center">
                       <span style={{
                         fontWeight: 600,
                         color: p.days_of_stock > 90 ? 'var(--color-error)' : p.days_of_stock > 30 ? 'var(--color-warning)' : 'var(--color-success)'
@@ -198,7 +199,7 @@ export default function InventoryAnalytics() {
                 );
               })}
               {(!turnover.products || turnover.products.length === 0) && (
-                <tr><td colSpan="7" className="text-center py-xl text-muted">No turnover data available.</td></tr>
+                <EmptyStateRow colSpan={7} icon="clipboard" title="No turnover data available" />
               )}
             </tbody>
           </table>
@@ -209,7 +210,7 @@ export default function InventoryAnalytics() {
       {activeSection === 'dead-stock' && deadStock && (
         <div>
           {deadStock.count > 0 && (
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div className="flex gap-md mb-md">
               <div className="glass-panel" style={{ padding: '16px 20px', flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 9V14M12 17.5V18M12 3L2 21H22L12 3Z" stroke="var(--color-error)" strokeWidth="2" strokeLinejoin="round"/></svg>
                 <div>
@@ -230,10 +231,10 @@ export default function InventoryAnalytics() {
               <thead>
                 <tr>
                   <th>Product</th><th>Category</th><th>Location</th>
-                  <th style={{ textAlign: 'center' }}>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Unit Price</th>
-                  <th style={{ textAlign: 'right' }}>Total Value</th>
-                  <th style={{ textAlign: 'center' }}>Age</th>
+                  <th className="text-center">Qty</th>
+                  <th className="text-right">Unit Price</th>
+                  <th className="text-right">Total Value</th>
+                  <th className="text-center">Age</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,14 +246,14 @@ export default function InventoryAnalytics() {
                     </td>
                     <td><span className="badge badge-neutral">{d.category}</span></td>
                     <td className="text-muted">{d.location}</td>
-                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{d.quantity}</td>
-                    <td style={{ textAlign: 'right' }}>{fmt(d.price)}</td>
+                    <td className="text-center font-bold">{d.quantity}</td>
+                    <td className="text-right">{fmt(d.price)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-error)' }}>{fmt(d.value)}</td>
-                    <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{d.age_days}d</td>
+                    <td className="text-center text-muted">{d.age_days}d</td>
                   </tr>
                 ))}
                 {(!deadStock.dead_stock || deadStock.dead_stock.length === 0) && (
-                  <tr><td colSpan="7" className="text-center py-xl" style={{ color: 'var(--color-success)' }}>🎉 No dead stock found!</td></tr>
+                  <EmptyStateRow colSpan={7} icon="checkCircle" variant="success" title="No dead stock" hint="Every product has moved recently." />
                 )}
               </tbody>
             </table>
@@ -273,11 +274,11 @@ export default function InventoryAnalytics() {
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th style={{ textAlign: 'center' }}>Stock</th>
-                  <th style={{ textAlign: 'center' }}>Reorder Point</th>
-                  <th style={{ textAlign: 'center' }}>Daily Sales</th>
-                  <th style={{ textAlign: 'center' }}>Suggested Qty</th>
-                  <th style={{ textAlign: 'right' }}>Est. Cost</th>
+                  <th className="text-center">Stock</th>
+                  <th className="text-center">Reorder Point</th>
+                  <th className="text-center">Daily Sales</th>
+                  <th className="text-center">Suggested Qty</th>
+                  <th className="text-right">Est. Cost</th>
                   <th>Supplier</th>
                   <th>Urgency</th>
                 </tr>
@@ -285,22 +286,22 @@ export default function InventoryAnalytics() {
               <tbody>
                 {(reorderSuggestions.suggestions || []).map((s, idx) => {
                   const urgencyStyles = {
-                    critical: { background: 'rgba(239,68,68,0.15)', color: 'var(--color-error)', fontWeight: 700 },
+                    critical: { background: 'var(--color-error-bg)', color: 'var(--color-error)', fontWeight: 700 },
                     high: { background: 'rgba(234,179,8,0.15)', color: 'var(--color-warning)', fontWeight: 600 },
-                    medium: { background: 'rgba(59,130,246,0.1)', color: 'var(--color-primary)', fontWeight: 500 }
+                    medium: { background: 'var(--color-accent-glow)', color: 'var(--color-primary)', fontWeight: 500 }
                   };
                   return (
-                    <tr key={`${s.product_id}-${idx}`} style={s.urgency === 'critical' ? { background: 'rgba(239,68,68,0.04)' } : {}}>
+                    <tr key={`${s.product_id}-${idx}`} style={s.urgency === 'critical' ? { background: 'var(--color-error-bg)' } : {}}>
                       <td>
                         <div className="font-medium">{s.name}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{s.sku}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{s.location}</div>
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 700, color: s.current_stock === 0 ? 'var(--color-error)' : 'var(--color-warning)' }}>{s.current_stock}</td>
-                      <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{s.reorder_point}</td>
-                      <td style={{ textAlign: 'center' }}>{s.daily_sales_rate}/day</td>
+                      <td className="text-center text-muted">{s.reorder_point}</td>
+                      <td className="text-center">{s.daily_sales_rate}/day</td>
                       <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-primary)' }}>{s.suggested_quantity}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(s.estimated_cost)}</td>
+                      <td className="text-right font-bold">{fmt(s.estimated_cost)}</td>
                       <td className="text-muted">{s.preferred_supplier?.name || '—'}</td>
                       <td>
                         <span
@@ -319,7 +320,7 @@ export default function InventoryAnalytics() {
                   );
                 })}
                 {(!reorderSuggestions.suggestions || reorderSuggestions.suggestions.length === 0) && (
-                  <tr><td colSpan="8" className="text-center py-xl" style={{ color: 'var(--color-success)' }}>🎉 All stock levels are healthy!</td></tr>
+                  <EmptyStateRow colSpan={8} icon="checkCircle" variant="success" title="All stock levels are healthy" hint="Nothing is below its reorder threshold." />
                 )}
               </tbody>
             </table>

@@ -88,7 +88,7 @@ export default function ForgotPassword() {
               {loading ? 'Sending link...' : 'Send Reset Link'}
             </button>
             
-            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <div className="text-center mt-md">
               <Link to="/login" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
                 &larr; Back to Login
               </Link>

@@ -37,13 +37,11 @@
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
   font-size: 0.875rem;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 
 .acct-search input:focus {
-  outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .acct-search input::placeholder {
@@ -64,7 +62,11 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    color var(--transition-fast);
   white-space: nowrap;
 }
 
@@ -85,8 +87,6 @@
   display: flex;
   flex-direction: column;
   background: var(--color-bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-lg);
@@ -123,19 +123,8 @@
 }
 
 .acct-card:focus-visible {
-  outline: 2px solid var(--color-accent-primary);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-[data-theme="dark"] .acct-card {
-  background: rgba(20, 20, 25, 0.6);
-  border-color: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="dark"] .acct-card:hover {
-  background: rgba(25, 25, 30, 0.8);
-  border-color: rgba(99, 102, 241, 0.25);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .acct-card-header {
@@ -260,7 +249,10 @@
   font-size: 0.78rem;
   font-weight: 600;
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
   cursor: pointer;
 }
 
@@ -455,7 +447,9 @@
   padding: var(--space-lg) var(--space-xl);
   text-align: center;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
   position: relative;
 }
 
@@ -555,7 +549,7 @@
   border: 1px solid var(--color-error-border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast);
   flex-shrink: 0;
 }
 
@@ -635,7 +629,11 @@
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
   line-height: 1;
 }
 
@@ -659,7 +657,7 @@
   background: var(--color-error-bg);
   border: 1px solid var(--color-error-border);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast);
 }
 
 .acct-field-remove-btn:hover {
@@ -702,11 +700,10 @@
   background: var(--color-bg-primary);
   border: 1px dashed var(--color-border);
   color: var(--color-text-tertiary);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 
 .acct-field-condition input:focus {
-  outline: none;
   border-color: var(--color-border-focus);
   border-style: solid;
 }
@@ -784,7 +781,8 @@
   font-weight: 700;
   color: var(--color-text-primary);
   font-family: 'Inter', system-ui, sans-serif;
-  outline: none;
+  /* The ring is suppressed in a11y.css instead, next to the comment
+     explaining why — the wrapper draws it on :focus-within. */
   min-width: 0;
 }
 
@@ -939,7 +937,7 @@
 }
 
 /* ---- Mobile Responsive ---- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .acct-toolbar {
     flex-direction: column;
     align-items: stretch;

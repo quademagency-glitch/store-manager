@@ -5,8 +5,8 @@ import { useCustomers } from '../hooks/useCustomers';
 import { useLoyalty } from '../hooks/useLoyalty';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
-import { Icons } from '../components/icons/Icons';
 import { api } from '../lib/api';
+import QrScanner from '../components/QrScanner';
 
 import NewCustomerModal from '../features/sales/components/NewCustomerModal';
 import VerifyModal from '../features/sales/components/VerifyModal';
@@ -16,6 +16,15 @@ import { addToOfflineQueue } from '../lib/idb';
 import { useToast } from '../hooks/useToast';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
+import { PageHeader } from '../components/ui';
+
+// Human-readable labels for each scannable tracking code, shown in the scanner modal.
+const SCAN_FIELD_LABELS = {
+  pack_code: 'Pack Code',
+  serial_number: 'Serial Number',
+  item_code: 'Item Code',
+  product_code: 'Product Code',
+};
 
 export default function Sales() {
   const { user } = useAuthContext();
@@ -23,13 +32,18 @@ export default function Sales() {
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const { products } = useProducts();
-  const { searchCustomers, createCustomer, verifyCustomerCode } = useCustomers();
+  // Customers are created through the POST in handleCreateCustomer, not the
+  // hook's createCustomer — it is deliberately not destructured here.
+  const { searchCustomers, verifyCustomerCode } = useCustomers();
   const loyalty = useLoyalty();
 
-  // Wizard state
-  const [saleType, setSaleType] = useState(null); // 'new', 'batch', 'history'
-  const [step, setStep] = useState(1); // 1 = Customer, 2 = Items/Checkout
-  
+  // `null` is the POS terminal itself; 'history' swaps in the past-sales view.
+  // There were once 'new' and 'batch' modes here too — a wizard that asked
+  // whether you were selling one item or several, then prompted for a quantity
+  // before creating that many scan slots. The cart below does both at once, so
+  // the modes and everything that drove them are gone.
+  const [saleType, setSaleType] = useState(null);
+
   // Customer state
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
@@ -42,21 +56,17 @@ export default function Sales() {
   const [verifyCode, setVerifyCode] = useState('');
   const [customerToVerify, setCustomerToVerify] = useState(null);
 
-  // Items State for the wizard
-  // For 'new': array of 1 item. For 'batch': array of multiple items.
-  // Each item: { id: uniqueId, product: {}, quantity: N, scanned_units: [unitId1, unitId2, ...], scanned_codes: [code1, code2, ...] }
+  // The cart. Each entry is
+  //   { id, product, quantity, stock, scans: [...] }
+  // with exactly one `scans` slot per unit — updateQuantity pushes and pops
+  // them alongside the quantity, so every physical item leaving the shop has
+  // its own tracking codes and checkout stays blocked until all are filled.
   const [wizardItems, setWizardItems] = useState([]);
-  const [showProductModal, setShowProductModal] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
-  
-  // Batch quantity prompt
-  const [showQuantityPrompt, setShowQuantityPrompt] = useState(false);
-  const [selectedProductForBatch, setSelectedProductForBatch] = useState(null);
-  const [batchQuantityInput, setBatchQuantityInput] = useState('1');
 
-  // Scanner state (values read by child components via props not shown here)
-  const [, setShowScanner] = useState(false);
-  const [, setActiveScanTarget] = useState(null);
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [activeScanTarget, setActiveScanTarget] = useState(null);
 
   // Checkout state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -122,40 +132,18 @@ export default function Sales() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomer?.id]);
 
-  // ─── Flow Navigation ───
-  const startFlow = (type) => {
-    setSaleType(type);
-    if (type === 'history') return;
-    setStep(1);
-    setSelectedCustomer(null);
-    setWizardItems([]);
-    setAmountPaid('');
-    setSaleError('');
-  };
-
-  const confirmCustomer = () => {
-    if (!selectedCustomer) return;
-    setStep(2);
-  };
-
-  const cancelFlow = () => {
-    setSaleType(null);
-    setStep(1);
-    setWizardItems([]);
-  };
-
   // ─── Customer Handling ───
   const handleCreateCustomer = async (data) => {
-    const res = await createCustomer(data);
-    if (res.success) {
+    try {
+      const res = await api.post('/customers', { ...data, business_id: business?.id });
       setSelectedCustomer(res.customer);
+      setCustomerSearchTerm('');
       setShowNewCustomerModal(false);
-    } else {
-      toast.error(res.error || 'Failed to create customer');
+      toast.success('Customer created.');
+    } catch {
+      toast.error('Failed to create customer.');
     }
   };
-
-
 
   const handleVerifyCode = async (e) => {
     e.preventDefault();
@@ -172,72 +160,32 @@ export default function Sales() {
     }
   };
 
-  // ─── Item Selection ───
-  const handleProductSelect = (product) => {
-    const userLocationId = user?.user_metadata?.location_id;
-    const localStock = userLocationId 
-      ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
-      : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
-
-    if (localStock <= 0) {
-      toast.error('This product is out of stock.');
-      return;
-    }
-
-    const isDoubleMode = business?.qr_tracking_mode === 'double';
-
-    if (saleType === 'new') {
-      if (wizardItems.length > 0) {
-        toast.warning('New Sale only supports a single item. Use Batch Sale for multiple items.');
-        return;
-      }
-      setWizardItems([{
-        id: crypto.randomUUID(),
-        product,
-        quantity: 1,
-        scans: isDoubleMode ? [{ pack_code: '', serial_number: '', item_code: '', product_code: '' }] : [{ item_code: '', unit_id: null }],
-        stock: localStock
-      }]);
-      setShowProductModal(false);
-    } else if (saleType === 'batch') {
-      setSelectedProductForBatch({ product, stock: localStock });
-      setBatchQuantityInput('1');
-      setShowQuantityPrompt(true);
-      setShowProductModal(false);
-    }
-  };
-
-  const confirmBatchQuantity = () => {
-    const qty = parseInt(batchQuantityInput, 10);
-    if (isNaN(qty) || qty <= 0) {
-      toast.warning('Please enter a valid quantity.');
-      return;
-    }
-    if (qty > selectedProductForBatch.stock) {
-      toast.warning(`Only ${selectedProductForBatch.stock} available in stock.`);
-      return;
-    }
-
-    const isDoubleMode = business?.qr_tracking_mode === 'double';
-
-    setWizardItems(prev => [...prev, {
-      id: crypto.randomUUID(),
-      product: selectedProductForBatch.product,
-      quantity: qty,
-      scans: isDoubleMode 
-        ? Array.from({ length: qty }, () => ({ pack_code: '', serial_number: '', item_code: '', product_code: '' }))
-        : Array.from({ length: qty }, () => ({ item_code: '', unit_id: null })),
-      stock: selectedProductForBatch.stock
-    }]);
-    
-    setShowQuantityPrompt(false);
-    setSelectedProductForBatch(null);
-  };
-
   // ─── Scanning Logic ───
-  const openScanner = (itemId, unitIndex = 0) => {
-    setActiveScanTarget({ itemId, unitIndex });
+  // `field` selects which tracking code the incoming scan fills. Single mode
+  // only ever scans 'item_code'; double mode targets pack_code / serial_number
+  // / item_code / product_code independently.
+  const openScanner = (itemId, unitIndex = 0, field = 'item_code') => {
+    setActiveScanTarget({ itemId, unitIndex, field });
     setShowScanner(true);
+  };
+
+  const handleScan = (scanValue) => {
+    if (!activeScanTarget) return;
+    const { itemId, unitIndex, field } = activeScanTarget;
+
+    setWizardItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const newScans = [...item.scans];
+        newScans[unitIndex] = {
+          ...newScans[unitIndex],
+          [field]: scanValue
+        };
+        return { ...item, scans: newScans };
+      }
+      return item;
+    }));
+    setShowScanner(false);
+    setActiveScanTarget(null);
   };
 
 
@@ -256,7 +204,8 @@ export default function Sales() {
     for (const item of wizardItems) {
       if (item.scans.length !== item.quantity) return false;
       if (isDoubleMode) {
-        if (item.scans.some(s => !s.pack_code || !s.serial_number || !s.item_code)) return false;
+        const serialRequired = item.product?.requires_serial !== false;
+        if (item.scans.some(s => !s.pack_code || !s.item_code || (serialRequired && !s.serial_number))) return false;
       } else {
         if (item.scans.some(s => !s.item_code)) return false;
       }
@@ -313,7 +262,8 @@ export default function Sales() {
 
 
 
-  const handleFinalizeSale = async () => {
+  const handleFinalizeSale = async (e) => {
+    if (e) e.preventDefault();
     const tendered = parseFloat(amountPaid) || 0;
     if (netAmountDue > 0 && (!amountPaid || isNaN(tendered))) {
        setSaleError('Please enter a valid amount paid.');
@@ -408,447 +358,254 @@ export default function Sales() {
     setSaleType(null); // Return to landing
   };
 
-  // ─── Render Landing ───
-  if (saleType === null) {
-    return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '2rem' }}>
-        <h1 className="dashboard-title" style={{ textAlign: 'center', marginBottom: '2rem' }}>Point of Sale</h1>
-        <div className="sales-landing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          
-          <button 
-            className="glass-panel" 
-            style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
-            onClick={() => startFlow('new')}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
-          >
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>New Sale</h2>
-            <p style={{ color: 'var(--color-text-secondary)' }}>Quick transaction for a single item.</p>
-          </button>
+  // ─── POS Actions ───
+  const handleAddFromCatalog = (product) => {
+    const userLocationId = user?.user_metadata?.location_id;
+    const localStock = userLocationId 
+      ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
+      : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
 
-          <button 
-            className="glass-panel" 
-            style={{ padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid var(--color-border)' }}
-            onClick={() => startFlow('batch')}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
-          >
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>Batch Sale</h2>
-            <p style={{ color: 'var(--color-text-secondary)' }}>Process multiple items and quantities.</p>
-          </button>
+    if (localStock <= 0) {
+      toast.error('This product is out of stock.');
+      return;
+    }
 
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <button className="btn btn-outline" onClick={() => startFlow('history')}>
-            View Sales History
-          </button>
-        </div>
-      </div>
-    );
-  }
+    const isDoubleMode = business?.qr_tracking_mode === 'double';
+    
+    // Check if already in cart
+    const existingIndex = wizardItems.findIndex(i => i.product.id === product.id);
+    if (existingIndex >= 0) {
+      const item = wizardItems[existingIndex];
+      if (item.quantity >= localStock) {
+        toast.warning(`Only ${localStock} available in stock.`);
+        return;
+      }
+      const newItems = [...wizardItems];
+      newItems[existingIndex] = {
+        ...item,
+        quantity: item.quantity + 1,
+        scans: [...item.scans, isDoubleMode ? { pack_code: '', serial_number: '', item_code: '', product_code: '' } : { item_code: '', unit_id: null }]
+      };
+      setWizardItems(newItems);
+    } else {
+      setWizardItems(prev => [...prev, {
+        id: crypto.randomUUID(),
+        product,
+        quantity: 1,
+        scans: isDoubleMode ? [{ pack_code: '', serial_number: '', item_code: '', product_code: '' }] : [{ item_code: '', unit_id: null }],
+        stock: localStock
+      }]);
+    }
+  };
 
+  const updateQuantity = (itemId, delta) => {
+    setWizardItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) return item;
+        if (newQty > item.stock) {
+          toast.warning(`Only ${item.stock} available.`);
+          return item;
+        }
+        const newScans = [...item.scans];
+        if (delta > 0) {
+          newScans.push(isDoubleMode ? { pack_code: '', serial_number: '', item_code: '', product_code: '' } : { item_code: '', unit_id: null });
+        } else {
+          newScans.pop();
+        }
+        return { ...item, quantity: newQty, scans: newScans };
+      }
+      return item;
+    }));
+  };
+
+  const [showCustomerDrawer, setShowCustomerDrawer] = useState(false);
+
+  // ─── Render POS Grid ───
   if (saleType === 'history') {
     return (
       <div>
-        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
-            <h1 className="dashboard-title">Sales History</h1>
-            <p className="dashboard-subtitle">Review past transactions.</p>
-          </div>
-          <button className="btn btn-outline" onClick={() => setSaleType(null)}>Back to POS</button>
-        </header>
+        <PageHeader
+          title="Sales History"
+          subtitle="Review past transactions."
+          actions={
+              <button className="btn btn-outline" onClick={() => setSaleType(null)}>Back to POS</button>
+          }
+        />
         <SalesHistory />
       </div>
     );
   }
 
-  // ─── Render Wizard ───
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="dashboard-title">{saleType === 'new' ? 'New Sale' : 'Batch Sale'}</h1>
-          <p className="dashboard-subtitle">Step {step} of 2</p>
+    <div className="sales-page">
+      {/* ─── Left Panel: Catalog ─── */}
+      <div className="sales-catalog">
+        <div className="catalog-header">
+          <div className="catalog-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            POS Terminal
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={() => setSaleType('history')}>History</button>
         </div>
-        <button className="btn btn-outline text-error" onClick={cancelFlow}>Cancel Sale</button>
-      </header>
 
-      {/* ─── STEP 1: Customer Selection ─── */}
-      {step === 1 && (
-        <div className="glass-panel" style={{ padding: '32px', maxWidth: '600px', margin: '0 auto', borderTop: '4px solid var(--color-primary)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Customer Identification</h2>
-            <p style={{ color: 'var(--color-text-secondary)', marginTop: '8px' }}>Please search for an existing customer or create a new profile.</p>
-          </div>
-          
-          <div style={{ position: 'relative', marginBottom: '24px' }}>
-            <div style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </div>
-            <input
-              type="text"
-              className="input"
-              placeholder={(user?.user_metadata?.role === 'Business Admin' || user?.user_metadata?.role === 'Platform Admin') ? "Search by name, phone, or ID..." : "Search by phone number..."}
-              value={customerSearchTerm}
-              onChange={(e) => setCustomerSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '16px 16px 16px 48px', fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid var(--color-border)', transition: 'all 0.3s' }}
-              onFocus={e => e.target.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.2)'}
-              onBlur={e => e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'}
-            />
-          </div>
-          
-          <div style={{ minHeight: '150px' }}>
-            {isSearching && (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-primary)' }}>
-                <div className="loading-spinner" style={{ width: '24px', height: '24px', display: 'inline-block', marginBottom: '8px' }}></div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>Searching database...</div>
-              </div>
-            )}
-            
-            {!isSearching && searchResults.length > 0 && (
-              <div style={{ 
-                display: 'flex', flexDirection: 'column', gap: '8px',
-                maxHeight: '300px', overflowY: 'auto', paddingRight: '4px'
-              }}>
-                {searchResults.map(c => (
-                  <div 
-                    key={c.id} 
-                    className="glass-panel"
-                    style={{ 
-                      padding: '16px', 
-                      cursor: 'pointer', 
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '12px',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-primary)';
-                      e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'var(--color-border)';
-                      e.currentTarget.style.background = 'var(--color-bg-secondary)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--color-bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', fontWeight: 'bold' }}>
-                        {c.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>{c.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{c.phone}</div>
-                      </div>
-                    </div>
-                    {c.is_verified ? (
-                       <span className="badge badge-success" style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '20px' }}>✓ Verified</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {!isSearching && customerSearchTerm.length >= 2 && searchResults.length === 0 && (
-               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '12px', background: 'rgba(0,0,0,0.02)' }}>
-                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ margin: '0 auto 16px auto', opacity: 0.5 }}>
-                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                   <circle cx="9" cy="7" r="4"></circle>
-                   <line x1="17" y1="8" x2="23" y2="14"></line>
-                   <line x1="23" y1="8" x2="17" y2="14"></line>
-                 </svg>
-                 <p style={{ marginBottom: '16px', fontSize: '1.05rem' }}>No customer found matching your search.</p>
-                 <button 
-                   className="btn btn-primary" 
-                   onClick={() => setShowNewCustomerModal(true)}
-                 >
-                   Create New Customer
-                 </button>
+        <div className="catalog-search">
+          <svg className="catalog-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" strokeWidth="2"/></svg>
+          <input 
+             className="catalog-search-input" 
+             placeholder="Search products by name, SKU..."
+             value={productSearchTerm}
+             onChange={e => setProductSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="catalog-grid">
+          {filteredProducts.map(p => (
+            <div key={p.id} className="product-card" onClick={() => handleAddFromCatalog(p)}>
+               <div className="product-card-top">
+                 <div className="product-card-avatar">{p.name.charAt(0)}</div>
+                 <div className="product-card-meta">
+                   <span className="product-card-name">{p.name}</span>
+                   <span className="product-card-sku">{p.sku}</span>
+                 </div>
                </div>
-            )}
-
-            {!isSearching && customerSearchTerm.length < 2 && !selectedCustomer && (
-              <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: '24px 0' }}>
-                  <div style={{ height: '1px', background: 'var(--color-border)', flex: 1 }}></div>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>OR</span>
-                  <div style={{ height: '1px', background: 'var(--color-border)', flex: 1 }}></div>
-                </div>
-                <button 
-                  className="btn btn-outline" 
-                  style={{ width: '100%', padding: '16px', fontSize: '1.05rem', borderStyle: 'dashed', borderRadius: '12px' }}
-                  onClick={() => setShowNewCustomerModal(true)}
-                >
-                  + Add New Customer Manually
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Selected Customer Preview */}
-          {selectedCustomer && (
-            <div style={{ 
-              marginTop: '32px', 
-              padding: '24px', 
-              background: 'linear-gradient(145deg, rgba(99,102,241,0.05) 0%, rgba(139,92,246,0.05) 100%)', 
-              border: '1px solid rgba(99,102,241,0.2)', 
-              borderRadius: '16px', 
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <div style={{ position: 'absolute', top: '-20px', right: '-20px', opacity: 0.05, transform: 'scale(2)' }}>
-                <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
-                    {selectedCustomer.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '2px' }}>Selected Customer</div>
-                    <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--color-text-primary)' }}>{selectedCustomer.name}</div>
-                    <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.phone}</span> {selectedCustomer.phone}</span>
-                      <span style={{ color: 'var(--color-border)' }}>|</span>
-                      <span>ID: {selectedCustomer.customer_code || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-                <button className="btn btn-primary" onClick={confirmCustomer} style={{ padding: '12px 24px', borderRadius: '30px', boxShadow: '0 4px 12px rgba(99,102,241,0.2)' }}>
-                  Continue to Sale →
-                </button>
-              </div>
+               <div className="product-card-middle mt-sm">
+                 <span className="product-card-price">{fmt(p.price)}</span>
+               </div>
+            </div>
+          ))}
+          {filteredProducts.length === 0 && (
+            <div className="catalog-empty">
+              <p>No products found.</p>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* ─── STEP 2: Sale Workflow ─── */}
-      {step === 2 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Read-only Customer Header */}
-          <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginRight: '8px' }}>Customer:</span>
-              <span style={{ fontWeight: 600 }}>{selectedCustomer.name}</span>
-              <span style={{ color: 'var(--color-text-secondary)', marginLeft: '8px' }}>({selectedCustomer.phone})</span>
-            </div>
-            <button className="btn-icon text-muted" onClick={() => setStep(1)} title="Change Customer">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5l13.732-13.732z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-          </div>
+      {/* ─── Right Panel: Cart ─── */}
+      <div className="sales-cart">
+        <div className="cart-header">
+           <div className="cart-title">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+             Current Order
+           </div>
+           {selectedCustomer ? (
+             <button className="btn btn-sm btn-secondary" onClick={() => setSelectedCustomer(null)} title="Remove Customer">
+               {selectedCustomer.name.split(' ')[0]} ✕
+             </button>
+           ) : (
+             <button className="btn btn-sm btn-outline" onClick={() => setShowCustomerDrawer(true)}>+ Customer</button>
+           )}
+        </div>
 
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>2. Order Items</h2>
-              <button className="btn btn-secondary" onClick={() => setShowProductModal(true)}>
-                + Add Item{saleType === 'batch' ? 's' : ''}
-              </button>
-            </div>
-
-            {wizardItems.length === 0 ? (
-              <div className="empty-state" style={{ padding: '3rem 1rem' }}>
-                <p className="text-muted">No items added yet.<br/>Click "Add Item" to begin.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {wizardItems.map((item) => (
-                  <div key={item.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px', background: 'var(--color-bg-secondary)' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px dashed var(--color-border)' }}>
-                      <div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.product.name}</h3>
-                        <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>SKU: {item.product.sku} | Qty: {item.quantity}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-primary)' }}>{fmt(item.product.price * item.quantity)}</div>
-                        <button className="btn-icon text-error" style={{ marginTop: '8px' }} onClick={() => removeWizardItem(item.id)}>Remove</button>
-                      </div>
-                    </div>
-
-                    {/* QR Code Scanners per quantity */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Scan Physical Units</h4>
-                      {Array.from({ length: item.quantity }).map((_, idx) => {
-                        const scan = item.scans[idx] || {};
-                        const isComplete = isDoubleMode 
-                          ? (scan.pack_code && scan.serial_number && scan.item_code)
+        <div className="cart-items">
+           {wizardItems.length === 0 ? (
+             <div className="cart-empty">
+               <svg className="cart-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+               <div className="cart-empty-text">Cart is empty</div>
+               <div className="cart-empty-hint">Click products on the left to add</div>
+             </div>
+           ) : (
+             wizardItems.map(item => (
+                <div key={item.id} style={{ display: 'flex', flexDirection: 'column', padding: '12px 0', borderBottom: '1px solid var(--color-border)', gap: '8px' }}>
+                   <div className="flex justify-between items-center">
+                     <div className="flex-1 min-w-0">
+                       <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.name}</div>
+                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{fmt(item.product.price)} each</div>
+                     </div>
+                     <div className="flex items-center gap-sm">
+                       <div className="product-card-qty-control">
+                         <button className="qty-btn qty-btn-sm" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                         <span className="qty-value qty-value-sm">{item.quantity}</span>
+                         <button className="qty-btn qty-btn-sm" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                       </div>
+                       <button className="btn-icon text-error" onClick={() => removeWizardItem(item.id)}>✕</button>
+                     </div>
+                   </div>
+                   
+                   {/* QR Scanners */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                      {item.scans.map((scan, idx) => {
+                         const isComplete = isDoubleMode
+                          ? (scan.pack_code && scan.item_code && (!(item.product?.requires_serial !== false) || scan.serial_number))
                           : !!scan.item_code;
-                        
-                        return (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: isComplete ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isComplete ? '#10b981' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Unit {idx + 1} of {item.quantity}</div>
-                            
-                            {isDoubleMode ? (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', background: scan.pack_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.pack_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Pack Code *</div>
-                                  <div style={{ fontSize: '14px', color: scan.pack_code ? '#0f172a' : '#94a3b8', fontWeight: scan.pack_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.pack_code || 'Awaiting scan...'}</div>
-                                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for pack code...')} title="Scan Pack Code">Scan QR</button>
-                                </div>
-                                
-                                <div style={{ display: 'flex', flexDirection: 'column', background: scan.serial_number ? '#f0fdf4' : '#fff', border: `1px solid ${scan.serial_number ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Serial Number *</div>
-                                  <div style={{ fontSize: '14px', color: scan.serial_number ? '#0f172a' : '#94a3b8', fontWeight: scan.serial_number ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.serial_number || 'Awaiting scan...'}</div>
-                                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for serial number...')} title="Scan QR as Serial">Scan QR</button>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', background: scan.product_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.product_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Product Code (Opt)</div>
-                                  <div style={{ fontSize: '14px', color: scan.product_code ? '#0f172a' : '#94a3b8', fontWeight: scan.product_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.product_code || 'Awaiting scan...'}</div>
-                                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for product code...')} title="Scan Product Code">Scan QR</button>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', background: scan.item_code ? '#f0fdf4' : '#fff', border: `1px solid ${scan.item_code ? '#bbf7d0' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600', marginBottom: '4px' }}>Item Code *</div>
-                                  <div style={{ fontSize: '14px', color: scan.item_code ? '#0f172a' : '#94a3b8', fontWeight: scan.item_code ? '600' : 'normal', wordBreak: 'break-all', marginBottom: '8px', minHeight: '20px' }}>{scan.item_code || 'Awaiting scan...'}</div>
-                                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: 'auto' }} onClick={() => toast.info('Scanner Placeholder: Ready to scan for item code...')} title="Scan Item Code">Scan QR</button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ flex: 1 }}>
-                                  {scan.item_code ? (
-                                    <code style={{ fontSize: '0.9rem', color: '#10b981', background: 'transparent', padding: 0 }}>QR: {scan.item_code}</code>
-                                  ) : (
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>Waiting for scan...</span>
-                                  )}
-                                </div>
-                                <button 
-                                  className={`btn ${scan.item_code ? 'btn-outline' : 'btn-secondary'}`} 
-                                  style={{ padding: '0.5rem 1rem' }}
-                                  onClick={() => openScanner(item.id, idx)}
-                                >
-                                  {scan.item_code ? 'Rescan' : <><span aria-hidden="true" style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: '4px' }}>{Icons.camera}</span>Scan QR</>}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
+                         
+                         return (
+                           <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: isComplete ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isComplete ? '#10b981' : 'var(--color-border)'}`, borderRadius: '6px' }}>
+                             <span style={{ fontSize: '0.7rem', color: isComplete ? '#10b981' : 'var(--color-text-muted)' }}>Unit {idx + 1} {isComplete ? '✓' : ''}</span>
+                             <button className="btn btn-sm btn-secondary" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => openScanner(item.id, idx)}>Scan QR</button>
+                           </div>
+                         );
                       })}
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Checkout Block */}
-          {wizardItems.length > 0 && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '24px' }}>3. Checkout</h2>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px dashed var(--color-border)' }}>
-                <span style={{ fontSize: '1.1rem', color: 'var(--color-text-secondary)' }}>Total Amount Due:</span>
-                <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(totalAmount)}</span>
-              </div>
-
-              {saleError && <div className="alert alert-error mb-xl"><p>{saleError}</p></div>}
-
-              <button 
-                className="btn btn-primary" 
-                style={{ width: '100%', padding: '16px', fontSize: '1.2rem', fontWeight: 700 }}
-                disabled={!isCheckoutReady() || isProcessing}
-                onClick={handleHoldSale}
-              >
-                {isProcessing ? 'Processing...' : `Hold & Continue to Payment — ${fmt(totalAmount)}`}
-              </button>
-              {!isCheckoutReady() && (
-                <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '12px' }}>
-                  Please ensure all items have been scanned.
-                </p>
-              )}
-            </div>
-          )}
+                   </div>
+                </div>
+             ))
+           )}
         </div>
-      )}
+
+        <div className="cart-checkout">
+           <div className="cart-summary">
+             <div className="cart-summary-total">
+               <span className="cart-summary-label">Total</span>
+               <span className="cart-summary-value">{fmt(totalAmount)}</span>
+             </div>
+           </div>
+           
+           {saleError && <div style={{ color: 'var(--color-error)', fontSize: '0.8rem', marginBottom: '8px', textAlign: 'center' }}>{saleError}</div>}
+
+           <button 
+             className="complete-sale-btn" 
+             disabled={!isCheckoutReady() || isProcessing || !selectedCustomer}
+             onClick={handleHoldSale}
+           >
+             {isProcessing ? 'Processing...' : (!selectedCustomer ? 'Select Customer First' : (!isCheckoutReady() ? 'Scan All Items' : 'Checkout'))}
+           </button>
+        </div>
+      </div>
 
       {/* ─── Modals ─── */}
 
-      {/* Product Search Modal */}
-      <Modal isOpen={showProductModal} onClose={() => setShowProductModal(false)} title="Search Catalog">
-        <input
-          type="text"
-          className="input"
-          placeholder="Search by name, SKU, category..."
-          value={productSearchTerm}
-          onChange={(e) => setProductSearchTerm(e.target.value)}
-          style={{ width: '100%', marginBottom: '16px' }}
-          autoFocus
-        />
-        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-          {filteredProducts.map(p => (
-            <div key={p.id} style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{p.name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>SKU: {p.sku} | Price: {fmt(p.price)}</div>
+      {/* Customer Selection Modal */}
+      <Modal isOpen={showCustomerDrawer} onClose={() => setShowCustomerDrawer(false)} title="Select Customer">
+          <input
+            type="text"
+            className="input w-full mb-md"
+            placeholder="Search by phone or name..."
+            value={customerSearchTerm}
+            onChange={(e) => setCustomerSearchTerm(e.target.value)}
+          />
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {searchResults.map(c => (
+              <div 
+                key={c.id} 
+                className="glass-panel mb-sm"
+                style={{ padding: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); setShowCustomerDrawer(false); }}
+              >
+                <div>
+                  <div className="font-bold">{c.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{c.phone}</div>
+                </div>
+                <button className="btn btn-sm btn-outline">Select</button>
               </div>
-              <button className="btn btn-sm btn-outline" onClick={() => handleProductSelect(p)}>Select</button>
-            </div>
-          ))}
-          {filteredProducts.length === 0 && <p className="text-muted text-center" style={{ padding: '2rem 0' }}>No products found.</p>}
-        </div>
-      </Modal>
-
-      {/* Quantity Prompt for Batch */}
-      <Modal isOpen={showQuantityPrompt} onClose={() => setShowQuantityPrompt(false)} title="Quantity">
-        <form onSubmit={(e) => { e.preventDefault(); confirmBatchQuantity(); }}>
-          <p style={{ marginBottom: '16px' }}>How many <strong>{selectedProductForBatch?.product?.name}</strong> items do you want to add to this batch?</p>
-          <div className="form-group">
-            <input 
-              type="number" 
-              className="input" 
-              min="1" 
-              max={selectedProductForBatch?.stock || 999} 
-              value={batchQuantityInput}
-              onChange={(e) => setBatchQuantityInput(e.target.value)}
-              autoFocus
-              required
-            />
+            ))}
+            {!isSearching && searchResults.length === 0 && customerSearchTerm.length > 2 && (
+              <div className="text-center p-md">
+                <p>No customer found.</p>
+                <button className="btn btn-primary mt-sm" onClick={() => setShowNewCustomerModal(true)}>+ Create New</button>
+              </div>
+            )}
           </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="button" className="btn btn-outline" onClick={() => setShowQuantityPrompt(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Confirm Quantity</button>
-          </div>
-        </form>
       </Modal>
 
       {/* Extracted Modals */}
+      {/* `business.country` is already resolved server-side against the active
+          location, so a Nigeria branch supplies +234 without any change here. */}
       <NewCustomerModal
         isOpen={showNewCustomerModal}
         onClose={() => setShowNewCustomerModal(false)}
         onSubmit={handleCreateCustomer}
+        country={business?.country}
       />
 
       {customerToVerify && (
@@ -891,6 +648,13 @@ export default function Sales() {
         receiptData={receiptData}
         fmt={fmt}
         business={business}
+      />
+
+      <QrScanner
+        isOpen={showScanner}
+        onClose={() => { setShowScanner(false); setActiveScanTarget(null); }}
+        onScan={handleScan}
+        label={activeScanTarget ? SCAN_FIELD_LABELS[activeScanTarget.field] : undefined}
       />
 
     </div>

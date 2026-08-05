@@ -112,7 +112,7 @@ export default function BulkPriceUpdate({ onComplete }) {
   const changedCount = preview ? preview.products.filter(p => p.change !== 0).length : 0;
 
   return (
-    <div style={{ marginTop: '1rem' }}>
+    <div className="mt-md">
       {/* Controls Row */}
       <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '16px', fontSize: '1rem' }}>Bulk Price Update</h3>
@@ -133,7 +133,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         </div>
 
         {/* Mode Selector */}
-        <div style={{ marginBottom: '16px' }}>
+        <div className="mb-md">
           <label className="form-label" style={{ fontSize: '0.8rem' }}>Update Mode</label>
           <div className="bulk-price-mode-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {modes.map(m => (
@@ -192,10 +192,9 @@ export default function BulkPriceUpdate({ onComplete }) {
 
         {/* Preview Button */}
         <button
-          className="btn btn-primary"
+          className="btn btn-primary flex items-center gap-sm"
           onClick={handlePreview}
           disabled={previewLoading || !value}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
         >
           {previewLoading ? (
             <><div className="spinner" style={{ width: '16px', height: '16px' }}></div> Calculating...</>
@@ -209,7 +208,7 @@ export default function BulkPriceUpdate({ onComplete }) {
       {preview && (
         <div className="glass-panel" style={{ padding: '20px' }}>
           {/* Summary Banner */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div className="flex gap-md mb-md flex-wrap">
             <div style={{ padding: '12px 20px', background: 'var(--color-bg-tertiary)', borderRadius: '8px', flex: 1, minWidth: '150px' }}>
               <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>Products</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--color-primary)' }}>{preview.count}</div>
@@ -234,10 +233,10 @@ export default function BulkPriceUpdate({ onComplete }) {
               <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                 <tr>
                   <th>Product</th><th>SKU</th><th>Category</th>
-                  <th style={{ textAlign: 'right' }}>Current</th>
-                  <th style={{ textAlign: 'right' }}>New Price</th>
-                  <th style={{ textAlign: 'right' }}>Change</th>
-                  <th style={{ textAlign: 'right' }}>Margin</th>
+                  <th className="text-right">Current</th>
+                  <th className="text-right">New Price</th>
+                  <th className="text-right">Change</th>
+                  <th className="text-right">Margin</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,7 +245,7 @@ export default function BulkPriceUpdate({ onComplete }) {
                     <td className="font-medium">{p.name}</td>
                     <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
                     <td><span className="badge badge-neutral">{p.category}</span></td>
-                    <td style={{ textAlign: 'right' }}>{fmt(p.current_price)}</td>
+                    <td className="text-right">{fmt(p.current_price)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, color: p.change > 0 ? 'var(--color-success)' : p.change < 0 ? 'var(--color-error)' : 'var(--color-text-muted)' }}>
                       {fmt(p.new_price)}
                     </td>
@@ -256,7 +255,7 @@ export default function BulkPriceUpdate({ onComplete }) {
                           {p.change > 0 ? '+' : ''}{fmt(p.change)} ({p.change_percent > 0 ? '+' : ''}{p.change_percent}%)
                         </span>
                       )}
-                      {p.change === 0 && <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
+                      {p.change === 0 && <span className="text-muted">—</span>}
                     </td>
                     <td style={{ textAlign: 'right', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                       {p.margin ? `${p.margin}%` : '—'}

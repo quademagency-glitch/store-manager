@@ -1,5 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { EmptyStateRow } from '../../../components/ui';
 
 export default function BusinessDetailTab() {
   const {
@@ -13,7 +14,7 @@ export default function BusinessDetailTab() {
   return (
     <>
       <header className="dashboard-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="flex items-center gap-md">
           <button className="btn btn-secondary" onClick={handleBackFromDetail}>
             {Icons.back} Back
           </button>
@@ -50,7 +51,7 @@ export default function BusinessDetailTab() {
               <div className="pa-sub-details">
                 <div className="pa-sub-detail">
                   <span className="pa-sub-detail-label">Billing Cycle</span>
-                  <span className="pa-sub-detail-value" style={{ textTransform: 'capitalize' }}>{businessSubscription.billing_cycle}</span>
+                  <span className="pa-sub-detail-value capitalize">{businessSubscription.billing_cycle}</span>
                 </div>
                 <div className="pa-sub-detail">
                   <span className="pa-sub-detail-label">Amount</span>
@@ -139,7 +140,7 @@ export default function BusinessDetailTab() {
                 <tbody>
                   {businessDetails.products.slice(0, 20).map(p => (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
+                      <td className="font-medium">{p.name}</td>
                       <td>${Number(p.price || 0).toFixed(2)}</td>
                       <td>
                         <span className={`stock-count ${
@@ -152,7 +153,7 @@ export default function BusinessDetailTab() {
                     </tr>
                   ))}
                   {businessDetails.products.length === 0 && (
-                    <tr><td colSpan="3" className="text-center py-xl text-muted">No products.</td></tr>
+                    <EmptyStateRow colSpan={3} icon="clipboard" title="No products" />
                   )}
                   {businessDetails.products.length > 20 && (
                     <tr><td colSpan="3" className="text-center text-muted" style={{ padding: '0.75rem' }}>…and {businessDetails.products.length - 20} more</td></tr>
@@ -178,11 +179,11 @@ export default function BusinessDetailTab() {
                       <td className="text-mono" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{s.id.substring(0, 8)}…</td>
                       <td style={{ fontWeight: 600, color: '#4ade80' }}>${Number(s.total_amount || 0).toFixed(2)}</td>
                       <td>{s.sale_items?.length || 0}</td>
-                      <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(s.created_at).toLocaleString()}</td>
+                      <td className="text-secondary">{new Date(s.created_at).toLocaleString()}</td>
                     </tr>
                   ))}
                   {businessDetails.sales.length === 0 && (
-                    <tr><td colSpan="4" className="text-center py-xl text-muted">No sales recorded.</td></tr>
+                    <EmptyStateRow colSpan={4} icon="dollar" title="No sales recorded" />
                   )}
                 </tbody>
               </table>
@@ -202,18 +203,18 @@ export default function BusinessDetailTab() {
                 <tbody>
                   {businessDetails.inventory.slice(0, 20).map(m => (
                     <tr key={m.id}>
-                      <td style={{ fontWeight: 500 }}>{m.products?.name || '—'}</td>
+                      <td className="font-medium">{m.products?.name || '—'}</td>
                       <td>
                         <span className={`badge ${m.movement_type === 'restock' ? 'badge-neutral' : 'badge-warning'}`} style={m.movement_type === 'restock' ? { color: '#4ade80', borderColor: '#4ade80' } : {}}>
                           {m.movement_type}
                         </span>
                       </td>
                       <td>{m.quantity}</td>
-                      <td style={{ color: 'var(--color-text-secondary)' }}>{new Date(m.created_at).toLocaleString()}</td>
+                      <td className="text-secondary">{new Date(m.created_at).toLocaleString()}</td>
                     </tr>
                   ))}
                   {businessDetails.inventory.length === 0 && (
-                    <tr><td colSpan="4" className="text-center py-xl text-muted">No stock movements.</td></tr>
+                    <EmptyStateRow colSpan={4} icon="clipboard" title="No stock movements" />
                   )}
                 </tbody>
               </table>

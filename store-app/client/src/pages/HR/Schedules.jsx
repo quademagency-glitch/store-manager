@@ -4,6 +4,7 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import { api } from '../../lib/api';
 import '../../styles/hr.css';
+import { EmptyStateRow } from '../../components/ui';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -44,6 +45,12 @@ export default function Schedules() {
     fetchSchedules({ startDate: weekStart, endDate: weekEnd, locationId: selectedLocation || undefined });
   }, [fetchSchedules, weekStart, weekEnd, selectedLocation]);
 
+  // Mount-only: loads the pickers and seeds a default branch. The
+  // `!selectedLocation` guard reads the mount-time value on purpose — that is
+  // exactly when "has the user chosen a branch yet?" is being asked. Adding
+  // selectedLocation to the deps would refetch users and locations every time
+  // the user switches branch; the effect above already handles refetching the
+  // schedules themselves.
   useEffect(() => {
     api.get('/users').then(res => {
       if (Array.isArray(res)) setUsers(res);
@@ -55,6 +62,7 @@ export default function Schedules() {
         if (res.length > 0 && !selectedLocation) setSelectedLocation(res[0].id);
       }
     }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddShift = async () => {
@@ -151,7 +159,7 @@ export default function Schedules() {
           </thead>
           <tbody>
             {scheduleGrid.length === 0 ? (
-              <tr><td colSpan={8} className="empty-state">No shifts scheduled for this week.</td></tr>
+              <EmptyStateRow colSpan={8} icon="clipboard" title="No shifts scheduled for this week" />
             ) : (
               scheduleGrid.map((row, idx) => (
                 <tr key={idx}>
@@ -215,11 +223,11 @@ export default function Schedules() {
                 <input type="date" className="form-input" value={newShift.date} onChange={e => setNewShift(p => ({ ...p, date: e.target.value }))} />
               </div>
               <div className="form-row">
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group flex-1">
                   <label>Start Time</label>
                   <input type="time" className="form-input" value={newShift.start_time} onChange={e => setNewShift(p => ({ ...p, start_time: e.target.value }))} />
                 </div>
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group flex-1">
                   <label>End Time</label>
                   <input type="time" className="form-input" value={newShift.end_time} onChange={e => setNewShift(p => ({ ...p, end_time: e.target.value }))} />
                 </div>

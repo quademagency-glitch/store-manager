@@ -1,0 +1,385 @@
+/* ============================================================
+   Shared UI primitives — PageHeader, EmptyState, Skeleton
+   ============================================================ */
+
+/* --- PageHeader ---------------------------------------------
+   `.page-header` / `.page-actions` themselves live in
+   pages-layouts.css, aliased with their `.dashboard-*` twins so
+   old and new markup render identically during the migration. */
+.page-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.page-breadcrumb {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* --- EmptyState ----------------------------------------------
+   Generalised from `.cart-empty`, the one fully class-driven
+   empty state the app already had. Three tiers — icon, title,
+   hint — so an empty result reads as a state rather than as a
+   rendering failure. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) var(--space-lg);
+  color: var(--color-text-tertiary);
+}
+
+.empty-state--sm {
+  padding: var(--space-xl) var(--space-md);
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.empty-state--sm .empty-state-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.empty-state--error .empty-state-icon {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.empty-state--success .empty-state-icon {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.empty-state--search .empty-state-icon {
+  background: var(--color-accent-glow);
+  color: var(--color-accent-text);
+}
+
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.empty-state--sm .empty-state-title {
+  font-size: 0.925rem;
+}
+
+.empty-state-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  max-width: 44ch;
+}
+
+.empty-state-action {
+  margin-top: var(--space-sm);
+}
+
+/* The empty-state card ruleset must never land on a bare <td> —
+   it was applied that way in six places. This variant is what
+   <EmptyStateRow> renders instead. */
+.empty-state-row > td {
+  padding: 0;
+  border-bottom: none;
+}
+
+/* --- Skeleton -------------------------------------------------
+   Animates `background-position`, NOT a pseudo-element transform.
+   The latter creates one compositing layer per skeleton, and a
+   loading table can easily have 30 on screen. */
+.skeleton {
+  display: block;
+  background-image: linear-gradient(
+    90deg,
+    var(--skeleton-base) 25%,
+    var(--skeleton-sheen) 37%,
+    var(--skeleton-base) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  from { background-position: 100% 50%; }
+  to { background-position: 0 50%; }
+}
+
+.skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.skeleton-table {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Row height matches `.glass-table td` padding + line-height, so
+   swapping the skeleton for real rows shifts nothing. */
+.skeleton-table-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-lg);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-table-head {
+  border-bottom-color: var(--surface-2-border);
+}
+
+.skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+}
+
+.skeleton-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.skeleton-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+    background-color: var(--skeleton-base);
+  }
+}
+
+/* Loading rows inside a real table. The cells keep the column
+   widths, so nothing shifts when the data replaces them. */
+.skeleton-row td {
+  padding: var(--space-md) var(--space-lg);
+}
+
+/* --- Error alert with a retry affordance --------------------- */
+.alert-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+/* --- Tabs -----------------------------------------------------
+   Two variants, because the app genuinely had two looks worth
+   keeping: a segmented `pill` control (Inventory, Loyalty) and an
+   `underline` strip (Settings, UserProfile, CRM). Everything else
+   about them — spacing, focus, overflow, motion — is shared, which
+   is what the five hand-rolled versions could never agree on. */
+.tabs-wrap {
+  position: relative;
+  max-width: 100%;
+  margin-bottom: var(--space-lg);
+}
+
+/* A strip that sits flush at the top of a card: the card supplies the
+   spacing, and the strip's own bottom border is the section divider. */
+.tabs-wrap.is-flush {
+  margin-bottom: 0;
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Overflow affordance. The old `.inventory-tabs-wrap` faded to
+   rgba(0,0,0,.35) unconditionally — a black smudge over a light
+   page. Fading to the canvas token works in both themes. */
+.tabs-wrap.is-fade-left::before,
+.tabs-wrap.is-fade-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tabs-wrap.is-fade-left::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-bg-primary), transparent);
+}
+
+.tabs-wrap.is-fade-right::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-bg-primary), transparent);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  flex: none;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.tab:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab[aria-selected='true'] .tab-badge {
+  background: var(--color-accent-glow);
+  color: var(--color-accent-text);
+}
+
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* --- pill ---------------------------------------------------- */
+.tabs--pill {
+  gap: var(--space-xs);
+  padding: 4px;
+  width: fit-content;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.tabs--pill .tab {
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+}
+
+.tabs--pill .tab:hover:not(:disabled):not([aria-selected='true']) {
+  background: var(--color-bg-secondary);
+}
+
+.tabs--pill .tab[aria-selected='true'] {
+  background: var(--surface-1-solid);
+  border-color: var(--color-border);
+  color: var(--color-accent-text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- underline ----------------------------------------------- */
+.tabs--underline {
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabs--underline .tab {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: 0;
+  border-bottom-width: 2px;
+  /* Overlap the strip's own border so the indicator replaces it
+     rather than stacking a 2px bar under a 1px one. */
+  margin-bottom: -1px;
+}
+
+.tabs--underline .tab[aria-selected='true'] {
+  color: var(--color-accent-text);
+  border-bottom-color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+/* The panel is focusable so long content stays scrollable by
+   keyboard; it must not draw a ring on click-through. */
+.tab-panel:focus {
+  outline: none;
+}
+
+.tab-panel:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 4px;
+}
+
+@media (pointer: coarse) {
+  .tab {
+    min-height: 44px;
+  }
+}

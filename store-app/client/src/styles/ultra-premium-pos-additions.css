@@ -2,36 +2,61 @@
    Ultra-Premium POS Additions
    ============================================ */
 
+/* Background/border come from `.surface-1` in surfaces.css. This rule
+   used to hardcode `linear-gradient(145deg, rgba(30,30,46,.7),
+   rgba(20,20,30,.9))` with no light-theme counterpart, so in the
+   default light theme these rendered as near-black cards carrying
+   light-theme grey text — the unreadable KPI tiles on the
+   reconciliation page. */
 .pos-glass-card {
-  background: linear-gradient(145deg, rgba(30, 30, 46, 0.7), rgba(20, 20, 30, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
   padding: 1.25rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   text-align: center;
   position: relative;
   overflow: hidden;
+  isolation: isolate;
+  /* Explicit property list: `all` with the spring curve made cards
+     jitter and forced layout every frame. */
+  transition:
+    transform var(--transition-spring),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-.pos-glass-card::before {
+/* Sheen sweep. Not applied to non-interactive cards — a KPI tile that
+   lights up on hover reads as clickable when it isn't. */
+.pos-glass-card--interactive {
+  cursor: pointer;
+}
+
+.pos-glass-card--interactive::before {
   content: '';
   position: absolute;
   top: 0; left: -100%;
   width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, var(--surface-3-border), transparent);
   transform: skewX(-20deg);
-  transition: left 0.5s ease;
+  transition: left var(--transition-slow);
 }
 
-.pos-glass-card:hover::before {
+.pos-glass-card--interactive:hover::before {
   left: 150%;
 }
 
-.pos-glass-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.2);
+.pos-glass-card--interactive:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-accent-secondary);
+  box-shadow: var(--shadow-lg), 0 0 15px var(--color-accent-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-glass-card,
+  .pos-glass-card--interactive:hover {
+    transition: none;
+    transform: none;
+  }
+  .pos-glass-card--interactive::before {
+    display: none;
+  }
 }
 
 .pos-checkout-btn {
@@ -40,7 +65,9 @@
   border: none;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
 }
 
 .pos-checkout-btn::after {
@@ -49,7 +76,7 @@
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-normal);
 }
 
 .pos-checkout-btn:hover:not(:disabled) {

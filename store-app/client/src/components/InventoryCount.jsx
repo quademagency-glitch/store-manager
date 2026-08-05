@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { api, API_BASE } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import QrScanner from '../components/QrScanner';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import { Icons } from './icons/Icons';
+import { EmptyStateRow, SkeletonRows } from './ui';
 
 /**
  * InventoryCount — Full inventory count flow:
@@ -48,8 +49,13 @@ export default function InventoryCount({ locations, products }) {
     fetchSessions();
   }, []);
 
-  // View or Resume session
-  const handleViewSession = async (id) => {
+  // View or Resume session.
+  //
+  // Memoized so the SSE effect below can list it as a dependency without
+  // tearing down and reopening the EventSource on every render. It closes over
+  // nothing but state setters (stable), `api` and `toast` (provider-memoized),
+  // so its identity never changes in practice.
+  const handleViewSession = useCallback(async (id) => {
     setViewSessionLoading(true);
     setStep('view');
     try {
@@ -86,7 +92,7 @@ export default function InventoryCount({ locations, products }) {
       setStep('select');
     }
     setViewSessionLoading(false);
-  };
+  }, [toast]);
 
   // Global SSE Listener for batch scans
   useEffect(() => {
@@ -129,7 +135,7 @@ export default function InventoryCount({ locations, products }) {
     return () => {
       if (eventSource) eventSource.close();
     };
-  }, [step, session]);
+  }, [step, session, handleViewSession, toast]);
 
   // Get products at selected location with stock info
   const locationProducts = useMemo(() => {
@@ -327,15 +333,15 @@ export default function InventoryCount({ locations, products }) {
   if (step === 'select') {
     return (
       <div>
-        <div className="glass-panel" style={{ padding: '2rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem', fontSize: '1.2rem' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> New Inventory Count</h3>
+        <div className="glass-panel p-xl mb-lg">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, marginBottom: '0.5rem', fontSize: '1.2rem' }}><span aria-hidden="true" className="inline-flex">{Icons.clipboard}</span> New Inventory Count</h3>
           <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1.5rem' }}>
             Select the branch where you want to perform the inventory count. 
             All items at that branch will be listed by category for counting.
           </p>
 
           <div className="form-group" style={{ maxWidth: '400px', marginBottom: '1.5rem' }}>
-            <label style={{ fontWeight: 500 }}>Branch / Location</label>
+            <label className="font-medium">Branch / Location</label>
             <select 
               className="form-input" 
               value={selectedLocationId} 
@@ -347,7 +353,7 @@ export default function InventoryCount({ locations, products }) {
           </div>
 
           {selectedLocationId && (
-            <div style={{ marginBottom: '1rem', padding: '12px 16px', borderRadius: '8px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <div style={{ marginBottom: '1rem', padding: '12px 16px', borderRadius: '8px', background: 'var(--color-accent-glow)', border: '1px solid var(--color-accent-glow)' }}>
               <strong>{locationProducts.length}</strong> products with stock at this location
             </div>
           )}
@@ -364,8 +370,8 @@ export default function InventoryCount({ locations, products }) {
 
         {/* History */}
         <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <h3 style={{ fontWeight: 600, margin: 0 }}>Past Inventory Counts</h3>
+          <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-bg-tertiary)' }}>
+            <h3 className="font-bold m-0">Past Inventory Counts</h3>
           </div>
           <div className="desktop-table-view">
             <table className="glass-table">
@@ -383,11 +389,11 @@ export default function InventoryCount({ locations, products }) {
               </thead>
               <tbody>
                 {sessionsLoading ? (
-                  <tr><td colSpan="8" className="text-center py-xl text-muted"><div className="spinner mx-auto mb-sm" /><p>Loading...</p></td></tr>
+                  <SkeletonRows rows={3} cols={8} />
                 ) : sessions.length === 0 ? (
-                  <tr><td colSpan="8" style={{ padding: '3rem', textAlign: 'center', opacity: 0.5 }}>No inventory counts yet.</td></tr>
+                  <EmptyStateRow colSpan={8} icon="clipboard" title="No inventory counts yet" />
                 ) : sessions.map(s => (
-                  <tr key={s.id} onClick={() => handleViewSession(s.id)} style={{ cursor: 'pointer' }} className="hover-bg">
+                  <tr key={s.id} onClick={() => handleViewSession(s.id)} className="hover-bg cursor-pointer">
                     <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
                     <td>{s.location?.name || 'Unknown'}</td>
                     <td>
@@ -423,7 +429,7 @@ export default function InventoryCount({ locations, products }) {
             ) : sessions.map(s => (
               <div key={s.id} className="m-card" onClick={() => handleViewSession(s.id)}>
                 <div className="m-card-top">
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex-1 min-w-0">
                     <div className="m-card-title">{s.location?.name || 'Unknown'}</div>
                     <div className="m-card-sub">{new Date(s.created_at).toLocaleDateString()}</div>
                   </div>
@@ -460,10 +466,10 @@ export default function InventoryCount({ locations, products }) {
   if (step === 'view') {
     return (
       <div>
-        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div className="glass-panel p-lg mb-lg">
+          <div className="flex justify-between items-center mb-lg">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, margin: 0, fontSize: '1.2rem' }}>
-              <span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> Inventory Count Details
+              <span aria-hidden="true" className="inline-flex">{Icons.clipboard}</span> Inventory Count Details
             </h3>
             <button className="btn btn-sm btn-outline" onClick={() => { setStep('select'); setViewSession(null); }}>
               ← Back
@@ -479,7 +485,7 @@ export default function InventoryCount({ locations, products }) {
               <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
                 <div>
                   <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Location</span>
-                  <div style={{ fontWeight: 600 }}>{viewSession.session.location?.name || 'Unknown'}</div>
+                  <div className="font-bold">{viewSession.session.location?.name || 'Unknown'}</div>
                 </div>
                 <div>
                   <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Status</span>
@@ -491,32 +497,32 @@ export default function InventoryCount({ locations, products }) {
                 </div>
                 <div>
                   <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Date</span>
-                  <div style={{ fontWeight: 600 }}>{new Date(viewSession.session.created_at).toLocaleString()}</div>
+                  <div className="font-bold">{new Date(viewSession.session.created_at).toLocaleString()}</div>
                 </div>
                 <div>
                   <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>Started By</span>
-                  <div style={{ fontWeight: 600 }}>{viewSession.session.starter?.name || 'Unknown'}</div>
+                  <div className="font-bold">{viewSession.session.starter?.name || 'Unknown'}</div>
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ padding: '1rem', background: 'var(--color-bg-tertiary)', borderRadius: '8px', border: '1px solid var(--color-bg-tertiary)' }}>
                   <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Expected</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{viewSession.summary.expected}</div>
                 </div>
-                <div style={{ padding: '1rem', background: 'rgba(59,130,246,0.1)', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <div style={{ padding: '1rem', background: 'var(--color-accent-glow)', borderRadius: '8px', border: '1px solid var(--color-accent-glow)' }}>
                   <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Scanned (Found)</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{viewSession.summary.scanned}</div>
                 </div>
-                <div style={{ padding: '1rem', background: viewSession.summary.errors > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', borderRadius: '8px', border: `1px solid ${viewSession.summary.errors > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}` }}>
+                <div style={{ padding: '1rem', background: viewSession.summary.errors > 0 ? 'var(--color-error-bg)' : 'var(--color-success-bg)', borderRadius: '8px', border: `1px solid ${viewSession.summary.errors > 0 ? 'var(--color-error-bg)' : 'var(--color-success-bg)'}` }}>
                   <div style={{ fontSize: '0.85rem', opacity: 0.6 }}>Errors / Missing</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: viewSession.summary.errors > 0 ? '#ef4444' : '#22c55e' }}>{viewSession.summary.errors}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: viewSession.summary.errors > 0 ? 'var(--color-error-text)' : 'var(--color-success-text)' }}>{viewSession.summary.errors}</div>
                 </div>
               </div>
 
               {viewSession.product_progress && viewSession.product_progress.length > 0 && (
                 <div>
-                  <h4 style={{ marginBottom: '1rem' }}>Products</h4>
+                  <h4 className="mb-md">Products</h4>
                   <table className="glass-table">
                     <thead>
                       <tr>
@@ -534,7 +540,7 @@ export default function InventoryCount({ locations, products }) {
                           <td>{p.product_sku || '—'}</td>
                           <td>{p.expected}</td>
                           <td>{p.scanned}</td>
-                          <td style={{ color: p.expected !== p.scanned ? '#ef4444' : '#22c55e', fontWeight: p.expected !== p.scanned ? 700 : 400 }}>
+                          <td style={{ color: p.expected !== p.scanned ? 'var(--color-error-text)' : 'var(--color-success-text)', fontWeight: p.expected !== p.scanned ? 700 : 400 }}>
                             {p.scanned - p.expected}
                           </td>
                         </tr>
@@ -557,7 +563,7 @@ export default function InventoryCount({ locations, products }) {
       <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, margin: 0, fontSize: '1.1rem' }}>
-            <span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.clipboard}</span> Inventory Count — {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
+            <span aria-hidden="true" className="inline-flex">{Icons.clipboard}</span> Inventory Count — {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
           </h3>
           <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '4px' }}>
             {countedCount} / {totalProducts} products counted
@@ -565,7 +571,7 @@ export default function InventoryCount({ locations, products }) {
             {discrepancyCount > 0 && <span style={{ color: 'var(--color-error)', marginLeft: '8px' }}>{discrepancyCount} discrepancies</span>}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex gap-sm">
           <button className="btn btn-sm btn-secondary" onClick={cancelCount}>Cancel</button>
           <button
             className="btn btn-sm"
@@ -579,25 +585,25 @@ export default function InventoryCount({ locations, products }) {
       </div>
 
       {/* Progress Bar */}
-      <div style={{ marginBottom: '1rem' }}>
-        <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+      <div className="mb-md">
+        <div style={{ height: '6px', background: 'var(--color-bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
           <div style={{
             height: '100%', borderRadius: '3px', transition: 'width 0.3s ease',
             width: totalProducts > 0 ? `${(countedCount / totalProducts) * 100}%` : '0%',
-            background: countedCount === totalProducts && totalProducts > 0 ? '#22c55e' : 'linear-gradient(90deg, #3b82f6, #8b5cf6)'
+            background: countedCount === totalProducts && totalProducts > 0 ? 'var(--color-success-text)' : 'linear-gradient(90deg, #3b82f6, #8b5cf6)'
           }} />
         </div>
       </div>
 
-      <div className="inv-count-layout" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div className="inv-count-layout flex gap-md items-start flex-wrap">
         {/* Left: Product List by Category */}
         <div style={{ flex: '1 1 400px', minWidth: 0 }}>
           {Object.entries(groupedProducts).map(([category, catProducts]) => (
             <div key={category} className="glass-panel" style={{ padding: 0, marginBottom: '1rem', overflow: 'hidden' }}>
               <div style={{ 
                 padding: '10px 16px', 
-                background: 'rgba(255,255,255,0.03)', 
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                background: 'var(--color-bg-tertiary)', 
+                borderBottom: '1px solid var(--color-bg-tertiary)',
                 fontWeight: 600, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.7
               }}>
                 {category}
@@ -614,10 +620,10 @@ export default function InventoryCount({ locations, products }) {
                       padding: '12px 16px',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       cursor: isActive ? 'default' : 'pointer',
-                      borderBottom: '1px solid rgba(255,255,255,0.03)',
-                      background: isActive ? 'rgba(59,130,246,0.1)' : 
-                                  status === 'match' ? 'rgba(34,197,94,0.08)' : 
-                                  status === 'discrepancy' ? 'rgba(239,68,68,0.08)' : 'transparent',
+                      borderBottom: '1px solid var(--color-bg-tertiary)',
+                      background: isActive ? 'var(--color-accent-glow)' : 
+                                  status === 'match' ? 'var(--color-success-bg)' : 
+                                  status === 'discrepancy' ? 'var(--color-error-bg)' : 'transparent',
                       transition: 'background 0.2s',
                     }}
                   >
@@ -643,7 +649,7 @@ export default function InventoryCount({ locations, products }) {
         {activeProduct && (
           <div className="inv-count-active-panel" style={{ flex: '1 1 450px', minWidth: '350px', position: 'sticky', top: '1rem' }}>
             <div className="glass-panel" style={{ padding: '1rem', borderTop: '4px solid #3b82f6' }}>
-              <div style={{ marginBottom: '1rem' }}>
+              <div className="mb-md">
                 <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{activeProduct.name}</h4>
                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
                   SKU: {activeProduct.sku || '—'} | System Qty: <strong>{activeProduct.systemQty}</strong>
@@ -651,7 +657,7 @@ export default function InventoryCount({ locations, products }) {
               </div>
 
               {/* Physical Count */}
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <div className="form-group mb-lg">
                 <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Physical Count</label>
                 <input
                   type="number"
@@ -667,7 +673,7 @@ export default function InventoryCount({ locations, products }) {
               </div>
 
               {/* Scan Tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '1rem' }}>
+              <div className="flex border-b mb-md">
                 {[
                   { id: 'instock', label: 'In Stock' },
                   { id: 'returns', label: 'Returns' },
@@ -689,8 +695,8 @@ export default function InventoryCount({ locations, products }) {
               </div>
 
               {/* Active Tab Content */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div className="mb-lg">
+                <div className="flex justify-between items-center mb-sm">
                   <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scanned QR Codes</span>
                   <button
                     className="btn-icon"
@@ -723,13 +729,13 @@ export default function InventoryCount({ locations, products }) {
 
                 {scanFeedback && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px', marginBottom: '8px', fontSize: '0.8rem', borderRadius: '4px', background: scanFeedback.type === 'success' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: scanFeedback.type === 'success' ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                    <span aria-hidden="true" style={{ display: 'inline-flex' }}>{scanFeedback.type === 'success' ? Icons.checkCircle : Icons.alertTriangle}</span>
+                    <span aria-hidden="true" className="inline-flex">{scanFeedback.type === 'success' ? Icons.checkCircle : Icons.alertTriangle}</span>
                     {scanFeedback.message}
                   </div>
                 )}
 
                 <div style={{ 
-                  minHeight: '80px', padding: '8px', borderRadius: '4px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)' 
+                  minHeight: '80px', padding: '8px', borderRadius: '4px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--color-border)' 
                 }}>
                   {(() => {
                     const listKey = scanTarget === 'instock' ? 'scannedQrs' : scanTarget === 'returns' ? 'returnQrs' : 'damagedQrs';
@@ -738,9 +744,9 @@ export default function InventoryCount({ locations, products }) {
                     return (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {qrs.map(qr => (
-                          <span key={qr} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.8rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <span key={qr} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 8px', borderRadius: '4px', background: 'var(--color-bg-tertiary)', fontSize: '0.8rem', border: '1px solid var(--color-border)' }}>
                             {qr}
-                            <button onClick={() => removeQr(listKey, qr)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}>×</button>
+                            <button onClick={() => removeQr(listKey, qr)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-error-text)', padding: 0 }}>×</button>
                           </span>
                         ))}
                       </div>
@@ -751,8 +757,7 @@ export default function InventoryCount({ locations, products }) {
 
               {/* Save */}
               <button
-                className="btn btn-primary"
-                style={{ width: '100%' }}
+                className="btn btn-primary w-full"
                 onClick={saveProductCount}
                 disabled={!productCounts[activeProduct.id]?.counted}
               >

@@ -1,8 +1,38 @@
-/* ============================================
-   Responsive
-   ============================================ */
+/* ============================================================
+   Responsive — layer(responsive)
 
-/* ─── Tablet (≤1024px) ─── */
+   The single home for breakpoint overrides. This file used to be
+   half the story: `mobile-overrides.css` carried the other half
+   and was imported after it purely so its rules would win, which
+   is what the cascade layer now does structurally. Merging them
+   removed 42 rules that were byte-identical between the two, and
+   moved ~110 lines of card components — which had no media query
+   at all — into layer(components) (mobile-card-views.css).
+
+   Blocks run **widest to narrowest**, so a narrower breakpoint
+   always refines a wider one. The old files were ordered
+   768 → 480 → 768 → 480 → 768, which left several 480px rules
+   dead; the surviving declarations below are the ones that
+   actually computed before the merge, so behaviour is unchanged.
+
+   Breakpoints are 1280 / 1024 / 768 / 480 and nothing else.
+   ============================================================ */
+
+/* ═══ ≤1280px — compact desktop / small laptop ═══
+   Closes the dead zone between the mobile drawer (≤768px) and full
+   desktop. Previously a 280px rail plus 2×3.5rem padding left only
+   ~888px of usable width at 1280px for tables designed for 1100px+. */
+@media (max-width: 1280px) {
+  :root {
+    --sidebar-width: 224px;
+  }
+
+  .dashboard-main {
+    padding: var(--space-lg);
+  }
+}
+
+/* ═══ ≤1024px — tablet ═══ */
 @media (max-width: 1024px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -15,55 +45,88 @@
   .page-container {
     padding: 0 var(--space-md);
   }
+
+  .suppliers-grid.has-selection {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* ─── Mobile (≤768px) ─── */
+/* ═══ ≤768px — mobile ═══ */
 @media (max-width: 768px) {
-  /* ── Non-admin Sidebar Layout ── */
+  /* ── Shell ──
+     The grid collapses to one column and the sidebar leaves the
+     flow entirely, becoming an off-canvas drawer. */
   .dashboard-page {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    /* Explicit rows, or the slack from `min-height: 100dvh` is shared
+       between them: auto rows plus the default `align-content: stretch`
+       inflated the 56px topbar row to 170px, pushing every page title
+       114px down the screen. `auto 1fr` gives the topbar its content
+       height and lets the content row absorb the rest. */
+    grid-template-rows: auto 1fr;
   }
 
-  /* Show mobile topbar */
   .mobile-sidebar-topbar {
     display: flex;
   }
 
-  /* Show close button inside sidebar */
   .sidebar-mobile-close {
     display: flex;
   }
 
-  /* Sidebar becomes a slide-in drawer */
   .dashboard-sidebar {
     position: fixed;
     top: 0;
-    left: -280px;
-    width: 280px;
-    height: 100vh;
+    left: calc(-1 * var(--drawer-width));
+    width: var(--drawer-width);
+    height: 100dvh;
     z-index: 201;
     transition: transform var(--transition-normal);
   }
 
   .dashboard-sidebar.mobile-open {
-    transform: translateX(280px);
+    transform: translateX(var(--drawer-width));
   }
 
-  /* Overlay visible for non-admin sidebar too */
   .mobile-drawer-overlay {
     display: block;
   }
 
-  /* Main content fills full width */
   .dashboard-main {
-    margin-left: 0;
+    grid-column: 1;
     padding: var(--space-md);
+    /* Clear the iOS home indicator. */
+    padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
   }
 
-  /* ── Page Headers ── */
+  .admin-main-content {
+    padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
+  }
+
+  /* ── Page header and toolbar ──
+     Both stick to the top so the primary action stays reachable
+     while a long list scrolls under it. */
+  .page-header,
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-bg-primary);
+  }
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: var(--space-sm);
+    margin-top: 0;
+    padding-top: var(--space-md);
+  }
+
+  /* Header actions go full width rather than hugging the title. */
+  .page-header > .btn,
+  .page-header > button {
+    align-self: stretch;
+    justify-content: center;
   }
 
   .page-title,
@@ -71,7 +134,6 @@
     font-size: 1.5rem;
   }
 
-  /* ── Toolbar ── */
   .toolbar {
     flex-wrap: wrap;
   }
@@ -81,17 +143,72 @@
     width: 100%;
   }
 
-  /* ── Stats ── */
-  .stats-grid {
+  /* ── Panels and tables ── */
+  .glass-panel {
+    padding: var(--space-md);
+    /* Let a wide table scroll inside the panel instead of being
+       clipped by it. */
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* The decorative top hairline would stretch to the scrolled
+     content width, not the panel width. */
+  .glass-panel::before {
+    display: none;
+  }
+
+  .glass-table th,
+  .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--color-bg-tertiary);
+    box-shadow: 0 1px 0 var(--color-border);
+  }
+
+  .glass-table th {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+  }
+
+  .glass-table td {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* ── Table → card swap ── */
+  .desktop-table-view,
+  .cust-desktop-panel,
+  .co-desktop-table {
+    display: none;
+  }
+
+  .mobile-card-view,
+  .cust-mobile-cards,
+  .co-mobile-cards {
+    display: block;
+    padding: 0;
+  }
+
+  /* ── Grids that must collapse to one column ── */
+  .stats-grid,
+  .bento-grid,
+  .po-grid,
+  .price-tag-layout,
+  .sales-landing-grid,
+  .settings-roles-grid {
     grid-template-columns: 1fr;
   }
 
-  /* ── Bento / Analytics Grids ── */
-  .bento-grid {
-    grid-template-columns: 1fr;
+  /* Four-up and three-up selectors halve rather than stack. */
+  .co-item-entry-grid,
+  .bulk-price-mode-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  /* ── Welcome Banner ── */
+  /* ── Welcome banner ── */
   .dashboard-welcome-banner {
     flex-direction: column;
     align-items: flex-start;
@@ -108,13 +225,84 @@
     grid-template-columns: 1fr;
   }
 
-  /* ── Modals ── */
+  /* ── Modals become bottom sheets ── */
   .modal-overlay {
-    padding: var(--space-sm);
+    padding: 0;
+    align-items: flex-end;
   }
 
   .modal-content {
-    max-height: 95vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+    animation: bottom-sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* ── Touch targets ──
+     The original also forced `display: inline-flex` on inputs here
+     and then immediately reset them to `block` in the next rule, so
+     only the reset ever applied. */
+  .btn,
+  .dropdown-link,
+  .sidebar-link,
+  .top-nav-button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .form-input,
+  select,
+  input[type='text'],
+  input[type='number'],
+  input[type='password'],
+  input[type='email'] {
+    min-height: 44px;
+  }
+
+  .form-input,
+  select,
+  input {
+    display: block;
+    line-height: normal;
+  }
+
+  .modal-close,
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Floating action button ──
+     `.fab-mobile` is a normal button above this breakpoint; only
+     here does it become a circle pinned to the corner. */
+  .fab-mobile {
+    position: fixed;
+    bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
+    right: var(--space-md);
+    z-index: 90;
+    border-radius: var(--radius-full);
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fab-mobile span.fab-text {
+    display: none;
+  }
+
+  .fab-mobile svg {
+    margin: 0;
+    width: 24px;
+    height: 24px;
   }
 
   /* ── Login ── */
@@ -146,13 +334,111 @@
   .catalog-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
+
+  /* ── Till account ── */
+  .till-branch-stats {
+    gap: 12px;
+    justify-content: flex-start;
+  }
+
+  .till-ending-balance {
+    border-left: none;
+  }
+
+  /* ── Customer Orders ── */
+  .co-status-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .co-detail-actions {
+    flex-direction: column;
+  }
+
+  .co-detail-actions > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Inventory count: list + sticky active-count panel ── */
+  .inv-count-active-panel {
+    min-width: 0;
+    flex-basis: 100%;
+    position: relative;
+    top: auto;
+  }
+
+  /* ── Invoice document ── */
+  .invoice-preview {
+    padding: 1.25rem;
+  }
+
+  .invoice-header-row {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .invoice-header-row > div:last-child {
+    text-align: left;
+  }
+
+  .invoice-header-row > div:last-child > div {
+    align-items: flex-start;
+  }
+
+  .invoice-header-row > div:last-child > div > div {
+    justify-content: flex-start;
+  }
+
+  .invoice-parties-row {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .invoice-parties-row > div:last-child {
+    text-align: left;
+  }
+
+  .invoice-total-box {
+    width: 100%;
+  }
 }
 
-/* ─── Small Mobile (≤480px) ─── */
+@keyframes bottom-sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content {
+    animation: none;
+  }
+}
+
+/* ═══ ≤480px — small phones ═══ */
 @media (max-width: 480px) {
+  /* ── Layout padding — very tight ── */
+  .dashboard-main,
+  .admin-main-content {
+    padding: var(--space-xs) var(--space-sm);
+    padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom));
+  }
+
+  .page-container {
+    padding: 0;
+  }
+
+  /* ── Headings ── */
   .page-title,
   .dashboard-title {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
   }
 
   .page-subtitle,
@@ -160,62 +446,12 @@
     font-size: 0.85rem;
   }
 
-  .banner-title {
-    font-size: 1.25rem;
-  }
-
-  .admin-main-content {
-    padding: var(--space-sm);
-  }
-
-  .dashboard-main {
-    padding: var(--space-sm);
-  }
-
-  .catalog-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-  }
-
-  .modal-body {
-    padding: var(--space-md);
-  }
-
-  .modal-header {
-    padding: var(--space-md);
-  }
-
-  .page-container {
-    padding: 0;
-  }
-}
-
-/* ─── Extra Small Mobile (≤390px) — 360px phones ─── */
-@media (max-width: 390px) {
-  /* ── Layout padding ── */
-  .dashboard-main {
-    padding: var(--space-xs) var(--space-sm);
-  }
-
-  .admin-main-content {
-    padding: var(--space-xs) var(--space-sm);
-  }
-
-  /* ── Page headers ── */
-  .page-title,
-  .dashboard-title {
-    font-size: 1.1rem;
-  }
-
   .page-header {
     margin-bottom: var(--space-md);
     gap: var(--space-sm);
   }
 
-  /* ── Toolbar — stack search above action buttons ── */
+  /* ── Toolbar — full stack ── */
   .toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -227,9 +463,25 @@
     max-width: 100%;
   }
 
-  /* ── Data table — tight cell padding ── */
+  /* ── Panels and tables — minimum breathing room ── */
+  .glass-panel {
+    padding: var(--space-sm);
+    border-radius: var(--radius-lg);
+  }
+
+  .glass-table th {
+    padding: 0.4rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+
+  .glass-table td {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
   .data-table th {
-    padding: 0.5rem 0.5rem;
+    padding: 0.5rem;
     font-size: 0.7rem;
   }
 
@@ -238,20 +490,19 @@
     font-size: 0.8rem;
   }
 
-  /* ── Modal — bottom sheet pattern ── */
-  .modal-overlay {
-    padding: 0;
-    align-items: flex-end;
+  /* ── Modals ── */
+  .modal-title {
+    font-size: 1.05rem;
   }
 
-  .modal-content {
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: 92vh;
-    width: 100%;
-    max-width: 100%;
+  .modal-header {
+    padding: var(--space-md);
   }
 
-  /* Modal footer buttons stack full-width */
+  .modal-body {
+    padding: var(--space-sm) var(--space-md);
+  }
+
   .modal-footer {
     flex-direction: column-reverse;
     gap: var(--space-sm);
@@ -262,20 +513,12 @@
     justify-content: center;
   }
 
-  /* ── Login ── */
-  .login-container {
-    padding: var(--space-xs);
+  /* ── Forms ── */
+  .form-group label {
+    font-size: 0.85rem;
   }
 
-  .login-card {
-    padding: var(--space-lg);
-  }
-
-  .login-title {
-    font-size: 1.4rem;
-  }
-
-  /* ── Stat cards ── */
+  /* ── Cards ── */
   .stat-card {
     padding: var(--space-md);
     gap: var(--space-sm);
@@ -288,6 +531,10 @@
 
   .stat-value {
     font-size: 1.25rem;
+  }
+
+  .m-card-actions {
+    gap: 4px;
   }
 
   /* ── Welcome banner ── */
@@ -303,14 +550,25 @@
     font-size: 0.85rem;
   }
 
-  /* ── Quick actions — 2 columns ── */
   .dashboard-quick-actions {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* ── Mobile topbar ── */
   .top-nav-brand {
     font-size: 1rem;
+  }
+
+  /* ── Login ── */
+  .login-container {
+    padding: var(--space-xs);
+  }
+
+  .login-card {
+    padding: var(--space-lg);
+  }
+
+  .login-title {
+    font-size: 1.4rem;
   }
 
   /* ── Sales POS ── */
@@ -334,89 +592,5 @@
   .cart-item-price {
     min-width: 44px;
     font-size: 0.75rem;
-  }
-}
-
-/* ─── Customer Orders page ─── */
-.co-status-tabs {
-  scrollbar-width: none;
-}
-.co-status-tabs::-webkit-scrollbar { display: none; }
-
-.co-mobile-cards { display: none; }
-
-.co-order-card {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-.co-order-card:last-of-type { border-bottom: none; }
-.co-order-card:active { background: rgba(99, 102, 241, 0.06); }
-
-.co-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.co-card-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-  margin-top: 6px;
-}
-
-.co-card-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-}
-
-@media (max-width: 640px) {
-  .co-status-tabs {
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-  }
-
-  .co-desktop-table { display: none !important; }
-  .co-mobile-cards { display: block !important; }
-
-  .co-detail-actions {
-    flex-direction: column;
-  }
-
-  .co-detail-actions > button {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* ─── Suppliers page ─── */
-.suppliers-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-.suppliers-grid.has-selection {
-  grid-template-columns: 1fr 1fr;
-}
-
-.suppliers-table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* On smaller screens, stack the layout even with selection */
-@media (max-width: 1024px) {
-  .suppliers-grid.has-selection {
-    grid-template-columns: 1fr;
   }
 }

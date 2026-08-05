@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthContext } from '../../../lib/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { PageHeader } from '../../../components/ui';
 
 export default function ProfileTab() {
   const { user } = useAuthContext();
@@ -27,18 +28,16 @@ export default function ProfileTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Platform Settings</h1>
-          <p className="dashboard-subtitle">Manage your personal admin account and preferences.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Platform Settings"
+        subtitle="Manage your personal admin account and preferences."
+      />
 
       <div className="content-card" style={{ maxWidth: '600px' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Admin Profile</h2>
         
-        {message && <div className="alert alert-success" style={{ marginBottom: '1rem' }}>{message}</div>}
-        {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+        {message && <div className="alert alert-success mb-md">{message}</div>}
+        {error && <div className="alert alert-error mb-md">{error}</div>}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div>

@@ -344,10 +344,14 @@ router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
  */
 router.delete('/reset', authGuard, async (req, res) => {
   try {
-    if (!['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role)) {
+    // Admins only. Managers were permitted here originally, which put an
+    // irreversible wipe of the entire sales history behind a role that exists
+    // to run a shop floor — a branch manager clearing "their" dashboard would
+    // have destroyed the whole business's records.
+    if (!['Platform Admin', 'Business Admin'].includes(req.user.role)) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Only Business Admins or Managers can reset dashboard data.'
+        message: 'Only Business Admins can reset dashboard data.'
       });
     }
 

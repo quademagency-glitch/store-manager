@@ -109,7 +109,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
         </div>
 
         {/* Line Items */}
-        <div style={{ marginBottom: '24px' }}>
+        <div className="mb-lg">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <label className="form-label" style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>Line Items</label>
             <button type="button" className="btn btn-secondary btn-sm" onClick={addItem} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -183,7 +183,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
 
           {/* Grand Total */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '2px solid var(--color-border)', marginTop: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="flex items-center gap-md">
               <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Grand Total:</span>
               <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                 {grandTotal.toFixed(2)}
@@ -193,7 +193,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
         </div>
 
         {/* Notes */}
-        <div className="form-group" style={{ marginBottom: '24px' }}>
+        <div className="form-group mb-lg">
           <label className="form-label">Notes</label>
           <textarea
             className="form-input"

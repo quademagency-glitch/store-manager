@@ -1,14 +1,11 @@
 import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { api } from '../lib/api';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { useToast } from '../hooks/useToast';
-import { useConfirm } from '../hooks/useConfirm';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -19,8 +16,6 @@ function getGreeting() {
 
 export default function Dashboard() {
   const { user, role, hasPermission } = useAuthContext();
-  const toast = useToast();
-  const confirm = useConfirm();
   const {
     summary, recentActivity, loading,
     salesTrend, topProducts, inventoryHealth, staffPerformance,
@@ -41,6 +36,11 @@ export default function Dashboard() {
 
   const timeAgo = (dateString) => {
     const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
+    /* A timestamp ahead of the browser clock made every `interval > 1` test
+       below fail, falling through to the raw-seconds branch and rendering
+       "-1373400 seconds ago". Device clocks drift from the server's, and this
+       app is offline-capable, so future-dated rows are not hypothetical. */
+    if (seconds < 0) return 'just now';
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + ' years ago';
     interval = seconds / 2592000;
@@ -52,22 +52,6 @@ export default function Dashboard() {
     interval = seconds / 60;
     if (interval > 1) return Math.floor(interval) + ' mins ago';
     return Math.floor(seconds) + ' seconds ago';
-  };
-
-  const handleResetDashboard = async () => {
-    const confirmed = await confirm({ title: 'Reset Dashboard', message: 'WARNING: This will PERMANENTLY delete all sales, stock movements, and alerts for this business/location. Inventory levels will NOT be reset. Are you absolutely sure you want to wipe the dashboard data?', variant: 'danger', confirmText: 'Reset Data' });
-    if (confirmed) {
-      try {
-        const res = await api.delete('/analytics/reset');
-        if (res.message) {
-          toast.success('Dashboard has been reset.');
-          fetchSummary();
-          fetchRecentActivity();
-        }
-      } catch (err) {
-        toast.error(err.message || 'Failed to reset dashboard');
-      }
-    }
   };
 
   const todayTxCount = summary?.todayTransactionCount ?? null;
@@ -251,7 +235,7 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : (
-                <div className="activity-item" style={{ justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                <div className="activity-item justify-center text-muted">
                   No recent activity found.
                 </div>
               )}
@@ -375,47 +359,6 @@ export default function Dashboard() {
           </div>
         )}
 
-
-        {/* Danger Zone — admin only */}
-        {hasPermission('manage_business') && (
-          <div style={{
-            marginTop: 'var(--space-2xl)',
-            padding: 'var(--space-lg) var(--space-xl)',
-            border: '1px solid var(--color-error-border)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--color-error-bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 'var(--space-lg)',
-          }}>
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--color-error)', fontSize: '0.9rem', marginBottom: '2px' }}>Danger Zone</div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.825rem' }}>
-                Permanently wipe all sales, stock movements, and alerts for this location. This cannot be undone.
-              </div>
-            </div>
-            <button
-              onClick={handleResetDashboard}
-              style={{
-                flexShrink: 0,
-                padding: '0.5rem 1.25rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-error)',
-                background: 'transparent',
-                color: 'var(--color-error)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'background var(--transition-fast)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              Reset Dashboard
-            </button>
-          </div>
-        )}
 
       </div>
     </>

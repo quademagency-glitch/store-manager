@@ -5,6 +5,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { Icons } from '../components/icons/Icons';
+import { ErrorBanner, PageHeader } from '../components/ui';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -23,6 +24,7 @@ export default function AccountingTemplates() {
   const toast = useToast();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [locations, setLocations] = useState([]);
 
@@ -58,6 +60,7 @@ export default function AccountingTemplates() {
       setTemplates(allowed);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -74,6 +77,7 @@ export default function AccountingTemplates() {
       }
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      setError(err);
     }
   };
 
@@ -281,6 +285,7 @@ export default function AccountingTemplates() {
       return evaluateSimple(resolved);
     } catch (err) {
       if (import.meta.env.DEV) console.warn('Logic evaluation failed:', err);
+      setError(err);
       return true; // fail open
     }
   };
@@ -297,12 +302,12 @@ export default function AccountingTemplates() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Accounting Entries</h1>
-          <p className="page-subtitle">Select a template below to record an expense, deposit, or other accounting entry.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Accounting Entries"
+        subtitle="Select a template below to record an expense, deposit, or other accounting entry."
+      />
+
+      <ErrorBanner error={error} onRetry={fetchTemplates} />
       
       {loading ? (
         <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--color-text-secondary)' }}>Loading templates...</div>

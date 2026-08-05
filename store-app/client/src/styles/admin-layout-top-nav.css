@@ -1,32 +1,20 @@
 /* ============================================
-   Admin Layout (Top Nav)
+   App chrome — brand mark, dropdowns, mobile drawer
+
+   This file used to carry a full horizontal top-navbar. That
+   layout was replaced by the sidebar in MainLayout.jsx and its
+   ~180 lines of CSS (.admin-dashboard-page, .top-navbar,
+   .top-nav-left/-menu/-group/-button/-dropdown/-right, and the
+   .mobile-drawer* internals) had no JSX consumer left. Removed.
+
+   `.admin-main-content` also lived here, setting `max-width:
+   1600px; margin: 0 auto` on the same <main> as `.dashboard-main`.
+   Equal specificity and a later import meant its `margin`
+   shorthand silently reset `margin-left: var(--sidebar-width)` to
+   0, sliding every page 280px under the opaque sidebar. The shell
+   is now a grid (dashboard-layout.css) and the centring lives on
+   `.page-shell` inside main, where it cannot fight the geometry.
    ============================================ */
-.admin-dashboard-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: var(--color-bg-primary);
-}
-
-.top-navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 70px;
-  background: var(--color-bg-card);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--space-xl);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(12px);
-}
-
-.top-nav-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xl);
-}
 
 .top-nav-logo {
   display: flex;
@@ -46,83 +34,7 @@
   color: var(--color-brand-erp);
 }
 
-.top-nav-menu {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-/* Nav Item with Dropdown */
-.top-nav-group {
-  position: relative;
-}
-
-.top-nav-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0.5rem 0.8rem;
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.top-nav-button:hover,
-.top-nav-group:hover .top-nav-button {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text-primary);
-}
-
-[data-theme="light"] .top-nav-button:hover,
-[data-theme="light"] .top-nav-group:hover .top-nav-button {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.top-nav-button.active,
-.top-nav-group.has-active .top-nav-button {
-  color: var(--color-accent-hover);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-/* Dropdown */
-.top-nav-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 220px;
-  background: var(--color-bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-md);
-  padding: var(--space-sm);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-  transition: all var(--transition-fast);
-  z-index: 101;
-}
-
-[data-theme="light"] .top-nav-dropdown {
-  border-color: #e2e8f0;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
-}
-
-.top-nav-group:hover .top-nav-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
+/* Dropdown items — used by the sidebar user menu and branch selector. */
 .dropdown-link {
   display: flex;
   align-items: center;
@@ -132,7 +44,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
   text-decoration: none;
   background: transparent;
   border: none;
@@ -147,22 +59,8 @@
 }
 
 .dropdown-link.active {
-  color: var(--color-accent-hover);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.top-nav-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.admin-main-content {
-  flex: 1;
-  padding: var(--space-2xl);
-  max-width: 1600px;
-  width: 100%;
-  margin: 0 auto;
+  color: var(--color-accent-text);
+  background: var(--color-accent-glow);
 }
 
 /* Mobile Hamburger Menu */
@@ -176,17 +74,19 @@
   padding: 0.5rem;
 }
 
-/* Overlay base styles always present; visibility toggled by media queries */
+/* Drawer scrim. One of the few places blur is genuinely spent —
+   the page really is moving behind it. */
 .mobile-drawer-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(2, 6, 23, 0.6);
   z-index: 200;
   opacity: 0;
   visibility: hidden;
-  transition: all var(--transition-fast);
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .mobile-drawer-overlay.open {
@@ -194,74 +94,14 @@
   visibility: visible;
 }
 
-.mobile-drawer {
-  display: none;
-}
-
-@media (max-width: 1200px) {
-  .top-nav-menu, .top-nav-right {
-    display: none; /* Hide horizontal menu and right actions on small screens */
-  }
-
+@media (max-width: 768px) {
   .mobile-menu-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .top-navbar {
-    padding: 0 var(--space-md);
-  }
-
-  .admin-main-content {
-    padding: var(--space-md);
-  }
-
   .mobile-drawer-overlay {
     display: block;
-  }
-
-  .mobile-drawer {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: 0;
-    left: -280px;
-    width: 280px;
-    height: 100vh;
-    background: var(--color-bg-secondary);
-    backdrop-filter: blur(24px);
-    z-index: 201;
-    transition: transform var(--transition-normal);
-    border-right: 1px solid var(--color-border);
-    overflow-y: auto;
-  }
-
-  .mobile-drawer.open {
-    transform: translateX(280px);
-  }
-  
-  .mobile-drawer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-lg);
-    border-bottom: 1px solid var(--color-border);
-  }
-  
-  .mobile-drawer-close {
-    background: none;
-    border: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    padding: 0.5rem;
-    display: flex;
-  }
-  
-  .mobile-drawer-nav {
-    padding: var(--space-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
   }
 }

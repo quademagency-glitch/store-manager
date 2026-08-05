@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import Modal from '../components/Modal';
+import { Tabs, TabPanel } from '../components/ui';
 
 // High-quality modern SVG icons
 const Icons = {
@@ -18,7 +19,7 @@ const Icons = {
 };
 
 export default function CRMCommunications() {
-  const showToast = useToast();
+  const toast = useToast();
   const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState('campaign'); // 'campaign', 'templates', 'gateways'
@@ -46,7 +47,9 @@ export default function CRMCommunications() {
   const [editingGateway, setEditingGateway] = useState(null);
   const [gatewayForm, setGatewayForm] = useState({ provider: 'arkesel', type: 'sms', display_name: '', api_key: '', secret_key: '', sender_id: '', is_active: true, is_default: false });
 
-  const fetchData = async () => {
+  // `toast` is provider-memoized, so this is stable and the effect below stays
+  // mount-only — same behaviour as the previous empty dep array.
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [resTmpl, resGw, resCust] = await Promise.all([
@@ -59,15 +62,15 @@ export default function CRMCommunications() {
       setCustomers(resCust.data || resCust || []);
     } catch (err) {
       console.error(err);
-      showToast('Failed to load CRM data', 'error');
+      toast.error('Failed to load CRM data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // -- Campaigns --
   const handleCampaignChange = (e) => {
@@ -86,10 +89,10 @@ export default function CRMCommunications() {
 
     try {
       const res = await api.post('/crm-communications/send', campaignForm);
-      showToast(`Campaign sent! SMS: ${res.smsResults?.success ? 'Sent' : 'Skipped'}, Email: ${res.emailResults?.success ? 'Sent' : 'Skipped'}`, 'success');
+      toast.success(`Campaign sent! SMS: ${res.smsResults?.success ? 'Sent' : 'Skipped'}, Email: ${res.emailResults?.success ? 'Sent' : 'Skipped'}`);
       setCampaignForm({ targetAudience: 'all_customers', customerId: '', type: 'both', templateId: '', subject: '', message: '' });
     } catch (err) {
-      showToast(err.message || 'Failed to send campaign', 'error');
+      toast.error(err.message || 'Failed to send campaign');
     }
   };
 
@@ -109,15 +112,15 @@ export default function CRMCommunications() {
     try {
       if (editingTemplate) {
         await api.post('/crm-communications/templates', { ...templateForm, id: editingTemplate.id });
-        showToast('Template updated', 'success');
+        toast.success('Template updated');
       } else {
         await api.post('/crm-communications/templates', templateForm);
-        showToast('Template created', 'success');
+        toast.success('Template created');
       }
       setIsTemplateModalOpen(false);
       fetchData();
     } catch (err) {
-      showToast(err.message || 'Failed to save template', 'error');
+      toast.error(err.message || 'Failed to save template');
     }
   };
 
@@ -125,10 +128,10 @@ export default function CRMCommunications() {
     if (await confirm({ title: 'Delete Template', message: `Delete template "${name}"?`, variant: 'danger' })) {
       try {
         await api.delete(`/crm-communications/templates/${id}`);
-        showToast('Template deleted', 'success');
+        toast.success('Template deleted');
         fetchData();
       } catch {
-        showToast('Failed to delete template', 'error');
+        toast.error('Failed to delete template');
       }
     }
   };
@@ -158,15 +161,15 @@ export default function CRMCommunications() {
     try {
       if (editingGateway) {
         await api.put(`/crm-communications/gateways/${editingGateway.id}`, gatewayForm);
-        showToast('Gateway updated', 'success');
+        toast.success('Gateway updated');
       } else {
         await api.post('/crm-communications/gateways', gatewayForm);
-        showToast('Gateway added', 'success');
+        toast.success('Gateway added');
       }
       setIsGatewayModalOpen(false);
       fetchData();
     } catch (err) {
-      showToast(err.message || 'Failed to save gateway', 'error');
+      toast.error(err.message || 'Failed to save gateway');
     }
   };
 
@@ -174,10 +177,10 @@ export default function CRMCommunications() {
     if (await confirm({ title: 'Remove Gateway', message: 'Are you sure you want to remove this gateway?', variant: 'danger' })) {
       try {
         await api.delete(`/crm-communications/gateways/${id}`);
-        showToast('Gateway removed', 'success');
+        toast.success('Gateway removed');
         fetchData();
       } catch {
-        showToast('Failed to remove gateway', 'error');
+        toast.error('Failed to remove gateway');
       }
     }
   };
@@ -192,257 +195,28 @@ export default function CRMCommunications() {
 
   return (
     <div className="crm-comms-container">
-      <style dangerouslySetInnerHTML={{__html: `
-        .crm-comms-container {
-          animation: fadeIn 0.4s ease-out;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-        
-        .premium-header {
-          background: var(--color-bg-card);
-          border-radius: var(--radius-xl);
-          padding: 2.5rem;
-          color: var(--color-text-primary);
-          margin-bottom: 2rem;
-          box-shadow: var(--shadow-md);
-          position: relative;
-          overflow: hidden;
-          border: 1px solid var(--color-border);
-        }
-        
-        .premium-header h1 {
-          font-size: 2.5rem;
-          font-weight: 800;
-          margin-bottom: 0.5rem;
-          letter-spacing: -0.02em;
-          background: linear-gradient(135deg, var(--color-text-primary), var(--color-accent-hover));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-        .premium-header p {
-          font-size: 1.1rem;
-          color: var(--color-text-secondary);
-          max-width: 600px;
-        }
-        
-        .modern-tabs {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 2.5rem;
-          padding: 0.5rem;
-          background: var(--color-bg-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-sm);
-          width: max-content;
-        }
-        .modern-tab {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.5rem;
-          border-radius: var(--radius-md);
-          font-weight: 600;
-          font-size: 1rem;
-          color: var(--color-text-secondary);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-          border: none;
-          background: transparent;
-        }
-        .modern-tab:hover {
-          color: var(--color-text-primary);
-          background: var(--color-bg-tertiary);
-        }
-        .modern-tab.active {
-          background: var(--color-bg-primary);
-          color: var(--color-accent-hover);
-          box-shadow: var(--shadow-sm);
-          border: 1px solid var(--color-border);
-          transform: translateY(-1px);
-        }
-
-        .premium-card {
-          background: var(--color-bg-card);
-          border-radius: var(--radius-xl);
-          padding: 2.5rem;
-          box-shadow: var(--shadow-md);
-          border: 1px solid var(--color-border);
-          transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-        }
-        .premium-card:hover {
-          box-shadow: var(--shadow-lg);
-          border-color: var(--color-border-focus);
-        }
-
-        .form-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-        .full-width { grid-column: 1 / -1; }
-        
-        .sleek-input {
-          width: 100%;
-          padding: 1rem 1.25rem;
-          border-radius: var(--radius-md);
-          border: 1px solid var(--color-border);
-          background: var(--color-bg-secondary);
-          font-size: 1rem;
-          transition: all var(--transition-fast);
-          color: var(--color-text-primary);
-        }
-        .sleek-input:focus {
-          outline: none;
-          border-color: var(--color-border-focus);
-          box-shadow: 0 0 0 3px var(--color-accent-glow);
-        }
-        
-        .sleek-label {
-          display: block;
-          font-weight: 600;
-          margin-bottom: 0.5rem;
-          color: var(--color-text-secondary);
-          font-size: 0.95rem;
-        }
-
-        .btn-gradient {
-          background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-          color: white;
-          border: none;
-          padding: 1rem 2rem;
-          border-radius: var(--radius-md);
-          font-weight: 700;
-          font-size: 1.05rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          transition: all var(--transition-fast);
-        }
-        .btn-gradient:hover {
-          transform: translateY(-1px);
-          background: var(--color-accent-hover);
-          box-shadow: var(--shadow-md);
-        }
-
-        .template-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 1.5rem;
-        }
-        .template-card {
-          background: var(--color-bg-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          padding: 1.5rem;
-          position: relative;
-          transition: all var(--transition-fast);
-          display: flex;
-          flex-direction: column;
-          box-shadow: var(--shadow-sm);
-        }
-        .template-card:hover {
-          border-color: var(--color-border-focus);
-          box-shadow: var(--shadow-md);
-          transform: translateY(-2px);
-        }
-        .template-type-badge {
-          position: absolute;
-          top: 1.5rem;
-          right: 1.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.35rem 0.75rem;
-          background: var(--color-bg-tertiary);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-full);
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: var(--color-text-secondary);
-          text-transform: uppercase;
-        }
-
-        .gateway-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .gateway-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1.5rem;
-          background: var(--color-bg-card);
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          transition: all var(--transition-fast);
-          box-shadow: var(--shadow-sm);
-        }
-        .gateway-row:hover {
-          border-color: var(--color-border-focus);
-          background: var(--color-bg-tertiary);
-        }
-        .gateway-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: var(--radius-md);
-          background: var(--color-bg-tertiary);
-          color: var(--color-accent-primary);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.25rem;
-          font-weight: bold;
-          border: 1px solid var(--color-border);
-        }
-        
-        .glass-modal {
-          background: var(--color-bg-card);
-          border-radius: var(--radius-xl);
-          border: 1px solid var(--color-border);
-          box-shadow: var(--shadow-lg);
-        }
-
-        @media (max-width: 640px) {
-          .premium-header { padding: 1.25rem; }
-          .premium-header h1 { font-size: 1.6rem; }
-          .premium-card { padding: 1.25rem; }
-          .modern-tabs {
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            flex-wrap: nowrap;
-          }
-          .form-grid { grid-template-columns: 1fr; }
-          .template-grid { grid-template-columns: 1fr; }
-          .gateway-row { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1rem; }
-        }
-      `}} />
-
       <div className="premium-header">
         <h1>Marketing & Comms</h1>
         <p>Engage your customers with beautifully crafted, targeted campaigns via Email and SMS directly from your dashboard.</p>
       </div>
 
-      <div className="modern-tabs">
-        <button className={`modern-tab ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>
-          {Icons.rocket} Send Campaign
-        </button>
-        <button className={`modern-tab ${activeTab === 'templates' ? 'active' : ''}`} onClick={() => setActiveTab('templates')}>
-          {Icons.template} Templates
-        </button>
-        <button className={`modern-tab ${activeTab === 'gateways' ? 'active' : ''}`} onClick={() => setActiveTab('gateways')}>
-          {Icons.settings} Gateways
-        </button>
-      </div>
+      {/* `.modern-tab*` lived in the injected <style> above, so mounting
+          this page leaked a global tab theme onto anything else that
+          happened to use the name. */}
+      <Tabs
+        idPrefix="crm"
+        items={[
+          { id: 'campaign', label: 'Send Campaign', icon: Icons.rocket },
+          { id: 'templates', label: 'Templates', icon: Icons.template },
+          { id: 'gateways', label: 'Gateways', icon: Icons.settings },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Communications sections"
+      />
 
       {/* --- CAMPAIGN TAB --- */}
-      {activeTab === 'campaign' && (
+      <TabPanel idPrefix="crm" id="campaign" value={activeTab}>
         <div className="premium-card">
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '2rem' }}>Craft Your Message</h2>
           <form onSubmit={handleSendCampaign} className="form-grid">
@@ -526,23 +300,23 @@ export default function CRMCommunications() {
               />
               {(campaignForm.type === 'sms' || campaignForm.type === 'both') && (
                 <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {Icons.sms} SMS Length: <strong style={{ color: 'var(--color-text-primary)' }}>{campaignForm.message.length}</strong> chars 
+                  {Icons.sms} SMS Length: <strong className="text-primary">{campaignForm.message.length}</strong> chars 
                   ({Math.ceil(campaignForm.message.length / 160) || 1} standard message(s))
                 </div>
               )}
             </div>
 
-            <div className="full-width" style={{ marginTop: '1rem' }}>
-              <button type="submit" className="btn-gradient" style={{ width: '100%' }}>
+            <div className="full-width mt-md">
+              <button type="submit" className="btn-gradient w-full">
                 {Icons.send} Dispatch Campaign
               </button>
             </div>
           </form>
         </div>
-      )}
+      </TabPanel>
 
       {/* --- TEMPLATES TAB --- */}
-      {activeTab === 'templates' && (
+      <TabPanel idPrefix="crm" id="templates" value={activeTab}>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Saved Templates</h2>
@@ -553,7 +327,7 @@ export default function CRMCommunications() {
 
           {templates.length === 0 ? (
             <div className="premium-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-              <div style={{ color: 'var(--color-text-tertiary)', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+              <div className="text-tertiary mb-md flex justify-center">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>No Templates Yet</h3>
@@ -593,15 +367,15 @@ export default function CRMCommunications() {
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* --- GATEWAYS TAB --- */}
-      {activeTab === 'gateways' && (
+      <TabPanel idPrefix="crm" id="gateways" value={activeTab}>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Custom Gateways</h2>
-              <p style={{ color: 'var(--color-text-secondary)' }}>Configure your own providers. If none are active, we'll use the platform defaults.</p>
+              <p className="text-secondary">Configure your own providers. If none are active, we'll use the platform defaults.</p>
             </div>
             <button className="btn-gradient" style={{ padding: '0.75rem 1.5rem', borderRadius: '100px' }} onClick={() => openGatewayModal()}>
               {Icons.plus} Add Provider
@@ -648,7 +422,7 @@ export default function CRMCommunications() {
             )}
           </div>
         </div>
-      )}
+      </TabPanel>
 
       {/* --- MODALS --- */}
       <Modal isOpen={isGatewayModalOpen} onClose={() => setIsGatewayModalOpen(false)} title={editingGateway ? 'Edit Gateway' : 'Add Gateway'} className="glass-modal">
@@ -700,7 +474,7 @@ export default function CRMCommunications() {
             </label>
           </div>
 
-          <div className="full-width" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <div className="full-width flex gap-md justify-end mt-md">
             <button type="button" className="btn btn-outline" style={{ borderRadius: '12px', padding: '0.75rem 1.5rem' }} onClick={() => setIsGatewayModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-gradient" style={{ borderRadius: '12px', padding: '0.75rem 1.5rem' }}>Save Gateway</button>
           </div>
@@ -731,7 +505,7 @@ export default function CRMCommunications() {
             <label className="sleek-label">Content</label>
             <textarea value={templateForm.content} onChange={(e) => setTemplateForm(p => ({ ...p, content: e.target.value }))} className="sleek-input" required rows={6} placeholder="Type your template body here..." style={{ resize: 'vertical' }} />
           </div>
-          <div className="full-width" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <div className="full-width flex gap-md justify-end mt-md">
             <button type="button" className="btn btn-outline" style={{ borderRadius: '12px', padding: '0.75rem 1.5rem' }} onClick={() => setIsTemplateModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-gradient" style={{ borderRadius: '12px', padding: '0.75rem 1.5rem' }}>Save Template</button>
           </div>

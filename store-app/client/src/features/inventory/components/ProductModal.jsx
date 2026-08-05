@@ -177,7 +177,7 @@ export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, edit
               Delete Product
             </button>
           )}
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex gap-sm">
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save Product'}

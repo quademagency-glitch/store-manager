@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './lib/AuthContext';
 import { ThemeProvider } from './lib/ThemeContext';
@@ -5,32 +6,32 @@ import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
-import Sales from './pages/Sales';
-import Inventory from './pages/Inventory';
-import Alerts from './pages/Alerts';
-import Reconciliation from './pages/Reconciliation';
-import Settings from "./pages/Settings";
-import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import Returns from "./pages/Returns";
-import SalesRecord from "./pages/SalesRecord";
-import TillAccount from "./pages/TillAccount";
-import PlatformAdmin from "./pages/PlatformAdmin";
+const Sales = lazy(() => import('./pages/Sales'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Alerts = lazy(() => import('./pages/Alerts'));
+const Reconciliation = lazy(() => import('./pages/Reconciliation'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Customers = lazy(() => import('./pages/Customers'));
+const CustomerDetail = lazy(() => import('./pages/CustomerDetail'));
+const Returns = lazy(() => import('./pages/Returns'));
+const SalesRecord = lazy(() => import('./pages/SalesRecord'));
+const TillAccount = lazy(() => import('./pages/TillAccount'));
+const PlatformAdmin = lazy(() => import('./pages/PlatformAdmin'));
 import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from './pages/UpdatePassword';
-import InvoiceList from './pages/InvoiceList';
-import InvoiceView from './pages/InvoiceView';
+const InvoiceList = lazy(() => import('./pages/InvoiceList'));
+const InvoiceView = lazy(() => import('./pages/InvoiceView'));
 import SmartRedirect from './components/SmartRedirect';
-import UserProfile from './pages/UserProfile';
-import Suppliers from './pages/Suppliers';
-import PurchaseOrders from './pages/PurchaseOrders';
-import CustomerOrders from './pages/CustomerOrders';
-import CRMCommunications from './pages/CRMCommunications';
-import AccountsReceivableLedger from './pages/AccountsReceivable';
-import AccountsPayableLedger from './pages/AccountsPayable';
-import ImportWizard from './pages/ImportWizard';
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const Suppliers = lazy(() => import('./pages/Suppliers'));
+const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'));
+const CustomerOrders = lazy(() => import('./pages/CustomerOrders'));
+const CRMCommunications = lazy(() => import('./pages/CRMCommunications'));
+const AccountsReceivableLedger = lazy(() => import('./pages/AccountsReceivable'));
+const AccountsPayableLedger = lazy(() => import('./pages/AccountsPayable'));
+const ImportWizard = lazy(() => import('./pages/ImportWizard'));
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
@@ -38,31 +39,32 @@ import ReloadPrompt from './components/ReloadPrompt';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Accounting Pages
-import AccountingTemplates from './pages/AccountingTemplates';
-import AccountingSettings from './pages/AccountingSettings';
-import AccountingApprovals from './pages/AccountingApprovals';
+const AccountingTemplates = lazy(() => import('./pages/AccountingTemplates'));
+const AccountingSettings = lazy(() => import('./pages/AccountingSettings'));
+const AccountingApprovals = lazy(() => import('./pages/AccountingApprovals'));
 
 // Business Admin Pages
-import BusinessOverview from './pages/BusinessAdmin/Overview';
-import BusinessOrganization from './pages/BusinessAdmin/Organization';
-import BusinessLocations from './pages/BusinessAdmin/Locations';
-import BusinessTeam from './pages/BusinessAdmin/TeamManagement';
-import BusinessRoles from './pages/BusinessAdmin/RolesManagement';
-import Billing from './pages/BusinessAdmin/Billing';
-import ShrinkageReport from './pages/BusinessAdmin/ShrinkageReport';
-import AttendanceReport from './pages/BusinessAdmin/AttendanceReport';
-import CommissionRules from './pages/BusinessAdmin/CommissionRules';
-import BusinessSetup from './pages/BusinessAdmin/Setup';
+const BusinessOverview = lazy(() => import('./pages/BusinessAdmin/Overview'));
+const BusinessOrganization = lazy(() => import('./pages/BusinessAdmin/Organization'));
+const BusinessLocations = lazy(() => import('./pages/BusinessAdmin/Locations'));
+const BusinessTeam = lazy(() => import('./pages/BusinessAdmin/TeamManagement'));
+const BusinessRoles = lazy(() => import('./pages/BusinessAdmin/RolesManagement'));
+const Billing = lazy(() => import('./pages/BusinessAdmin/Billing'));
+const ShrinkageReport = lazy(() => import('./pages/BusinessAdmin/ShrinkageReport'));
+const AttendanceReport = lazy(() => import('./pages/BusinessAdmin/AttendanceReport'));
+const CommissionRules = lazy(() => import('./pages/BusinessAdmin/CommissionRules'));
+const BusinessSetup = lazy(() => import('./pages/BusinessAdmin/Setup'));
+const Integrations = lazy(() => import('./pages/BusinessAdmin/Integrations'));
 
 // HR Pages
-import Attendance from './pages/HR/Attendance';
-import Schedules from './pages/HR/Schedules';
-import MyCommissions from './pages/HR/MyCommissions';
-import Loyalty from './pages/Loyalty';
+const Attendance = lazy(() => import('./pages/HR/Attendance'));
+const Schedules = lazy(() => import('./pages/HR/Schedules'));
+const MyCommissions = lazy(() => import('./pages/HR/MyCommissions'));
+const Loyalty = lazy(() => import('./pages/Loyalty'));
 
 // Report Pages
-import ProfitLoss from './pages/Reports/ProfitLoss';
-import AccountsReceivable from './pages/Reports/AccountsReceivable';
+const ProfitLoss = lazy(() => import('./pages/Reports/ProfitLoss'));
+const AccountsReceivable = lazy(() => import('./pages/Reports/AccountsReceivable'));
 
 export default function App() {
   return (
@@ -72,6 +74,12 @@ export default function App() {
           <BrowserRouter>
             <AuthProvider>
               <ErrorBoundary>
+                {/* Routes are code-split, so a first visit to one has to wait
+                    on its chunk. The fallback is deliberately empty rather
+                    than a spinner: every route already renders its own loading
+                    state while it fetches, and a second, differently-shaped
+                    loader flashing in front of it read as a layout jump. */}
+                <Suspense fallback={<div className="route-suspense-fallback" />}>
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -189,6 +197,9 @@ export default function App() {
                     <Route path="/business-admin/setup" element={
                       <ProtectedRoute requiredPermission="manage_business"><BusinessSetup /></ProtectedRoute>
                     } />
+                    <Route path="/business-admin/integrations" element={
+                      <ProtectedRoute requiredPermission="manage_integrations"><Integrations /></ProtectedRoute>
+                    } />
 
                     {/* HR Pages */}
                     <Route path="/hr/attendance" element={
@@ -216,6 +227,7 @@ export default function App() {
                   {/* Smart redirect based on role */}
                   <Route path="*" element={<SmartRedirect />} />
                 </Routes>
+                </Suspense>
                 <ReloadPrompt />
               </ErrorBoundary>
             </AuthProvider>

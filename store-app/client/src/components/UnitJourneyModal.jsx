@@ -52,15 +52,15 @@ export default function UnitJourneyModal({ isOpen, onClose, unitId, productId, l
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Serial Number</div>
-                <div style={{ fontWeight: '500' }}>{journey.serial_number || '-'}</div>
+                <div className="font-medium">{journey.serial_number || '-'}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Product Code</div>
-                <div style={{ fontWeight: '500' }}>{journey.product_code || '-'}</div>
+                <div className="font-medium">{journey.product_code || '-'}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Status</div>
-                <div style={{ fontWeight: '500', textTransform: 'capitalize' }}>
+                <div className="font-medium capitalize">
                   <span className={`badge ${journey.status === 'in_stock' ? 'badge-success' : 'badge-warning'}`}>
                     {journey.status.replace('_', ' ')}
                   </span>
@@ -68,7 +68,7 @@ export default function UnitJourneyModal({ isOpen, onClose, unitId, productId, l
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Current Location</div>
-                <div style={{ fontWeight: '500' }}>{journey.location?.name || 'Unknown'}</div>
+                <div className="font-medium">{journey.location?.name || 'Unknown'}</div>
               </div>
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function UnitJourneyModal({ isOpen, onClose, unitId, productId, l
         </div>
       )}
       
-      <div style={{ marginTop: '24px', textAlign: 'right' }}>
+      <div className="mt-lg text-right">
         <button className="btn btn-secondary" onClick={onClose}>Close</button>
       </div>
     </Modal>

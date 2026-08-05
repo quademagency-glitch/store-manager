@@ -169,11 +169,37 @@ export default function MainLayout() {
     await signOut();
   };
 
-  // Collapsible sidebar sections
-  const [collapsedSections, setCollapsedSections] = useState({});
+  /* Collapsible sidebar sections.
 
-  const toggleSection = (sectionTitle) => {
-    setCollapsedSections(prev => ({ ...prev, [sectionTitle]: !prev[sectionTitle] }));
+     The map holds *explicit* choices only. A section with no entry falls back
+     to "collapsed unless it contains the current route" (see the nav below),
+     which is what keeps the rail short without ever hiding where you are —
+     fully expanded the nav runs ~2400px against ~660px of visible track, so
+     everything past Accounting needed a scroll to reach. */
+  const SECTIONS_KEY = 'sidebar-sections';
+
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SECTIONS_KEY)) ?? {};
+    } catch {
+      // Corrupt or unavailable (private mode) — fall back to the defaults.
+      return {};
+    }
+  });
+
+  const toggleSection = (sectionTitle, isCollapsed) => {
+    setCollapsedSections(prev => {
+      // `isCollapsed` is the *derived* current state, so the first click on an
+      // untouched section always does the visible thing. Reading `prev` here
+      // instead would treat "no entry" as expanded and collapse-to-nothing.
+      const next = { ...prev, [sectionTitle]: !isCollapsed };
+      try {
+        localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+      } catch {
+        // Preference is a nicety; never break navigation over it.
+      }
+      return next;
+    });
   };
 
   // Dynamically build navigation groups — organized by ERP module
@@ -264,6 +290,7 @@ export default function MainLayout() {
         { path: '/business-admin/shrinkage', label: 'Loss Prevention', icon: Icons.alerts, visible: hasPermission('view_shrinkage_report') },
         { path: '/business-admin/attendance-report', label: 'Attendance Report', icon: Icons.reconciliation, visible: hasPermission('view_attendance_report') },
         { path: '/business-admin/commission-rules', label: 'Commission Rules', icon: Icons.billing, visible: hasPermission('manage_commission_rules') },
+        { path: '/business-admin/integrations', label: 'Integrations', icon: Icons.key, visible: hasPermission('manage_integrations') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);
@@ -281,17 +308,27 @@ export default function MainLayout() {
     return groups;
   }, [hasPermission]);
 
-  const isAdminView = role && !role.toLowerCase().includes('sales');
+  /* The account menu hangs off the chip in the sidebar footer, which sits at
+     the *bottom* of a 100dvh sidebar — so it has to open upward.
 
-  const renderUserMenu = (isMobile = false) => (
-    <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={isMobile ? { position: 'static', width: '100%', background: 'transparent', boxShadow: 'none', border: 'none', marginTop: '8px', display: isUserMenuOpen ? 'block' : 'none' } : {
-      position: 'absolute', bottom: isAdminView ? 'auto' : '80px', top: isAdminView ? '60px' : 'auto', right: isAdminView ? '16px' : 'auto', left: isAdminView ? 'auto' : '16px',
-      width: '240px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+     It used to read `top: 60px` for every non-sales role, left over from the
+     admin top-bar layout this component no longer renders. Anchored to a chip
+     at the bottom of the screen, that dropped all 334px of the menu below the
+     fold: Settings and Sign Out were unreachable at any viewport height.
+
+     `left/right: 0` rather than a fixed 240px width — the sidebar narrows to
+     224px below 1440px, where a fixed width overhung the left screen edge. */
+  const renderUserMenu = () => (
+    <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={{
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, right: 0,
+      background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
       boxShadow: 'var(--shadow-xl)', zIndex: 100, padding: '8px 0',
+      /* A short window leaves less room above the chip than the menu wants. */
+      maxHeight: 'calc(100dvh - 140px)', overflowY: 'auto',
       display: isUserMenuOpen ? 'block' : 'none'
     }}>
       <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--color-border)', marginBottom: '8px' }}>
-        <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{user?.email?.split('@')[0] || 'User'}</div>
+        <div className="font-bold text-primary">{user?.email?.split('@')[0] || 'User'}</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{role || 'Unknown Role'}</div>
       </div>
       
@@ -376,255 +413,18 @@ export default function MainLayout() {
     </div>
   );
 
-  if (isAdminView) {
-    return (
-      <div className="admin-dashboard-page">
-        <header className="top-navbar">
-          <div className="top-nav-left">
-            <button 
-              className="mobile-menu-toggle"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            <div className="top-nav-logo">
-              <svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="pa-logo-bg" x1="60" y1="40" x2="470" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#241E5E" /><stop offset="0.52" stopColor="#171244" /><stop offset="1" stopColor="#0D0A28" /></linearGradient>
-                  <linearGradient id="pa-logo-grad" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#6366F1" /><stop offset="0.5" stopColor="#4F7BF6" /><stop offset="1" stopColor="#22D3EE" /></linearGradient>
-                  <linearGradient id="pa-logo-b1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#4338CA" /><stop offset="1" stopColor="#4F46E5" /></linearGradient>
-                  <linearGradient id="pa-logo-b2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#5560F0" /><stop offset="1" stopColor="#6366F1" /></linearGradient>
-                  <linearGradient id="pa-logo-b3" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#22D3EE" /><stop offset="1" stopColor="#3FE3F2" /></linearGradient>
-                </defs>
-                <rect width="512" height="512" rx="118" fill="url(#pa-logo-bg)" />
-                <circle cx="256" cy="248" r="150" fill="none" stroke="url(#pa-logo-grad)" strokeWidth="30" />
-                <line x1="332" y1="324" x2="392" y2="384" stroke="#0D0A28" strokeWidth="70" strokeLinecap="round" />
-                <line x1="332" y1="324" x2="390" y2="382" stroke="#34E0F0" strokeWidth="42" strokeLinecap="round" />
-                <rect x="186" y="326" width="150" height="20" rx="10" fill="url(#pa-logo-grad)" />
-                <rect x="198" y="274" width="30" height="52" rx="11" fill="url(#pa-logo-b1)" />
-                <rect x="246" y="240" width="30" height="86" rx="11" fill="url(#pa-logo-b2)" />
-                <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#pa-logo-b3)" />
-              </svg>
-              <span className="top-nav-brand" style={{marginLeft: '12px'}}>Quad<span className="brand-erp">ERP</span></span>
-            </div>
-
-            <nav className="top-nav-menu">
-              {navGroups.map((group, idx) => {
-                const hasActiveItem = group.items.some(item => 
-                  item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
-                );
-
-                if (!group.title) {
-                  return group.items.map(item => {
-                    const isActive = item.exact 
-                      ? location.pathname === item.path 
-                      : location.pathname.startsWith(item.path);
-                    return (
-                      <button
-                        key={item.path}
-                        className={`top-nav-button ${isActive ? 'active' : ''}`}
-                        onClick={() => navigate(item.path)}
-                      >
-                        {item.icon}
-                        {item.label}
-                      </button>
-                    );
-                  });
-                }
-
-                return (
-                  <div key={idx} className={`top-nav-group ${hasActiveItem ? 'has-active' : ''}`}>
-                    <button className="top-nav-button">
-                      {group.icon}
-                      {group.title}
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                    <div className="top-nav-dropdown">
-                      {group.items.map(item => {
-                        const isActive = item.exact 
-                          ? location.pathname === item.path 
-                          : location.pathname.startsWith(item.path);
-                        return (
-                          <button
-                            key={item.path}
-                            className={`dropdown-link ${isActive ? 'active' : ''}`}
-                            onClick={() => navigate(item.path)}
-                          >
-                            {item.icon}
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="top-nav-right">
-            <button 
-              onClick={toggleTheme}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '8px' }}
-              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-            >
-              {theme === 'light' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"></circle>
-                  <line x1="12" y1="1" x2="12" y2="3"></line>
-                  <line x1="12" y1="21" x2="12" y2="23"></line>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                  <line x1="1" y1="12" x2="3" y2="12"></line>
-                  <line x1="21" y1="12" x2="23" y2="12"></line>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
-              )}
-            </button>
-            {availableLocations.length > 1 && renderBranchSelector({ marginRight: '16px' }, false)}
-            
-            <div style={{ position: 'relative' }}>
-              <div 
-                className="user-profile" 
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
-                title="Account Menu"
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="sidebar-avatar" style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)' }}>
-                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              </div>
-              {renderUserMenu(false)}
-            </div>
-          </div>
-        </header>
-
-        {/* Mobile Drawer */}
-        <div 
-          className={`mobile-drawer-overlay ${isMobileMenuOpen ? 'open' : ''}`}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-        <aside className={`mobile-drawer ${isMobileMenuOpen ? 'open' : ''}`}>
-          <div className="mobile-drawer-header">
-            <div className="top-nav-logo">
-              <span className="top-nav-brand">Quad<span className="brand-erp">ERP</span></span>
-            </div>
-            <button className="mobile-drawer-close" onClick={() => setIsMobileMenuOpen(false)}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-          <nav className="mobile-drawer-nav sidebar-nav">
-             {navGroups.map((group, idx) => {
-              const isCollapsed = group.title ? collapsedSections[group.title] : false;
-              const hasActiveItem = group.items.some(item => 
-                item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
-              );
-
-              return (
-                <div key={idx} className={`sidebar-group ${!group.title ? 'sidebar-group--ungrouped' : ''}`}>
-                  {group.title && (
-                    <button 
-                      className={`sidebar-group-header ${hasActiveItem ? 'has-active' : ''}`}
-                      onClick={() => toggleSection(group.title)}
-                    >
-                      <span className="sidebar-group-label">
-                        <span className="sidebar-group-icon">{group.icon}</span>
-                        {group.title}
-                      </span>
-                      <svg 
-                        className={`sidebar-group-chevron ${isCollapsed ? '' : 'open'}`}
-                        width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      >
-                        <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  )}
-                  {!isCollapsed && (
-                    <div className="sidebar-group-items">
-                      {group.items.map(item => {
-                        const isActive = item.exact 
-                          ? location.pathname === item.path 
-                          : location.pathname.startsWith(item.path);
-                          
-                        return (
-                          <button
-                            key={item.path}
-                            className={`sidebar-link ${isActive ? 'active' : ''}`}
-                            onClick={() => {
-                              navigate(item.path);
-                              setIsMobileMenuOpen(false);
-                            }}
-                          >
-                            {item.icon}
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          <div className="mobile-drawer-footer" style={{ padding: '16px', borderTop: '1px solid var(--color-border)', marginTop: 'auto' }}>
-            {availableLocations.length > 1 && (
-              <div style={{ marginBottom: '16px' }}>
-                {renderBranchSelector({}, true)}
-              </div>
-            )}
-            <div style={{ width: '100%' }}>
-              <button 
-                className="sidebar-signout" 
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderRadius: '8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', color: 'var(--color-text-primary)' }}
-              >
-                <div className="sidebar-avatar" style={{ width: '24px', height: '24px', fontSize: '0.8rem', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>Account</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d={isUserMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              {renderUserMenu(true)}
-            </div>
-          </div>
-        </aside>
-
-        <main className="admin-main-content dashboard-main">
-          <div style={{ padding: '0 24px', display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', marginTop: '-16px' }}>
-            <OfflineStatus />
-          </div>
-          <Outlet />
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="dashboard-page">
       {/* ── Mobile top bar (visible only on small screens via CSS) ── */}
       <header className="mobile-sidebar-topbar">
+        {/* One className, not two — a second `className` prop silently wins in
+            JSX, and it was dropping `mobile-menu-toggle` (which is what sets
+            `display: none` outside the ≤768px breakpoint). Harmless only
+            because `.mobile-sidebar-topbar` is hidden on desktop too. */}
         <button
-          className="mobile-menu-toggle"
+          className="mobile-menu-toggle flex items-center justify-center"
           onClick={() => setIsMobileMenuOpen(true)}
           aria-label="Open navigation"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round"/>
@@ -712,17 +512,24 @@ export default function MainLayout() {
 
         <nav className="sidebar-nav">
           {navGroups.map((group, idx) => {
-            const isCollapsed = group.title ? collapsedSections[group.title] : false;
             const hasActiveItem = group.items.some(item =>
               item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
             );
+            /* No stored entry → collapsed, unless this section holds the
+               current route. Derived rather than seeded into state so it keeps
+               following navigation: land on /invoices and Accounting opens on
+               its own, with no effect and no route-change bookkeeping. */
+            const isCollapsed = group.title
+              ? (collapsedSections[group.title] ?? !hasActiveItem)
+              : false;
 
             return (
               <div key={idx} className={`sidebar-group ${!group.title ? 'sidebar-group--ungrouped' : ''}`}>
                 {group.title && (
                   <button
                     className={`sidebar-group-header ${hasActiveItem ? 'has-active' : ''}`}
-                    onClick={() => toggleSection(group.title)}
+                    onClick={() => toggleSection(group.title, isCollapsed)}
+                    aria-expanded={!isCollapsed}
                   >
                     <span className="sidebar-group-label">
                       <span className="sidebar-group-icon">{group.icon}</span>
@@ -792,7 +599,7 @@ export default function MainLayout() {
                 <div className="sidebar-avatar" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
                   {user?.email?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-                <div className="sidebar-user-details" style={{ textAlign: 'left' }}>
+                <div className="sidebar-user-details text-left">
                   <span className="sidebar-user-name" style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600 }}>{user?.email?.split('@')[0] || 'User'}</span>
                   <span className="sidebar-user-role" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{role || 'Unknown'}</span>
                 </div>
@@ -801,17 +608,19 @@ export default function MainLayout() {
                 <path d={isUserMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            {renderUserMenu(false)}
+            {renderUserMenu()}
           </div>
         </div>
       </aside>
 
       {/* ── Main Content ── */}
-      <main className="dashboard-main admin-main-content" style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '24px', right: '32px', zIndex: 50 }}>
-          <OfflineStatus />
+      <main className="dashboard-main">
+        <div className="page-shell">
+          <div className="offline-status-slot">
+            <OfflineStatus />
+          </div>
+          <Outlet />
         </div>
-        <Outlet />
       </main>
     </div>
   );

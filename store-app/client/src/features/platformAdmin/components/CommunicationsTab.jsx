@@ -1,5 +1,6 @@
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
+import { PageHeader } from '../../../components/ui';
 
 export default function CommunicationsTab() {
   const { 
@@ -16,19 +17,17 @@ export default function CommunicationsTab() {
 
   return (
     <>
-      <header className="dashboard-header">
-        <div>
-          <h1 className="dashboard-title">Marketing & Communications</h1>
-          <p className="dashboard-subtitle">Manage communication gateways, templates, and send direct messages.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Marketing & Communications"
+        subtitle="Manage communication gateways, templates, and send direct messages."
+      />
 
       <div className="dashboard-content">
         
         {/* Communication Gateways */}
         <div style={{ marginBottom: 'var(--space-2xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-            <h2 className="pa-section-title" style={{ marginBottom: 0 }}>
+            <h2 className="pa-section-title mb-0">
               {Icons.settings} Communication Gateways
             </h2>
             <button className="btn btn-secondary btn-sm" onClick={() => openCommsGatewayModal()}>
@@ -46,7 +45,7 @@ export default function CommunicationsTab() {
                     </div>
                     <span className="pa-gateway-name">{gw.display_name}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div className="flex gap-sm items-center">
                     {gw.is_default && <span className="pa-invoice-badge paid" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Default {gw.type.toUpperCase()}</span>}
                     <span className={`pa-gateway-status ${gw.is_active ? 'active' : 'inactive'}`}>
                       <span className="pa-gateway-status-dot"></span>
@@ -57,7 +56,7 @@ export default function CommunicationsTab() {
                 <div className="pa-gateway-details">
                   <div className="pa-key-field">
                     <span className="pa-key-label">Type</span>
-                    <span className="pa-key-value" style={{ textTransform: 'uppercase' }}>{gw.type}</span>
+                    <span className="pa-key-value uppercase">{gw.type}</span>
                   </div>
                   {gw.sender_id && (
                     <div className="pa-key-field">
@@ -97,8 +96,7 @@ export default function CommunicationsTab() {
                 name="targetAudience"
                 value={campaignForm.targetAudience}
                 onChange={handleCampaignChange}
-                className="form-input"
-                style={{ width: '100%' }}
+                className="form-input w-full"
                 required
               >
                 <option value="specific_business">Specific Business</option>
@@ -113,8 +111,7 @@ export default function CommunicationsTab() {
                   name="businessId"
                   value={campaignForm.businessId}
                   onChange={handleCampaignChange}
-                  className="form-input"
-                  style={{ width: '100%' }}
+                  className="form-input w-full"
                   required={campaignForm.targetAudience === 'specific_business'}
                 >
                   <option value="">-- Choose Business --</option>
@@ -131,8 +128,7 @@ export default function CommunicationsTab() {
                 name="type"
                 value={campaignForm.type}
                 onChange={handleCampaignChange}
-                className="form-input"
-                style={{ width: '100%' }}
+                className="form-input w-full"
                 required
               >
                 <option value="email">Email</option>
@@ -154,8 +150,7 @@ export default function CommunicationsTab() {
                     setCampaignForm(prev => ({ ...prev, templateId: '' }));
                   }
                 }}
-                className="form-input"
-                style={{ width: '100%' }}
+                className="form-input w-full"
               >
                 <option value="">-- Start Blank --</option>
                 {templates.map(t => (
@@ -172,8 +167,7 @@ export default function CommunicationsTab() {
                   name="subject"
                   value={campaignForm.subject}
                   onChange={handleCampaignChange}
-                  className="form-input"
-                  style={{ width: '100%' }}
+                  className="form-input w-full"
                   required={campaignForm.type === 'email' || campaignForm.type === 'both'}
                   placeholder="Email Subject"
                 />
@@ -206,18 +200,18 @@ export default function CommunicationsTab() {
 
         {/* Right Column: Templates */}
         <div className="premium-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div className="flex justify-between items-center mb-lg">
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Saved Templates</h2>
             <button className="btn btn-secondary btn-sm" onClick={() => openTemplateModal()}>+ New Template</button>
           </div>
 
           {templates.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-              <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>No templates saved yet.</p>
+              <p className="text-secondary mb-md">No templates saved yet.</p>
               <button className="btn btn-primary btn-sm" onClick={() => openTemplateModal()}>Create your first template</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="flex flex-col">
               {templates.map(t => (
                 <div key={t.id} className="template-item-card">
                   <div style={{ flex: 1, marginRight: '1rem' }}>

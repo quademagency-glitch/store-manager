@@ -155,7 +155,7 @@ export default function Login() {
             </div>
 
             <div className="login-field">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="flex justify-between items-center">
                 <label htmlFor="password" className="login-label">Password</label>
                 <Link to="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--color-accent-primary)', textDecoration: 'none' }}>
                   Forgot Password?

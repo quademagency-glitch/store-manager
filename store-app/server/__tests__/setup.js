@@ -4,4 +4,5 @@ process.env.LOG_LEVEL = 'silent';
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key-xxxxxxxxxxxxxxxx';
 process.env.AUTH_CACHE_TTL_MS = '0'; // Disable caching in tests
+process.env.API_KEY_CACHE_TTL_MS = '0'; // Disable apiKeyGuard caching in tests
 process.env.PORT = '0'; // Random port

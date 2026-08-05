@@ -26,14 +26,7 @@ function makeQueryMock(result = { data: [], error: null, count: 0 }) {
         if (prop === 'single') return () => Promise.resolve(result.single ?? result);
         if (prop === 'maybeSingle') return () => Promise.resolve(result.single ?? result);
         if (['insert', 'update', 'upsert', 'delete'].includes(prop)) {
-          return () => ({
-            select: () => ({
-              single: () => Promise.resolve(result.single ?? result),
-              maybeSingle: () => Promise.resolve(result.single ?? result),
-              then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
-            }),
-            then: (resolve, reject) => Promise.resolve(result).then(resolve, reject),
-          });
+          return () => chain;
         }
         return () => chain;
       },

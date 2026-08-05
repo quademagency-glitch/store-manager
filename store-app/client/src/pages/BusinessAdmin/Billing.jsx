@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
 import { FEATURE_LABELS } from '../../lib/planFeatures';
+import { EmptyStateRow, PageHeader } from '../../components/ui';
+import { ErrorBanner } from '../../components/ui';
 
 export default function Billing() {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ export default function Billing() {
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -39,6 +42,7 @@ export default function Billing() {
       setInvoices(invRes || []);
     } catch (err) {
       if (import.meta.env.DEV) console.error('Error fetching billing data:', err);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -107,7 +111,9 @@ export default function Billing() {
       window.history.replaceState({}, document.title, window.location.pathname);
       setTimeout(() => fetchBillingData(), 1000);
     }
-  }, [fetchBillingData]);
+    // `toast` is memoized by the provider, so it is stable across renders and
+    // safe to depend on — it will not retrigger this payment-verification pass.
+  }, [fetchBillingData, toast]);
 
   if (loading) {
     return <div className="p-xl text-center"><div className="spinner" style={{ margin: '2rem auto' }}></div>Loading billing...</div>;
@@ -122,12 +128,12 @@ export default function Billing() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Billing & Subscription</h1>
-          <p className="dashboard-subtitle">Manage your subscription plan, view invoices, and make payments.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Billing & Subscription"
+        subtitle="Manage your subscription plan, view invoices, and make payments."
+      />
+
+      <ErrorBanner error={error} onRetry={fetchBillingData} />
 
       {/* Current Subscription Card */}
       <div className="pa-sub-card" style={{ marginBottom: 'var(--space-2xl)' }}>
@@ -156,7 +162,7 @@ export default function Billing() {
             </div>
             <div className="pa-sub-detail">
               <span className="pa-sub-detail-label">Billing Cycle</span>
-              <span className="pa-sub-detail-value" style={{ textTransform: 'capitalize' }}>{subscription.billing_cycle}</span>
+              <span className="pa-sub-detail-value capitalize">{subscription.billing_cycle}</span>
             </div>
             <div className="pa-sub-detail">
               <span className="pa-sub-detail-label">{isTrialing ? 'Trial Ends' : 'Renews On'}</span>
@@ -170,7 +176,7 @@ export default function Billing() {
             </div>
             <div className="pa-sub-detail">
               <span className="pa-sub-detail-label">Days Remaining</span>
-              <span className="pa-sub-detail-value" style={{ color: daysLeft <= 5 ? '#f87171' : daysLeft <= 10 ? '#fbbf24' : '#4ade80' }}>
+              <span className="pa-sub-detail-value" style={{ color: daysLeft <= 5 ? 'var(--color-error-text)' : daysLeft <= 10 ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}>
                 {daysLeft} days
               </span>
             </div>
@@ -279,10 +285,10 @@ export default function Billing() {
                 )}
 
                 {isIntro && Number(introPrice) > 0 && (
-                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.15)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#4ade80', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
+                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'var(--color-success-bg)', border: '1px solid var(--color-success-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--color-success-text)', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
                     <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
-                      First payment: <strong style={{ color: '#4ade80' }}>{new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(introPrice)}</strong>
+                      First payment: <strong style={{ color: 'var(--color-success-text)' }}>{new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(introPrice)}</strong>
                     </span>
                   </div>
                 )}
@@ -313,7 +319,7 @@ export default function Billing() {
                     {/* Available features */}
                     {availableFeatures.length > 0 && (
                       <div style={{ marginBottom: '0.75rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid rgba(74, 222, 128, 0.15)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid var(--color-success-bg)' }}>
                           ✓ Included ({availableFeatures.length})
                         </div>
                         {availableFeatures.map(([key, label]) => (
@@ -355,8 +361,7 @@ export default function Billing() {
                     </a>
                   ) : (
                     <button
-                      className="btn btn-primary btn-sm"
-                      style={{ width: '100%' }}
+                      className="btn btn-primary btn-sm w-full"
                       onClick={() => handleSelectPlan(plan)}
                     >
                       {Number(price) === 0 ? 'Switch to Free' : (isActive ? 'Upgrade' : 'Subscribe')}
@@ -389,18 +394,18 @@ export default function Billing() {
                   <th>Status</th>
                   <th>Date</th>
                   <th>Method</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.map(inv => (
                   <tr key={inv.id}>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{inv.invoice_number}</td>
-                    <td style={{ fontWeight: 600 }}>{formatCurrency(inv.amount, inv.currency)}</td>
+                    <td className="font-bold">{formatCurrency(inv.amount, inv.currency)}</td>
                     <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
                     <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td style={{ textTransform: 'capitalize', fontSize: '0.85rem' }}>{inv.payment_method || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="text-right">
                       <button 
                         className="btn btn-secondary btn-sm" 
                         onClick={() => navigate(`/invoice/${inv.id}`)}
@@ -411,7 +416,7 @@ export default function Billing() {
                   </tr>
                 ))}
                 {invoices.length === 0 && (
-                  <tr><td colSpan="6" className="text-center py-xl text-muted">No invoices yet.</td></tr>
+                  <EmptyStateRow colSpan={6} icon="billing" title="No invoices yet" />
                 )}
               </tbody>
             </table>
@@ -422,7 +427,7 @@ export default function Billing() {
       {/* Upgrade / Payment Modal */}
       {showUpgradeModal && selectedPlan && (
         <Modal isOpen={true} title={`Subscribe to ${selectedPlan.name}`} onClose={() => { setShowUpgradeModal(false); setSelectedPlan(null); }}>
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div className="mb-lg">
             <div className="pa-plan-price" style={{ justifyContent: 'center', padding: 'var(--space-lg) 0' }}>
               <span className="pa-plan-currency">{selectedPlan.currency || 'GHS'}</span>
               <span className="pa-plan-amount">

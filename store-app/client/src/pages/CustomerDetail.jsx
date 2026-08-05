@@ -9,6 +9,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import RecordPaymentModal from '../features/financials/components/RecordPaymentModal';
+import { PageHeader, TabPanel, Tabs } from '../components/ui';
 
 const TABS = [
   { key: 'purchases', label: 'Purchase History' },
@@ -253,23 +254,24 @@ export default function CustomerDetail() {
     <div>
       <button className="btn btn-outline btn-sm mb-lg" onClick={() => navigate('/customers')}>← Back to Customers</button>
 
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="dashboard-title">
-            {customer.name}
-            {customer.is_verified && (
-              <span className="badge badge-success ml-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
-            )}
-          </h1>
-          <p className="dashboard-subtitle">{customer.phone} · {customer.customer_code} · Joined {new Date(customer.created_at).toLocaleDateString()}</p>
-        </div>
-        {canEdit && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+      <PageHeader
+        title={customer.name}
+        badge={customer.is_verified && (
+          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
+        )}
+        subtitle={
+          <>
+            {customer.phone} · {customer.customer_code} · Joined{' '}
+            {new Date(customer.created_at).toLocaleDateString()}
+          </>
+        }
+        actions={canEdit && (
+          <>
             <button className="btn btn-secondary" onClick={openEditModal}>Edit</button>
             <button className="btn btn-outline text-error" onClick={handleDelete}>Delete</button>
-          </div>
+          </>
         )}
-      </header>
+      />
 
       <div className="stats-grid mt-xl mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-lg)' }}>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
@@ -296,24 +298,21 @@ export default function CustomerDetail() {
         )}
       </div>
 
-      <div className="tabs mb-lg" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)' }}>
-        {visibleTabs.map(tab => (
-          <button
-            key={tab.key}
-            className={`btn btn-sm ${activeTab === tab.key ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idPrefix="customer"
+        variant="underline"
+        items={visibleTabs.map(tab => ({ id: tab.key, label: tab.label }))}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Customer sections"
+      />
 
-      {activeTab === 'purchases' && (
+      <TabPanel idPrefix="customer" id="purchases" value={activeTab}>
         <div className="glass-panel">
           {salesLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto"></div></div>
+            <div className="text-center p-xl"><div className="spinner mx-auto"></div></div>
           ) : sales.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No purchases yet.</div>
+            <div className="text-center p-xl text-secondary">No purchases yet.</div>
           ) : (
             <>
               <div className="desktop-table-view">
@@ -331,8 +330,8 @@ export default function CustomerDetail() {
                       <tr key={sale.id}>
                         <td className="text-muted">{new Date(sale.created_at).toLocaleString()}</td>
                         <td>{(sale.sale_items || []).length} item(s)</td>
-                        <td style={{ textTransform: 'capitalize' }}>{sale.payment_method}</td>
-                        <td style={{ fontWeight: 600 }}>${Number(sale.total_amount).toFixed(2)}</td>
+                        <td className="capitalize">{sale.payment_method}</td>
+                        <td className="font-bold">${Number(sale.total_amount).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -342,9 +341,9 @@ export default function CustomerDetail() {
                 {sales.map(sale => (
                   <div key={sale.id} className="m-card">
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex-1 min-w-0">
                         <div className="m-card-title">{new Date(sale.created_at).toLocaleDateString()}</div>
-                        <div className="m-card-sub">{(sale.sale_items || []).length} item(s) · <span style={{ textTransform: 'capitalize' }}>{sale.payment_method}</span></div>
+                        <div className="m-card-sub">{(sale.sale_items || []).length} item(s) · <span className="capitalize">{sale.payment_method}</span></div>
                       </div>
                       <span className="m-card-amount">${Number(sale.total_amount).toFixed(2)}</span>
                     </div>
@@ -354,14 +353,15 @@ export default function CustomerDetail() {
             </>
           )}
         </div>
-      )}
+      </TabPanel>
 
-      {activeTab === 'credit' && hasPermission('manage_financials') && (
+      {hasPermission('manage_financials') && (
+      <TabPanel idPrefix="customer" id="credit" value={activeTab}>
         <div className="glass-panel">
           {ar.loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto"></div></div>
+            <div className="text-center p-xl"><div className="spinner mx-auto"></div></div>
           ) : ar.documents.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No credit history.</div>
+            <div className="text-center p-xl text-secondary">No credit history.</div>
           ) : (
             <>
               <div className="desktop-table-view">
@@ -373,7 +373,7 @@ export default function CustomerDetail() {
                       <th>Outstanding</th>
                       <th>Due Date</th>
                       <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
+                      <th className="text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -381,12 +381,12 @@ export default function CustomerDetail() {
                       const outstanding = Number(doc.total_amount) - Number(doc.amount_paid);
                       return (
                         <tr key={doc.id}>
-                          <td style={{ fontWeight: 600 }}>{doc.invoice_number}</td>
+                          <td className="font-bold">{doc.invoice_number}</td>
                           <td>${Number(doc.total_amount).toFixed(2)}</td>
                           <td>${outstanding.toFixed(2)}</td>
                           <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
                           <td><span className="badge badge-secondary">{doc.status}</span></td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td className="text-right">
                             {doc.status !== 'void' && doc.status !== 'paid' && (
                               <button className="btn btn-sm btn-outline" onClick={() => setPaymentTarget({ ...doc, outstanding })}>Record Payment</button>
                             )}
@@ -403,7 +403,7 @@ export default function CustomerDetail() {
                   return (
                     <div key={doc.id} className="m-card">
                       <div className="m-card-top">
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="flex-1 min-w-0">
                           <div className="m-card-title">{doc.invoice_number}</div>
                           <div className="m-card-sub">Due {doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</div>
                         </div>
@@ -425,12 +425,13 @@ export default function CustomerDetail() {
             </>
           )}
         </div>
+      </TabPanel>
       )}
 
-      {activeTab === 'store_credit' && (
+      <TabPanel idPrefix="customer" id="store_credit" value={activeTab}>
         <div className="glass-panel">
           {storeCreditLedger.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No deposits or activity yet.</div>
+            <div className="text-center p-xl text-secondary">No deposits or activity yet.</div>
           ) : (
             <>
               <div className="desktop-table-view">
@@ -448,7 +449,7 @@ export default function CustomerDetail() {
                     {storeCreditLedger.map(entry => (
                       <tr key={entry.id}>
                         <td className="text-muted">{new Date(entry.created_at).toLocaleString()}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{entry.type}</td>
+                        <td className="capitalize">{entry.type}</td>
                         <td>{Number(entry.amount) >= 0 ? '+' : ''}${Number(entry.amount).toFixed(2)}</td>
                         <td>${Number(entry.balance_after).toFixed(2)}</td>
                         <td className="text-muted">{entry.note || '—'}</td>
@@ -461,8 +462,8 @@ export default function CustomerDetail() {
                 {storeCreditLedger.map(entry => (
                   <div key={entry.id} className="m-card">
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="m-card-title" style={{ textTransform: 'capitalize' }}>{entry.type}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="m-card-title capitalize">{entry.type}</div>
                         <div className="m-card-sub">{new Date(entry.created_at).toLocaleString()}</div>
                         {entry.note && <div className="m-card-meta">{entry.note}</div>}
                       </div>
@@ -477,12 +478,12 @@ export default function CustomerDetail() {
             </>
           )}
         </div>
-      )}
+      </TabPanel>
 
-      {activeTab === 'loyalty' && (
+      <TabPanel idPrefix="customer" id="loyalty" value={activeTab}>
         <div className="glass-panel">
           {(loyalty.pointsLedger.data || []).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>No loyalty activity yet.</div>
+            <div className="text-center p-xl text-secondary">No loyalty activity yet.</div>
           ) : (
             <>
               <div className="desktop-table-view">
@@ -500,7 +501,7 @@ export default function CustomerDetail() {
                     {loyalty.pointsLedger.data.map(entry => (
                       <tr key={entry.id}>
                         <td className="text-muted">{new Date(entry.created_at).toLocaleString()}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{entry.type}</td>
+                        <td className="capitalize">{entry.type}</td>
                         <td>{entry.points >= 0 ? '+' : ''}{entry.points}</td>
                         <td>{entry.balance_after}</td>
                         <td className="text-muted">{entry.note || '—'}</td>
@@ -513,8 +514,8 @@ export default function CustomerDetail() {
                 {loyalty.pointsLedger.data.map(entry => (
                   <div key={entry.id} className="m-card">
                     <div className="m-card-top">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="m-card-title" style={{ textTransform: 'capitalize' }}>{entry.type}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="m-card-title capitalize">{entry.type}</div>
                         <div className="m-card-sub">{new Date(entry.created_at).toLocaleString()}</div>
                         {entry.note && <div className="m-card-meta">{entry.note}</div>}
                       </div>
@@ -529,7 +530,7 @@ export default function CustomerDetail() {
             </>
           )}
         </div>
-      )}
+      </TabPanel>
 
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Customer">
         <form onSubmit={handleEditSubmit}>
@@ -541,7 +542,7 @@ export default function CustomerDetail() {
             <label>Phone Number</label>
             <input type="tel" className="input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
           </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div className="modal-actions mt-xl flex justify-end gap-md">
             <button type="button" className="btn btn-outline" onClick={() => setIsEditOpen(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save</button>
           </div>
@@ -550,7 +551,7 @@ export default function CustomerDetail() {
 
       <Modal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} title="Deposit Funds">
         <form onSubmit={handleDeposit}>
-          <p className="text-muted" style={{ marginTop: 0 }}>
+          <p className="text-muted mt-0">
             Record cash received from {customer.name} as a deposit they can spend on future purchases.
           </p>
           <div className="form-group">
@@ -570,7 +571,7 @@ export default function CustomerDetail() {
             <label>Note</label>
             <input type="text" className="input" value={depositForm.note} onChange={(e) => setDepositForm({ ...depositForm, note: e.target.value })} placeholder="Optional" />
           </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div className="modal-actions mt-xl flex justify-end gap-md">
             <button type="button" className="btn btn-outline" onClick={() => setIsDepositOpen(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={isSubmittingDeposit}>
               {isSubmittingDeposit ? 'Saving...' : 'Record Deposit'}
@@ -582,7 +583,7 @@ export default function CustomerDetail() {
       <Modal isOpen={isWithdrawOpen} onClose={() => { setIsWithdrawOpen(false); setWithdrawStep(1); }} title="Withdraw Funds">
         {withdrawStep === 1 ? (
           <form onSubmit={handleWithdrawRequest}>
-            <p className="text-muted" style={{ marginTop: 0 }}>
+            <p className="text-muted mt-0">
               Initiate a cash withdrawal from {customer.name}'s deposit balance. They will receive an SMS code to verify.
             </p>
             <div className="form-group">
@@ -618,7 +619,7 @@ export default function CustomerDetail() {
               <label>Note</label>
               <input type="text" className="input" value={withdrawForm.note} onChange={(e) => setWithdrawForm({ ...withdrawForm, note: e.target.value })} placeholder="Optional" />
             </div>
-            <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <div className="modal-actions mt-xl flex justify-end gap-md">
               <button type="button" className="btn btn-outline" onClick={() => setIsWithdrawOpen(false)}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={isSubmittingWithdraw}>
                 {isSubmittingWithdraw ? 'Sending SMS...' : 'Request Code'}
@@ -644,7 +645,7 @@ export default function CustomerDetail() {
                 placeholder="0000"
               />
             </div>
-            <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+            <div className="modal-actions mt-xl flex justify-end gap-md">
               <button type="button" className="btn btn-outline" onClick={() => setWithdrawStep(1)}>Back</button>
               <button type="submit" className="btn btn-primary" disabled={isSubmittingWithdraw || withdrawForm.code.length !== 4}>
                 {isSubmittingWithdraw ? 'Processing...' : 'Confirm Withdrawal'}

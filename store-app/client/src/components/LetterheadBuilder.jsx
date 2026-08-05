@@ -126,7 +126,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
             boxShadow: mode === 'build' ? '0 2px 8px rgba(99, 102, 241, 0.25)' : 'none'
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.wrench}</span>Build Letterhead</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" className="inline-flex">{Icons.wrench}</span>Build Letterhead</span>
         </button>
         <button
           type="button"
@@ -145,7 +145,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
             boxShadow: mode === 'upload' ? '0 2px 8px rgba(99, 102, 241, 0.25)' : 'none'
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" style={{ display: 'inline-flex' }}>{Icons.upload}</span>Upload Letterhead</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><span aria-hidden="true" className="inline-flex">{Icons.upload}</span>Upload Letterhead</span>
         </button>
       </div>
 
@@ -207,7 +207,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                   ref={headerInputRef}
                   type="file"
                   accept="image/*"
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={e => handleImageUpload(e.target.files[0], 'header')}
                 />
               </div>
@@ -263,7 +263,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                   ref={footerInputRef}
                   type="file"
                   accept="image/*"
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={e => handleImageUpload(e.target.files[0], 'footer')}
                 />
               </div>

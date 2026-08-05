@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useReports } from '../../hooks/useReports';
 import '../../styles/reports.css';
+import { EmptyStateRow } from '../../components/ui';
 
 export default function AccountsReceivable() {
   const { loading, arAging, fetchArAging } = useReports();
@@ -81,7 +82,7 @@ export default function AccountsReceivable() {
               </thead>
               <tbody>
                 {allInvoices.length === 0 ? (
-                  <tr><td colSpan="8" className="empty-state">No outstanding invoices.</td></tr>
+                  <EmptyStateRow colSpan={8} icon="billing" title="No outstanding invoices" />
                 ) : (
                   allInvoices.map(inv => (
                     <tr key={inv.id}>

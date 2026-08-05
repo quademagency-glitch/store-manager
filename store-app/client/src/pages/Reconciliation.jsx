@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Icons } from '../components/icons/Icons';
+import { EmptyStateRow, SkeletonRows } from '../components/ui';
 
 export default function Reconciliation() {
   const { reconciliationData, loading, fetchReconciliation, error } = useAnalytics();
@@ -134,19 +135,19 @@ export default function Reconciliation() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="7" className="text-center py-xl text-muted"><div className="spinner mb-sm mx-auto"></div><p>Loading...</p></td></tr>
+                <SkeletonRows rows={4} cols={7} />
               ) : reconciliationData.length === 0 ? (
-                <tr><td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.3 }} aria-hidden="true">{Icons.chart}</div><p>No activity found for this date.</p></td></tr>
+                <EmptyStateRow colSpan={7} icon="chart" title="No activity for this date" hint="Pick another date, or check that sales were recorded at this location." />
               ) : reconciliationData.map(row => {
                 const net = row.totalSalesRevenue - row.totalShrinkageValue;
                 return (
-                  <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <tr key={row.id} className="border-b">
                     <td style={{ padding: '1rem var(--space-xl)' }}><div className="font-medium">{row.name || 'Unknown'}</div><div className="text-sm text-muted">{row.email}</div></td>
-                    <td style={{ padding: '1rem' }}><span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`}>{row.role}</span></td>
-                    <td style={{ padding: '1rem' }}><div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div><div className="text-sm text-muted">{row.salesCount} trans.</div></td>
-                    <td style={{ padding: '1rem' }} className="font-medium text-warning">{fmt(row.totalDiscounts)}</td>
-                    <td style={{ padding: '1rem' }}><div className="font-medium text-error">{fmt(row.totalVoidValue)}</div><div className="text-sm text-muted">{row.voidCount} void(s)</div></td>
-                    <td style={{ padding: '1rem' }}><div className="font-medium text-error">{fmt(row.totalShrinkageValue)}</div><div className="text-sm text-muted">{row.shrinkageCount} item(s)</div></td>
+                    <td className="p-md"><span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`}>{row.role}</span></td>
+                    <td className="p-md"><div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div><div className="text-sm text-muted">{row.salesCount} trans.</div></td>
+                    <td className="font-medium text-warning p-md">{fmt(row.totalDiscounts)}</td>
+                    <td className="p-md"><div className="font-medium text-error">{fmt(row.totalVoidValue)}</div><div className="text-sm text-muted">{row.voidCount} void(s)</div></td>
+                    <td className="p-md"><div className="font-medium text-error">{fmt(row.totalShrinkageValue)}</div><div className="text-sm text-muted">{row.shrinkageCount} item(s)</div></td>
                     <td style={{ padding: '1rem var(--space-xl)' }}><div className="font-bold" style={{ color: net >= 0 ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem' }}>{fmt(net)}</div></td>
                   </tr>
                 );
@@ -158,7 +159,7 @@ export default function Reconciliation() {
         {/* Mobile cards */}
         <div className="mobile-card-view">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
+            <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
           ) : reconciliationData.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}><div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', opacity: 0.3 }} aria-hidden="true">{Icons.chart}</div><p>No activity found for this date.</p></div>
           ) : reconciliationData.map(row => {
@@ -166,7 +167,7 @@ export default function Reconciliation() {
             return (
               <div key={row.id} className="m-card">
                 <div className="m-card-top">
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     <div className="m-card-title">{row.name || 'Unknown'}</div>
                     <div className="m-card-meta">{row.email}</div>
                   </div>

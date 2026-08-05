@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { PageHeader } from '../components/ui';
 
 const STATUS_LABELS = {
   draft:     { label: 'Draft',     color: 'var(--color-text-secondary)', bg: 'var(--color-bg-secondary)' },
@@ -13,7 +14,7 @@ const STATUS_LABELS = {
   sourcing:  { label: 'Sourcing',  color: '#d97706', bg: '#fffbeb' },
   ready:     { label: 'Ready',     color: '#059669', bg: '#ecfdf5' },
   fulfilled: { label: 'Fulfilled', color: '#7c3aed', bg: '#f5f3ff' },
-  cancelled: { label: 'Cancelled', color: '#dc2626', bg: '#fef2f2' },
+  cancelled: { label: 'Cancelled', color: 'var(--color-error-text)', bg: 'var(--color-error-bg)' },
 };
 
 const STATUS_ORDER = ['draft', 'confirmed', 'sourcing', 'ready', 'fulfilled', 'cancelled'];
@@ -245,7 +246,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
               <button key={c.id} type="button" onClick={() => selectCustomer(c)}
                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
                   background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
-                <div style={{ fontWeight: 600 }}>{c.name}</div>
+                <div className="font-bold">{c.name}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{c.phone}</div>
               </button>
             ))}
@@ -266,7 +267,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
             <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text-secondary)' }}>
               New Customer
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-sm">
               <input
                 type="text"
                 className="input"
@@ -285,7 +286,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
               {newCustError && (
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-error)' }}>{newCustError}</div>
               )}
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <div className="flex gap-sm justify-end">
                 <button type="button" className="btn btn-sm btn-outline" onClick={cancelNewCust}>
                   Cancel
                 </button>
@@ -304,7 +305,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
       </SectionLabel>
       <div className="form-group">
         {!isEditingActiveOrder && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          <div className="flex justify-end mb-sm">
             <button type="button" className="btn btn-sm btn-outline" onClick={addItem}>+ Add Item</button>
           </div>
         )}
@@ -338,7 +339,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
                       <button key={p.id} type="button" onClick={() => selectProduct(idx, p)}
                         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
                           background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
-                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                        <div className="font-bold">{p.name}</div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{p.sku} &mdash; {formatCurrency(p.price)}</div>
                       </button>
                     ))}
@@ -347,7 +348,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
               </div>
             )}
 
-            <div style={{ marginBottom: '8px' }}>
+            <div className="mb-sm">
               <input
                 type="text"
                 className="input"
@@ -392,7 +393,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
           borderRadius: 'var(--radius-md)', padding: '10px 14px',
           display: 'flex', justifyContent: 'space-between', marginTop: '4px',
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Order Total</span>
+          <span className="font-bold text-secondary">Order Total</span>
           <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{formatCurrency(total)}</span>
         </div>
       </div>
@@ -458,7 +459,7 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
       <div className="glass-panel" style={{ marginBottom: '16px', padding: '12px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <tr className="border-b">
               <th style={{ textAlign: 'left', padding: '6px 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Item</th>
               <th style={{ textAlign: 'right', padding: '6px 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Qty</th>
               <th style={{ textAlign: 'right', padding: '6px 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Price</th>
@@ -467,7 +468,7 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
           </thead>
           <tbody>
             {order.items?.map((item, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+              <tr key={i} className="border-b">
                 <td style={{ padding: '8px 0' }}>
                   {item.product?.name || item.custom_description || '—'}
                   {item.product?.sku && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{item.product.sku}</div>}
@@ -499,12 +500,12 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
         {order.due_date && (
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Due Date</div>
-            <div style={{ fontWeight: 600 }}>{new Date(order.due_date).toLocaleDateString()}</div>
+            <div className="font-bold">{new Date(order.due_date).toLocaleDateString()}</div>
           </div>
         )}
         <div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Deposit</div>
-          <div style={{ fontWeight: 600 }}>
+          <div className="font-bold">
             {formatCurrency(order.deposit_amount)}
             {order.deposit_paid
               ? <span className="badge badge-success ml-sm" style={{ fontSize: '0.65rem' }}>Paid</span>
@@ -531,7 +532,7 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
       )}
 
       {/* Actions */}
-      <div className="co-detail-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      <div className="co-detail-actions flex gap-sm justify-end flex-wrap">
         <button className="btn btn-outline" onClick={onClose}>Close</button>
 
         {order.status === 'draft' && canAdmin && (
@@ -630,15 +631,15 @@ export default function CustomerOrders() {
 
   return (
     <div>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="dashboard-title">Customer Orders</h1>
-          <p className="dashboard-subtitle">Special and custom orders placed by customers.</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
-          + New Order
-        </button>
-      </header>
+      <PageHeader
+        title="Customer Orders"
+        subtitle="Special and custom orders placed by customers."
+        actions={
+            <button className="btn btn-primary" onClick={() => setIsCreateOpen(true)}>
+            + New Order
+            </button>
+        }
+      />
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
@@ -664,34 +665,34 @@ export default function CustomerOrders() {
               <th>Due Date</th>
               <th>Deposit</th>
               <th>Status</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan={8} className="text-center p-xl">
                   <div className="spinner mx-auto"></div>
                   <p className="mt-sm text-muted">Loading orders...</p>
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+                <td colSpan={8} className="text-center p-xl text-secondary">
                   No customer orders found.
                   {statusFilter && <span> Try clearing the filter.</span>}
                 </td>
               </tr>
             ) : (
               orders.map(order => (
-                <tr key={order.id} style={{ cursor: 'pointer' }} onClick={() => openDetail(order)}>
-                  <td style={{ fontWeight: 600 }}>{order.order_number}</td>
+                <tr key={order.id} className="cursor-pointer" onClick={() => openDetail(order)}>
+                  <td className="font-bold">{order.order_number}</td>
                   <td>
-                    <div style={{ fontWeight: 500 }}>{order.customer?.name}</div>
+                    <div className="font-medium">{order.customer?.name}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{order.customer?.phone}</div>
                   </td>
                   <td>{order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}</td>
-                  <td style={{ fontWeight: 600 }}>{formatCurrency(order.total_amount)}</td>
+                  <td className="font-bold">{formatCurrency(order.total_amount)}</td>
                   <td className="text-muted">
                     {order.due_date ? new Date(order.due_date).toLocaleDateString() : '—'}
                   </td>
@@ -706,7 +707,7 @@ export default function CustomerOrders() {
                     ) : '—'}
                   </td>
                   <td><StatusBadge status={order.status} /></td>
-                  <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                  <td className="text-right" onClick={(e) => e.stopPropagation()}>
                     <button className="btn btn-sm btn-outline mr-sm" onClick={() => openDetail(order)}>View</button>
                     {canAdmin && ['draft', 'cancelled'].includes(order.status) && (
                       <button className="btn btn-sm btn-outline text-error" onClick={() => handleDelete(order)}>Delete</button>
@@ -719,9 +720,9 @@ export default function CustomerOrders() {
         </table>
 
         {totalPages > 1 && (
-          <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="p-md border-t flex justify-between items-center">
             <div className="text-sm text-muted">Page {page} of {totalPages}</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-sm">
               <button className="btn btn-secondary btn-sm"
                 onClick={() => fetchOrders(Math.max(1, page - 1), { status: statusFilter })}
                 disabled={page === 1}>Previous</button>
@@ -734,14 +735,14 @@ export default function CustomerOrders() {
       </div>
 
       {/* Mobile card list — shown on ≤640px */}
-      <div className="glass-panel mt-xl co-mobile-cards" style={{ padding: 0 }}>
+      <div className="glass-panel mt-xl co-mobile-cards p-0">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div className="text-center p-xl">
             <div className="spinner mx-auto" />
             <p className="mt-sm text-muted">Loading orders...</p>
           </div>
         ) : orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+          <div className="text-center p-xl text-secondary">
             No customer orders found.
             {statusFilter && <span> Try clearing the filter.</span>}
           </div>
@@ -768,7 +769,7 @@ export default function CustomerOrders() {
                   {parseFloat(order.deposit_amount) > 0 && (
                     <span>
                       Dep: {formatCurrency(order.deposit_amount)}
-                      <span style={{ marginLeft: '3px', color: order.deposit_paid ? '#059669' : '#dc2626' }}>
+                      <span style={{ marginLeft: '3px', color: order.deposit_paid ? '#059669' : 'var(--color-error-text)' }}>
                         {order.deposit_paid ? '✓' : '!'}
                       </span>
                     </span>
@@ -776,11 +777,11 @@ export default function CustomerOrders() {
                 </div>
               )}
               <div className="co-card-actions" onClick={e => e.stopPropagation()}>
-                <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => openDetail(order)}>
+                <button className="btn btn-sm btn-outline flex-1" onClick={() => openDetail(order)}>
                   View
                 </button>
                 {canAdmin && ['draft', 'cancelled'].includes(order.status) && (
-                  <button className="btn btn-sm btn-outline text-error" style={{ flex: 1 }} onClick={() => handleDelete(order)}>
+                  <button className="btn btn-sm btn-outline text-error flex-1" onClick={() => handleDelete(order)}>
                     Delete
                   </button>
                 )}
@@ -789,9 +790,9 @@ export default function CustomerOrders() {
           ))
         )}
         {totalPages > 1 && (
-          <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="p-md border-t flex justify-between items-center">
             <div className="text-sm text-muted">Page {page} of {totalPages}</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-sm">
               <button className="btn btn-secondary btn-sm"
                 onClick={() => fetchOrders(Math.max(1, page - 1), { status: statusFilter })}
                 disabled={page === 1}>Prev</button>

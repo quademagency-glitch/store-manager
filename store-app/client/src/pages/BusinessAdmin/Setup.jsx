@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useToast } from '../../hooks/useToast';
+import { PageHeader } from '../../components/ui';
 
 export default function Setup() {
   const navigate = useNavigate();
@@ -46,15 +47,15 @@ export default function Setup() {
 
   return (
     <div>
-      <header className="dashboard-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <h1 className="dashboard-title">Setup Checklist</h1>
-          <p className="dashboard-subtitle">
-            {completeCount} of {status.steps.length} steps complete. Especially useful if you're moving an
+      <PageHeader
+        title="Setup Checklist"
+        subtitle={
+          <>
+            {completeCount} of {status.steps.length} steps complete. Especially useful if you&apos;re moving an
             existing business onto this system — import your existing data instead of re-entering it by hand.
-          </p>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
         {status.steps.map((step, i) => (
@@ -66,7 +67,7 @@ export default function Setup() {
               borderBottom: i < status.steps.length - 1 ? '1px solid var(--color-border)' : 'none',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="flex items-center gap-md">
               <div
                 style={{
                   width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,

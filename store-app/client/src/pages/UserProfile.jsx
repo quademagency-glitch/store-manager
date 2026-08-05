@@ -5,6 +5,7 @@ import { api, API_BASE } from '../lib/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { useConfirm } from '../hooks/useConfirm';
 import { supabase } from '../lib/supabase';
+import { PageHeader, TabPanel, Tabs } from '../components/ui';
 
 export default function UserProfile() {
   const { user, role } = useAuthContext();
@@ -125,49 +126,39 @@ export default function UserProfile() {
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">My Profile</h1>
-          <p className="page-subtitle">Manage your personal settings and scanner connections.</p>
-        </div>
-      </header>
+      <PageHeader
+        title="My Profile"
+        subtitle="Manage your personal settings and scanner connections."
+      />
 
       {error && <div className="alert alert-error mb-lg"><p>{error}</p></div>}
 
       <div className="content-card" style={{ padding: '0' }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', overflowX: 'auto' }}>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'profile' ? 'transparent' : 'transparent', border: 'none', borderBottom: activeTab === 'profile' ? '2px solid var(--color-primary)' : '2px solid transparent', fontWeight: activeTab === 'profile' ? '600' : '500', color: activeTab === 'profile' ? 'var(--color-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}
-            onClick={() => handleTabChange('profile')}
-          >
-            My Profile
-          </button>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'password' ? 'transparent' : 'transparent', border: 'none', borderBottom: activeTab === 'password' ? '2px solid var(--color-primary)' : '2px solid transparent', fontWeight: activeTab === 'password' ? '600' : '500', color: activeTab === 'password' ? 'var(--color-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}
-            onClick={() => handleTabChange('password')}
-          >
-            Change Password
-          </button>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'payslip' ? 'transparent' : 'transparent', border: 'none', borderBottom: activeTab === 'payslip' ? '2px solid var(--color-primary)' : '2px solid transparent', fontWeight: activeTab === 'payslip' ? '600' : '500', color: activeTab === 'payslip' ? 'var(--color-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}
-            onClick={() => handleTabChange('payslip')}
-          >
-            Download Payslip
-          </button>
-          <button 
-            style={{ padding: '16px 24px', background: activeTab === 'scanner' ? 'transparent' : 'transparent', border: 'none', borderBottom: activeTab === 'scanner' ? '2px solid var(--color-primary)' : '2px solid transparent', fontWeight: activeTab === 'scanner' ? '600' : '500', color: activeTab === 'scanner' ? 'var(--color-primary)' : 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '1rem', whiteSpace: 'nowrap' }}
-            onClick={() => handleTabChange('scanner')}
-          >
-            Scanner Setup
-          </button>
-        </div>
+        {/* Four buttons of duplicated inline style, keyed off
+            `--color-primary` — a property that was never defined, so the
+            active indicator resolved to nothing and every tab looked
+            inactive. */}
+        <Tabs
+          idPrefix="profile"
+          variant="underline"
+          items={[
+            { id: 'profile', label: 'My Profile' },
+            { id: 'password', label: 'Change Password' },
+            { id: 'payslip', label: 'Download Payslip' },
+            { id: 'scanner', label: 'Scanner Setup' },
+          ]}
+          value={activeTab}
+          onChange={handleTabChange}
+          ariaLabel="Profile sections"
+          className="is-flush"
+        />
 
-        <div style={{ padding: '24px' }}>
-          {activeTab === 'profile' && (
+        <div className="p-lg">
+          <TabPanel idPrefix="profile" id="profile" value={activeTab}>
             <div style={{ maxWidth: '600px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>Profile Information</h3>
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <div style={{ marginBottom: '16px' }}>
+              <div className="glass-panel p-lg">
+                <div className="mb-md">
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Email Address</label>
                   <div style={{ fontWeight: 500, fontSize: '1.1rem' }}>{user?.email}</div>
                 </div>
@@ -177,12 +168,12 @@ export default function UserProfile() {
                 </div>
               </div>
             </div>
-          )}
+          </TabPanel>
 
-          {activeTab === 'password' && (
+          <TabPanel idPrefix="profile" id="password" value={activeTab}>
             <div style={{ maxWidth: '400px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>Change Password</h3>
-              <div className="glass-panel" style={{ padding: '24px' }}>
+              <div className="glass-panel p-lg">
                 <div className="form-group">
                   <label>Current Password</label>
                   <input type="password" className="input" placeholder="••••••••" />
@@ -195,25 +186,25 @@ export default function UserProfile() {
                   <label>Confirm New Password</label>
                   <input type="password" className="input" placeholder="••••••••" />
                 </div>
-                <button className="btn btn-primary" style={{ width: '100%' }}>Update Password</button>
+                <button className="btn btn-primary w-full">Update Password</button>
               </div>
             </div>
-          )}
+          </TabPanel>
 
-          {activeTab === 'payslip' && (
+          <TabPanel idPrefix="profile" id="payslip" value={activeTab}>
             <div style={{ maxWidth: '600px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>Payslips & Documents</h3>
-              <div className="glass-panel" style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="glass-panel p-lg flex justify-between items-center">
                 <div>
-                  <div style={{ fontWeight: 600 }}>May 2026 Payslip</div>
+                  <div className="font-bold">May 2026 Payslip</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Generated on June 1, 2026</div>
                 </div>
                 <button className="btn btn-outline">Download PDF</button>
               </div>
             </div>
-          )}
+          </TabPanel>
 
-          {activeTab === 'scanner' && (
+          <TabPanel idPrefix="profile" id="scanner" value={activeTab}>
             <div style={{ maxWidth: '400px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '8px' }}>Mobile Scanner Setup</h3>
               <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
@@ -222,7 +213,10 @@ export default function UserProfile() {
 
               {loading && !scannerToken ? (
                 <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-                  <div className="loading-spinner" style={{ width: '24px', height: '24px', display: 'inline-block', marginBottom: '16px' }}></div>
+                  {/* Was `.loading-spinner`, which is the three-ring
+                      loader's container and expects `.spinner-ring`
+                      children; with none it rendered an empty box. */}
+                  <div className="spinner mx-auto mb-md"></div>
                   <div className="text-muted">Generating code...</div>
                 </div>
               ) : isLinked ? (
@@ -235,7 +229,7 @@ export default function UserProfile() {
                   </button>
                 </div>
               ) : (
-                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px' }}>
+                <div className="glass-panel flex flex-col items-center p-lg">
                   <div style={{ background: 'white', padding: '12px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '16px' }}>
                     {scannerToken ? (
                       <QRCodeSVG value={scannerToken} size={140} level="M" />
@@ -257,7 +251,7 @@ export default function UserProfile() {
                 </div>
               )}
             </div>
-          )}
+          </TabPanel>
         </div>
       </div>
     </div>

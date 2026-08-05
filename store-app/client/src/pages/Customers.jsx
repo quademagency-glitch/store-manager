@@ -5,18 +5,28 @@ import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useConfirm } from '../hooks/useConfirm';
 import { useExportCsv } from '../hooks/useExportCsv';
+import { PageHeader } from '../components/ui';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { describePhone, callingCodeFor, resolveCountry } from '../lib/phone';
 
 export default function Customers() {
   const { loading, error, searchCustomers, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const { role, hasPermission } = useAuthContext();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  // Country supplies the dialing code for numbers typed without one. Already
+  // resolved against the active location server-side; the device locale
+  // stands in while it loads.
+  const { business } = usePrintDocument();
+  const country = business?.country || resolveCountry();
   const { exportCsv } = useExportCsv();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '' });
+  // One parse per render, reused by the validity check and the echo below.
+  const parsedPhone = describePhone(formData.phone, country);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
@@ -81,32 +91,32 @@ export default function Customers() {
 
   return (
     <div>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="dashboard-title">Customers</h1>
-          <p className="dashboard-subtitle">Search for a customer or add a new one.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn btn-secondary" onClick={() => exportCsv(searchResults, [
+      <PageHeader
+        title="Customers"
+        subtitle="Search for a customer or add a new one."
+        actions={
+            <div className="flex gap-sm">
+            <button className="btn btn-secondary" onClick={() => exportCsv(searchResults, [
             { key: 'name', label: 'Name' },
             { key: 'phone', label: 'Phone' },
             { key: 'email', label: 'Email' },
             { key: 'created_at', label: 'Joined', format: (v) => new Date(v).toLocaleDateString() },
-          ], 'customers')} disabled={searchResults.length === 0}>
+            ], 'customers')} disabled={searchResults.length === 0}>
             Export CSV
-          </button>
-          {hasPermission('manage_financials') && (
+            </button>
+            {hasPermission('manage_financials') && (
             <button className="btn btn-secondary" onClick={() => navigate('/imports/customers')}>
-              Import
+            Import
             </button>
-          )}
-          {canEdit && (
+            )}
+            {canEdit && (
             <button className="btn btn-primary" onClick={openNewModal}>
-              Add Customer
+            Add Customer
             </button>
-          )}
-        </div>
-      </header>
+            )}
+            </div>
+        }
+      />
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
@@ -149,27 +159,27 @@ export default function Customers() {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>Joined Date</th>
-                  {canEdit && <th style={{ textAlign: 'right' }}>Actions</th>}
+                  {canEdit && <th className="text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {searching ? (
                   <tr>
-                    <td colSpan={canEdit ? 4 : 3} style={{ textAlign: 'center', padding: '2rem' }}>
+                    <td colSpan={canEdit ? 4 : 3} className="text-center p-xl">
                       <div className="spinner mx-auto"></div>
                       <p className="mt-sm text-muted">Searching...</p>
                     </td>
                   </tr>
                 ) : searchResults.length === 0 ? (
                   <tr>
-                    <td colSpan={canEdit ? 4 : 3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+                    <td colSpan={canEdit ? 4 : 3} className="text-center p-xl text-secondary">
                       No customers found for "{searchTerm}".
                     </td>
                   </tr>
                 ) : (
                   searchResults.map(customer => (
-                    <tr key={customer.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/customers/${customer.id}`)}>
-                      <td style={{ fontWeight: 600 }}>
+                    <tr key={customer.id} className="cursor-pointer" onClick={() => navigate(`/customers/${customer.id}`)}>
+                      <td className="font-bold">
                         {customer.name}
                         {customer.is_verified && (
                           <span className="badge badge-success ml-sm" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
@@ -178,7 +188,7 @@ export default function Customers() {
                       <td>{customer.phone}</td>
                       <td className="text-muted">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '—'}</td>
                       {canEdit && (
-                        <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <td className="text-right" onClick={(e) => e.stopPropagation()}>
                           <button className="btn btn-sm btn-outline mr-sm" onClick={() => openEditModal(customer)}>
                             Edit
                           </button>
@@ -197,17 +207,17 @@ export default function Customers() {
           {/* Mobile card list — shown on ≤640px */}
           <div className="glass-panel mt-xl cust-mobile-cards">
             {searching ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <div className="text-center p-xl">
                 <div className="spinner mx-auto" />
                 <p className="mt-sm text-muted">Searching...</p>
               </div>
             ) : searchResults.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-secondary)' }}>
+              <div className="text-center p-xl text-secondary">
                 No customers found for "{searchTerm}".
               </div>
             ) : (
               searchResults.map(customer => (
-                <div key={customer.id} className="cust-card" style={{ cursor: 'pointer' }} onClick={() => navigate(`/customers/${customer.id}`)}>
+                <div key={customer.id} className="cust-card cursor-pointer" onClick={() => navigate(`/customers/${customer.id}`)}>
                   <div className="cust-card-header">
                     <span className="cust-card-name">{customer.name}</span>
                     {customer.is_verified && (
@@ -220,8 +230,8 @@ export default function Customers() {
                   )}
                   {canEdit && (
                     <div className="cust-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="btn btn-sm btn-outline" style={{ flex: 1 }} onClick={() => openEditModal(customer)}>Edit</button>
-                      <button className="btn btn-sm btn-outline text-error" style={{ flex: 1 }} onClick={() => handleDelete(customer.id)}>Delete</button>
+                      <button className="btn btn-sm btn-outline flex-1" onClick={() => openEditModal(customer)}>Edit</button>
+                      <button className="btn btn-sm btn-outline text-error flex-1" onClick={() => handleDelete(customer.id)}>Delete</button>
                     </div>
                   )}
                 </div>
@@ -238,8 +248,9 @@ export default function Customers() {
       >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Full Name</label>
+            <label htmlFor="customer-name">Full Name</label>
             <input
+              id="customer-name"
               type="text"
               className="input"
               value={formData.name}
@@ -248,16 +259,38 @@ export default function Customers() {
             />
           </div>
           <div className="form-group">
-            <label>Phone Number</label>
+            <label htmlFor="customer-phone">Phone Number</label>
             <input
+              id="customer-phone"
               type="tel"
               className="input"
+              placeholder="024 123 4567"
+              inputMode="tel"
+              autoComplete="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               required
             />
+            {/* Echoes back the number as understood, so the automatically
+                applied country code is never a surprise. */}
+            {formData.phone && !parsedPhone ? (
+              <small className="text-error">
+                Enter a valid number, or include the country code (e.g. +233…)
+              </small>
+            ) : parsedPhone ? (
+              <small className="text-success">
+                {parsedPhone.formatted}
+                {parsedPhone.network ? ` · ${parsedPhone.network}` : ''}
+              </small>
+            ) : (
+              <small className="text-muted">
+                {callingCodeFor(country)
+                  ? `${callingCodeFor(country)} applied automatically — or type a country code`
+                  : 'Include a country code if not local'}
+              </small>
+            )}
           </div>
-          <div className="modal-actions mt-xl" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div className="modal-actions mt-xl flex justify-end gap-md">
             <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
               Cancel
             </button>

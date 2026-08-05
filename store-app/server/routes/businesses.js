@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { resolveCurrency } = require('../utils/currency');
+const { resolveCountry } = require('../utils/phone');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 
 const router = express.Router();
@@ -54,8 +55,15 @@ router.get('/me', authGuard, async (req, res) => {
 
     // Active location's currency (if set) overrides the business default,
     // so the whole app follows whichever location is currently selected.
-    const currency = await resolveCurrency(supabaseAdmin, req.user.business_id, req.user.active_location_id);
-    res.json({ ...data, currency });
+    // Country is resolved the same way and for the same reason — it is what
+    // supplies the dialing code for phone numbers typed without one, and a
+    // Nigeria branch of a Ghanaian business must not stamp +233 on its
+    // customers.
+    const [currency, country] = await Promise.all([
+      resolveCurrency(supabaseAdmin, req.user.business_id, req.user.active_location_id),
+      resolveCountry(supabaseAdmin, req.user.business_id, req.user.active_location_id),
+    ]);
+    res.json({ ...data, currency, country });
   } catch (err) {
     logger.error({ err: err }, 'Error fetching business:');
     res.status(500).json({ error: 'Failed to fetch business profile' });

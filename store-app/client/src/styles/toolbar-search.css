@@ -24,19 +24,30 @@
   color: var(--color-text-tertiary);
 }
 
+/* The background/border were `rgba(255,255,255,.03/.08)` — invisible on
+   a light canvas, so the search field had no perceivable boundary at
+   all in the default theme. `--color-border-strong` holds the 3:1
+   non-text minimum a form control needs to be seen. */
 .search-input {
   width: 100%;
   padding: 0.6rem 1rem 0.6rem 2.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-full);
   color: var(--color-text-primary);
   font-size: 0.875rem;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
-.search-input:focus {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  outline: none;
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.search-input:focus-visible {
+  border-color: var(--color-border-focus);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }

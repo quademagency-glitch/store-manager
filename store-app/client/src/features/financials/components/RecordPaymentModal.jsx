@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
 
 const TILL_METHODS = ['cash', 'mobile_money'];
@@ -15,7 +15,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -27,7 +27,11 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
     },
   });
 
-  const paymentMethod = watch('payment_method');
+  /* `useWatch` rather than `watch()`: the latter returns a fresh function on
+     every render, so React Compiler refuses to memoize this component at all
+     rather than risk stale UI. `useWatch` subscribes through `control` and is
+     compiler-safe. */
+  const paymentMethod = useWatch({ control, name: 'payment_method' });
   const requiresLocation = TILL_METHODS.includes(paymentMethod);
 
   useEffect(() => {
@@ -56,7 +60,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
       <form onSubmit={handleSubmit(onFormSubmit)} className="form-layout">
         {error && <div className="alert alert-error"><p>{error}</p></div>}
 
-        <p className="text-muted" style={{ marginTop: 0 }}>
+        <p className="text-muted mt-0">
           Outstanding balance: <strong>${outstanding.toFixed(2)}</strong>
         </p>
 
@@ -125,7 +129,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
           <input type="text" id="pay-notes" className="form-input" {...register('notes')} />
         </div>
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%' }}>
+        <div className="modal-footer flex justify-end gap-sm w-full">
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting || outstanding <= 0}>
             {isSubmitting ? 'Recording...' : 'Record Payment'}

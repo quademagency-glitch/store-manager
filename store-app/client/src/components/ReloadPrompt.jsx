@@ -34,7 +34,7 @@ export default function ReloadPrompt() {
       <div style={{ fontSize: '14px', fontWeight: 500 }}>
         New version available!
       </div>
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="flex gap-sm">
         <button 
           onClick={() => updateServiceWorker(true)}
           style={{

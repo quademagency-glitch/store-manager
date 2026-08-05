@@ -96,7 +96,7 @@ router.get('/:id', authGuard, apiCache(5), async (req, res) => {
  */
 router.post('/', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price, cost_price, initialQuantity, locationId, qr_code_data, product_code } = req.body;
+    const { name, sku, category, price, cost_price, initialQuantity, locationId, qr_code_data, product_code, requires_serial } = req.body;
 
     if (!name || !sku) {
       return res.status(400).json({ error: 'Name and SKU are required' });
@@ -105,15 +105,16 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
     const { data, error } = await supabaseAdmin
       .from('products')
       .insert([
-        { 
-          name, 
-          sku, 
-          category, 
-          price, 
+        {
+          name,
+          sku,
+          category,
+          price,
           cost_price: cost_price || 0,
           qr_code_data: qr_code_data || sku,
           product_code,
-          business_id: req.body.business_id || req.user.business_id 
+          requires_serial: requires_serial === undefined ? true : !!requires_serial,
+          business_id: req.body.business_id || req.user.business_id
         }
       ])
       .select()
@@ -169,12 +170,13 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
  */
 router.put('/:id', authGuard, permissionCheck('manage_products'), async (req, res) => {
   try {
-    const { name, sku, category, price, cost_price, qr_code_data, product_code } = req.body;
+    const { name, sku, category, price, cost_price, qr_code_data, product_code, requires_serial } = req.body;
 
     const updatePayload = { name, sku, category, price };
     if (cost_price !== undefined) updatePayload.cost_price = cost_price;
     if (qr_code_data !== undefined) updatePayload.qr_code_data = qr_code_data;
     if (product_code !== undefined) updatePayload.product_code = product_code;
+    if (requires_serial !== undefined) updatePayload.requires_serial = !!requires_serial;
 
     let query = supabaseAdmin
       .from('products')

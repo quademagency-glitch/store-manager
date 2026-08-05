@@ -64,12 +64,14 @@
   width: 100%;
   padding: 0.7rem 2.5rem 0.7rem 2.5rem;
   background: var(--color-bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   color: var(--color-text-primary);
   font-size: 0.9rem;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .catalog-search-input:focus {
@@ -126,14 +128,16 @@
 .product-card {
   position: relative;
   background: var(--color-bg-card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  transition: all var(--transition-normal);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
   overflow: hidden;
 }
 
@@ -262,7 +266,11 @@
   color: var(--color-accent-hover);
   font-size: 0.8rem;
   font-weight: 600;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .add-to-cart-btn:hover:not(:disabled) {
@@ -296,7 +304,10 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .qty-btn:hover:not(:disabled) {
@@ -331,12 +342,25 @@
 }
 
 /* ─── Right Panel: Cart ─── */
+/* Sized by its contents, not by the viewport.
+
+   `.sales-page` is a 100vh grid, and grid items stretch by default — so this
+   panel was always exactly one screen tall no matter what was in it, and
+   `.cart-items { flex: 1 }` inflated to fill whatever was left. An empty cart
+   rendered a full-height column of dead space with the checkout footer pinned
+   to the bottom of the screen, far from the last line item.
+
+   `align-self: start` stops the stretch, so the panel now grows as items are
+   added. The max-height keeps a long cart from running past the viewport;
+   past that point `.cart-items` scrolls internally while the header and
+   checkout footer stay put. */
 .sales-cart {
   background: var(--color-bg-secondary);
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  max-height: 100vh;
+  align-self: start;
+  max-height: 100dvh;
   position: sticky;
   top: 0;
 }
@@ -368,7 +392,9 @@
   color: var(--color-text-tertiary);
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .cart-clear-btn:hover {
@@ -377,8 +403,17 @@
 }
 
 /* Cart Items */
+/* `flex: 1 1 auto` rather than `flex: 1`: the shorthand `flex: 1` sets
+   flex-basis to 0, which makes this box claim height independently of its
+   content. With the panel now hugging its contents, the basis has to come
+   from the items themselves.
+
+   `min-height: 0` is what actually lets it scroll — a flex item's default
+   `min-height: auto` refuses to shrink below its content, so the overflow
+   would push the checkout footer off-screen instead of scrolling. */
 .cart-items {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: var(--space-md);
 }
@@ -483,7 +518,9 @@
   padding: 0.15rem;
   border-radius: var(--radius-sm);
   display: flex;
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .cart-item-remove:hover {
@@ -540,10 +577,8 @@
 .cart-summary-total .cart-summary-value {
   font-size: 1.2rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  /* Solid: gradient text has no measurable contrast and prints blank. */
+  color: var(--color-accent-text);
 }
 
 /* Payment Selector */
@@ -576,7 +611,9 @@
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .payment-option:hover {
@@ -614,7 +651,10 @@
   font-weight: 600;
   font-size: 0.9rem;
   letter-spacing: 0.02em;
-  transition: all var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal),
+    opacity var(--transition-normal);
   position: relative;
   overflow: hidden;
 }
@@ -789,10 +829,8 @@
 .receipt-total-amount {
   font-size: 1.25rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  /* Solid: gradient text has no measurable contrast and prints blank. */
+  color: var(--color-accent-text);
 }
 
 .receipt-close-btn {

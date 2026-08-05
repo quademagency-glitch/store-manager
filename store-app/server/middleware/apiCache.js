@@ -23,9 +23,12 @@ function apiCache(durationSec) {
 
     // Cache key incorporates URL, business ID, location ID, and role.
     // This ensures strict data isolation between tenants and roles.
-    const bizId = req.user?.business_id || 'sys';
+    // req.business is set by apiKeyGuard for public API-key requests
+    // (no req.user in that path) — must fall back to it or two different
+    // businesses' API-key requests would collide on the same 'sys' bucket.
+    const bizId = req.user?.business_id || req.business?.id || 'sys';
     const locId = req.user?.active_location_id || 'all';
-    const role = req.user?.role || 'none';
+    const role = req.user?.role || (req.business ? 'api-key' : 'none');
     const url = req.originalUrl || req.url;
     
     const key = `__cache__${url}__biz_${bizId}__loc_${locId}__role_${role}`;

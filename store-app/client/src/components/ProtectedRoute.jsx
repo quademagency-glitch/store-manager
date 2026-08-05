@@ -1,9 +1,10 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
-import { Icons } from './icons/Icons';
+import AccessDenied from './ui/AccessDenied';
 
 export default function ProtectedRoute({ children, requiredPermission }) {
-  const { isAuthenticated, hasPermission, loading } = useAuthContext();
+  const { isAuthenticated, hasPermission, loading, role } = useAuthContext();
+  const isPlatformAdmin = role === 'Platform Admin';
 
   if (loading) {
     return (
@@ -25,17 +26,8 @@ export default function ProtectedRoute({ children, requiredPermission }) {
   // Allow Platform Admins to visit tenant pages for troubleshooting
   // (Removed the forced redirect to /platform-admin)
 
-  if (requiredPermission && !hasPermission(requiredPermission)) {
-    return (
-      <div className="access-denied">
-        <div className="access-denied-card">
-          <div className="access-denied-icon" aria-hidden="true">{Icons.ban}</div>
-          <h2>Access Denied</h2>
-          <p>You don't have permission to view this page.</p>
-          <p className="access-denied-role">Required permission: <strong>{requiredPermission}</strong></p>
-        </div>
-      </div>
-    );
+  if (requiredPermission && !isPlatformAdmin && !hasPermission(requiredPermission)) {
+    return <AccessDenied requiredPermission={requiredPermission} />;
   }
 
   return children;

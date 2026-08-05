@@ -38,7 +38,7 @@
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-bg-tertiary);
 }
 
 [data-theme="light"] .data-table th {
@@ -55,7 +55,7 @@
   transition: background var(--transition-fast);
 }
 .data-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-bg-tertiary);
 }
 
 [data-theme="light"] .data-table tbody tr:hover {
@@ -106,14 +106,4 @@
   font-weight: 500;
 }
 
-/* Utilities */
-.text-mono { font-family: monospace; }
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 600; }
-.text-muted { color: var(--color-text-muted); }
-.text-warning { color: #fbbf24; }
-.text-right { text-align: right; }
-.text-center { text-align: center; }
-.text-sm { font-size: 0.75rem; }
-.py-xl { padding-top: var(--space-xl) !important; padding-bottom: var(--space-xl) !important; }
-.mt-xs { margin-top: 0.2rem; }
+/* Global text/spacing helpers moved to utilities.css. */

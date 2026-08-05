@@ -43,10 +43,10 @@ export default function PriceListPrint() {
   };
 
   return (
-    <div style={{ marginTop: '1rem' }}>
+    <div className="mt-md">
       {/* Controls */}
       <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div className="flex gap-md items-end flex-wrap">
           <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
             <label className="form-label" style={{ fontSize: '0.8rem' }}>Category</label>
             <select className="form-input" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
@@ -82,7 +82,7 @@ export default function PriceListPrint() {
       {/* On-screen Preview */}
       <div className="glass-panel" style={{ maxHeight: '500px', overflowY: 'auto' }}>
         {Object.entries(grouped).map(([group, items]) => (
-          <div key={group} style={{ marginBottom: '24px' }}>
+          <div key={group} className="mb-lg">
             {groupBy !== 'none' && (
               <div style={{ padding: '8px 16px', background: 'var(--color-bg-tertiary)', fontWeight: 600, fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
                 {group} ({items.length})
@@ -93,9 +93,9 @@ export default function PriceListPrint() {
                 <tr>
                   <th>#</th><th>Product</th><th>SKU</th>
                   {groupBy === 'none' && <th>Category</th>}
-                  {showCostPrice && <th style={{ textAlign: 'right' }}>Cost</th>}
-                  <th style={{ textAlign: 'right' }}>Price</th>
-                  {showMargin && <th style={{ textAlign: 'right' }}>Margin</th>}
+                  {showCostPrice && <th className="text-right">Cost</th>}
+                  <th className="text-right">Price</th>
+                  {showMargin && <th className="text-right">Margin</th>}
                 </tr>
               </thead>
               <tbody>
@@ -109,7 +109,7 @@ export default function PriceListPrint() {
                       <td className="font-medium">{p.name}</td>
                       <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
                       {groupBy === 'none' && <td><span className="badge badge-neutral">{p.category}</span></td>}
-                      {showCostPrice && <td style={{ textAlign: 'right', color: 'var(--color-text-muted)' }}>{fmt(cost)}</td>}
+                      {showCostPrice && <td className="text-right text-muted">{fmt(cost)}</td>}
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(price)}</td>
                       {showMargin && <td style={{ textAlign: 'right', color: margin && parseFloat(margin) > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>{margin ? `${margin}%` : '—'}</td>}
                     </tr>
@@ -122,7 +122,7 @@ export default function PriceListPrint() {
       </div>
 
       {/* ═══ PRINTABLE AREA ═══ */}
-      <div id="price-list-print" className="printable-area" style={{ display: 'none' }}>
+      <div id="price-list-print" className="printable-area hidden">
         <style>{`
           @media print {
             #price-list-print { display: block !important; font-family: Arial, sans-serif; color: #000; }
@@ -160,9 +160,9 @@ export default function PriceListPrint() {
                   <th>Product</th>
                   <th>SKU</th>
                   {groupBy === 'none' && <th>Category</th>}
-                  {showCostPrice && <th style={{ textAlign: 'right' }}>Cost</th>}
-                  <th style={{ textAlign: 'right' }}>Price</th>
-                  {showMargin && <th style={{ textAlign: 'right' }}>Margin</th>}
+                  {showCostPrice && <th className="text-right">Cost</th>}
+                  <th className="text-right">Price</th>
+                  {showMargin && <th className="text-right">Margin</th>}
                 </tr>
               </thead>
               <tbody>

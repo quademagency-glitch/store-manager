@@ -1,0 +1,4 @@
+[submodule "quaderp-landing"]
+	path = quaderp-landing
+	url = https://github.com/quademagency-glitch/quuaderp-landing.git
+	branch = main

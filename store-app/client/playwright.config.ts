@@ -65,9 +65,22 @@ export default defineConfig({
 
   expect: {
     toHaveScreenshot: {
-      // Sub-pixel text rendering varies slightly between runs; 1% of pixels is
-      // well under the threshold where a real regression would hide.
-      maxDiffPixelRatio: 0.01,
+      /* An absolute pixel count, not a ratio.
+
+         `maxDiffPixelRatio: 0.01` sounded strict and was not: combined with
+         `fullPage: true` the denominator is the whole scrollable page (~2.7M px
+         on a tall route), while the things that regress are anti-aliased text
+         strokes on an unchanged background. Collapsing every sidebar nav group
+         across all 38 routes measured 8,396 px — 0.31% — and passed. So did a
+         new Danger Zone panel and a fixture change that repopulated a page.
+         The taller the page, the weaker the check, which is backwards.
+
+         200 is set against a measured noise floor of *zero*: with the visual
+         project serialised (see `fullyParallel` below), 37 of 38 routes are
+         byte-identical run to run. The margin is for genuine environment
+         variation, not for the app changing. The smallest real change measured
+         here — a one-line flex fix on the POS cart total — was 598 px. */
+      maxDiffPixels: 200,
     },
   },
 
@@ -82,6 +95,14 @@ export default defineConfig({
       name: 'visual',
       testMatch: ['**/visual/**/*.spec.ts'],
       dependencies: ['invariants'],
+      /* Serialised deliberately. Under four parallel workers, two routes
+         intermittently shifted text by a sub-pixel and diffed by 4,000-8,200
+         px — indistinguishable from a real regression, and the reason a 1%
+         tolerance looked necessary. At one worker the same routes are
+         byte-identical, which is what lets `maxDiffPixels: 200` above hold.
+         Costs a few minutes; invariants still run in parallel. */
+      fullyParallel: false,
+      workers: 1,
       use: shared,
     },
     {

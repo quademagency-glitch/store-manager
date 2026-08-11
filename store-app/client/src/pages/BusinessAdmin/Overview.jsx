@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ErrorBanner, PageHeader } from '../../components/ui';
+import { IS_MOCK } from '../../lib/mockMode';
 
 export default function Overview() {
   const navigate = useNavigate();
@@ -121,7 +122,7 @@ export default function Overview() {
           <div style={{ height: '300px', width: '100%', minWidth: 0, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <LineChart data={trendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line isAnimationActive={!IS_MOCK} type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(value) => `$${value}`} />

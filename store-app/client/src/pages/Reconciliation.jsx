@@ -3,6 +3,7 @@ import { useAnalytics } from '../hooks/useAnalytics';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Icons } from '../components/icons/Icons';
 import { EmptyStateRow, SkeletonRows } from '../components/ui';
+import { IS_MOCK } from '../lib/mockMode';
 
 export default function Reconciliation() {
   const { reconciliationData, loading, fetchReconciliation, error } = useAnalytics();
@@ -103,8 +104,8 @@ export default function Reconciliation() {
                     contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}
                     itemStyle={{ color: 'var(--color-text-primary)' }}
                   />
-                  <Bar dataKey="Sales" fill="var(--color-accent-primary)" radius={[6, 6, 0, 0]} barSize={32} />
-                  <Bar dataKey="Shrinkage" fill="var(--color-error)" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Bar isAnimationActive={!IS_MOCK} dataKey="Sales" fill="var(--color-accent-primary)" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Bar isAnimationActive={!IS_MOCK} dataKey="Shrinkage" fill="var(--color-error)" radius={[6, 6, 0, 0]} barSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

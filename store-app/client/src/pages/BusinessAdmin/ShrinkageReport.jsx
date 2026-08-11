@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ErrorBanner, PageHeader } from '../../components/ui';
+import { IS_MOCK } from '../../lib/mockMode';
 
 const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
@@ -72,7 +73,7 @@ export default function ShrinkageReport() {
             <div style={{ height: '250px', width: '100%', minWidth: 0, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <PieChart>
-                  <Pie
+                  <Pie isAnimationActive={!IS_MOCK}
                     data={pieData}
                     cx="50%"
                     cy="50%"

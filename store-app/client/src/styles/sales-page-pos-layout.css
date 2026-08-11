@@ -546,10 +546,15 @@
   margin-bottom: var(--space-md);
 }
 
-.cart-summary-row {
+/* The total is a summary row too. It was left out of this rule and carried
+   only padding and a border, so its label and amount had no layout between
+   them and rendered butted together as "TotalGH₵149.98" on every sale. */
+.cart-summary-row,
+.cart-summary-total {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-md);
 }
 
 .cart-summary-label {

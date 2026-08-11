@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import { Link } from 'react-router-dom';
+import { IS_MOCK } from '../lib/mockMode';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -268,7 +269,7 @@ export default function Dashboard() {
                         contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
                         formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
                       />
-                      <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#salesGrad)" />
+                      <Area isAnimationActive={!IS_MOCK} type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#salesGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : <p className="chart-empty">No sales data yet</p>}
@@ -291,7 +292,7 @@ export default function Dashboard() {
                         contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
                         formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
                       />
-                      <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                      <Bar isAnimationActive={!IS_MOCK} dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : <p className="chart-empty">No product data yet</p>}
@@ -307,7 +308,7 @@ export default function Dashboard() {
                 {inventoryHealth.length > 0 ? (
                   <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
-                      <Pie
+                      <Pie isAnimationActive={!IS_MOCK}
                         data={inventoryHealth}
                         cx="50%" cy="50%"
                         innerRadius={55} outerRadius={85}
@@ -348,8 +349,8 @@ export default function Dashboard() {
                           return [v, 'Sales'];
                         }}
                       />
-                      <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue" />
-                      <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sales" />
+                      <Bar isAnimationActive={!IS_MOCK} dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} name="Revenue" />
+                      <Bar isAnimationActive={!IS_MOCK} dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sales" />
                       <Legend iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
                     </BarChart>
                   </ResponsiveContainer>

@@ -157,6 +157,17 @@ const FIXTURES = {
 
   // ── Accounting (routes/ledger.js, accountsPayable.js, accountsReceivable.js) ──
   '/ledger/till-balance': { view: 'basic', currentBalance: 8450.25 },
+  /* Bare array, matching GET /api/ledger/pending. This route used to query
+     Supabase straight from the browser, so it could not be mocked at all and
+     its baseline captured a Postgres error string instead of the queue. */
+  '/ledger/pending': [
+    { id: 'le1', type: 'expense', amount: 240, description: 'Generator fuel', status: 'pending',
+      created_at: T0, date: '2026-07-31', receipt_url: null, metadata: { vendor: 'Total Filling Station' },
+      users: { name: 'Kofi Boateng', email: 'kofi@quaderp.com' }, locations: { name: 'Main Branch' } },
+    { id: 'le2', type: 'deposit_to_bank', amount: 5000, description: 'Daily banking', status: 'pending',
+      created_at: T0, date: '2026-07-31', receipt_url: null, metadata: {},
+      users: { name: 'Ama Mensah', email: 'ama@quaderp.com' }, locations: { name: 'Main Branch' } },
+  ],
   '/ledger/financial-summary': {
     period: { start: '2026-07-01', end: '2026-07-31' },
     income: { total_sales: 82400, other_income: 1200 },

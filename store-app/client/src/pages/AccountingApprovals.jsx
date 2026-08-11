@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+// Still needed for storage: getPublicUrl builds a receipt URL, it is not a
+// database query, and it only runs when a receipt is clicked — so page load
+// goes entirely through the API and is fully mockable.
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
@@ -8,7 +11,9 @@ import { useConfirm } from '../hooks/useConfirm';
 import { ErrorBanner } from '../components/ui';
 
 export default function AccountingApprovals() {
-  const { role, businessId } = useAuthContext();
+  // No businessId here any more: the server scopes the query from the token
+  // rather than trusting a value the client passes in.
+  const { role } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const [pendingEntries, setPendingEntries] = useState([]);
@@ -16,27 +21,19 @@ export default function AccountingApprovals() {
   const [error, setError] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
+  /* Goes through the API like every other page.
+
+     This used to query `business_ledger` directly with the browser's Supabase
+     client. That skipped the server's role gate entirely (relying only on
+     RLS), made the page impossible to cover with the mock-based suites, and
+     surfaced raw Postgres errors to the user. GET /ledger/pending applies the
+     same role check as the approve and reject calls below. */
   const fetchPendingEntries = async () => {
     try {
       setLoading(true);
-      // We don't have a specific API endpoint for ONLY pending in backend,
-      // but we can query it via supabase directly since it's a simple filter,
-      // or we can fetch till-balance and filter.
-      // Best to query via supabase client if RLS allows it, or we create a small api call.
-      // Wait, we have RLS on business_ledger! We can query directly.
-      const { data, error } = await supabase
-        .from('business_ledger')
-        .select(`
-          id, type, amount, description, created_at, status, receipt_url, metadata, date,
-          users!user_id(name, email),
-          locations(name)
-        `)
-        .eq('business_id', businessId)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPendingEntries(data || []);
+      setError(null);
+      const data = await api.get('/ledger/pending');
+      setPendingEntries(Array.isArray(data) ? data : []);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       setError(err);

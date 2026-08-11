@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "migrate": "node db/migrate.js",
     "migrate:status": "node db/migrate.js status",
-    "migrate:up": "node db/migrate.js up"
+    "migrate:up": "node db/migrate.js up",
+    "db:drift": "node db/schema-drift.js"
   },
   "keywords": [],
   "author": "",

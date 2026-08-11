@@ -239,7 +239,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`\n${err.message}`);
-  process.exit(1);
-});
+// Only run as a CLI. `db/schema-drift.js` requires this file to reuse
+// readMigrations(), and must not trigger a migration run by importing it.
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(`\n${err.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { readMigrations, MIGRATIONS_DIR: DIR };

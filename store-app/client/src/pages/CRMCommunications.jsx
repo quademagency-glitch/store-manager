@@ -276,7 +276,14 @@ export default function CRMCommunications() {
                 style={{ background: 'var(--color-bg-primary)' }}
               >
                 <option value="">-- Start Blank --</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.type.toUpperCase()})</option>)}
+                {/* `type` is nullable, and an unguarded .toUpperCase() on a
+                    null took the whole route to the ErrorBoundary. Drop the
+                    parenthetical entirely rather than render an empty "()". */}
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.type ? ` (${t.type.toUpperCase()})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -392,19 +399,19 @@ export default function CRMCommunications() {
                 <div key={gw.id} className="gateway-row">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                     <div className="gateway-icon">
-                      {gw.provider.charAt(0).toUpperCase()}
+                      {(gw.provider ?? '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{gw.display_name}</h3>
-                        {gw.is_default && <span style={{ background: 'var(--color-success)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>DEFAULT {gw.type.toUpperCase()}</span>}
+                        {gw.is_default && <span style={{ background: 'var(--color-success)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>DEFAULT {(gw.type ?? '').toUpperCase()}</span>}
                         <span style={{ fontSize: '0.8rem', color: gw.is_active ? 'var(--color-success)' : 'var(--color-text-tertiary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }} /> {gw.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                       <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                        Provider: <strong>{gw.provider.toUpperCase()}</strong> &nbsp;|&nbsp; 
-                        Type: <strong>{gw.type.toUpperCase()}</strong>
+                        Provider: <strong>{(gw.provider ?? '—').toUpperCase()}</strong> &nbsp;|&nbsp;
+                        Type: <strong>{(gw.type ?? '—').toUpperCase()}</strong>
                         {gw.sender_id && <>&nbsp;|&nbsp; Sender ID: <strong>{gw.sender_id}</strong></>}
                       </div>
                     </div>

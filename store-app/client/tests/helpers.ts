@@ -48,8 +48,35 @@ export async function gotoApp(page: Page, path: string, theme: Theme = 'light') 
 
   // Let entrance animations finish so screenshots aren't animation-phase noise.
   await page.waitForTimeout(400);
-  await page.evaluate(() => document.fonts?.ready);
+  await settleFonts(page);
   await settleCharts(page);
+}
+
+/**
+ * Wait for font loading to settle, then give layout one frame.
+ *
+ * index.css pulls Outfit and Inter from Google Fonts with `display=swap`, so a
+ * fallback paints first and the real face swaps in later. Occasionally a
+ * capture lands mid-swap and every glyph on the page shifts sub-pixel — ~3,000
+ * px of diff on a text-heavy route, indistinguishable from a real regression.
+ * Retries absorb it; it shows up as ~2 flaky per full run.
+ *
+ * Do NOT reach for `document.fonts.check('1em Outfit')` to harden this. It
+ * returns false for a face that is available but not yet materialised, so it
+ * never becomes true here — measured: `status: "loaded"`, `check('1em Inter')`
+ * true, `check('1em Outfit')` false, all 33 faces reporting "unloaded". Polling
+ * on it burns its full timeout on every test and took the suite from 6 minutes
+ * to 25 without fixing anything.
+ *
+ * The real fix is self-hosting the fonts so captures do not depend on a network
+ * fetch at all. Until then this is the honest cheap version.
+ */
+async function settleFonts(page: Page) {
+  await page.evaluate(async () => {
+    await document.fonts?.ready;
+    // One frame so any swapped metrics are laid out before the screenshot.
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+  });
 }
 
 /**

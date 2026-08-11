@@ -313,6 +313,45 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
  * PUT /api/ledger/:id/approve
  * Approve a pending ledger entry
  */
+/**
+ * GET /api/ledger/pending
+ * Ledger entries awaiting approval.
+ *
+ * Added because the approvals page was querying `business_ledger` straight
+ * from the browser's Supabase client, which meant the server's role gate never
+ * ran (it leaned entirely on RLS), the page could not be exercised by the
+ * mock-based test suites, and a failed query surfaced a raw Postgres string to
+ * the user — "invalid input syntax for type uuid".
+ *
+ * The role list is deliberately identical to /:id/approve and /:id/reject
+ * below: anyone who can see the queue can act on it, and vice versa.
+ */
+router.get('/pending', authGuard, async (req, res) => {
+  try {
+    const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    if (!canApprove) return res.status(403).json({ error: 'Unauthorized to view pending entries.' });
+
+    let query = supabaseAdmin
+      .from('business_ledger')
+      .select('id, type, amount, description, created_at, status, receipt_url, metadata, date, users!user_id(name, email), locations(name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (req.user.role !== 'Platform Admin') {
+      query = query.eq('business_id', req.user.business_id);
+    }
+    query = applyLocationFilter(query, req);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (err) {
+    logger.error({ err: err }, 'Error fetching pending ledger entries:');
+    res.status(500).json({ error: 'Failed to fetch pending entries' });
+  }
+});
+
 router.put('/:id/approve', authGuard, async (req, res) => {
   try {
     const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);

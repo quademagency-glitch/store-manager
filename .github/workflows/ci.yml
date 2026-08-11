@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The guard CLAUDE.md documents. Root-level `client/` and `server/` have
+  # existed twice as stale duplicates left over from an earlier repo layout,
+  # and both times Railway and Vercel silently built the root copy instead of
+  # store-app/ — so real changes never reached production and nothing failed.
+  # If this job goes red, the fix is almost always to merge the new file into
+  # store-app/client/ or store-app/server/ and delete the root copy, not to
+  # weaken this check.
+  no-stale-root-dirs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if client/ or server/ exist at the repo root
+        run: |
+          stale=""
+          for d in client server; do
+            [ -e "$d" ] && stale="$stale $d"
+          done
+          if [ -n "$stale" ]; then
+            echo "::error::Stale root directories present:$stale"
+            echo "Canonical app code lives under store-app/. See CLAUDE.md."
+            exit 1
+          fi
+          echo "No stale root directories."
+
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: store-app/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: store-app/server/package-lock.json
+      - run: npm ci
+      # Supabase is mocked in these suites, so no database or secrets needed.
+      - run: npx jest
+
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: store-app/client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: store-app/client/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      # The Playwright suites are deliberately not run here: they need a
+      # browser, the visual project is serialised (~6 min), and its baselines
+      # are captured on a specific machine, so pixel comparison across runners
+      # would fail for reasons unrelated to the code.

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { postPublic } from '../lib/api';
 
 /**
  * The real Supabase-backed session hook. Selected by src/hooks/useAuth.js —
@@ -13,6 +14,7 @@ export function useAuth() {
   const [locationIds, setLocationIds] = useState([]);
   const [activeLocationId, setActiveLocationId] = useState(localStorage.getItem('active_location_id') || null);
   const [businessId, setBusinessId] = useState(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Fetch the user's role from the users table
@@ -24,7 +26,7 @@ export function useAuth() {
           status,
           role_id,
           business_id,
-          businesses (status),
+          businesses (status, is_demo),
           roles:role_id (name, permissions),
           user_locations (location_id)
         `)
@@ -37,6 +39,7 @@ export function useAuth() {
         setPermissions([]);
         setLocationIds([]);
         setBusinessId(null);
+        setIsDemo(false);
         return null;
       }
 
@@ -48,6 +51,7 @@ export function useAuth() {
         setPermissions([]);
         setLocationIds([]);
         setBusinessId(null);
+        setIsDemo(false);
         return null;
       }
 
@@ -59,6 +63,7 @@ export function useAuth() {
       setPermissions(userPermissions);
       setLocationIds(userLocations);
       setBusinessId(data.business_id || null);
+      setIsDemo(data.businesses?.is_demo === true);
 
       // Initialize active location if none set or if invalid
       const currentActive = localStorage.getItem('active_location_id');
@@ -74,13 +79,14 @@ export function useAuth() {
         }
       }
 
-      return { role: roleName, permissions: userPermissions, locationIds: userLocations, businessId: data.business_id || null };
+      return { role: roleName, permissions: userPermissions, locationIds: userLocations, businessId: data.business_id || null, isDemo: data.businesses?.is_demo === true };
     } catch (err) {
       if (import.meta.env.DEV) console.error('Unexpected error fetching role:', err);
       setRole(null);
       setPermissions([]);
       setLocationIds([]);
       setBusinessId(null);
+      setIsDemo(false);
       return null;
     }
   }, []);
@@ -104,6 +110,7 @@ export function useAuth() {
           setPermissions([]);
           setLocationIds([]);
           setBusinessId(null);
+          setIsDemo(false);
           setActiveLocationId(null);
           localStorage.removeItem('active_location_id');
           setLoading(false);
@@ -165,6 +172,46 @@ export function useAuth() {
     }
   }, [fetchRole]);
 
+  /**
+   * Start a sandbox session.
+   *
+   * The demo credentials never reach the browser: the server signs in on our
+   * behalf and hands back the tokens, which are installed into the Supabase
+   * client with setSession so that everything downstream — RLS reads, token
+   * refresh, the api.js bearer header — behaves exactly as it does for a real
+   * sign-in. Without setSession the app would hold a session the Supabase
+   * client knew nothing about, and every direct table read would fail.
+   */
+  const signInAsDemo = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await postPublic('/auth/demo-login', {});
+
+      const { data, error } = await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+      });
+
+      if (error) {
+        setLoading(false);
+        return { error };
+      }
+
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.user);
+        if (data.user) await fetchRole(data.user.id);
+      }
+
+      setLoading(false);
+      return { data };
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Demo sign in error:', err);
+      setLoading(false);
+      return { error: { message: err.message || 'Could not start the demo. Please try again.' } };
+    }
+  }, [fetchRole]);
+
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
@@ -178,6 +225,7 @@ export function useAuth() {
       setPermissions([]);
       setLocationIds([]);
       setBusinessId(null);
+      setIsDemo(false);
       setActiveLocationId(null);
       localStorage.removeItem('active_location_id');
     } catch (err) {
@@ -214,8 +262,10 @@ export function useAuth() {
     locationIds,
     activeLocationId,
     businessId,
+    isDemo,
     loading,
     signIn,
+    signInAsDemo,
     signOut,
     hasPermission,
     switchLocation,

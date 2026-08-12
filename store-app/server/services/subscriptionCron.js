@@ -27,8 +27,12 @@ async function processExpiredSubscriptions() {
     // Find all subscriptions that have expired (period_end is past, status is still active/trialing)
     const { data: expired, error } = await supabaseAdmin
       .from('business_subscriptions')
-      .select('*, businesses(*), platform_plans(name)')
+      .select('*, businesses!inner(*), platform_plans(name)')
       .in('status', ['active', 'trialing', 'past_due'])
+      // The public sandbox has no subscription today, so this changes nothing
+      // yet. It is here so that giving the demo a plan for testing can never
+      // suspend it or email a suspension notice to demo@quaderp.app.
+      .eq('businesses.is_demo', false)
       .lt('current_period_end', new Date().toISOString());
 
     if (error) {
@@ -140,12 +144,56 @@ async function sendExpirationWarnings() {
 }
 
 /**
+ * Lapse self-service free trials whose clock has run out.
+ *
+ * These have no `business_subscriptions` row at all — nobody has paid, so
+ * there is nothing to bill against. The trial lives entirely on the business
+ * row (`status = 'trialing'`, `trial_ends_at`), so it has to be swept
+ * separately from the subscription checks above.
+ *
+ * Lands on 'expired', never 'banned': an expired trial is a sales state, and
+ * the owner must still be able to sign in and pay. authGuard narrows an
+ * expired business down to billing rather than locking it out.
+ */
+async function processExpiredTrials() {
+  logger.info('[CRON] Checking for expired free trials...');
+
+  try {
+    const { data: lapsed, error } = await supabaseAdmin
+      .from('businesses')
+      .update({ status: 'expired' })
+      .eq('status', 'trialing')
+      .eq('is_demo', false)
+      .lt('trial_ends_at', new Date().toISOString())
+      .select('id, name, contact_email');
+
+    if (error) {
+      logger.error({ err: error }, '[CRON] Error expiring trials');
+      return;
+    }
+
+    if (!lapsed || lapsed.length === 0) {
+      logger.info('[CRON] No trials expired today.');
+      return;
+    }
+
+    for (const business of lapsed) {
+      logger.info({ businessId: business.id, name: business.name }, '[CRON] Free trial expired');
+    }
+    logger.info(`[CRON] Expired ${lapsed.length} free trial(s).`);
+  } catch (err) {
+    logger.error({ err }, '[CRON] Error processing expired trials');
+  }
+}
+
+/**
  * Run all subscription checks
  */
 async function runSubscriptionChecks() {
   logger.info('[CRON] === Running daily subscription checks ===');
   await sendExpirationWarnings();
   await processExpiredSubscriptions();
+  await processExpiredTrials();
   logger.info('[CRON] === Subscription checks complete ===');
 }
 
@@ -178,5 +226,6 @@ module.exports = {
   initSubscriptionCron,
   runSubscriptionChecks,
   processExpiredSubscriptions,
+  processExpiredTrials,
   sendExpirationWarnings,
 };

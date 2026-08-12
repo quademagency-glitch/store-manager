@@ -4,6 +4,8 @@ import { useTheme } from '../lib/ThemeContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 import OfflineStatus from './OfflineStatus';
+import DemoBanner from './DemoBanner';
+import { useTour } from './ProductTour';
 
 const Icons = {
   dashboard: (
@@ -105,6 +107,13 @@ const Icons = {
       <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
     </svg>
   ),
+  help: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M9.3 9.2a2.8 2.8 0 0 1 5.45.93c0 1.87-2.8 2.8-2.8 2.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="12" cy="17" r="0.9" fill="currentColor"/>
+    </svg>
+  ),
   signout: (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
       <path d="M6.75 15.75H3.75C3.15 15.75 2.25 15.15 2.25 14.25V3.75C2.25 2.85 3.15 2.25 3.75 2.25H6.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -137,6 +146,8 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { isActive: isTourActive, step: tourStep, startTour } = useTour();
+
   const [availableLocations, setAvailableLocations] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -167,6 +178,14 @@ export default function MainLayout() {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  /* Every tour step points at the sidebar, which below the layout breakpoint
+     is off-canvas. Opening the rail first is the difference between a tour
+     and eight tooltips anchored to nothing. */
+  const handleStartTour = () => {
+    setIsMobileMenuOpen(true);
+    startTour();
   };
 
   /* Collapsible sidebar sections.
@@ -210,7 +229,7 @@ export default function MainLayout() {
     groups.push({
       title: null, // No header for top-level
       items: [
-        { path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard, visible: true },
+        { path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard, visible: true, tour: 'dashboard' },
       ].filter(i => i.visible)
     });
 
@@ -219,10 +238,10 @@ export default function MainLayout() {
       title: 'Store Operations',
       icon: Icons.products,
       items: [
-        { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales') },
+        { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales'), tour: 'sales' },
         { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('view_products') },
-        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory') },
-        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers') },
+        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory'), tour: 'inventory' },
+        { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers'), tour: 'suppliers' },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: hasPermission('view_purchases') },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: hasPermission('manage_returns') },
@@ -242,7 +261,7 @@ export default function MainLayout() {
         { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: hasPermission('manage_accounting_settings') },
         { path: '/invoice', label: 'Subscription Invoices', icon: Icons.invoice, visible: hasPermission('manage_business') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('manage_reconciliation') },
-        { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('view_financial_reports') },
+        { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('view_financial_reports'), tour: 'reports' },
         { path: '/reports/accounts-receivable', label: 'Accounts Receivable', icon: Icons.invoice, visible: hasPermission('view_financial_reports') },
         { path: '/accounts-receivable', label: 'Receivables & Invoices', icon: Icons.invoice, visible: hasPermission('manage_financials') },
         { path: '/accounts-payable', label: 'Payables & Bills', icon: Icons.invoice, visible: hasPermission('manage_financials') },
@@ -254,7 +273,7 @@ export default function MainLayout() {
       title: 'CRM',
       icon: Icons.crm,
       items: [
-        { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales') },
+        { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales'), tour: 'customers' },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
         { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_marketing') },
         { path: '/loyalty', label: 'Loyalty & Rewards', icon: Icons.billing, visible: hasPermission('manage_loyalty') },
@@ -270,7 +289,7 @@ export default function MainLayout() {
         { path: '/hr/attendance', label: 'Attendance', icon: Icons.reconciliation, visible: true }, // Left true as requested (clock in/out)
         { path: '/hr/schedules', label: 'Schedules', icon: Icons.history, visible: hasPermission('manage_hr_schedules') },
         { path: '/hr/my-commissions', label: 'My Commissions', icon: Icons.billing, visible: hasPermission('view_my_commissions') },
-        { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users') },
+        { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users'), tour: 'settings' },
       ].filter(i => i.visible)
     };
     if (hr.items.length > 0) groups.push(hr);
@@ -281,7 +300,7 @@ export default function MainLayout() {
       icon: Icons.settings,
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
-        { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_business') },
+        { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_business'), tour: 'setup' },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_organization') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_locations') },
         { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_users') },
@@ -304,6 +323,16 @@ export default function MainLayout() {
       ].filter(i => i.visible)
     };
     if (platformGroup.items.length > 0) groups.push(platformGroup);
+
+    // ─── Help ───
+    // Ungrouped and last, which is where people look for it. No permission
+    // gate: the roles with the fewest permissions ask the most questions.
+    groups.push({
+      title: null,
+      items: [
+        { path: '/help', label: 'Help', icon: Icons.help, visible: true },
+      ],
+    });
 
     return groups;
   }, [hasPermission]);
@@ -515,11 +544,18 @@ export default function MainLayout() {
             const hasActiveItem = group.items.some(item =>
               item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
             );
+            /* Most tour targets live inside a section that is collapsed by
+               default, so the element the tooltip is looking for is not in
+               the DOM at all when its step begins. Forcing the owning section
+               open here is what makes the step findable — and it overrides a
+               stored "collapsed" choice, which is restored the moment the
+               tour ends because nothing was written to collapsedSections. */
+            const holdsTourTarget = isTourActive && group.items.some(item => item.tour === tourStep?.id);
             /* No stored entry → collapsed, unless this section holds the
                current route. Derived rather than seeded into state so it keeps
                following navigation: land on /invoices and Accounting opens on
                its own, with no effect and no route-change bookkeeping. */
-            const isCollapsed = group.title
+            const isCollapsed = group.title && !holdsTourTarget
               ? (collapsedSections[group.title] ?? !hasActiveItem)
               : false;
 
@@ -554,6 +590,7 @@ export default function MainLayout() {
                         <button
                           key={item.path}
                           className={`sidebar-link ${isActive ? 'active' : ''}`}
+                          data-tour-step={item.tour}
                           onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
                         >
                           {item.icon}
@@ -580,6 +617,22 @@ export default function MainLayout() {
               ) : (
                 <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> <span style={{fontSize: '0.8rem'}}>Light Mode</span></>
               )}
+            </button>
+          </div>
+
+          <div style={{ padding: '0 16px', marginBottom: '16px' }}>
+            <button
+              type="button"
+              className="sidebar-tour-button"
+              onClick={handleStartTour}
+              title="Walk through the main features"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              Take a tour
             </button>
           </div>
 
@@ -615,6 +668,7 @@ export default function MainLayout() {
 
       {/* ── Main Content ── */}
       <main className="dashboard-main">
+        <DemoBanner />
         <div className="page-shell">
           <div className="offline-status-slot">
             <OfflineStatus />

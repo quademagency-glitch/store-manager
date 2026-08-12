@@ -37,9 +37,29 @@ function makeQueryMock(result = { data: [], error: null, count: 0 }) {
 
 /**
  * Build a mock supabaseAdmin object.
- * @param {Object} overrides - per-table result overrides: { tableName: { data, error } }
+ *
+ * @param {Object} overrides - per-table result overrides: `{ tableName: { data, error } }`.
+ *   A table's override may instead be an **array** of results, consumed one
+ *   per `from(table)` call and then repeating the last entry. Routes that
+ *   query the same table more than once with different intent need this —
+ *   `/api/auth/signup` reads `users` twice, first to reject a duplicate
+ *   email (expects nothing) and later to confirm the profile trigger fired
+ *   (expects a row) — and a single fixed result cannot satisfy both.
  */
 function buildMockSupabase(overrides = {}) {
+  // Per-table cursors for array-style overrides.
+  const calls = {};
+
+  function resultFor(table, fallback) {
+    const override = overrides[table];
+    if (override === undefined) return fallback;
+    if (!Array.isArray(override)) return override;
+
+    const index = calls[table] ?? 0;
+    calls[table] = index + 1;
+    return override[Math.min(index, override.length - 1)];
+  }
+
   const authUser = overrides._authUser ?? { id: 'user-uuid-123', email: 'test@example.com' };
   const defaultUser = {
     id: 'user-uuid-123',
@@ -71,14 +91,17 @@ function buildMockSupabase(overrides = {}) {
         createUser: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
         deleteUser: jest.fn().mockResolvedValue({ data: {}, error: null }),
         updateUserById: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
+        generateLink: jest.fn().mockResolvedValue({
+          data: { user: authUser, properties: { action_link: 'https://example.test/confirm' } },
+          error: null,
+        }),
       },
     },
     from: jest.fn((table) => {
-      if (table === 'users') {
-        const userResult = overrides.users ?? { data: defaultUser, error: null };
-        return makeQueryMock({ ...userResult, single: userResult });
-      }
-      const tableResult = overrides[table] ?? { data: [], error: null, count: 0 };
+      const fallback = table === 'users'
+        ? { data: defaultUser, error: null }
+        : { data: [], error: null, count: 0 };
+      const tableResult = resultFor(table, fallback);
       return makeQueryMock({ ...tableResult, single: tableResult });
     }),
     rpc: jest.fn().mockResolvedValue({ data: null, error: null }),

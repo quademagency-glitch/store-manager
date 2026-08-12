@@ -6,6 +6,7 @@ import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+const Signup = lazy(() => import('./pages/Signup'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Sales = lazy(() => import('./pages/Sales'));
@@ -32,9 +33,11 @@ const CRMCommunications = lazy(() => import('./pages/CRMCommunications'));
 const AccountsReceivableLedger = lazy(() => import('./pages/AccountsReceivable'));
 const AccountsPayableLedger = lazy(() => import('./pages/AccountsPayable'));
 const ImportWizard = lazy(() => import('./pages/ImportWizard'));
+const HelpCenter = lazy(() => import('./pages/HelpCenter'));
 
 import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
+import { ProductTourProvider } from './components/ProductTour';
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -82,16 +85,23 @@ export default function App() {
                 <Suspense fallback={<div className="route-suspense-fallback" />}>
                 <Routes>
                   <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/platform-admin" element={
                     <ProtectedRoute requiredPermission="manage_platform"><PlatformAdmin /></ProtectedRoute>
                   } />
                   {/* ── UNIFIED LOGGED-IN ROUTES ── */}
+                  {/* The tour provider wraps MainLayout rather than the whole
+                      app: every step points at the sidebar, so there is
+                      nothing for it to do on /login or /signup, and starting
+                      it there would ambush people who are not signed in. */}
                   <Route
                     element={
                       <ProtectedRoute>
-                        <MainLayout />
+                        <ProductTourProvider>
+                          <MainLayout />
+                        </ProductTourProvider>
                       </ProtectedRoute>
                     }
                   >
@@ -164,6 +174,12 @@ export default function App() {
                     } />
                     <Route path="/profile" element={
                       <ProtectedRoute><UserProfile /></ProtectedRoute>
+                    } />
+                    {/* No permission gate: everyone who can sign in can read
+                        the help, including the roles whose questions it most
+                        often answers. */}
+                    <Route path="/help" element={
+                      <ProtectedRoute><HelpCenter /></ProtectedRoute>
                     } />
 
                     {/* Business Admin Portal Routes */}

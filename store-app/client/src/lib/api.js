@@ -117,6 +117,49 @@ export const api = {
   postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),
 };
 
+/**
+ * POST to a public endpoint — signup, demo login — where there is no session
+ * yet, so `fetchWithAuth` would throw before it ever reached the network.
+ *
+ * Throws the same shape of error as `api.*` (a user-safe `message`), so
+ * callers can render `err.message` without special-casing.
+ */
+export async function postPublic(endpoint, body) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    throw apiError(
+      navigator.onLine === false
+        ? "You're offline. Reconnect and try again."
+        : "Couldn't reach the server. Check your connection and try again.",
+      { endpoint, cause: networkErr },
+    );
+  }
+
+  if (!response.ok) {
+    let errorMessage = HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`;
+    try {
+      const errorData = await response.json();
+      // Zod validation errors come back as a details[] rather than a message.
+      if (Array.isArray(errorData.details) && errorData.details.length > 0) {
+        errorMessage = errorData.details.map(d => d.message).join(' ');
+      } else {
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      }
+    } catch {
+      // Not JSON
+    }
+    throw apiError(errorMessage, { endpoint, status: response.status });
+  }
+
+  return response.status === 204 ? null : response.json();
+}
+
 // Unauthenticated lookup used to brand the login page on a business's
 // subdomain — there is no session yet at that point, so this bypasses
 // fetchWithAuth entirely. Returns null if the slug doesn't resolve.

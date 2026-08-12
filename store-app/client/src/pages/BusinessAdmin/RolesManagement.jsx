@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 
 import PermissionTree from '../../components/PermissionTree';
-import { PageHeader, PageState, EmptyStateRow, SkeletonTable } from '../../components/ui';
+import { PageHeader, PageState, EmptyStateRow, HelpHint, SkeletonTable } from '../../components/ui';
 
 
 export default function RolesManagement() {
@@ -95,7 +95,7 @@ export default function RolesManagement() {
   return (
     <div>
       <PageHeader
-        title="Roles & Permissions"
+        title={<>Roles &amp; Permissions<HelpHint article="roles-and-permissions" label="How roles and permissions work" /></>}
         subtitle="Manage custom roles and access levels for your team."
         actions={
           <button className="btn btn-primary" onClick={handleCreate}>

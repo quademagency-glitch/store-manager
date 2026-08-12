@@ -12,7 +12,9 @@
     "migrate": "node db/migrate.js",
     "migrate:status": "node db/migrate.js status",
     "migrate:up": "node db/migrate.js up",
-    "db:drift": "node db/schema-drift.js"
+    "db:drift": "node db/schema-drift.js",
+    "seed:demo": "node scripts/seed-demo-data.js",
+    "seed:demo:if-empty": "node scripts/seed-demo-data.js --if-empty"
   },
   "keywords": [],
   "author": "",

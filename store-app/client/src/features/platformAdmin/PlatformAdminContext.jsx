@@ -709,12 +709,31 @@ export function PlatformAdminProvider({ children }) {
     );
   }, [users, userSearchTerm]);
 
-  const activeBusinesses = useMemo(() => businesses.filter(b => b.status !== 'banned' && b.name !== 'Pending Assignment'), [businesses]);
-  const activeUsers = useMemo(() => users.filter(u => u.status !== 'banned'), [users]);
-  const businessAdmins = useMemo(() => users.filter(u => u.roles?.name === 'Business Admin'), [users]);
+  /* Rows that are plumbing rather than customers, and so must not be counted.
+     "Pending Assignment" is the holding pen for users with no business yet;
+     the demo tenant is the public sandbox. Both still appear in the business
+     *list* — an operator needs to be able to go and look at them — they are
+     just excluded from the headline figures, which are meant to answer "how
+     many businesses do we have". */
+  const isCountable = (b) => b.name !== 'Pending Assignment' && !b.is_demo;
+
+  const activeBusinesses = useMemo(
+    () => businesses.filter(b => b.status !== 'banned' && isCountable(b)),
+    [businesses],
+  );
+  const activeUsers = useMemo(() => {
+    const demoBusinessIds = new Set(businesses.filter(b => b.is_demo).map(b => b.id));
+    return users.filter(u => u.status !== 'banned' && !demoBusinessIds.has(u.business_id));
+  }, [users, businesses]);
+  const businessAdmins = useMemo(() => {
+    const demoBusinessIds = new Set(businesses.filter(b => b.is_demo).map(b => b.id));
+    return users.filter(u => u.roles?.name === 'Business Admin' && !demoBusinessIds.has(u.business_id));
+  }, [users, businesses]);
   const recentBusinesses = useMemo(() => {
     const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return businesses.filter(b => b.name !== 'Pending Assignment' && new Date(b.created_at) >= sevenDaysAgo);
+    // The demo is torn down and recreated nightly, so without the exclusion it
+    // would report as a brand-new signup every single morning.
+    return businesses.filter(b => isCountable(b) && new Date(b.created_at) >= sevenDaysAgo);
   }, [businesses]);
 
   /* ============================

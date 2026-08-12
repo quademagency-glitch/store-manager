@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Icons } from '../components/icons/Icons';
-import { EmptyStateRow, SkeletonRows } from '../components/ui';
+import { EmptyStateRow, HelpHint, SkeletonRows } from '../components/ui';
 import { IS_MOCK } from '../lib/mockMode';
 
 export default function Reconciliation() {
@@ -45,7 +45,10 @@ export default function Reconciliation() {
     <div className="reconciliation-page page-container py-xl">
       <header className="page-header flex justify-between items-end">
         <div>
-          <h1 className="page-title">End-of-day Reconciliation</h1>
+          <h1 className="page-title">
+            End-of-day Reconciliation
+            <HelpHint article="understanding-ledger" label="How your ledger fits together" />
+          </h1>
           <p className="page-subtitle">Daily summary of sales and shrinkage per staff member.</p>
         </div>
         

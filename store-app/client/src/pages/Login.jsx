@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { useBusinessBranding } from '../hooks/useBusinessBranding';
 
@@ -10,8 +10,36 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { signIn, signOut, isAuthenticated, loading } = useAuthContext();
+  const [startingDemo, setStartingDemo] = useState(false);
+
+  const { signIn, signInAsDemo, signOut, isAuthenticated, loading } = useAuthContext();
   const { slug, business, loading: brandingLoading } = useBusinessBranding();
+
+  const [searchParams] = useSearchParams();
+  const demoRequested = searchParams.get('demo') === '1';
+  const demoAutoStarted = useRef(false);
+
+  /* `?demo=1` is how "Try Live Demo" on the marketing page gets here: one
+     click on the landing page should land in the app, not on a login form
+     with another button to find.
+
+     Declared above the early returns below, because those returns are
+     conditional and a hook after them would not run on every render.
+     The ref guards against React 18's double-invoked effects in
+     development firing two sign-ins. */
+  useEffect(() => {
+    if (!demoRequested || slug || loading || brandingLoading || isAuthenticated) return;
+    if (demoAutoStarted.current) return;
+    demoAutoStarted.current = true;
+
+    setStartingDemo(true);
+    signInAsDemo().then(({ error: demoError }) => {
+      if (demoError) {
+        setError(demoError.message || "The demo isn't available right now. Please try again shortly.");
+        setStartingDemo(false);
+      }
+    });
+  }, [demoRequested, slug, loading, brandingLoading, isAuthenticated, signInAsDemo]);
 
   if (loading || brandingLoading) {
     return (
@@ -62,6 +90,20 @@ export default function Login() {
     // The AuthContext will react to the onAuthStateChange event,
     // update the global state, and the component will re-render
     // and trigger the <Navigate to="/dashboard" />.
+  };
+
+  const handleDemo = async () => {
+    setError('');
+    setStartingDemo(true);
+
+    const { error: demoError } = await signInAsDemo();
+
+    if (demoError) {
+      setError(demoError.message || "The demo isn't available right now. Please try again shortly.");
+      setStartingDemo(false);
+      return;
+    }
+    // As with sign-in: leave the redirect to the auth state change.
   };
 
   // A slug resolved from the subdomain but no matching (or active) business
@@ -215,6 +257,31 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          {/* Only offered on the plain login page. A business-branded
+              subdomain is that tenant's own portal — inviting visitors there
+              to create a *different* business, or to wander into a sandbox,
+              would be nonsense. */}
+          {!slug && (
+            <>
+              <div className="login-signup-prompt">
+                Don&rsquo;t have an account? <Link to="/signup">Start free trial</Link>
+              </div>
+
+              <div className="login-demo-prompt">
+                Just looking?
+                <br />
+                <button
+                  type="button"
+                  className="login-demo-button"
+                  onClick={handleDemo}
+                  disabled={submitting || startingDemo}
+                >
+                  {startingDemo ? 'Opening the demo...' : 'Try the demo instead'}
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Footer */}
           <div className="login-footer">

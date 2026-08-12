@@ -1,0 +1,222 @@
+/* ============================================================
+   Signup page — self-service free trial.
+
+   Deliberately thin. The signup form reuses the whole `.login-*`
+   surface from login-page.css (card, field, input, button, error)
+   so the two pages stay visually identical as that file evolves.
+   Everything here is the delta: the plan card, the slug preview,
+   the two-up name/phone row, and the "check your email" screen.
+   ============================================================ */
+
+/* The form is taller and wider than the login card — two-up rows need
+   the room, and 440px makes them cramp. */
+.signup-container {
+  max-width: 520px;
+}
+
+.signup-card {
+  padding: var(--space-xl) var(--space-2xl);
+}
+
+/* --- Plan / trial summary ------------------------------------ */
+
+.signup-plan-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  background: color-mix(in srgb, var(--color-accent-primary) 7%, transparent);
+}
+
+.signup-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-xs);
+}
+
+.signup-plan-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.signup-plan-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  color: #ffffff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.signup-plan-detail {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* --- Fields --------------------------------------------------- */
+
+.signup-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.signup-optional {
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.signup-slug-preview {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.signup-slug-preview strong {
+  color: var(--color-accent-primary);
+  font-weight: 600;
+}
+
+/* --- Success screen ------------------------------------------- */
+
+.signup-success {
+  text-align: center;
+}
+
+.signup-success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-lg);
+  border-radius: var(--radius-full);
+  color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 14%, transparent);
+}
+
+.signup-success .login-subtitle {
+  line-height: 1.6;
+}
+
+.signup-summary {
+  margin: var(--space-xl) 0 var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Label over value rather than a two-column row. The sign-in link is a full
+   subdomain (`acme-hardware.app.quaderp.app`) and in a ~340px card there is
+   no column split that does not break it across three ragged lines. */
+.signup-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.signup-summary dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.signup-summary dd {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.signup-summary dd a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+.signup-summary dd a:hover {
+  text-decoration: underline;
+}
+
+.signup-success-note {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-lg);
+}
+
+/* The success CTA is a react-router <Link>, not a <button>, so it needs the
+   inline-flex centring that `.login-button` gets from being a block button. */
+.signup-success-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-decoration: none;
+}
+
+/* --- Footer --------------------------------------------------- */
+
+.signup-footer p {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.signup-footer a {
+  color: var(--color-accent-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Link to signup from the login card's footer. */
+.login-signup-prompt {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.login-signup-prompt a {
+  color: var(--color-accent-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-signup-prompt a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 520px) {
+  /* Two-up collapses before the inputs get too narrow to read a phone
+     number in. */
+  .signup-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-card {
+    padding: var(--space-xl) var(--space-lg);
+  }
+}

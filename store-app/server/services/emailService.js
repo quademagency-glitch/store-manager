@@ -356,8 +356,33 @@ function buildSuspensionNoticeHtml(business) {
 /**
  * Build the branded welcome email for a newly-added business.
  */
-function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, loginUrl, planName }) {
+/**
+ * @param {'set-password'|'verify-email'} ctaMode
+ *   Operator-provisioned businesses (`set-password`) have had a password
+ *   generated for them and must choose their own before they can get in.
+ *   Self-service signups (`verify-email`) already chose one during signup —
+ *   what stands between them and the app is confirming they own the address.
+ *   Same branded shell either way; only the CTA and the copy around it move.
+ */
+function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, loginUrl, planName, ctaMode = 'set-password', trialEndsAt = null }) {
   const greeting = adminName && adminName !== 'Business Admin' ? adminName : business.name;
+  const verifying = ctaMode === 'verify-email';
+
+  const trialLine = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const cta = verifying
+    ? {
+        intro: `Good to have <strong>${business.name}</strong> with us. Your free trial is set up and waiting. The only thing left is to confirm this email address, and then you're in.`,
+        withLink: { label: 'Confirm your email', note: 'The link is good for about an hour. If it runs out, sign in and we’ll send you a fresh one.' },
+        withoutLink: { label: `Go to ${PLATFORM_NAME}`, note: 'Head to the sign-in page and use the password you chose during signup.' },
+      }
+    : {
+        intro: `Good to have <strong>${business.name}</strong> with us. Your account is ready to go. The only thing left is to choose a password, and then you're in.`,
+        withLink: { label: 'Choose your password', note: 'The link is good for about an hour. If it runs out, tap “Forgot password” on the sign-in page and we’ll send you a fresh one.' },
+        withoutLink: { label: `Go to ${PLATFORM_NAME}`, note: 'Head to the sign-in page and tap “Forgot password” to set yours.' },
+      };
 
   const steps = [
     'Fill in your business details, like your logo and currency',
@@ -395,26 +420,28 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
                 Hi <strong>${greeting}</strong>,
               </p>
               <p style="margin:12px 0 0;color:#475569;font-size:15px;line-height:1.6;">
-                Good to have <strong>${business.name}</strong> with us. Your account is ready to go. The only thing
-                left is to choose a password, and then you're in.
+                ${cta.intro}
               </p>
             </td>
           </tr>
 
-          <!-- Set password CTA -->
+          <!-- Primary CTA: set a password, or confirm the address -->
           <tr>
             <td align="center" style="padding:24px 40px 8px;">
               ${setPasswordUrl ? `
               <a href="${setPasswordUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:12px;font-size:16px;font-weight:600;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
-                Choose your password
+                ${cta.withLink.label}
               </a>
-              <p style="margin:12px 0 0;color:#94a3b8;font-size:12px;">The link is good for about an hour. If it runs out, tap “Forgot password” on the sign-in page and we'll send you a fresh one.</p>
+              <p style="margin:12px 0 0;color:#94a3b8;font-size:12px;">${cta.withLink.note}</p>
               ` : `
               <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:12px;font-size:16px;font-weight:600;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
-                Go to ${PLATFORM_NAME}
+                ${cta.withoutLink.label}
               </a>
-              <p style="margin:12px 0 0;color:#94a3b8;font-size:12px;">Head to the sign-in page and tap “Forgot password” to set yours.</p>
+              <p style="margin:12px 0 0;color:#94a3b8;font-size:12px;">${cta.withoutLink.note}</p>
               `}
+              ${trialLine ? `
+              <p style="margin:16px 0 0;color:#475569;font-size:13px;">Your free trial runs until <strong style="color:#0f172a;">${trialLine}</strong>. No card needed until then.</p>
+              ` : ''}
             </td>
           </tr>
 
@@ -679,11 +706,18 @@ async function sendBusinessWelcomeEmail(business, admin, opts = {}) {
   }
 
   const loginUrl = resolveBusinessLoginUrl(business);
-  const setPasswordUrl = opts.setPasswordUrl || await generateSetPasswordLink(to, loginUrl);
+  // A self-service signup supplies its own action link (an email-confirmation
+  // link) and must not have a password-reset link minted for it — the owner
+  // already chose a password.
+  const setPasswordUrl = opts.setPasswordUrl !== undefined
+    ? opts.setPasswordUrl
+    : await generateSetPasswordLink(to, loginUrl);
   const html = buildWelcomeHtml(business, admin.name, to, {
     setPasswordUrl,
     loginUrl,
     planName: opts.planName,
+    ctaMode: opts.ctaMode,
+    trialEndsAt: opts.trialEndsAt,
   });
   const subject = `${business.name} is ready to go on ${PLATFORM_NAME}`;
 

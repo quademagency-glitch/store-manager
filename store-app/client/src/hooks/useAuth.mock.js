@@ -27,8 +27,12 @@ export function useAuth() {
     locationIds: ['mock-loc'],
     activeLocationId: 'mock-loc',
     businessId: 'mock-biz',
+    // The harness is never the sandbox tenant, so the demo banner stays out of
+    // the screenshot baselines. Set VITE_MOCK_DEMO=true to capture it.
+    isDemo: import.meta.env.VITE_MOCK_DEMO === 'true',
     loading: false,
     signIn: async () => ({ data: {}, businessId: 'mock-biz' }),
+    signInAsDemo: async () => ({ data: {} }),
     signOut: async () => {},
     hasPermission,
     switchLocation: () => {},

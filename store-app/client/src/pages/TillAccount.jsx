@@ -6,7 +6,7 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { Icons as SharedIcons } from '../components/icons/Icons';
 import { useCurrency } from '../hooks/useCurrency';
 import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
-import { ErrorBanner } from '../components/ui';
+import { ErrorBanner, HelpHint } from '../components/ui';
 
 const Icons = {
   printer: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
@@ -191,7 +191,10 @@ export default function TillAccount() {
       {/* Header Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 pb-4 w-full border-b">
         <div>
-          <h1 className="text-xl font-bold uppercase tracking-wide text-primary">Till Account Ledger</h1>
+          <h1 className="text-xl font-bold uppercase tracking-wide text-primary">
+            Till Account Ledger
+            <HelpHint article="till-and-cash-drawer" label="Managing the till and cash drawer" />
+          </h1>
           <p className="text-xs mt-1 uppercase text-tertiary">Cash movements and vault balance.</p>
         </div>
         

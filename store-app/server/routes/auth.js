@@ -5,13 +5,43 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { seedAccountingTemplates } = require('../services/accountingTemplateSeeder');
+const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl } = require('../services/emailService');
+const { isDemoEnabled } = require('../services/demoResetCron');
+const { DEMO_EMAIL, DEMO_PASSWORD } = require('../scripts/seed-demo-data');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+
+// How long a self-service free trial lasts. Deliberately not read from the
+// plan's `trial_days` (currently 7 across the board) — that column drives
+// operator-assigned subscriptions, and the public offer is 14 days.
+const TRIAL_DAYS = 14;
+const DEFAULT_SIGNUP_PLAN = 'Single Branch';
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // Limit each IP to 10 requests per window
   message: { error: 'Too many login attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Signup creates a business, an auth user and a mailbox hit, so it is far
+// more expensive than a login attempt and correspondingly tighter.
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { error: 'Too many signup attempts from this address. Please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Looser than signup: starting the demo creates nothing and sends no email,
+// so the only thing worth throttling is somebody hammering Supabase sign-in.
+const demoLoginLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  message: { error: 'Too many demo sessions from this address. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -23,9 +53,288 @@ const registerSchema = z.object({
   role_id: z.string().uuid('Invalid role ID'),
 });
 
+const signupSchema = z.object({
+  name: z.string().trim().min(1, 'Your name is required').max(120),
+  email: z.string().trim().toLowerCase().email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(200),
+  business_name: z.string().trim().min(2, 'Business name is required').max(120),
+  phone: z.string().trim().max(40).optional().or(z.literal('')),
+});
+
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
+});
+
+/**
+ * POST /api/auth/signup
+ * Public self-service signup: creates a business on a 14-day free trial plus
+ * its owner account, with no Platform Admin involved.
+ *
+ * Order matters, and it is not the obvious one. The business has to exist
+ * first, because `handle_new_user()` (migration 043) fires on every insert
+ * into auth.users and reads `business_id` out of the auth metadata to decide
+ * where the profile row lands. Create the auth user first and the trigger
+ * files them under "Pending Assignment" as a Sales Executive, which is
+ * exactly the wrong answer for someone who just created a business.
+ *
+ * Two other things happen for free as a result of inserting the business,
+ * and are deliberately not repeated here:
+ *   - the slug (trg_set_business_slug, migration 058)
+ *   - the default accounting templates (migration 028) — still called
+ *     explicitly below, idempotently, so the app notices if that trigger
+ *     ever goes away.
+ *
+ * Access: Public, rate-limited to 5/hour per IP.
+ */
+router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, res) => {
+  const { name, email, password, business_name, phone } = req.body;
+
+  // Tracked so the catch-all can undo a half-finished signup. A business with
+  // no owner is worse than no business at all: it holds the slug, shows up in
+  // Platform Admin, and nobody can sign in to it.
+  let businessId = null;
+  let authUserId = null;
+
+  const rollback = async (reason) => {
+    if (authUserId) {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      if (error) logger.error({ err: error, authUserId, reason }, 'Signup rollback: could not delete auth user');
+    }
+    if (businessId) {
+      // users/accounting_templates cascade or are orphan-safe; the business row
+      // is the one that must not survive, because it owns the slug.
+      const { error } = await supabaseAdmin.from('businesses').delete().eq('id', businessId);
+      if (error) logger.error({ err: error, businessId, reason }, 'Signup rollback: could not delete business');
+    }
+  };
+
+  try {
+    // ── Reject duplicates before creating anything ──────────────
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'Email already registered',
+        message: 'An account with that email already exists. Try signing in instead.',
+      });
+    }
+
+    // ── Resolve the plan the trial runs against ─────────────────
+    // Not fatal if it is missing: the trial is defined by trial_ends_at, and
+    // a business with no plan attached still works — it just shows nothing on
+    // the billing page until someone picks one.
+    const { data: plan } = await supabaseAdmin
+      .from('platform_plans')
+      .select('id, name')
+      .eq('name', DEFAULT_SIGNUP_PLAN)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!plan) {
+      logger.warn({ plan: DEFAULT_SIGNUP_PLAN }, 'Signup default plan not found; business will start with no plan');
+    }
+
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+    // ── 1. The business (slug + templates come from triggers) ───
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from('businesses')
+      .insert({
+        name: business_name,
+        status: 'trialing',
+        trial_ends_at: trialEndsAt,
+        subscription_plan_id: plan ? plan.id : null,
+        contact_email: email,
+        phone: phone || null,
+      })
+      .select('id, name, slug, status, trial_ends_at, subscription_plan_id')
+      .single();
+
+    if (businessError || !business) {
+      logger.error({ err: businessError, business_name }, 'Signup failed at business creation');
+      return res.status(500).json({
+        error: 'Signup failed',
+        message: 'We could not create your business. Please try again.',
+      });
+    }
+    businessId = business.id;
+
+    // ── 2. The owner's auth account ─────────────────────────────
+    // generateLink('signup') both creates the unconfirmed user and hands back
+    // the confirmation link in one call, so there is no window where the
+    // account exists but we have no way to let them verify it. `data` becomes
+    // raw_user_meta_data, which is what handle_new_user() reads.
+    const loginUrl = resolveBusinessLoginUrl(business);
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      password,
+      options: {
+        data: { name, business_id: business.id, role: 'Business Admin' },
+        redirectTo: `${loginUrl}/login`,
+      },
+    });
+
+    if (linkError || !linkData?.user) {
+      logger.error({ err: linkError, email }, 'Signup failed at auth user creation');
+      await rollback('auth-user-creation');
+
+      // Supabase words duplicate-email rejections clearly enough to pass on.
+      const duplicate = /already|exists|registered/i.test(linkError?.message || '');
+      return res.status(duplicate ? 409 : 500).json({
+        error: 'Signup failed',
+        message: duplicate
+          ? 'An account with that email already exists. Try signing in instead.'
+          : 'We could not create your account. Please try again.',
+      });
+    }
+    authUserId = linkData.user.id;
+    const confirmationUrl = linkData.properties?.action_link || null;
+
+    // ── 3. Confirm the trigger did file them correctly ──────────
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('id, business_id, role_id, roles:role_id (name)')
+      .eq('id', authUserId)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.business_id !== business.id || profile.roles?.name !== 'Business Admin') {
+      logger.error(
+        { email, businessId: business.id, profile, err: profileError },
+        'Signup: profile row missing or mis-assigned after auth user creation',
+      );
+      await rollback('profile-mismatch');
+      return res.status(500).json({
+        error: 'Signup failed',
+        message: 'We could not finish setting up your account. Please try again.',
+      });
+    }
+
+    // ── 4. Accounting templates (no-op when the trigger got there) ──
+    await seedAccountingTemplates(business.id);
+
+    // ── 5. Welcome email. Best-effort: never fail a signup on it ──
+    try {
+      const result = await sendBusinessWelcomeEmail(
+        business,
+        { name, email },
+        {
+          planName: plan ? plan.name : null,
+          setPasswordUrl: confirmationUrl,
+          ctaMode: 'verify-email',
+          trialEndsAt,
+        },
+      );
+      if (!result.success) {
+        logger.warn({ email, business: business.name, error: result.error }, 'Signup welcome email not sent');
+      }
+    } catch (emailErr) {
+      logger.error({ err: emailErr, email }, 'Signup welcome email threw (account still created)');
+    }
+
+    logger.info({ businessId: business.id, slug: business.slug, email }, 'Self-service signup completed');
+
+    return res.status(201).json({
+      message: 'Check your email to verify your account',
+      business: { name: business.name, slug: business.slug, login_url: loginUrl },
+      trial_ends_at: trialEndsAt,
+      plan: plan ? plan.name : null,
+    });
+  } catch (err) {
+    logger.error({ err, email }, 'Signup error');
+    await rollback('unexpected-error');
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Signup failed. Please try again.',
+    });
+  }
+});
+
+/**
+ * POST /api/auth/demo-login
+ * Sign a visitor straight into the public sandbox — no signup, no email.
+ *
+ * The credentials live only on the server. Handing them to the browser to use
+ * with signInWithPassword would put a working password for a real Supabase
+ * account into the page source, and "it's only the demo account" stops being
+ * true the moment someone changes what the demo account can reach.
+ *
+ * What limits the session is Supabase's own access-token lifetime (one hour by
+ * default) — this deliberately hands back a refresh token so the client's
+ * Supabase instance can hold a normal session, and the sandbox is rebuilt
+ * nightly regardless of who is still in it.
+ *
+ * Access: Public, rate-limited to 20/hour per IP.
+ */
+router.post('/demo-login', demoLoginLimiter, async (req, res) => {
+  try {
+    if (!isDemoEnabled()) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'The demo is not available right now.',
+      });
+    }
+
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email: DEMO_EMAIL,
+      password: DEMO_PASSWORD,
+    });
+
+    if (error || !data?.session) {
+      // Almost always means the demo has not been seeded in this environment.
+      logger.error({ err: error }, 'Demo login failed — is the demo business seeded?');
+      return res.status(503).json({
+        error: 'Demo unavailable',
+        message: 'The demo is being rebuilt. Please try again in a minute.',
+      });
+    }
+
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, role_id, business_id, roles:role_id (name, permissions), businesses (name, is_demo)')
+      .eq('id', data.user.id)
+      .single();
+
+    if (userError || !userData || !userData.businesses?.is_demo) {
+      // Refusing here matters: without it, pointing DEMO_ACCOUNT_EMAIL at a
+      // real account would turn this public, unauthenticated endpoint into a
+      // way to sign in as them.
+      logger.error({ err: userError, email: DEMO_EMAIL }, 'Demo account is not attached to a demo business');
+      return res.status(503).json({
+        error: 'Demo unavailable',
+        message: 'The demo is being rebuilt. Please try again in a minute.',
+      });
+    }
+
+    return res.json({
+      demo: true,
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      },
+      user: {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role_id: userData.role_id,
+        role: userData.roles ? userData.roles.name : 'Unknown',
+        permissions: userData.roles ? userData.roles.permissions : [],
+        business_name: userData.businesses ? userData.businesses.name : null,
+      },
+    });
+  } catch (err) {
+    logger.error({ err }, 'Demo login error');
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Could not start the demo. Please try again.',
+    });
+  }
 });
 
 /**
@@ -196,3 +505,8 @@ router.get('/me', authGuard, async (req, res) => {
 });
 
 module.exports = router;
+// Exposed so tests can clear the per-IP counter between cases. The app is not
+// behind `trust proxy`, so every request in a test run shares one key and the
+// suite would otherwise spend its whole 5/hour budget on the first few cases —
+// which is not a reason to weaken the limit for real traffic.
+module.exports.signupLimiter = signupLimiter;

@@ -1,0 +1,257 @@
+/* ============================================================
+   Guided product tour — spotlight + floating tooltip.
+
+   Rendered into a portal on document.body, so nothing here can
+   rely on inheriting from the app shell. Every colour comes
+   from a token, which is what makes it follow the theme.
+   ============================================================ */
+
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  /* The layer itself must not eat clicks — only the card does. The dimming
+     is painted by the spotlight's box-shadow, so there is no full-screen
+     surface here to intercept them. */
+  pointer-events: none;
+}
+
+/* The ring around the target *and* the dim over everything else. The huge
+   spread turns the shadow into a full-viewport scrim with this element
+   punched out of it, which is why the two are one element and not two. */
+.tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 0 3px var(--color-accent-primary),
+    0 0 0 9999px rgba(2, 6, 23, 0.62);
+  transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+[data-theme='light'] .tour-spotlight {
+  box-shadow:
+    0 0 0 3px var(--color-accent-primary),
+    0 0 0 9999px rgba(15, 23, 42, 0.45);
+}
+
+.tour-card {
+  position: fixed;
+  pointer-events: auto;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  /* Near-solid rather than a true glass tier. The card floats over whatever
+     page happens to be underneath — a dense dashboard, a table — and at the
+     usual glass opacity that content reads straight through the step text.
+     The blur is kept for the edge treatment. */
+  background: color-mix(in srgb, var(--surface-1-solid) 96%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45), 0 4px 12px rgba(2, 6, 23, 0.25);
+  animation: tour-card-in 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='light'] .tour-card {
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.tour-card:focus {
+  outline: none;
+}
+
+@keyframes tour-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* A rotated square peeking out from behind the card. `clip-path` on the card
+   would cut the shadow; a separate element behind it keeps both intact. */
+.tour-caret {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg) translateY(-50%);
+  background: inherit;
+  border: 1px solid var(--color-border);
+}
+
+.tour-card--right .tour-caret {
+  left: -6px;
+  border-right: none;
+  border-top: none;
+}
+
+.tour-card--left .tour-caret {
+  right: -6px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.tour-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.tour-counter {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tour-skip {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tour-skip:hover {
+  color: var(--color-text-primary);
+}
+
+.tour-card-title {
+  margin: 0 0 var(--space-xs);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text-primary);
+}
+
+.tour-card-body {
+  margin: 0 0 var(--space-md);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.tour-progress {
+  display: flex;
+  gap: 5px;
+  margin-bottom: var(--space-md);
+}
+
+.tour-pip {
+  height: 3px;
+  flex: 1;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  transition: background 0.2s ease;
+}
+
+.tour-pip.is-done {
+  background: color-mix(in srgb, var(--color-accent-primary) 45%, transparent);
+}
+
+.tour-pip.is-current {
+  background: var(--color-accent-primary);
+}
+
+.tour-card-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.tour-btn {
+  flex: 1;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.tour-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.tour-btn--ghost:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.tour-btn--ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tour-btn--primary {
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+}
+
+.tour-btn--primary:hover {
+  filter: brightness(1.08);
+}
+
+/* --- "Take a tour" launcher in the sidebar footer ------------- */
+
+.sidebar-tour-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-tour-button:hover {
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+@media (max-width: 640px) {
+  /* Below this the card would be wider than the screen; let it fill the
+     width instead and sit under the highlight rather than beside it. */
+  .tour-card {
+    left: var(--space-md) !important;
+    right: var(--space-md);
+    width: auto !important;
+    max-width: calc(100vw - 2 * var(--space-md));
+  }
+
+  .tour-caret {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight,
+  .tour-card {
+    transition: none;
+    animation: none;
+  }
+}

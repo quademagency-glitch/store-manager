@@ -58,6 +58,8 @@
 @import './styles/confirm-dialog.css' layer(components);
 @import './styles/danger-zone.css' layer(components);
 @import './styles/qr-scanner-overlay.css' layer(components);
+@import './styles/product-tour.css' layer(components);
+@import './styles/demo-mode.css' layer(components);
 @import './styles/inventory-module.css' layer(components);
 /* after surfaces.css, so `.mobile-card-view` wins over `.glass-panel` */
 @import './styles/mobile-card-views.css' layer(components);
@@ -65,6 +67,9 @@
 /* --- pages --- */
 @import './styles/access-denied.css' layer(pages);
 @import './styles/login-page.css' layer(pages);
+/* after login-page.css: signup reuses its `.login-*` surface and overrides
+   a few of them (`.signup-card` padding, `.signup-container` width). */
+@import './styles/signup-page.css' layer(pages);
 @import './styles/premium-dashboard-ui.css' layer(pages);
 @import './styles/sales-page-pos-layout.css' layer(pages);
 @import './styles/platform-admin-dashboard.css' layer(pages);
@@ -84,6 +89,7 @@
 @import './styles/loyalty.css' layer(pages);
 @import './styles/reports.css' layer(pages);
 @import './styles/qr-print-label.css' layer(pages);
+@import './styles/help-center.css' layer(pages);
 
 /* --- utilities --- */
 @import './styles/utilities.css' layer(utilities);

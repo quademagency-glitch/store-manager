@@ -1,5 +1,6 @@
 const { supabaseAdmin } = require('../db/supabase');
 const { verifyToken } = require('../utils/jwtVerifier');
+const { demoWriteRefusal, respondDemoRefusal } = require('./demoGuard');
 const logger = require('../utils/logger');
 
 // In-memory cache: userId → { user, expiresAt }
@@ -9,6 +10,24 @@ const logger = require('../utils/logger');
 const userCache = new Map();
 const fetchPromises = new Map();
 const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '300000', 10); // Default: 5 minutes
+
+/**
+ * Route mounts an owner can still reach after their free trial lapses.
+ *
+ * A lapsed trial (`businesses.status = 'expired'`, set by subscriptionCron)
+ * is not a ban. Banning locks the account out entirely, which for an unpaid
+ * trial would mean the one thing the business most needs to do — pay — is the
+ * one thing it cannot do. So the app narrows to exactly the surface required
+ * to sign in, see what happened, and buy a plan.
+ *
+ * Matched against req.baseUrl, i.e. the path the router was mounted at.
+ */
+const EXPIRED_TRIAL_ALLOWED_MOUNTS = new Set([
+  '/api/auth',          // /me, /logout — the session itself
+  '/api/businesses',    // /me, /me/setup-status — what the shell renders from
+  '/api/subscriptions', // plans + Paystack checkout: the way out
+  '/api/billing',       // invoices and receipts for the purchase
+]);
 
 // Periodic cleanup every 5 minutes
 if (CACHE_TTL_MS > 0) {
@@ -72,6 +91,9 @@ async function authGuard(req, res, next) {
       const cached = userCache.get(userId);
       if (cached && cached.expiresAt > Date.now()) {
         req.user = cached.user;
+        if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
+        const cachedRefusal = demoWriteRefusal(req);
+        if (cachedRefusal) return respondDemoRefusal(res, cachedRefusal);
         attachLocation(req);
         return next();
       }
@@ -88,7 +110,7 @@ async function authGuard(req, res, next) {
           .select(`
             id, name, email, business_id, status, role_id,
             roles:role_id (name, permissions),
-            businesses (status),
+            businesses (status, is_demo),
             user_locations(location_id)
           `)
           .eq('id', userId)
@@ -104,6 +126,12 @@ async function authGuard(req, res, next) {
           email: data.email,
           business_id: data.business_id,
           status: data.status,
+          // 'active' | 'trialing' | 'expired'. Carried on req.user so routes
+          // and the client can tell a trial from a paid account.
+          business_status: data.businesses ? data.businesses.status : null,
+          // Public sandbox tenant. Drives the read-mostly guard below and the
+          // persistent banner in the client.
+          is_demo: data.businesses ? data.businesses.is_demo === true : false,
           role: data.roles ? data.roles.name : 'Unknown',
           role_id: data.role_id,
           permissions: data.roles ? data.roles.permissions : [],
@@ -131,6 +159,11 @@ async function authGuard(req, res, next) {
       userCache.set(userId, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
+    if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
+
+    const refusal = demoWriteRefusal(req);
+    if (refusal) return respondDemoRefusal(res, refusal);
+
     attachLocation(req);
     next();
   } catch (err) {
@@ -140,6 +173,27 @@ async function authGuard(req, res, next) {
       message: 'Authentication check failed.',
     });
   }
+}
+
+/**
+ * True when this request belongs to a business whose free trial has lapsed
+ * and is aimed somewhere other than the billing surface.
+ *
+ * Platform Admins are exempt: they operate across tenants and may well need
+ * to go and look at the expired business.
+ */
+function isBlockedByExpiredTrial(req) {
+  if (req.user.business_status !== 'expired') return false;
+  if (req.user.role === 'Platform Admin') return false;
+  return !EXPIRED_TRIAL_ALLOWED_MOUNTS.has(req.baseUrl);
+}
+
+function respondTrialExpired(res) {
+  return res.status(403).json({
+    error: 'Trial expired',
+    code: 'TRIAL_EXPIRED',
+    message: 'Your free trial has ended. Choose a plan to carry on using QuadERP.',
+  });
 }
 
 function attachLocation(req) {

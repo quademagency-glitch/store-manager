@@ -1,0 +1,110 @@
+/* ============================================================
+   Demo mode — the persistent sandbox banner and the entry
+   points that lead into it.
+   ============================================================ */
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  padding: 0.5rem var(--space-md);
+  /* Amber rather than the accent: this is a state notice, and reading as
+     "part of the product" is precisely what it must not do. */
+  background: linear-gradient(90deg, #b45309, #d97706);
+  color: #fffbeb;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.demo-banner-tag {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-banner-text {
+  font-weight: 500;
+}
+
+.demo-banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 0.3rem 0.8rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.demo-banner-cta:hover:not(:disabled) {
+  transform: translateX(2px);
+}
+
+.demo-banner-cta:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* --- Entry points --------------------------------------------- */
+
+/* "Try the demo instead", under the login form. */
+.login-demo-prompt {
+  margin-top: var(--space-md);
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.login-demo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-xs);
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.login-demo-button:hover:not(:disabled) {
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.login-demo-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .demo-banner {
+    font-size: 0.75rem;
+    padding: 0.45rem var(--space-sm);
+  }
+
+  /* On a phone the sentence and the button together push the app below the
+     fold; the tag plus the CTA still say what is going on. */
+  .demo-banner-text {
+    display: none;
+  }
+}

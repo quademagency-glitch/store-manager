@@ -47,6 +47,7 @@ const integrationsRoutes = require('./routes/integrations');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 const { initWebhookRetryCron } = require('./services/webhookRetryCron');
+const { initDemoResetCron } = require('./services/demoResetCron');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -275,6 +276,7 @@ if (require.main === module) {
     if (!cluster.isWorker) {
       initSubscriptionCron();
       initWebhookRetryCron();
+      initDemoResetCron();
     }
   });
 }

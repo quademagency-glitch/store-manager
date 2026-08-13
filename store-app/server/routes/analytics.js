@@ -41,37 +41,54 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
       .from('products')
       .select('id', { count: 'exact' });
 
-    // 3. Alerts (Low Stock & Shrinkage)
+    // 3. Alerts (Shrinkage). Low stock is NOT read from here — see below.
     let alertsQuery = supabaseAdmin
       .from('alerts')
       .select('type', { count: 'exact' });
+
+    /* Low stock, counted from actual stock levels.
+       It used to come from `alerts` rows of type 'LOW_STOCK', which the
+       alerts CHECK constraint (migration 014) does not permit — it allows
+       only VOID, DISCOUNT, SHRINKAGE and CASH_OVERRIDE. No such row could
+       ever exist, so the tile was hard-wired to zero for every business
+       since the day it shipped. Computing it live also keeps it in step
+       with the Inventory page, which has always done it this way. */
+    let lowStockQuery = supabaseAdmin
+      .from('product_inventory')
+      .select('quantity, low_stock_threshold, location_id, products!inner(business_id)');
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
       productsQuery = productsQuery.eq('business_id', req.user.business_id);
       alertsQuery = alertsQuery.eq('business_id', req.user.business_id);
+      lowStockQuery = lowStockQuery.eq('products.business_id', req.user.business_id);
     }
-    
+
     salesQuery = applyLocationFilter(salesQuery, req);
     alertsQuery = applyLocationFilter(alertsQuery, req);
+    lowStockQuery = applyLocationFilter(lowStockQuery, req);
 
-    const [salesRes, productsRes, alertsRes] = await Promise.all([
+    const [salesRes, productsRes, alertsRes, lowStockRes] = await Promise.all([
       salesQuery,
       productsQuery,
-      alertsQuery
+      alertsQuery,
+      lowStockQuery
     ]);
 
     if (salesRes.error) throw salesRes.error;
     if (productsRes.error) throw productsRes.error;
     if (alertsRes.error) throw alertsRes.error;
+    if (lowStockRes.error) throw lowStockRes.error;
 
     const todaySalesTotal = salesRes.data.reduce((sum, s) => sum + Number(s.total_amount), 0);
     const totalProducts = productsRes.count || 0;
-    
-    let lowStockCount = 0;
+
+    const lowStockCount = (lowStockRes.data || []).filter(
+      row => Number(row.quantity || 0) <= Number(row.low_stock_threshold ?? 5)
+    ).length;
+
     let theftAlertsCount = 0;
     alertsRes.data.forEach(a => {
-      if (a.type === 'LOW_STOCK') lowStockCount++;
       if (a.type === 'SHRINKAGE') theftAlertsCount++;
     });
 
@@ -474,23 +491,31 @@ router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
  */
 router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
   try {
+    /* Stock lives in product_inventory, one row per product per location —
+       `products` has no quantity column at all. This used to select
+       `stock_quantity, min_stock_level` from products, which meant the
+       endpoint threw for every business on every call and the chart has
+       never rendered. Counting per stock row (rather than per product) is
+       also the more useful answer for a multi-branch business: a product
+       can be healthy at one branch and out at another. */
     let query = supabaseAdmin
-      .from('products')
-      .select('stock_quantity, min_stock_level');
+      .from('product_inventory')
+      .select('quantity, low_stock_threshold, location_id, products!inner(business_id)');
 
     if (req.user.role !== 'Platform Admin') {
-      query = query.eq('business_id', req.user.business_id);
+      query = query.eq('products.business_id', req.user.business_id);
     }
+    query = applyLocationFilter(query, req);
 
     const { data, error } = await query;
     if (error) throw error;
 
     let inStock = 0, lowStock = 0, outOfStock = 0;
-    (data || []).forEach(p => {
-      const qty = Number(p.stock_quantity || 0);
-      const minLevel = Number(p.min_stock_level || 5);
+    (data || []).forEach(row => {
+      const qty = Number(row.quantity || 0);
+      const threshold = Number(row.low_stock_threshold ?? 5);
       if (qty <= 0) outOfStock++;
-      else if (qty <= minLevel) lowStock++;
+      else if (qty <= threshold) lowStock++;
       else inStock++;
     });
 

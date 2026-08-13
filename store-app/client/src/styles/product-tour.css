@@ -25,10 +25,10 @@
   box-shadow:
     0 0 0 3px var(--color-accent-primary),
     0 0 0 9999px rgba(2, 6, 23, 0.62);
-  transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: top var(--transition-normal),
+              left var(--transition-normal),
+              width var(--transition-normal),
+              height var(--transition-normal);
   pointer-events: none;
 }
 
@@ -53,8 +53,8 @@
   -webkit-backdrop-filter: blur(20px);
   box-shadow: 0 24px 60px rgba(2, 6, 23, 0.45), 0 4px 12px rgba(2, 6, 23, 0.25);
   animation: tour-card-in 0.26s cubic-bezier(0.16, 1, 0.3, 1);
-  transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: top var(--transition-normal),
+              left var(--transition-normal);
 }
 
 [data-theme='light'] .tour-card {
@@ -62,9 +62,11 @@
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
-.tour-card:focus {
-  outline: none;
-}
+/* The card takes tabIndex={-1} so focus can be moved into it when a step
+   opens, making the tour keyboard-operable from the first keypress. That is
+   programmatic focus, which does not match :focus-visible, so no ring is
+   drawn and there is nothing to suppress — an `outline: none` here would
+   only remove the indicator in the case where it is genuinely wanted. */
 
 @keyframes tour-card-in {
   from {
@@ -124,7 +126,7 @@
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--transition-fast);
 }
 
 .tour-skip:hover {
@@ -157,7 +159,7 @@
   flex: 1;
   border-radius: var(--radius-full);
   background: var(--color-border);
-  transition: background 0.2s ease;
+  transition: background var(--transition-fast);
 }
 
 .tour-pip.is-done {
@@ -180,7 +182,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: background var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
 }
 
 .tour-btn--ghost {
@@ -225,7 +227,7 @@
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .sidebar-tour-button:hover {

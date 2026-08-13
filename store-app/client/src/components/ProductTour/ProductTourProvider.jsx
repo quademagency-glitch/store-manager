@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { IS_MOCK } from '../../lib/mockMode';
 import { TOUR_STEPS, TOUR_COMPLETED_KEY } from './tourSteps';
 import TourTooltip from './TourTooltip';
 
@@ -81,11 +82,20 @@ export function ProductTourProvider({ children }) {
   const skipStep = advance;
   const next = advance;
 
-  // Auto-start for anyone who has not seen it. The delay lets the shell mount
-  // and the first route settle, so the tooltip measures a stable layout rather
-  // than one mid-reflow.
+  /* Auto-start for anyone who has not seen it. The delay lets the shell mount
+     and the first route settle, so the tooltip measures a stable layout rather
+     than one mid-reflow.
+
+     Never under the Playwright harness. The tour pulls keyboard focus into its
+     card the moment it opens — deliberately, so it is operable from the first
+     keypress — and a browser that has never seen it before is exactly what
+     every test run starts with. It was firing 900ms into unrelated specs and
+     stealing focus mid-assertion, which took out the roving-tabindex tests on
+     Inventory and Settings and the focus-ring check, none of which go
+     anywhere near the tour. Same `IS_MOCK` escape hatch the charts already
+     use to switch their animations off. */
   useEffect(() => {
-    if (hasCompleted || isActive) return undefined;
+    if (IS_MOCK || hasCompleted || isActive) return undefined;
     if (typeof window !== 'undefined' && window.innerWidth < AUTOSTART_MIN_WIDTH) return undefined;
 
     const timer = setTimeout(() => setIsActive(true), 900);

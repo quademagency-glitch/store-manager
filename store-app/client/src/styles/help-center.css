@@ -46,8 +46,12 @@
   color: var(--color-text-muted);
 }
 
-.help-search input:focus {
-  outline: none;
+/* A colour change alone is not a focus indicator — it fails for anyone who
+   cannot distinguish the two border colours. Keep the ring and tint the
+   border as a bonus. */
+.help-search input:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
   border-color: var(--color-accent-primary);
 }
 
@@ -72,7 +76,7 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .help-category:hover {
@@ -98,9 +102,11 @@
 
 /* --- Results -------------------------------------------------- */
 
-.help-content:focus {
-  outline: none;
-}
+/* `.help-content` carries tabIndex={-1} purely so the page can move focus
+   there when an article opens. It is never tabbed to, so it never matches
+   :focus-visible and no ring is drawn — which is why there is deliberately
+   no `outline: none` here. Suppressing it by hand would also strip the
+   indicator for the keyboard case, if one ever appears. */
 
 .help-results-meta {
   margin-bottom: var(--space-md);
@@ -123,7 +129,7 @@
   border-radius: var(--radius-lg);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .help-card:hover {
@@ -198,7 +204,7 @@
   font-weight: 600;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--transition-fast);
 }
 
 .help-back:hover {
@@ -342,7 +348,7 @@ ol.help-list {
   color: var(--color-text-muted);
   cursor: pointer;
   vertical-align: middle;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .help-hint:hover {

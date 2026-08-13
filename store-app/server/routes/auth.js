@@ -7,8 +7,10 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { seedAccountingTemplates } = require('../services/accountingTemplateSeeder');
 const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl } = require('../services/emailService');
-const { isDemoEnabled } = require('../services/demoResetCron');
-const { DEMO_EMAIL, DEMO_PASSWORD } = require('../scripts/seed-demo-data');
+// From config/demo.js, not the seeder: importing these from
+// scripts/seed-demo-data.js pulled `pg` into the boot path and the API failed
+// to start in production. See the note in that file.
+const { DEMO_EMAIL, DEMO_PASSWORD, isDemoEnabled } = require('../config/demo');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 

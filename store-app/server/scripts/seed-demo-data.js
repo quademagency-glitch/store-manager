@@ -21,13 +21,11 @@
 require('dotenv').config({ quiet: true });
 
 const crypto = require('node:crypto');
-const { Client } = require('pg');
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
+const { DEMO_EMAIL, DEMO_PASSWORD } = require('../config/demo');
 
 const DEMO_BUSINESS_NAME = 'Adom Superstore (Demo)';
-const DEMO_EMAIL = process.env.DEMO_ACCOUNT_EMAIL || 'demo@quaderp.app';
-const DEMO_PASSWORD = process.env.DEMO_ACCOUNT_PASSWORD || 'QuadERPDemo!2026';
 const DEMO_SLUG = 'demo';
 
 const SALES_DAYS = 30;
@@ -236,6 +234,12 @@ async function resolveDeleteOrder(client) {
  */
 async function teardown(businessId) {
 
+  // Required at point of use, not at the top of the file. This module sits in
+  // the demo cron's dependency chain, and a top-level `require('pg')` meant
+  // every production boot needed the driver — which is how a deploy that had
+  // nothing to do with the demo failed to start at all.
+  const { Client } = require('pg');
+
   const client = new Client({
     connectionString: process.env.DIRECT_URL,
     ssl: { rejectUnauthorized: false },
@@ -376,6 +380,15 @@ async function seed() {
   must('create sale items', await supabaseAdmin.from('sale_items').insert(items));
   logger.info({ sales: sales.length, items: items.length }, '[demo] sales history created');
 
+  // ── Shrinkage movements ───────────────────────────────────
+  // The Loss Prevention report reads `stock_movements` where movement_type is
+  // SHRINKAGE — not `alerts` — so without these rows that page is empty in the
+  // sandbox no matter how many SHRINKAGE alerts exist below. It is one of the
+  // screens a shop owner asks about first, and an empty one answers badly.
+  const shrinkage = buildShrinkage({ businessId, products, locations, salespeople });
+  must('create shrinkage movements', await supabaseAdmin.from('stock_movements').insert(shrinkage));
+  logger.info({ count: shrinkage.length }, '[demo] shrinkage history created');
+
   // ── A handful of alerts ───────────────────────────────────
   // Enough for the Alerts page and the loss-prevention report to have
   // something to show. Types are limited to what the alerts CHECK constraint
@@ -492,6 +505,47 @@ function buildSales({ businessId, products, customers, locations, salespeople })
   }
 
   return { sales, items };
+}
+
+/**
+ * Stock lost to theft, damage and miscounts over the last few weeks.
+ *
+ * The report groups these by a bracketed tag it parses back out of `notes` —
+ * [THEFT_SUSPECTED], [DAMAGE], [ADMIN_ERROR], [UNKNOWN] — which is the same
+ * shape POST /api/stock writes when a movement is recorded with a
+ * shrinkage_reason. A note without one lands in an "unknown" slice, so the tag
+ * is not decoration: it is what gives the breakdown chart its segments.
+ *
+ * Products are looked up by name so the value lost is the real catalogue price
+ * rather than a number invented here that would contradict the price list.
+ */
+function buildShrinkage({ businessId, products, locations, salespeople }) {
+  const byName = new Map(products.map((p) => [p.name, p]));
+  const DAY = 24 * 60 * 60 * 1000;
+
+  const specs = [
+    ['Perfumed Rice 5kg', -3, 'THEFT_SUSPECTED', 'Stock count variance after the evening count.', 1],
+    ['Milo Tin 400g', -2, 'THEFT_SUSPECTED', 'Two tins missing from the shelf, no matching sale.', 2],
+    ['Frytol Cooking Oil 2L', -4, 'DAMAGE', 'Cartons soaked in the storeroom after the roof leak.', 3],
+    ['Gino Tomato Paste 400g', -6, 'DAMAGE', 'Tins dented in transit from the Tema warehouse.', 5],
+    ['Voltic Water 1.5L', -16, 'ADMIN_ERROR', 'Counted into the wrong branch during the weekly stock take.', 8],
+    ['Indomie Chicken (40 pack)', -1, 'UNKNOWN', 'Discrepancy found at close; no cause established.', 11],
+    ['Ideal Milk 170g', -5, 'DAMAGE', 'Crushed carton written off at goods-in.', 14],
+    ['Club Beer 625ml', -2, 'THEFT_SUSPECTED', 'Bottles unaccounted for after the weekend shift.', 18],
+  ];
+
+  return specs
+    .filter(([name]) => byName.has(name))
+    .map(([name, quantityChange, reason, note, daysAgo]) => ({
+      business_id: businessId,
+      location_id: pick(locations).id,
+      product_id: byName.get(name).id,
+      user_id: pick(salespeople),
+      quantity_change: quantityChange,
+      movement_type: 'SHRINKAGE',
+      notes: `[${reason}] ${note}`,
+      created_at: new Date(Date.now() - daysAgo * DAY).toISOString(),
+    }));
 }
 
 /**

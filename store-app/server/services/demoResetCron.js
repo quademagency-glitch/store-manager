@@ -16,7 +16,7 @@
  */
 
 const logger = require('../utils/logger');
-const { reseedDemo } = require('../scripts/seed-demo-data');
+const { isDemoEnabled } = require('../config/demo');
 
 let cron;
 try {
@@ -25,15 +25,15 @@ try {
   logger.warn('node-cron not installed. Demo reset cron will not run.');
 }
 
-/** Demo mode is opt-in per environment: unset means no demo tenant at all. */
-function isDemoEnabled() {
-  return String(process.env.DEMO_MODE_ENABLED || '').toLowerCase() === 'true';
-}
-
 async function runDemoReset({ ifEmpty = false } = {}) {
   if (!isDemoEnabled()) return;
 
   try {
+    // Required here rather than at the top of the file so the seeder — and
+    // the `pg` driver it needs to rebuild the sandbox — is loaded only when a
+    // reset actually runs. An environment with the demo switched off never
+    // touches it, and neither does startup.
+    const { reseedDemo } = require('../scripts/seed-demo-data');
     const result = await reseedDemo({ ifEmpty });
     if (!result.skipped) {
       logger.info({ businessId: result.businessId }, '[CRON] Demo business reseeded');
@@ -65,4 +65,6 @@ function initDemoResetCron() {
   setTimeout(() => { runDemoReset({ ifEmpty: true }); }, 8000);
 }
 
+// isDemoEnabled is re-exported for the handful of callers that already import
+// it from here; config/demo.js is the definition.
 module.exports = { initDemoResetCron, runDemoReset, isDemoEnabled };

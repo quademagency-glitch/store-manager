@@ -16,8 +16,8 @@ const rateLimit = require('express-rate-limit');
 
 // How long a self-service free trial lasts. Deliberately not read from the
 // plan's `trial_days` (currently 7 across the board) — that column drives
-// operator-assigned subscriptions, and the public offer is 14 days.
-const TRIAL_DAYS = 14;
+// operator-assigned subscriptions, and the public offer is 30 days.
+const TRIAL_DAYS = 30;
 const DEFAULT_SIGNUP_PLAN = 'Single Branch';
 
 const loginLimiter = rateLimit({
@@ -70,7 +70,7 @@ const loginSchema = z.object({
 
 /**
  * POST /api/auth/signup
- * Public self-service signup: creates a business on a 14-day free trial plus
+ * Public self-service signup: creates a business on a 30-day free trial plus
  * its owner account, with no Platform Admin involved.
  *
  * Order matters, and it is not the obvious one. The business has to exist

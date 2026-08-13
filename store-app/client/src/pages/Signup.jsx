@@ -18,7 +18,7 @@ function slugify(name) {
     .replace(/^-+|-+$/g, '');
 }
 
-const TRIAL_DAYS = 14;
+const TRIAL_DAYS = 30;
 
 export default function Signup() {
   const { isAuthenticated, isDemo, signOut, loading } = useAuthContext();

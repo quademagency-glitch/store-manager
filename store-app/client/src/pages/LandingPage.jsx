@@ -145,7 +145,7 @@ export default function LandingPage() {
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to transform your business?</h2>
           <p className="text-xl text-slate-300 mb-10">Join the platform built for modern retail excellence.</p>
           <Link to="/signup" className="inline-flex items-center justify-center px-8 py-4 rounded-full bg-white text-indigo-950 hover:bg-slate-100 font-bold transition-all text-lg shadow-xl shadow-white/10">
-            Start your 14-day free trial
+            Start your 30-day free trial
           </Link>
         </div>
       </section>

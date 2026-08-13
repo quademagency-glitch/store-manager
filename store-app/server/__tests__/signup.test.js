@@ -120,7 +120,7 @@ describe('POST /api/auth/signup — validation', () => {
 });
 
 describe('POST /api/auth/signup — happy path', () => {
-  it('creates a trialing business with a 14-day trial and returns the slug', async () => {
+  it('creates a trialing business with a 30-day trial and returns the slug', async () => {
     const res = await postSignup(VALID_BODY);
 
     expect(res.status).toBe(201);
@@ -129,8 +129,8 @@ describe('POST /api/auth/signup — happy path', () => {
     expect(res.body.plan).toBe('Single Branch');
 
     const daysOfTrial = (new Date(res.body.trial_ends_at) - Date.now()) / 86_400_000;
-    expect(daysOfTrial).toBeGreaterThan(13.9);
-    expect(daysOfTrial).toBeLessThan(14.1);
+    expect(daysOfTrial).toBeGreaterThan(29.9);
+    expect(daysOfTrial).toBeLessThan(30.1);
   });
 
   it('creates the business before the auth user, so the profile trigger has a business to file it under', async () => {

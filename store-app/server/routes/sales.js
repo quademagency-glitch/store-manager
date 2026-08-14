@@ -1,6 +1,7 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
+const { resolveCurrency } = require('../utils/currency');
 const bcrypt = require('bcryptjs');
 const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
@@ -458,6 +459,13 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
 
       const maxDiscount = bizSettings?.max_discount_percent || 15;
 
+      /* Alert notes are read by a manager on the Alerts page, so the amount
+         has to be in the money they actually take. Hardcoding `$` made a
+         Ghanaian shop's theft alerts quote a currency it does not trade in.
+         Persisted text, so this only affects alerts raised from now on. */
+      const alertCurrency = await resolveCurrency(supabaseAdmin, req.user.business_id, location_id);
+      const alertMoney = new Intl.NumberFormat('en-GH', { style: 'currency', currency: alertCurrency });
+
       if (discountPercent > maxDiscount) {
         await supabaseAdmin.from('alerts').insert([{
           business_id: req.user.business_id,
@@ -465,7 +473,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
           type: 'HIGH_DISCOUNT',
           user_id: req.user.id,
           reference_id: saleId,
-          note: `High discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
+          note: `High discount of ${alertMoney.format(Number(discount) || 0)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
         }]);
       } else {
         await supabaseAdmin.from('alerts').insert([{
@@ -474,7 +482,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
           type: 'DISCOUNT',
           user_id: req.user.id,
           reference_id: saleId,
-          note: `Discount of $${Number(discount).toFixed(2)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
+          note: `Discount of ${alertMoney.format(Number(discount) || 0)} (${discountPercent.toFixed(1)}%) applied to sale #${saleId}`
         }]);
       }
 
@@ -637,6 +645,9 @@ router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, 
         .update({ status: 'void_pending' })
         .eq('id', saleId);
 
+      const voidCurrency = await resolveCurrency(supabaseAdmin, sale.business_id, sale.location_id);
+      const voidMoney = new Intl.NumberFormat('en-GH', { style: 'currency', currency: voidCurrency });
+
       await supabaseAdmin.from('alerts').insert([{
         business_id: sale.business_id,
         location_id: sale.location_id,
@@ -644,7 +655,7 @@ router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, 
         severity: 'high',
         user_id: req.user.id,
         reference_id: sale.id,
-        note: `Void requested for sale #${saleId} ($${Number(sale.total_amount).toFixed(2)}). Awaiting manager approval.`,
+        note: `Void requested for sale #${saleId} (${voidMoney.format(Number(sale.total_amount) || 0)}). Awaiting manager approval.`,
         metadata: { sale_id: saleId, amount: Number(sale.total_amount) }
       }]);
 

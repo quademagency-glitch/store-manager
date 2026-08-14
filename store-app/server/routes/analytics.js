@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { apiCache } = require('../middleware/apiCache');
+const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
 
@@ -323,12 +324,27 @@ router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
     const sales = salesRes.data;
     const movements = movementsRes.data;
 
+    /* `amount` is a display string, not a number, because the feed mixes
+       money ("GH₵248.50") with counts ("15 items") in one column — so the
+       client cannot format it and the currency has to be applied here.
+       It was hardcoded to `$`, which is why a Ghanaian shop's activity feed
+       contradicted every other figure on its own dashboard.
+       resolveCurrency is the same helper /businesses/me uses, so the feed
+       follows the active location's override exactly as the rest of the app
+       does. */
+    const currency = await resolveCurrency(
+      supabaseAdmin,
+      req.user.business_id,
+      req.user.active_location_id,
+    );
+    const money = new Intl.NumberFormat('en-GH', { style: 'currency', currency });
+
     const formattedSales = sales.map(s => ({
       id: s.id,
       type: 'sale',
       title: s.status === 'voided' ? 'Sale Voided' : 'New Sale Completed',
       time: s.created_at,
-      amount: `$${Number(s.total_amount).toFixed(2)}`,
+      amount: money.format(Number(s.total_amount) || 0),
       status: s.status === 'voided' ? 'error' : 'success',
       timestamp: new Date(s.created_at).getTime()
     }));

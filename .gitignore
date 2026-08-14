@@ -31,3 +31,11 @@ store-app/server/load-test/reports/
 # Python bytecode from bundled skill scripts
 __pycache__/
 *.pyc
+
+# App-tour media (docs/app-tour). Regenerable in one command from
+# store-app/client/tools/app-tour.mjs, and 70MB that git would keep forever
+# even after a delete. The README, the flow chart and the timings are small
+# and worth versioning; the recordings and 78 full-page PNGs are not.
+docs/app-tour/screenshots/
+docs/app-tour/*.mp4
+docs/app-tour/*.webm

@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { usePrintDocument } from '../../hooks/usePrintDocument';
+import { useCurrency } from '../../hooks/useCurrency';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ErrorBanner, PageHeader } from '../../components/ui';
 import { IS_MOCK } from '../../lib/mockMode';
 
 export default function Overview() {
   const navigate = useNavigate();
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
   const [stats, setStats] = useState({
     todaySalesTotal: 0,
     totalProducts: 0,
@@ -91,7 +95,7 @@ export default function Overview() {
         <div className="stat-card" style={{ borderTop: '4px solid var(--color-success)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
           <div className="stat-details">
             <span className="stat-label" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Today's Revenue</span>
-            <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>${Number(stats.todaySalesTotal).toFixed(2)}</span>
+            <span className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{fmt(stats.todaySalesTotal)}</span>
           </div>
         </div>
         <div className="stat-card" style={{ borderTop: '4px solid var(--color-accent-primary)', background: 'var(--color-bg-secondary)', padding: '24px', borderRadius: '8px' }}>
@@ -125,9 +129,9 @@ export default function Overview() {
                 <Line isAnimationActive={!IS_MOCK} type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(value) => `$${value}`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(value) => `${currencySymbol}${value}`} />
                 <Tooltip 
-                  formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Revenue']}
+                  formatter={(value) => [fmt(value), 'Revenue']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
               </LineChart>

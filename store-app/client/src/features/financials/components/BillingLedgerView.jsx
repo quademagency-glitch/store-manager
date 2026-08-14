@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useBillingLedger } from '../../../hooks/useBillingLedger';
 import { useToast } from '../../../hooks/useToast';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { usePrintDocument } from '../../../hooks/usePrintDocument';
+import { useCurrency } from '../../../hooks/useCurrency';
 import { api } from '../../../lib/api';
 import BillingDocumentModal from './BillingDocumentModal';
 import RecordPaymentModal from './RecordPaymentModal';
@@ -51,6 +53,8 @@ export default function BillingLedgerView({ kind, parties }) {
 
   const toast = useToast();
   const confirm = useConfirm();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
 
   const [activeTab, setActiveTab] = useState('documents');
   const [statusFilter, setStatusFilter] = useState('');
@@ -186,8 +190,8 @@ export default function BillingLedgerView({ kind, parties }) {
                           {doc.is_opening_balance && <span className="badge badge-secondary ml-sm" style={{ fontSize: '0.65rem' }}>Opening</span>}
                         </td>
                         <td>{partyName(doc)}</td>
-                        <td>${Number(doc[amountField]).toFixed(2)}</td>
-                        <td>${outstanding.toFixed(2)}</td>
+                        <td>{fmt(doc[amountField])}</td>
+                        <td>{fmt(outstanding)}</td>
                         <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
                         <td><span className={`badge ${STATUS_BADGE[doc.status] || 'badge-secondary'}`}>{doc.status}</span></td>
                         <td className="text-right">
@@ -225,7 +229,7 @@ export default function BillingLedgerView({ kind, parties }) {
               <div key={bucket.key} className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
                 <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{bucket.label}</span>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>
-                  ${(aging?.totals?.[bucket.key] || 0).toFixed(2)}
+                  {fmt(aging?.totals?.[bucket.key])}
                 </div>
               </div>
             ))}
@@ -251,7 +255,7 @@ export default function BillingLedgerView({ kind, parties }) {
                       <tr key={row.id}>
                         <td>{row[docNumberKey]}</td>
                         <td>{(kind === 'ar' ? row.customer?.name : row.supplier?.name) || 'Unknown'}</td>
-                        <td>${row.outstanding.toFixed(2)}</td>
+                        <td>{fmt(row.outstanding)}</td>
                         <td className="text-muted">{row.days_overdue > 0 ? row.days_overdue : 0}</td>
                       </tr>
                     ))}

@@ -650,10 +650,17 @@ export default function MainLayout() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div className="sidebar-avatar" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ef4444, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
-                  {user?.email?.charAt(0)?.toUpperCase() || '?'}
+                  {(user?.user_metadata?.name || user?.name || user?.email)?.charAt(0)?.toUpperCase() || '?'}
                 </div>
                 <div className="sidebar-user-details text-left">
-                  <span className="sidebar-user-name" style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600 }}>{user?.email?.split('@')[0] || 'User'}</span>
+                  {/* Prefer the actual name, same accessor chain the dashboard
+                      greeting uses. Falling straight to the email's local part
+                      rendered every signed-in user as a fragment of their
+                      address — the demo owner showed up as "admin" — even
+                      though `user_metadata.name` is set on every account
+                      createStaffUser() makes. Email stays as the fallback for
+                      accounts that genuinely have no name. */}
+                  <span className="sidebar-user-name" style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600 }}>{user?.user_metadata?.name || user?.name || user?.email?.split('@')[0] || 'User'}</span>
                   <span className="sidebar-user-role" style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{role || 'Unknown'}</span>
                 </div>
               </div>

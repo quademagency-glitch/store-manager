@@ -141,7 +141,7 @@ export default function BusinessDetailTab() {
                   {businessDetails.products.slice(0, 20).map(p => (
                     <tr key={p.id}>
                       <td className="font-medium">{p.name}</td>
-                      <td>${Number(p.price || 0).toFixed(2)}</td>
+                      <td>{formatCurrency(p.price, selectedBusiness.currency)}</td>
                       <td>
                         <span className={`stock-count ${
                           (p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0) <= 
@@ -177,7 +177,7 @@ export default function BusinessDetailTab() {
                   {businessDetails.sales.slice(0, 20).map(s => (
                     <tr key={s.id}>
                       <td className="text-mono" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{s.id.substring(0, 8)}…</td>
-                      <td style={{ fontWeight: 600, color: '#4ade80' }}>${Number(s.total_amount || 0).toFixed(2)}</td>
+                      <td style={{ fontWeight: 600, color: '#4ade80' }}>{formatCurrency(s.total_amount, selectedBusiness.currency)}</td>
                       <td>{s.sale_items?.length || 0}</td>
                       <td className="text-secondary">{new Date(s.created_at).toLocaleString()}</td>
                     </tr>

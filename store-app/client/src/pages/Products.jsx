@@ -4,11 +4,15 @@ import { useProducts } from '../hooks/useProducts';
 import Modal from '../components/Modal';
 import { api } from '../lib/api';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { EmptyStateRow, PageHeader } from '../components/ui';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
   const confirm = useConfirm();
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
   const { products, loading, error, addProduct, updateProduct, deleteProduct } = useProducts();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -279,7 +283,7 @@ export default function Products() {
                         </td>
                         <td>
                           <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                            ${Number(product.price || 0).toFixed(2)}
+                            {fmt(product.price)}
                           </span>
                         </td>
                         <td>
@@ -353,7 +357,7 @@ export default function Products() {
                     Stock: {displayStock}
                   </span>
                   <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                    ${Number(product.price || 0).toFixed(2)}
+                    {fmt(product.price)}
                   </span>
                 </div>
               </div>
@@ -445,9 +449,9 @@ export default function Products() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="price">Price ($) *</label>
+            <label htmlFor="price">Price ({currencySymbol}) *</label>
             <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
+              <span className="input-prefix">{currencySymbol}</span>
               <input 
                 type="number" 
                 id="price" 

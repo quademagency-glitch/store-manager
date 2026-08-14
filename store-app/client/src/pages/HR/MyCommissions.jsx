@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
+import { usePrintDocument } from '../../hooks/usePrintDocument';
+import { useCurrency } from '../../hooks/useCurrency';
 import '../../styles/hr.css';
 import { EmptyStateRow } from '../../components/ui';
 
 export default function MyCommissions() {
   const { commissions, fetchCommissions } = useHR();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
 
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [unpaidOnly, setUnpaidOnly] = useState(false);
@@ -20,8 +24,6 @@ export default function MyCommissions() {
       unpaidOnly,
     });
   };
-
-  const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';

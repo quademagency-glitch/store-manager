@@ -10,20 +10,24 @@ import { MOCK_MODE } from './mockMode';
 const T0 = '2026-07-31T12:00:00.000Z';
 
 const FIXTURES = {
-  '/analytics/summary': { todaySalesTotal: 12450.5, totalProducts: 154, lowStockCount: 3, theftAlertsCount: 0 },
+  '/analytics/summary': { todaySalesTotal: 14382.5, totalProducts: 154, lowStockCount: 3, theftAlertsCount: 2 },
   '/analytics/sales-trend': [
-    { date: 'Jul 25', revenue: 4500 },
-    { date: 'Jul 26', revenue: 6200 },
-    { date: 'Jul 27', revenue: 5800 },
-    { date: 'Jul 28', revenue: 7100 },
-    { date: 'Jul 29', revenue: 8400 },
-    { date: 'Jul 30', revenue: 11200 },
-    { date: 'Jul 31', revenue: 12450 },
+    { date: 'Jul 25', revenue: 9240 },
+    { date: 'Jul 26', revenue: 11580 },
+    { date: 'Jul 27', revenue: 12140 },
+    { date: 'Jul 28', revenue: 8970 },
+    { date: 'Jul 29', revenue: 10460 },
+    { date: 'Jul 30', revenue: 13725 },
+    { date: 'Jul 31', revenue: 14382.5 },
   ],
+  /* Revenue is quantity × the catalogue price below, so the bar chart and the
+     product list cannot drift into disagreeing with each other. */
   '/analytics/top-products': [
-    { name: 'Premium Widget', revenue: 4200, quantity: 42 },
-    { name: 'Deluxe Service', revenue: 3100, quantity: 15 },
-    { name: 'Standard Widget', revenue: 1800, quantity: 60 },
+    { name: 'Perfumed Rice 5kg', revenue: 13916, quantity: 142 },
+    { name: 'Milo Tin 400g', revenue: 10416, quantity: 168 },
+    { name: 'Indomie Chicken (40 pack)', revenue: 9216, quantity: 96 },
+    { name: 'Frytol Cooking Oil 2L', revenue: 6864, quantity: 88 },
+    { name: 'Voltic Water 1.5L', revenue: 6110, quantity: 940 },
   ],
   '/analytics/inventory-health': [
     { name: 'In Stock', value: 120, fill: '#10b981' },
@@ -31,17 +35,22 @@ const FIXTURES = {
     { name: 'Out of Stock', value: 3, fill: '#ef4444' },
   ],
   '/analytics/staff-performance': [
-    { name: 'Jane Smith', email: 'jane@quaderp.com', sales: 45, revenue: 8400 },
-    { name: 'John Doe', email: 'john@quaderp.com', sales: 38, revenue: 5200 },
+    { name: 'Ama Mensah', email: 'ama@adomsuperstore.com', sales: 128, revenue: 41280 },
+    { name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com', sales: 96, revenue: 28640 },
+    { name: 'Grace Owusu', email: 'grace@adomsuperstore.com', sales: 74, revenue: 19180 },
   ],
+  /* `amount` is pre-formatted by the server, so it carries its own currency
+     symbol rather than going through the page's formatter. It has to be GH₵
+     here or the activity feed contradicts every other figure on the dashboard. */
   '/analytics/recent-activity': [
-    { id: '1', type: 'sale', title: 'New Sale Completed', time: T0, amount: '$1,200.00', status: 'success' },
+    { id: '1', type: 'sale', title: 'New Sale Completed', time: T0, amount: 'GH₵248.50', status: 'success' },
     { id: '2', type: 'stock', title: 'Stock Adjusted', time: '2026-07-31T11:00:00.000Z', amount: '15 items', status: 'warning' },
-    { id: '3', type: 'sale', title: 'New Sale Completed', time: '2026-07-31T10:00:00.000Z', amount: '$450.00', status: 'success' },
+    { id: '3', type: 'sale', title: 'New Sale Completed', time: '2026-07-31T10:00:00.000Z', amount: 'GH₵96.00', status: 'success' },
   ],
   '/customers': [
-    { id: 'c1', first_name: 'Alice', last_name: 'Johnson', email: 'alice@example.com', phone: '555-0101', total_spent: 450, created_at: T0 },
-    { id: 'c2', first_name: 'Bob', last_name: 'Smith', email: 'bob@example.com', phone: '555-0102', total_spent: 1200, created_at: T0 },
+    { id: 'c1', first_name: 'Adwoa', last_name: 'Nyarko', email: 'adwoa.nyarko@gmail.com', phone: '0203334455', total_spent: 2480, created_at: T0 },
+    { id: 'c2', first_name: 'Yaw', last_name: 'Owusu', email: 'yaw.owusu@gmail.com', phone: '0553332211', total_spent: 1165, created_at: T0 },
+    { id: 'c3', first_name: 'Esi', last_name: 'Quartey', email: 'esi.quartey@gmail.com', phone: '0205556677', total_spent: 640, created_at: T0 },
   ],
   // `product_inventory` mirrors what the real endpoint selects:
   //   product_inventory(location_id, quantity, low_stock_threshold)
@@ -52,17 +61,45 @@ const FIXTURES = {
   // QR, the checkout gate — unreachable under mocks, and therefore invisible
   // to both the visual and invariant suites. `stock_quantity` alone looked
   // like stock but is not what addToCart consults.
+  //
+  // Names, prices and SKUs are lifted from the real demo seeder
+  // (server/scripts/seed-demo-data.js) so a screenshot taken from the mock
+  // harness and one taken from the live sandbox show the same shop. `p6` sits
+  // under its reorder threshold on purpose — the inventory pages need a
+  // genuine low-stock row to show.
   '/products': [
     {
-      id: 'p1', name: 'Premium Widget', sku: 'WGT-001', price: 99.99, stock_quantity: 145,
-      product_inventory: [{ location_id: 'mock-loc', quantity: 145, low_stock_threshold: 10 }],
+      id: 'p1', name: 'Perfumed Rice 5kg', sku: 'DEMO-005', price: 98, stock_quantity: 64,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 64, low_stock_threshold: 10 }],
     },
     {
-      id: 'p2', name: 'Standard Widget', sku: 'WGT-002', price: 49.99, stock_quantity: 450,
-      product_inventory: [{ location_id: 'mock-loc', quantity: 450, low_stock_threshold: 25 }],
+      id: 'p2', name: 'Milo Tin 400g', sku: 'DEMO-002', price: 62, stock_quantity: 112,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 112, low_stock_threshold: 15 }],
+    },
+    {
+      id: 'p3', name: 'Indomie Chicken (40 pack)', sku: 'DEMO-011', price: 96, stock_quantity: 38,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 38, low_stock_threshold: 10 }],
+    },
+    {
+      id: 'p4', name: 'Frytol Cooking Oil 2L', sku: 'DEMO-007', price: 78, stock_quantity: 52,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 52, low_stock_threshold: 12 }],
+    },
+    {
+      id: 'p5', name: 'Voltic Water 1.5L', sku: 'DEMO-020', price: 6.5, stock_quantity: 480,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 480, low_stock_threshold: 60 }],
+    },
+    {
+      id: 'p6', name: 'Gino Tomato Paste 400g', sku: 'DEMO-009', price: 18, stock_quantity: 7,
+      product_inventory: [{ location_id: 'mock-loc', quantity: 7, low_stock_threshold: 24 }],
     },
   ],
-  '/locations': [{ id: 'mock-loc', name: 'Main Branch' }],
+  '/locations': [{ id: 'mock-loc', name: 'Adom Superstore — Osu' }],
+  /* Bare array of distinct category names, as GET /api/pricing/categories
+     returns. The price-tag printer, bulk price update and price list all read
+     it and swallow the failure with `.catch(() => setCategories([]))`, so
+     without this their category pickers render permanently empty and nothing
+     says why. Mirrors the catalogue in the demo seeder. */
+  '/pricing/categories': ['Drinks', 'Groceries', 'Household', 'Personal Care', 'Pharmacy', 'Stationery'],
 
   // The real endpoint returns the business row plus `currency` and `country`
   // resolved against the active location. `country` is what supplies the
@@ -72,11 +109,14 @@ const FIXTURES = {
   // phone flow would be untestable under mocks.
   '/businesses/me': {
     id: 'mock-biz',
-    name: 'QuadERP Demo Store',
+    name: 'Adom Superstore',
     currency: 'GHS',
     country: 'GH',
-    contact_email: 'admin@quaderp.com',
-    phone: '0241234567',
+    contact_email: 'hello@adomsuperstore.com',
+    phone: '0302123456',
+    city: 'Accra',
+    region: 'Greater Accra',
+    address_line1: '18 Oxford Street, Osu',
   },
 
   /* ─────────────────────────────────────────────────────────────────────
@@ -94,10 +134,12 @@ const FIXTURES = {
 
   // ── Admin / access control (routes/users.js, roles.js) ──
   '/users': [
-    { id: 'u1', name: 'Ama Mensah', email: 'ama@quaderp.com', status: 'active',
+    { id: 'u1', name: 'Ama Mensah', email: 'ama@adomsuperstore.com', status: 'active',
       roles: { name: 'Business Admin' }, user_locations: [{ location_id: 'mock-loc' }] },
-    { id: 'u2', name: 'Kofi Boateng', email: 'kofi@quaderp.com', status: 'active',
+    { id: 'u2', name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com', status: 'active',
       roles: { name: 'Manager' }, user_locations: [{ location_id: 'mock-loc' }] },
+    { id: 'u3', name: 'Grace Owusu', email: 'grace@adomsuperstore.com', status: 'active',
+      roles: { name: 'Sales Executive' }, user_locations: [{ location_id: 'mock-loc' }] },
   ],
   '/roles': [
     { id: 'r1', name: 'Business Admin', permissions: ['manage_business', 'manage_users'], is_system: true },
@@ -114,11 +156,14 @@ const FIXTURES = {
   ],
   '/alerts': [
     { id: 'a1', type: 'low_stock', severity: 'warning', status: 'pending',
-      message: 'Premium Widget is below its reorder threshold', created_at: T0,
-      product: { name: 'Premium Widget', sku: 'WGT-001' } },
-    { id: 'a2', type: 'shrinkage', severity: 'critical', status: 'resolved',
-      message: 'Stock count mismatch on Standard Widget', created_at: T0,
-      product: { name: 'Standard Widget', sku: 'WGT-002' } },
+      message: 'Gino Tomato Paste 400g is below its reorder threshold', created_at: T0,
+      product: { name: 'Gino Tomato Paste 400g', sku: 'DEMO-009' } },
+    { id: 'a2', type: 'shrinkage', severity: 'critical', status: 'pending',
+      message: 'Stock count variance on Perfumed Rice 5kg — 3 units unaccounted for', created_at: T0,
+      product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005' } },
+    { id: 'a3', type: 'shrinkage', severity: 'warning', status: 'resolved',
+      message: 'Two units of Milo Tin 400g missing after the evening count', created_at: T0,
+      product: { name: 'Milo Tin 400g', sku: 'DEMO-002' } },
   ],
   '/purchase-orders': {
     data: [
@@ -132,91 +177,178 @@ const FIXTURES = {
   '/stock': {
     data: [
       { id: 'sm1', quantity_change: -3, reason: 'sale', created_at: T0,
-        product: { name: 'Premium Widget', sku: 'WGT-001' }, user: { name: 'Ama Mensah' } },
+        product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005' }, user: { name: 'Ama Mensah' } },
       { id: 'sm2', quantity_change: 50, reason: 'received', created_at: T0,
-        product: { name: 'Standard Widget', sku: 'WGT-002' }, user: { name: 'Kofi Boateng' } },
+        product: { name: 'Milo Tin 400g', sku: 'DEMO-002' }, user: { name: 'Kofi Boateng' } },
+      { id: 'sm3', quantity_change: -12, reason: 'sale', created_at: T0,
+        product: { name: 'Voltic Water 1.5L', sku: 'DEMO-020' }, user: { name: 'Grace Owusu' } },
     ],
-    total: 2, page: 1, totalPages: 1,
+    total: 3, page: 1, totalPages: 1,
   },
+  /* Payment methods are constrained to 'cash' | 'card' | 'mobile' by
+     sales_payment_method_check — 'momo' would never come back from the server. */
   '/sales/history': {
     data: [
-      { id: 'sale1', receipt_number: 'RCP-5001', total_amount: 149.98, payment_method: 'cash',
-        status: 'completed', created_at: T0, customer: { name: 'Alice Johnson' } },
-      { id: 'sale2', receipt_number: 'RCP-5002', total_amount: 99.99, payment_method: 'momo',
-        status: 'completed', created_at: T0, customer: { name: 'Bob Smith' } },
+      { id: 'sale1', receipt_number: 'DEMO-00412', total_amount: 248.5, payment_method: 'cash',
+        status: 'completed', created_at: T0, customer: { name: 'Adwoa Nyarko' } },
+      { id: 'sale2', receipt_number: 'DEMO-00411', total_amount: 96, payment_method: 'mobile',
+        status: 'completed', created_at: T0, customer: { name: 'Yaw Owusu' } },
+      { id: 'sale3', receipt_number: 'DEMO-00410', total_amount: 461.5, payment_method: 'mobile',
+        status: 'completed', created_at: T0, customer: { name: 'Esi Quartey' } },
     ],
-    total: 2, page: 1, totalPages: 1,
+    total: 3, page: 1, totalPages: 1,
   },
   '/customer-orders': {
     data: [
-      { id: 'co1', order_number: 'ORD-2001', status: 'pending', total_amount: 560,
-        created_at: T0, customer: { name: 'Alice Johnson' } },
+      { id: 'co1', order_number: 'ORD-2001', status: 'pending', total_amount: 1470,
+        created_at: T0, customer: { name: 'Adwoa Nyarko' } },
     ],
     total: 1, page: 1, totalPages: 1,
   },
 
   // ── Accounting (routes/ledger.js, accountsPayable.js, accountsReceivable.js) ──
   '/ledger/till-balance': { view: 'basic', currentBalance: 8450.25 },
+
   /* Bare array, matching GET /api/ledger/pending. This route used to query
      Supabase straight from the browser, so it could not be mocked at all and
      its baseline captured a Postgres error string instead of the queue. */
   '/ledger/pending': [
     { id: 'le1', type: 'expense', amount: 240, description: 'Generator fuel', status: 'pending',
       created_at: T0, date: '2026-07-31', receipt_url: null, metadata: { vendor: 'Total Filling Station' },
-      users: { name: 'Kofi Boateng', email: 'kofi@quaderp.com' }, locations: { name: 'Main Branch' } },
+      users: { name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com' }, locations: { name: 'Adom Superstore — Osu' } },
     { id: 'le2', type: 'deposit_to_bank', amount: 5000, description: 'Daily banking', status: 'pending',
       created_at: T0, date: '2026-07-31', receipt_url: null, metadata: {},
-      users: { name: 'Ama Mensah', email: 'ama@quaderp.com' }, locations: { name: 'Main Branch' } },
+      users: { name: 'Ama Mensah', email: 'ama@adomsuperstore.com' }, locations: { name: 'Adom Superstore — Osu' } },
   ],
+  /* Shape mirrors GET /api/ledger/financial-summary exactly. The previous
+     fixture invented `expenses.total_purchases` and a flat `net`, so every
+     figure the Till Account summary reads — income.total, expenses.total,
+     expenses.categories, deposits.total, net_position — came back undefined
+     and the whole panel rendered GH₵0.00 with no category bars at all. */
   '/ledger/financial-summary': {
     period: { start: '2026-07-01', end: '2026-07-31' },
-    income: { total_sales: 82400, other_income: 1200 },
-    expenses: { total_purchases: 41000, other_expenses: 6800 },
-    net: 35800,
+    income: { total_sales: 412800, other_income: 3400, total: 416200 },
+    expenses: {
+      categories: {
+        'Stock Purchase': 318600,
+        Rent: 12000,
+        Utilities: 6400,
+        Transport: 4850,
+        Wages: 18200,
+      },
+      total: 360050,
+    },
+    deposits: { categories: { 'Bank Deposit': 285000, 'MoMo Cash-out': 42000 }, total: 327000 },
+    net_position: 56150,
+    entry_count: 214,
   },
+  /* Outstanding is derived — BillingLedgerView computes
+     `doc[amountField] - doc.amount_paid` — so `amount_paid` is the field that
+     has to be here. A `balance` key is never read, which is why both rows
+     previously rendered their outstanding column as NaN.
+     AP's amount field is `amount`; AR's is `total_amount` (see KIND_CONFIG). */
   '/ap/bills': {
     data: [
-      { id: 'b1', bill_number: 'BILL-301', status: 'unpaid', amount: 4200, balance: 4200,
+      { id: 'b1', bill_number: 'BILL-301', status: 'open', amount: 12400, amount_paid: 0,
         due_date: T0, created_at: T0, supplier: { name: 'Accra Wholesale Ltd' } },
+      { id: 'b2', bill_number: 'BILL-302', status: 'partial', amount: 6800, amount_paid: 4500,
+        due_date: T0, created_at: T0, supplier: { name: 'Tema Distributors' } },
     ],
-    total: 1, page: 1, totalPages: 1,
+    total: 2, page: 1, totalPages: 1,
   },
+  /* Matches the aging fixture below, which already had this right:
+     total 4820 less 3180 paid leaves 1640 outstanding. Statuses come from
+     KIND_CONFIG's AR vocabulary — 'unpaid' is an AP-ism and rendered as
+     unstyled text where a real status gets a badge. */
   '/ar/invoices': {
     data: [
-      { id: 'i1', invoice_number: 'INV-201', status: 'partial', amount: 1800, balance: 600,
-        due_date: T0, created_at: T0, customer: { name: 'Alice Johnson' } },
+      { id: 'i1', invoice_number: 'INV-201', status: 'partial', total_amount: 4820, amount_paid: 3180,
+        due_date: T0, created_at: T0, customer: { name: 'Adwoa Nyarko' } },
+      { id: 'i2', invoice_number: 'INV-202', status: 'sent', total_amount: 1165, amount_paid: 0,
+        due_date: T0, created_at: T0, customer: { name: 'Yaw Owusu' } },
     ],
-    total: 1, page: 1, totalPages: 1,
+    total: 2, page: 1, totalPages: 1,
   },
   '/accounting/templates': [
     { id: 't1', name: 'Standard Sales Entry', type: 'sale', is_active: true, created_at: T0 },
     { id: 't2', name: 'Purchase Entry', type: 'purchase', is_active: true, created_at: T0 },
   ],
   '/analytics/reconciliation': [
-    { id: 'u1', name: 'Ama Mensah', email: 'ama@quaderp.com', role: 'Business Admin',
-      salesCount: 45, totalSalesRevenue: 8400, totalDiscounts: 120,
-      voidCount: 1, totalVoidValue: 200, shrinkageCount: 0, totalShrinkageValue: 0 },
-    { id: 'u2', name: 'Kofi Boateng', email: 'kofi@quaderp.com', role: 'Manager',
-      salesCount: 38, totalSalesRevenue: 5200, totalDiscounts: 60,
-      voidCount: 0, totalVoidValue: 0, shrinkageCount: 2, totalShrinkageValue: 340 },
+    { id: 'u1', name: 'Ama Mensah', email: 'ama@adomsuperstore.com', role: 'Business Admin',
+      salesCount: 128, totalSalesRevenue: 41280, totalDiscounts: 640,
+      voidCount: 1, totalVoidValue: 248.5, shrinkageCount: 0, totalShrinkageValue: 0 },
+    { id: 'u2', name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com', role: 'Manager',
+      salesCount: 96, totalSalesRevenue: 28640, totalDiscounts: 310,
+      voidCount: 0, totalVoidValue: 0, shrinkageCount: 3, totalShrinkageValue: 456 },
+    { id: 'u3', name: 'Grace Owusu', email: 'grace@adomsuperstore.com', role: 'Sales Executive',
+      salesCount: 74, totalSalesRevenue: 19180, totalDiscounts: 95,
+      voidCount: 2, totalVoidValue: 174, shrinkageCount: 2, totalShrinkageValue: 214 },
   ],
+  /* The loss-prevention pie chart groups by tags parsed out of `notes`
+     ([THEFT_SUSPECTED] / [DAMAGE] / [ADMIN_ERROR] / [UNKNOWN]) — an entry
+     without one lands in an "unknown" slice. A single row, as this fixture
+     used to hold, drew a one-segment pie and a one-line table, which is not a
+     picture of a loss-prevention tool. `value_lost` is quantity × price, the
+     same arithmetic the server does. */
   '/analytics/shrinkage': [
-    { id: 'sh1', quantity_change: -2, reason: 'damage', created_at: T0, value_lost: 199.98,
-      product: { name: 'Premium Widget', sku: 'WGT-001', price: 99.99 }, user: { name: 'Kofi Boateng' } },
+    { id: 'sh1', quantity_change: -3, reason: 'shrinkage', created_at: T0, value_lost: 294,
+      notes: '[THEFT_SUSPECTED] Stock count variance after the evening count.',
+      product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005', price: 98 }, user: { name: 'Kofi Boateng' } },
+    { id: 'sh2', quantity_change: -2, reason: 'shrinkage', created_at: '2026-07-30T16:20:00.000Z', value_lost: 124,
+      notes: '[THEFT_SUSPECTED] Two tins missing from the shelf, no matching sale.',
+      product: { name: 'Milo Tin 400g', sku: 'DEMO-002', price: 62 }, user: { name: 'Kofi Boateng' } },
+    { id: 'sh3', quantity_change: -4, reason: 'shrinkage', created_at: '2026-07-29T11:05:00.000Z', value_lost: 312,
+      notes: '[DAMAGE] Cartons soaked in the storeroom after the roof leak.',
+      product: { name: 'Frytol Cooking Oil 2L', sku: 'DEMO-007', price: 78 }, user: { name: 'Grace Owusu' } },
+    { id: 'sh4', quantity_change: -6, reason: 'shrinkage', created_at: '2026-07-28T09:40:00.000Z', value_lost: 108,
+      notes: '[DAMAGE] Tins dented in transit from the Tema warehouse.',
+      product: { name: 'Gino Tomato Paste 400g', sku: 'DEMO-009', price: 18 }, user: { name: 'Grace Owusu' } },
+    { id: 'sh5', quantity_change: -16, reason: 'shrinkage', created_at: '2026-07-27T14:15:00.000Z', value_lost: 104,
+      notes: '[ADMIN_ERROR] Counted into the wrong branch during the weekly stock take.',
+      product: { name: 'Voltic Water 1.5L', sku: 'DEMO-020', price: 6.5 }, user: { name: 'Kofi Boateng' } },
+    { id: 'sh6', quantity_change: -1, reason: 'shrinkage', created_at: '2026-07-26T18:30:00.000Z', value_lost: 96,
+      notes: '[UNKNOWN] Discrepancy found at close; no cause established.',
+      product: { name: 'Indomie Chicken (40 pack)', sku: 'DEMO-011', price: 96 }, user: { name: 'Ama Mensah' } },
   ],
 
   // ── Reports (routes/reports.js) ──
+  /* Grocery margins, not software margins: a 22.8% gross and 12.8% net is what
+     an Accra general store actually runs at. The old 50.2% gross would read as
+     obviously invented to anyone in the trade. */
   '/reports/pnl': {
     period: { startDate: '2026-07-01', endDate: '2026-07-31', locationId: null },
-    revenue: 82400, cogs: 41000, grossProfit: 41400,
-    expenses: 6800, netProfit: 34600, grossMargin: 50.2, netMargin: 42,
+    revenue: 412800, cogs: 318600, grossProfit: 94200,
+    expenses: 41500, netProfit: 52700, grossMargin: 22.8, netMargin: 12.8,
   },
+  /* `aging` is four *bucket arrays* keyed current/days_30/days_60/days_90_plus,
+     and `summary` totals them under those same keys plus `totalOutstanding` —
+     see GET /api/reports/ar-aging. The old fixture made `aging` a flat array of
+     per-customer rows, so `arAging.aging.current` was undefined: every bucket
+     tile showed zero and the invoice table below rendered its empty state. */
   '/reports/ar-aging': {
-    aging: [
-      { customer_id: 'c1', customer_name: 'Alice Johnson', current: 400, days_30: 200, days_60: 0, days_90: 0, total: 600 },
-      { customer_id: 'c2', customer_name: 'Bob Smith', current: 0, days_30: 0, days_60: 150, days_90: 50, total: 200 },
-    ],
-    summary: { current: 400, days_30: 200, days_60: 150, days_90: 50, total: 800 },
+    aging: {
+      current: [
+        { id: 'i1', invoice_number: 'INV-201', customer_id: 'c1', customer: { name: 'Adwoa Nyarko' },
+          total_amount: 4820, amount_paid: 3180, outstanding: 1640, status: 'partial',
+          due_date: '2026-08-14', issued_date: '2026-07-15', days_overdue: 0 },
+      ],
+      days_30: [
+        { id: 'i2', invoice_number: 'INV-202', customer_id: 'c2', customer: { name: 'Yaw Owusu' },
+          total_amount: 1165, amount_paid: 0, outstanding: 1165, status: 'unpaid',
+          due_date: '2026-07-18', issued_date: '2026-06-18', days_overdue: 13 },
+      ],
+      days_60: [
+        { id: 'i3', invoice_number: 'INV-198', customer_id: 'c3', customer: { name: 'Esi Quartey' },
+          total_amount: 940, amount_paid: 300, outstanding: 640, status: 'partial',
+          due_date: '2026-06-20', issued_date: '2026-05-20', days_overdue: 41 },
+      ],
+      days_90_plus: [
+        { id: 'i4', invoice_number: 'INV-181', customer_id: 'c2', customer: { name: 'Yaw Owusu' },
+          total_amount: 380, amount_paid: 0, outstanding: 380, status: 'unpaid',
+          due_date: '2026-04-22', issued_date: '2026-03-22', days_overdue: 100 },
+      ],
+    },
+    summary: { current: 1640, days_30: 1165, days_60: 640, days_90_plus: 380, totalOutstanding: 3825 },
   },
 
   // ── CRM / loyalty ──
@@ -227,7 +359,7 @@ const FIXTURES = {
      whole route down to the ErrorBoundary. */
   '/crm-communications/templates': [
     { id: 'ct1', name: 'Welcome Message', type: 'sms', subject: null,
-      content: 'Welcome to QuadERP Demo Store!' },
+      content: 'Akwaaba! Thanks for shopping at Adom Superstore.' },
     { id: 'ct2', name: 'Receipt Follow-up', type: 'email', subject: 'Your receipt',
       content: 'Thanks for shopping with us.' },
   ],
@@ -240,26 +372,29 @@ const FIXTURES = {
   ],
   '/loyalty/rules': { id: 'lr1', points_per_currency: 1, redemption_rate: 0.01, is_active: true },
   '/loyalty/gift-cards': {
-    data: [{ id: 'gc1', code: 'GIFT-ABCD', balance: 250, initial_value: 500, status: 'active', created_at: T0 }],
-    total: 1, page: 1, totalPages: 1,
+    data: [
+      { id: 'gc1', code: 'GIFT-ABCD', balance: 250, initial_value: 500, status: 'active', created_at: T0 },
+      { id: 'gc2', code: 'GIFT-EFGH', balance: 0, initial_value: 200, status: 'redeemed', created_at: T0 },
+    ],
+    total: 2, page: 1, totalPages: 1,
   },
 
   // ── HR (routes/hr.js) ──
   '/hr/attendance/status': { clocked_in: false, active_log: null },
   '/hr/attendance/me': {
-    data: [{ id: 'al1', clock_in: T0, clock_out: T0, hours: 8, location: { name: 'Main Branch' } }],
+    data: [{ id: 'al1', clock_in: T0, clock_out: T0, hours: 8, location: { name: 'Adom Superstore — Osu' } }],
     total: 1, page: 1, limit: 20, totalPages: 1,
   },
   '/hr/attendance': {
     data: [
       { id: 'al1', clock_in: T0, clock_out: T0, hours: 8,
-        user: { name: 'Ama Mensah' }, location: { name: 'Main Branch' } },
+        user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore — Osu' } },
     ],
     total: 1, page: 1, limit: 20, totalPages: 1,
   },
   '/hr/schedules': [
     { id: 'sc1', shift_date: '2026-07-31', start_time: '08:00', end_time: '17:00',
-      user: { name: 'Ama Mensah' }, location: { name: 'Main Branch' } },
+      user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore — Osu' } },
   ],
   '/hr/commission-rules': [
     { id: 'cr1', name: 'Standard 5%', rate: 5, basis: 'revenue', is_active: true },

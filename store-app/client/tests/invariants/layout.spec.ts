@@ -86,6 +86,61 @@ test.describe('content fits the viewport', () => {
   }
 });
 
+test.describe('values fit inside their card', () => {
+  // The check above measures overflow against the *viewport*, which is blind
+  // to content that spills out of its own card while sitting comfortably
+  // inside the window. That is exactly how a clipped dashboard total shipped:
+  // "GH₵14,382.50" ran 43px past a 244px stat tile at x=623 on a 1440px
+  // screen, so neither the viewport check nor a full-page screenshot diff
+  // flagged it.
+  //
+  // Currency width is tenant data, not a constant — GH₵, ₦, CFA and bare
+  // codes all render here — so a tile sized around "$12,450.50" breaks for
+  // somebody. This guards the containment, not any particular string.
+  for (const route of ['/dashboard', '/business-admin', '/till-account', '/reconciliation', '/business-admin/shrinkage']) {
+    for (const viewport of VIEWPORTS) {
+      test(`${route} @ ${viewport.name}`, async ({ page }) => {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await gotoApp(page, route);
+
+        const spills = await page.evaluate(() => {
+          const cards = [...document.querySelectorAll('[class*="card"], [class*="stat"], [class*="tile"]')];
+
+          return cards
+            .flatMap((card) => {
+              const cs = getComputedStyle(card);
+              // A card that scrolls or clips is doing so on purpose.
+              if (/hidden|clip|auto|scroll/.test(cs.overflowX)) return [];
+              if (cs.display === 'none' || cs.visibility === 'hidden') return [];
+              const cb = card.getBoundingClientRect();
+              if (cb.width === 0) return [];
+              const padRight = parseFloat(cs.paddingRight) || 0;
+              const limit = cb.right - padRight;
+
+              return [...card.children]
+                .filter((child) => {
+                  const s = getComputedStyle(child);
+                  if (s.display === 'none' || s.visibility === 'hidden') return false;
+                  // Absolute/fixed decorations are positioned deliberately.
+                  if (['absolute', 'fixed'].includes(s.position)) return false;
+                  const r = child.getBoundingClientRect();
+                  return r.width > 0 && r.right > limit + 1;
+                })
+                .map(
+                  (child) =>
+                    `${String(card.className).split(' ')[0]} › ${String(child.className).split(' ')[0] || child.tagName.toLowerCase()}` +
+                    ` (+${Math.round(child.getBoundingClientRect().right - limit)}px)`,
+                );
+            })
+            .slice(0, 6);
+        });
+
+        expect(spills, `Content spills outside its card: ${spills.join(', ')}`).toEqual([]);
+      });
+    }
+  }
+});
+
 test.describe('no dead space above the page content', () => {
   // Guards a bug the overflow check could never see, because nothing
   // overflowed and nothing was occluded — there was simply 114px of empty

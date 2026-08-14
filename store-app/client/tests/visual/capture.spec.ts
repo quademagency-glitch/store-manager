@@ -28,7 +28,7 @@ for (const theme of THEMES as readonly Theme[]) {
 
       for (const route of APP_ROUTES) {
         test(route.name, async ({ page }) => {
-          await gotoApp(page, route.path, theme);
+          await gotoApp(page, route.path, theme, route.prepare);
           await expect(page).toHaveScreenshot(`${route.name}-${theme}-${viewport.name}.png`, {
             fullPage: true,
             animations: 'disabled',

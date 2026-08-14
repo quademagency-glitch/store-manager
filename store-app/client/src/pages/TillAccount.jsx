@@ -17,7 +17,7 @@ const Icons = {
 export default function TillAccount() {
   const { role } = useAuthContext();
   const { business, printElement } = usePrintDocument();
-  const { fmt: fmtCurrency } = useCurrency(business);
+  const { fmt: fmtCurrency, currencySymbol } = useCurrency(business);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -229,7 +229,7 @@ export default function TillAccount() {
       ) : !data ? null : data.view === 'basic' ? (
         /* BASIC VIEW FOR CASHIERS */
         <div className="w-full max-w-lg mx-auto mt-12 bg-transparent p-8 text-center" style={{ border: '1px solid var(--color-border)' }}>
-          <h2 className="text-sm uppercase tracking-wider font-semibold mb-2 text-tertiary">Expected Cash Deposit ($)</h2>
+          <h2 className="text-sm uppercase tracking-wider font-semibold mb-2 text-tertiary">Expected Cash Deposit ({currencySymbol})</h2>
           <div className="text-5xl font-mono font-bold mb-6" style={{ color: data.currentBalance >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
             {fmt(data.currentBalance)}
           </div>
@@ -267,31 +267,31 @@ export default function TillAccount() {
                   <h2 className="text-base font-bold uppercase tracking-widest text-primary">{branch.location_name}</h2>
                   <div className="till-branch-stats flex flex-wrap gap-4 md:gap-8 w-full md:w-auto md:justify-end text-left md:text-right">
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-widest text-muted">Cash Sales (In) ($)</span>
+                      <span className="text-[10px] uppercase tracking-widest text-muted">Cash Sales (In) ({currencySymbol})</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_sales)}</span>
                     </div>
                     {branch.total_pay_ins > 0 && (
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-widest text-muted">Deposits (In) ($)</span>
+                        <span className="text-[10px] uppercase tracking-widest text-muted">Deposits (In) ({currencySymbol})</span>
                         <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_pay_ins)}</span>
                       </div>
                     )}
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-widest text-muted">Expenses (Out) ($)</span>
+                      <span className="text-[10px] uppercase tracking-widest text-muted">Expenses (Out) ({currencySymbol})</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-error)' }}>{fmt(branch.total_expenses)}</span>
                     </div>
                     {branch.total_ap_payments > 0 && (
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-widest text-muted">AP Payments (Out) ($)</span>
+                        <span className="text-[10px] uppercase tracking-widest text-muted">AP Payments (Out) ({currencySymbol})</span>
                         <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-error)' }}>{fmt(branch.total_ap_payments)}</span>
                       </div>
                     )}
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-widest text-muted">Deposited (Out) ($)</span>
+                      <span className="text-[10px] uppercase tracking-widest text-muted">Deposited (Out) ({currencySymbol})</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-accent-primary)' }}>{fmt(branch.total_deposits)}</span>
                     </div>
                     <div className="flex flex-col md:ml-4 md:pl-4 till-ending-balance">
-                      <span className="text-[10px] uppercase tracking-widest text-tertiary">Ending Balance ($)</span>
+                      <span className="text-[10px] uppercase tracking-widest text-tertiary">Ending Balance ({currencySymbol})</span>
                       <span className="text-base font-mono font-bold" style={{ color: branch.current_balance >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
                         {fmt(branch.current_balance)}
                       </span>
@@ -308,9 +308,9 @@ export default function TillAccount() {
                           <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider w-40" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Date</th>
                           <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider w-32" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Type</th>
                           <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Description</th>
-                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Cash In ($)</th>
-                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Cash Out ($)</th>
-                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32 text-secondary">Balance ($)</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Cash In ({currencySymbol})</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32" style={{ color: 'var(--color-text-secondary)', borderRight: '1px solid var(--color-border)' }}>Cash Out ({currencySymbol})</th>
+                          <th className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-right w-32 text-secondary">Balance ({currencySymbol})</th>
                         </tr>
                       </thead>
                       <tbody>

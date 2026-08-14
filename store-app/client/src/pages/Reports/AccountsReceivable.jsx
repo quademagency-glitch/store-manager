@@ -1,16 +1,18 @@
 import { useEffect } from 'react';
 import { useReports } from '../../hooks/useReports';
+import { usePrintDocument } from '../../hooks/usePrintDocument';
+import { useCurrency } from '../../hooks/useCurrency';
 import '../../styles/reports.css';
 import { EmptyStateRow } from '../../components/ui';
 
 export default function AccountsReceivable() {
   const { loading, arAging, fetchArAging } = useReports();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
 
   useEffect(() => {
     fetchArAging();
   }, [fetchArAging]);
-
-  const fmt = (v) => `$${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const summary = arAging?.summary || {};
 

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useHR } from '../../hooks/useHR';
+import { usePrintDocument } from '../../hooks/usePrintDocument';
+import { useCurrency } from '../../hooks/useCurrency';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import '../../styles/hr.css';
@@ -7,6 +9,8 @@ import '../../styles/hr.css';
 export default function CommissionRules() {
   const toast = useToast();
   const confirm = useConfirm();
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
   const {
     loading,
     commissionRules,
@@ -102,8 +106,6 @@ export default function CommissionRules() {
     }
   };
 
-  const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
-
   return (
     <div className="hr-page">
       <div className="page-header">
@@ -184,7 +186,7 @@ export default function CommissionRules() {
                   <label>Type</label>
                   <select className="form-input" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
                     <option value="percentage">Percentage (%)</option>
-                    <option value="flat">Flat Amount ($)</option>
+                    <option value="flat">Flat Amount ({currencySymbol})</option>
                   </select>
                 </div>
                 <div className="form-group flex-1">

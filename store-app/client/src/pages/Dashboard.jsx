@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -17,6 +19,8 @@ function getGreeting() {
 
 export default function Dashboard() {
   const { user, role, hasPermission } = useAuthContext();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const {
     summary, recentActivity, loading,
     salesTrend, topProducts, inventoryHealth, staffPerformance,
@@ -32,8 +36,6 @@ export default function Dashboard() {
     fetchInventoryHealth();
     fetchStaffPerformance();
   }, [fetchSummary, fetchRecentActivity, fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance]);
-
-  const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
 
   const timeAgo = (dateString) => {
     const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
@@ -267,7 +269,7 @@ export default function Dashboard() {
                       <YAxis tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} />
                       <Tooltip
                         contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
-                        formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
+                        formatter={(v) => [fmt(v), 'Revenue']}
                       />
                       <Area isAnimationActive={!IS_MOCK} type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#salesGrad)" />
                     </AreaChart>
@@ -290,7 +292,7 @@ export default function Dashboard() {
                       <YAxis type="category" dataKey="name" width={100} tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }} />
                       <Tooltip
                         contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
-                        formatter={(v) => [`$${v.toFixed(2)}`, 'Revenue']}
+                        formatter={(v) => [fmt(v), 'Revenue']}
                       />
                       <Bar isAnimationActive={!IS_MOCK} dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -345,7 +347,7 @@ export default function Dashboard() {
                       <Tooltip
                         contentStyle={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px' }}
                         formatter={(v, n) => {
-                          if (n === 'revenue') return [`$${v.toFixed(2)}`, 'Revenue'];
+                          if (n === 'revenue') return [fmt(v), 'Revenue'];
                           return [v, 'Sales'];
                         }}
                       />

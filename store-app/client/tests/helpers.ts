@@ -10,7 +10,7 @@ import { TEST_NONCE } from './nonce';
  * reports green while measuring nothing — which is exactly what happened when
  * a stale dev server was reused across runs.
  */
-export async function gotoApp(page: Page, path: string, theme: Theme = 'light') {
+export async function gotoApp(page: Page, path: string, theme: Theme = 'light', prepare?: (page: Page) => Promise<void>) {
   await page.clock.setFixedTime(FIXED_TIME);
   await page.addInitScript(initScript(theme));
   await page.goto(path);
@@ -50,6 +50,15 @@ export async function gotoApp(page: Page, path: string, theme: Theme = 'light') 
   await page.waitForTimeout(400);
   await settleFonts(page);
   await settleCharts(page);
+
+  // Route-specific setup (see `prepare` in routes.ts) runs last, once the page
+  // is settled enough to be clicked, and is re-settled afterwards because the
+  // interaction itself can mount charts or shift layout.
+  if (prepare) {
+    await prepare(page);
+    await page.waitForTimeout(200);
+    await settleCharts(page);
+  }
 }
 
 /**

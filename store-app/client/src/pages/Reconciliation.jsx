@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Icons } from '../components/icons/Icons';
 import { EmptyStateRow, HelpHint, SkeletonRows } from '../components/ui';
@@ -15,7 +17,8 @@ export default function Reconciliation() {
     fetchReconciliation(selectedDate);
   }, [fetchReconciliation, selectedDate]);
 
-  const fmt = (amount) => `$${Number(amount || 0).toFixed(2)}`;
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
 
   // Calculate totals across all staff
   const totals = useMemo(() => {
@@ -67,21 +70,21 @@ export default function Reconciliation() {
 
       {/* Totals Summary */}
       <div className="stats-grid mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-lg)' }}>
-        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Sales</span>
-          <span className="stat-value text-success" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-success)' }}>{fmt(totals.salesTotal)}</span>
+          <span className="stat-value text-success" style={{ fontSize: 'clamp(1.25rem, 10.5cqi, 2.25rem)', fontWeight: 800, color: 'var(--color-success)' }}>{fmt(totals.salesTotal)}</span>
         </div>
-        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Discounts</span>
-          <span className="stat-value text-warning" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-warning)' }}>{fmt(totals.discountsTotal)}</span>
+          <span className="stat-value text-warning" style={{ fontSize: 'clamp(1.25rem, 10.5cqi, 2.25rem)', fontWeight: 800, color: 'var(--color-warning)' }}>{fmt(totals.discountsTotal)}</span>
         </div>
-        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Voids</span>
-          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.voidsTotal)}</span>
+          <span className="stat-value text-error" style={{ fontSize: 'clamp(1.25rem, 10.5cqi, 2.25rem)', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.voidsTotal)}</span>
         </div>
-        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+        <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
           <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Shrinkage</span>
-          <span className="stat-value text-error" style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.shrinkageTotal)}</span>
+          <span className="stat-value text-error" style={{ fontSize: 'clamp(1.25rem, 10.5cqi, 2.25rem)', fontWeight: 800, color: 'var(--color-error)' }}>{fmt(totals.shrinkageTotal)}</span>
         </div>
       </div>
 
@@ -101,7 +104,7 @@ export default function Reconciliation() {
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
+                  <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `${currencySymbol}${value}`} />
                   <Tooltip 
                     cursor={{ fill: 'var(--color-bg-tertiary)' }}
                     contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}

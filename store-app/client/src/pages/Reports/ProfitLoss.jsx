@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useReports } from '../../hooks/useReports';
 import { useToast } from '../../hooks/useToast';
+import { usePrintDocument } from '../../hooks/usePrintDocument';
+import { useCurrency } from '../../hooks/useCurrency';
 import { api } from '../../lib/api';
 import '../../styles/reports.css';
 
 export default function ProfitLoss() {
   const toast = useToast();
   const { loading, pnl, fetchPnl } = useReports();
+  const { business } = usePrintDocument();
+  const { fmt: fmtCurrency } = useCurrency(business);
   const [locations, setLocations] = useState([]);
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -56,7 +60,9 @@ export default function ProfitLoss() {
     toast.success('P&L exported!');
   };
 
-  const fmt = (v) => `$${Math.abs(Number(v || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  /* Magnitude only — the statement shows sign through its own labelling
+     (a "Less: Cost of Goods Sold" row is understood to subtract). */
+  const fmt = (v) => fmtCurrency(Math.abs(Number(v || 0)));
 
   return (
     <div className="reports-page">

@@ -8,12 +8,16 @@ import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { ErrorBanner } from '../components/ui';
 
 export default function AccountingApprovals() {
   // No businessId here any more: the server scopes the query from the token
   // rather than trusting a value the client passes in.
   const { role } = useAuthContext();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const toast = useToast();
   const confirm = useConfirm();
   const [pendingEntries, setPendingEntries] = useState([]);
@@ -180,7 +184,7 @@ export default function AccountingApprovals() {
                           </div>
                         )}
                       </td>
-                      <td className="p-4 text-right font-bold text-lg">${Number(entry.amount).toFixed(2)}</td>
+                      <td className="p-4 text-right font-bold text-lg">{fmt(entry.amount)}</td>
                       <td className="p-4 text-center">
                         {entry.receipt_url ? (
                           <button onClick={() => viewReceipt(entry.receipt_url)} className="text-sm font-semibold flex items-center justify-center gap-1 mx-auto" style={{ color: 'var(--color-accent-primary)' }}>
@@ -216,7 +220,7 @@ export default function AccountingApprovals() {
                       <div className="m-card-sub">{entry.description}</div>
                       <div className="m-card-meta">{entry.date} · {entry.locations?.name || 'Unknown'}</div>
                     </div>
-                    <span className="m-card-amount" style={{ flexShrink: 0, fontSize: '1.1rem' }}>${Number(entry.amount).toFixed(2)}</span>
+                    <span className="m-card-amount" style={{ flexShrink: 0, fontSize: '1.1rem' }}>{fmt(entry.amount)}</span>
                   </div>
                   <div className="m-card-actions">
                     {entry.receipt_url && (

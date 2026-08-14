@@ -5,6 +5,7 @@ export default function PaymentModal({
   onClose,
   pendingSale,
   fmt,
+  currencySymbol,
   amountPaid,
   setAmountPaid,
   paymentMethod,
@@ -132,7 +133,7 @@ export default function PaymentModal({
         </div>
 
         <div className="form-group">
-          <label>Amount Tendered ($)</label>
+          <label>Amount Tendered ({currencySymbol})</label>
           <input
             type="number"
             step="0.01"

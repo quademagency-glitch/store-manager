@@ -2,11 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { EmptyStateRow, PageHeader, SkeletonRows } from '../components/ui';
 
 export default function Alerts() {
   const { user } = useAuthContext();
   const toast = useToast();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -238,7 +242,7 @@ export default function Alerts() {
                       <div style={{ marginTop: '4px', padding: '6px 8px', borderRadius: '4px', background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', fontSize: '0.75rem' }}>
                         Pattern: <strong>{alertItem.metadata.pattern.replace(/_/g, ' ')}</strong>
                         {alertItem.metadata.void_count && <> · {alertItem.metadata.void_count} voids</>}
-                        {alertItem.metadata.total_value && <> · ${alertItem.metadata.total_value.toFixed(2)}</>}
+                        {alertItem.metadata.total_value && <> · {fmt(alertItem.metadata.total_value)}</>}
                       </div>
                     )}
                     {alertItem.metadata?.missing_items && alertItem.type === 'STOCK_TAKE_MISSING' && (

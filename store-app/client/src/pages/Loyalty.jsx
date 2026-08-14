@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLoyalty } from '../hooks/useLoyalty';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { api } from '../lib/api';
@@ -12,6 +14,8 @@ const TAB_LABELS = { rules: 'Rules Config', points: 'Customer Points', 'gift-car
 export default function Loyalty() {
   const { hasPermission } = useAuthContext();
   const toast = useToast();
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
   const {
     loading, rules, pointsBalance, pointsLedger, giftCards, storeCreditBalance,
     fetchRules, saveRules, fetchBalance, fetchLedger, redeemPoints,
@@ -91,7 +95,7 @@ export default function Loyalty() {
     if (!selectedCustomer) return toast.error('Select a customer first');
     try {
       const result = await redeemPoints(selectedCustomer.id, Number(redeemForm.points));
-      toast.success(`Redeemed! Cash value: $${result.cash_value.toFixed(2)}`);
+      toast.success(`Redeemed! Cash value: ${fmt(result.cash_value)}`);
       setRedeemForm({ points: '' });
       fetchLedger(selectedCustomer.id);
     } catch (err) {
@@ -132,8 +136,6 @@ export default function Loyalty() {
     }
   };
 
-  const fmt = (v) => `$${Number(v || 0).toFixed(2)}`;
-
   return (
     <div className="loyalty-page">
       <div className="page-header">
@@ -157,7 +159,7 @@ export default function Loyalty() {
             <h3>Loyalty Program Configuration</h3>
             <p className="text-muted mb-lg">Configure how customers earn and redeem loyalty points.</p>
             <div className="form-group">
-              <label>Points per $1 spent</label>
+              <label>Points per {currencySymbol}1 spent</label>
               <input type="number" step="0.1" className="form-input" value={ruleForm.points_per_currency_unit}
                 onChange={e => setRuleForm(p => ({ ...p, points_per_currency_unit: e.target.value }))} />
               <span className="form-hint">How many points customers earn per dollar spent</span>
@@ -169,10 +171,10 @@ export default function Loyalty() {
                   onChange={e => setRuleForm(p => ({ ...p, min_points_to_redeem: e.target.value }))} />
               </div>
               <div className="form-group flex-1">
-                <label>Point Value ($)</label>
+                <label>Point Value ({currencySymbol})</label>
                 <input type="number" step="0.001" className="form-input" value={ruleForm.point_value}
                   onChange={e => setRuleForm(p => ({ ...p, point_value: e.target.value }))} />
-                <span className="form-hint">Each point = ${ruleForm.point_value}</span>
+                <span className="form-hint">Each point = {fmt(ruleForm.point_value)}</span>
               </div>
             </div>
             <div className="form-group">
@@ -237,7 +239,7 @@ export default function Loyalty() {
                   </button>
                 </div>
                 {redeemForm.points && rules && (
-                  <p className="form-hint">Cash value: ${(Number(redeemForm.points) * Number(rules.point_value || 0)).toFixed(2)}</p>
+                  <p className="form-hint">Cash value: {fmt(Number(redeemForm.points) * Number(rules.point_value || 0))}</p>
                 )}
               </div>
 

@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Throwaway build the app tour is captured from — it has the mock harness
+# compiled in, which is exactly what must never reach dist/ (see
+# docs/app-tour/README.md).
+dist-tour
 *.local
 
 # Editor directories and files

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
+import { usePrintDocument } from '../../../hooks/usePrintDocument';
+import { useCurrency } from '../../../hooks/useCurrency';
 
 const TILL_METHODS = ['cash', 'mobile_money'];
 
@@ -10,6 +12,8 @@ const TILL_METHODS = ['cash', 'mobile_money'];
  * submit handler differ.
  */
 export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document, outstanding = 0, locations, isSubmitting, error }) {
+  const { business } = usePrintDocument();
+  const { fmt, currencySymbol } = useCurrency(business);
 
   const {
     register,
@@ -61,14 +65,14 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
         {error && <div className="alert alert-error"><p>{error}</p></div>}
 
         <p className="text-muted mt-0">
-          Outstanding balance: <strong>${outstanding.toFixed(2)}</strong>
+          Outstanding balance: <strong>{fmt(outstanding)}</strong>
         </p>
 
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="pay-amount">Amount *</label>
             <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
+              <span className="input-prefix">{currencySymbol}</span>
               <input
                 type="number"
                 id="pay-amount"
@@ -78,7 +82,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
                 {...register('amount', {
                   required: 'Amount is required',
                   min: { value: 0.01, message: 'Amount must be greater than 0' },
-                  max: { value: outstanding, message: `Cannot exceed outstanding balance of $${outstanding.toFixed(2)}` },
+                  max: { value: outstanding, message: `Cannot exceed outstanding balance of ${fmt(outstanding)}` },
                 })}
               />
             </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSales } from '../hooks/useSales';
 import { useAuthContext } from '../lib/AuthContext';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import Modal from './Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
@@ -10,6 +12,8 @@ export default function SalesHistory() {
   const { user } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
   const [pinModal, setPinModal] = useState({ isOpen: false, saleId: null, pin: '' });
 
   useEffect(() => {
@@ -78,7 +82,6 @@ export default function SalesHistory() {
     }
   };
 
-  const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
   const formatTime = (iso) => {
     const d = new Date(iso);
     return d.toLocaleString('en-US', {

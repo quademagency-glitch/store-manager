@@ -30,7 +30,7 @@ export default function Sales() {
   const { user } = useAuthContext();
   const toast = useToast();
   const { business } = usePrintDocument();
-  const { fmt } = useCurrency(business);
+  const { fmt, currencySymbol } = useCurrency(business);
   const { products } = useProducts();
   // Customers are created through the POST in handleCreateCustomer, not the
   // hook's createCustomer — it is deliberately not destructured here.
@@ -624,6 +624,7 @@ export default function Sales() {
         onClose={() => setShowPaymentModal(false)}
         pendingSale={pendingSale}
         fmt={fmt}
+        currencySymbol={currencySymbol}
         amountPaid={amountPaid}
         setAmountPaid={setAmountPaid}
         paymentMethod={paymentMethod}

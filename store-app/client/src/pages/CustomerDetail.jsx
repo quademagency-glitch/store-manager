@@ -6,6 +6,8 @@ import { useBillingLedger } from '../hooks/useBillingLedger';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { usePrintDocument } from '../hooks/usePrintDocument';
+import { useCurrency } from '../hooks/useCurrency';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
 import RecordPaymentModal from '../features/financials/components/RecordPaymentModal';
@@ -25,6 +27,9 @@ export default function CustomerDetail() {
   const toast = useToast();
   const confirm = useConfirm();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
+
+  const { business } = usePrintDocument();
+  const { fmt } = useCurrency(business);
 
   const { fetchCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const loyalty = useLoyalty();
@@ -276,11 +281,11 @@ export default function CustomerDetail() {
       <div className="stats-grid mt-xl mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-lg)' }}>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
           <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Total Spent</span>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>${totalSpent.toFixed(2)}</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(totalSpent)}</div>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
           <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Deposit Balance</span>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>${Number(loyalty.storeCreditBalance || 0).toFixed(2)}</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(loyalty.storeCreditBalance)}</div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <button className="btn btn-sm btn-primary" onClick={() => setIsDepositOpen(true)}>Deposit</button>
             <button className="btn btn-sm btn-outline" onClick={() => setIsWithdrawOpen(true)}>Withdraw</button>
@@ -293,7 +298,7 @@ export default function CustomerDetail() {
         {hasPermission('manage_financials') && (
           <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
             <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Outstanding Credit (AR)</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>${arOutstanding.toFixed(2)}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(arOutstanding)}</div>
           </div>
         )}
       </div>
@@ -331,7 +336,7 @@ export default function CustomerDetail() {
                         <td className="text-muted">{new Date(sale.created_at).toLocaleString()}</td>
                         <td>{(sale.sale_items || []).length} item(s)</td>
                         <td className="capitalize">{sale.payment_method}</td>
-                        <td className="font-bold">${Number(sale.total_amount).toFixed(2)}</td>
+                        <td className="font-bold">{fmt(sale.total_amount)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -345,7 +350,7 @@ export default function CustomerDetail() {
                         <div className="m-card-title">{new Date(sale.created_at).toLocaleDateString()}</div>
                         <div className="m-card-sub">{(sale.sale_items || []).length} item(s) · <span className="capitalize">{sale.payment_method}</span></div>
                       </div>
-                      <span className="m-card-amount">${Number(sale.total_amount).toFixed(2)}</span>
+                      <span className="m-card-amount">{fmt(sale.total_amount)}</span>
                     </div>
                   </div>
                 ))}
@@ -382,8 +387,8 @@ export default function CustomerDetail() {
                       return (
                         <tr key={doc.id}>
                           <td className="font-bold">{doc.invoice_number}</td>
-                          <td>${Number(doc.total_amount).toFixed(2)}</td>
-                          <td>${outstanding.toFixed(2)}</td>
+                          <td>{fmt(doc.total_amount)}</td>
+                          <td>{fmt(outstanding)}</td>
                           <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
                           <td><span className="badge badge-secondary">{doc.status}</span></td>
                           <td className="text-right">
@@ -410,8 +415,8 @@ export default function CustomerDetail() {
                         <span className="badge badge-secondary" style={{ flexShrink: 0 }}>{doc.status}</span>
                       </div>
                       <div className="m-card-row">
-                        <span>Amount: ${Number(doc.total_amount).toFixed(2)}</span>
-                        <span className="m-card-amount">Outstanding: ${outstanding.toFixed(2)}</span>
+                        <span>Amount: {fmt(doc.total_amount)}</span>
+                        <span className="m-card-amount">Outstanding: {fmt(outstanding)}</span>
                       </div>
                       {doc.status !== 'void' && doc.status !== 'paid' && (
                         <div className="m-card-actions">
@@ -450,8 +455,8 @@ export default function CustomerDetail() {
                       <tr key={entry.id}>
                         <td className="text-muted">{new Date(entry.created_at).toLocaleString()}</td>
                         <td className="capitalize">{entry.type}</td>
-                        <td>{Number(entry.amount) >= 0 ? '+' : ''}${Number(entry.amount).toFixed(2)}</td>
-                        <td>${Number(entry.balance_after).toFixed(2)}</td>
+                        <td>{Number(entry.amount) >= 0 ? '+' : ''}{fmt(entry.amount)}</td>
+                        <td>{fmt(entry.balance_after)}</td>
                         <td className="text-muted">{entry.note || '—'}</td>
                       </tr>
                     ))}
@@ -467,10 +472,10 @@ export default function CustomerDetail() {
                         <div className="m-card-sub">{new Date(entry.created_at).toLocaleString()}</div>
                         {entry.note && <div className="m-card-meta">{entry.note}</div>}
                       </div>
-                      <span className="m-card-amount">{Number(entry.amount) >= 0 ? '+' : ''}${Number(entry.amount).toFixed(2)}</span>
+                      <span className="m-card-amount">{Number(entry.amount) >= 0 ? '+' : ''}{fmt(entry.amount)}</span>
                     </div>
                     <div className="m-card-row">
-                      <span>Balance After: ${Number(entry.balance_after).toFixed(2)}</span>
+                      <span>Balance After: {fmt(entry.balance_after)}</span>
                     </div>
                   </div>
                 ))}
@@ -587,7 +592,7 @@ export default function CustomerDetail() {
               Initiate a cash withdrawal from {customer.name}'s deposit balance. They will receive an SMS code to verify.
             </p>
             <div className="form-group">
-              <label>Amount * (Max: ${Number(loyalty.storeCreditBalance || 0).toFixed(2)})</label>
+              <label>Amount * (Max: {fmt(loyalty.storeCreditBalance)})</label>
               <input
                 type="number"
                 min="0.01"

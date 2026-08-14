@@ -35,3 +35,21 @@ test.describe('routes render without crashing', () => {
     });
   }
 });
+
+/**
+ * Redirect-only paths, which are deliberately absent from APP_ROUTES.
+ *
+ * `/products` is still a sidebar link but renders nothing of its own, so
+ * screenshotting it only produced a duplicate of the Inventory page. Dropping
+ * it from the manifest removed the last thing checking it, and a redirect that
+ * quietly stops redirecting sends a nav item to a blank route. This is the
+ * cheaper guard the screenshot was standing in for.
+ */
+test.describe('redirect-only paths land where they promise', () => {
+  for (const [from, to] of [['/products', '/inventory']]) {
+    test(`${from} → ${to}`, async ({ page }) => {
+      await gotoApp(page, from);
+      expect(new URL(page.url()).pathname, `${from} should redirect to ${to}`).toBe(to);
+    });
+  }
+});

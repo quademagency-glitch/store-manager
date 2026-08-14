@@ -524,6 +524,9 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
+  /* Lets .stat-value size against this tile rather than the viewport — see
+     the note there. */
+  container-type: inline-size;
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
@@ -589,6 +592,10 @@
 .stat-details {
   display: flex;
   flex-direction: column;
+  /* Flex children default to min-width:auto, which refuses to shrink below
+     their content. Without this the value pushed straight out through the
+     card's right edge instead of being constrained by it. */
+  min-width: 0;
 }
 
 .stat-label {
@@ -599,12 +606,36 @@
   letter-spacing: 0.05em;
 }
 
+/* Sized against the card, not the viewport.
+ *
+ * A fixed 1.75rem fits "154" and "$12,450.50" and nothing longer. The tile is
+ * 244px wide in the 4-up grid and the icon, gap and padding claim 112px of it,
+ * so a GHS total — "GH₵14,382.50", 198px at that size — ran 43px past the
+ * card's right edge and clipped. Currency length is not ours to control:
+ * GH₵, ₦, CFA and plain codes all land here depending on the tenant.
+ *
+ * `cqi` is a percentage of this card's own inline size, so the number shrinks
+ * on a narrow tile and returns to full size on the wide ones (2-up tablet, the
+ * stacked mobile layout) without a media query per breakpoint. The floor keeps
+ * it legible; the ceiling keeps short values from ballooning.
+ */
 .stat-value {
-  font-size: 1.75rem;
+  font-size: clamp(1.05rem, 8.6cqi, 1.75rem);
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.2;
   margin-top: var(--space-xs);
+  /* Lining figures keep the decimal columns aligned tile to tile. */
+  font-variant-numeric: tabular-nums;
+  /* Shrinkable inside .stat-value-row, which also carries a trend badge, so
+     the value is not sized against the full tile it does not get to use. */
+  min-width: 0;
+  /* A figure is one word. `overflow-wrap: anywhere` was tried here to stop
+     long values escaping the card and did the opposite: it drops the
+     element's min-content width to a single glyph, so flexbox then squeezed
+     the products tile until a plain "154" broke across two lines next to its
+     badge. The clamp above does the fitting; this keeps the number whole. */
+  white-space: nowrap;
 }
 
 .stat-hint {

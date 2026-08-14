@@ -20,6 +20,30 @@ const rateLimit = require('express-rate-limit');
 const TRIAL_DAYS = 30;
 const DEFAULT_SIGNUP_PLAN = 'Single Branch';
 
+/**
+ * Tiers the public signup form may attach, by platform_plans.name.
+ *
+ * An allowlist rather than "whatever the caller asked for", because /signup is
+ * unauthenticated and the plan row carries real limits (max_locations,
+ * max_users). The marketing site's third tier is quoted by hand and routes to
+ * sales; a guessed `?plan=franchise` must not hand somebody unlimited
+ * locations for thirty days just because they edited a URL.
+ */
+const SELF_SERVICE_PLANS = ['Single Branch', 'Multi-Branch'];
+
+/**
+ * Mirror of public.slugify (migration 058), matching the client's copy in
+ * Signup.jsx and the marketing site's in config/site.ts. Lets `Multi-Branch`
+ * arrive as `multi-branch` without a slug→name table that has to be edited
+ * every time an operator renames a plan.
+ */
+function planSlug(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // Limit each IP to 10 requests per window
@@ -61,6 +85,9 @@ const signupSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters').max(200),
   business_name: z.string().trim().min(2, 'Business name is required').max(120),
   phone: z.string().trim().max(40).optional().or(z.literal('')),
+  // The tier chosen on the pricing table. Never trusted as-is — see the
+  // resolution step in the handler — so an unknown value is not a 400.
+  plan: z.string().trim().max(60).optional().or(z.literal('')),
 });
 
 const loginSchema = z.object({
@@ -90,7 +117,7 @@ const loginSchema = z.object({
  * Access: Public, rate-limited to 5/hour per IP.
  */
 router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, res) => {
-  const { name, email, password, business_name, phone } = req.body;
+  const { name, email, password, business_name, phone, plan: requestedPlan } = req.body;
 
   // Tracked so the catch-all can undo a half-finished signup. A business with
   // no owner is worse than no business at all: it holds the slug, shows up in
@@ -130,12 +157,27 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
     // Not fatal if it is missing: the trial is defined by trial_ends_at, and
     // a business with no plan attached still works — it just shows nothing on
     // the billing page until someone picks one.
-    const { data: plan } = await supabaseAdmin
+    const { data: planRows } = await supabaseAdmin
       .from('platform_plans')
       .select('id, name')
-      .eq('name', DEFAULT_SIGNUP_PLAN)
-      .eq('is_active', true)
-      .maybeSingle();
+      .in('name', SELF_SERVICE_PLANS)
+      .eq('is_active', true);
+
+    const plans = Array.isArray(planRows) ? planRows : [];
+    const wanted = planSlug(requestedPlan);
+    const plan =
+      (wanted && plans.find((p) => planSlug(p.name) === wanted)) ||
+      plans.find((p) => p.name === DEFAULT_SIGNUP_PLAN) ||
+      null;
+
+    // Worth a line in the log: the caller saw one tier on the pricing table and
+    // is getting another, which is exactly the mismatch this parameter exists
+    // to stop. Usually means a plan was renamed or deactivated in Platform
+    // Admin without the marketing site being updated.
+    if (wanted && (!plan || planSlug(plan.name) !== wanted)) {
+      logger.warn({ requested: requestedPlan, attached: plan ? plan.name : null },
+        'Signup asked for a plan that is not available; fell back');
+    }
 
     if (!plan) {
       logger.warn({ plan: DEFAULT_SIGNUP_PLAN }, 'Signup default plan not found; business will start with no plan');

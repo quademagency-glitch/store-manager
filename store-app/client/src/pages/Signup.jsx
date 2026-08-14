@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { postPublic } from '../lib/api';
 
@@ -20,8 +20,39 @@ function slugify(name) {
 
 const TRIAL_DAYS = 30;
 
+/**
+ * The tiers the marketing site can send here, via `/signup?plan=multi-branch`
+ * (see quaderp-landing/src/config/site.ts, which builds the slug from the same
+ * rule as slugify above).
+ *
+ * This map is a label, not a decision. The API re-resolves the plan name
+ * against platform_plans and is the only thing that decides what gets
+ * attached, so a stale entry here can show the wrong blurb — it cannot put
+ * anyone on the wrong plan. Franchise is deliberately absent: it is quoted by
+ * hand and the pricing table routes it to sales, not to this form.
+ */
+const PLANS = {
+  'single-branch': {
+    name: 'Single Branch',
+    detail: 'One location with up to 3 POS terminals, plus inventory, customers and financials.',
+  },
+  'multi-branch': {
+    name: 'Multi-Branch',
+    detail: 'Up to 5 locations with unlimited POS terminals, loss-prevention alerts and cross-branch transfers.',
+  },
+};
+const DEFAULT_PLAN = 'single-branch';
+
 export default function Signup() {
   const { isAuthenticated, isDemo, signOut, loading } = useAuthContext();
+  const [searchParams] = useSearchParams();
+
+  /* An unrecognised or missing `?plan` falls back rather than erroring: the
+     worst outcome for a mistyped link is the cheaper plan, never a dead form.
+     hasOwn rather than a bare lookup, or `?plan=constructor` renders a tier
+     called "Object". */
+  const planKey = searchParams.get('plan');
+  const plan = planKey && Object.hasOwn(PLANS, planKey) ? PLANS[planKey] : PLANS[DEFAULT_PLAN];
 
   const [form, setForm] = useState({
     business_name: '',
@@ -92,6 +123,10 @@ export default function Signup() {
         email: form.email.trim(),
         password: form.password,
         phone: form.phone.trim(),
+        // The resolved name, not the raw query param: the card above already
+        // fell back to a tier that exists, and sending anything else would let
+        // the label and the plan actually attached disagree.
+        plan: plan.name,
       });
       setResult(data);
     } catch (err) {
@@ -205,12 +240,11 @@ export default function Signup() {
 
           <div className="signup-plan-card">
             <div className="signup-plan-head">
-              <span className="signup-plan-name">Single Branch</span>
+              <span className="signup-plan-name">{plan.name}</span>
               <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
             </div>
             <p className="signup-plan-detail">
-              Full access to POS, inventory, customers and financials. No card needed &mdash; we&rsquo;ll only ask
-              when the trial ends.
+              {plan.detail} No card needed &mdash; we&rsquo;ll only ask when the trial ends.
             </p>
           </div>
 

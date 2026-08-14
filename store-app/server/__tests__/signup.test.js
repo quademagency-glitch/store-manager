@@ -10,6 +10,7 @@ const request = require('supertest');
 const { buildMockSupabase } = require('./helpers/mockSupabase');
 
 const PLAN = { id: 'plan-uuid-single', name: 'Single Branch' };
+const PLAN_MULTI = { id: 'plan-uuid-multi', name: 'Multi-Branch' };
 const BUSINESS = {
   id: 'biz-uuid-new',
   name: 'Acme Hardware',
@@ -77,7 +78,9 @@ function happyPathOverrides() {
     // 1st read: duplicate check, must find nothing.
     // 2nd read: the profile row handle_new_user() just created.
     users: [{ data: null, error: null }, { data: OWNER_PROFILE, error: null }],
-    platform_plans: { data: PLAN, error: null },
+    // A list, not a row: the route reads every self-service plan and picks,
+    // so that `?plan=multi-branch` from the pricing table can be honoured.
+    platform_plans: { data: [PLAN, PLAN_MULTI], error: null },
     businesses: { data: BUSINESS, error: null },
     accounting_templates: { data: [{ id: 'tpl-1' }], error: null },
   };
@@ -227,6 +230,60 @@ describe('POST /api/auth/signup — missing plan', () => {
     expect(res.status).toBe(201);
     expect(res.body.plan).toBeNull();
     expect(res.body.trial_ends_at).toBeTruthy();
+  });
+});
+
+/**
+ * The tier a visitor picks on the pricing table travels as `?plan=<slug>` and
+ * has to survive the trip. It used to be dropped entirely: every tier linked
+ * to a bare /signup and the page hardcoded Single Branch, so anyone choosing
+ * Multi-Branch was quietly signed up for the cheaper plan.
+ */
+describe('POST /api/auth/signup — plan selection', () => {
+  it('attaches the requested plan', async () => {
+    const res = await postSignup({ ...VALID_BODY, plan: 'Multi-Branch' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.plan).toBe('Multi-Branch');
+  });
+
+  it('accepts the slug form the marketing site sends', async () => {
+    const res = await postSignup({ ...VALID_BODY, plan: 'multi-branch' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.plan).toBe('Multi-Branch');
+  });
+
+  it('defaults to Single Branch when no plan is named', async () => {
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(201);
+    expect(res.body.plan).toBe('Single Branch');
+  });
+
+  it('falls back rather than failing when the plan is not recognised', async () => {
+    const res = await postSignup({ ...VALID_BODY, plan: 'enterprise-unlimited' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.plan).toBe('Single Branch');
+  });
+
+  /* /signup is unauthenticated, so the query string is attacker-controlled.
+     Franchise is quoted by hand and never offered self-service; editing a URL
+     must not hand somebody its limits for thirty days.
+
+     This asserts the half that is testable here: a plan the query did not
+     return cannot be attached, however the URL asks for it. The other half is
+     the `.in(SELF_SERVICE_PLANS)` filter that keeps Franchise out of that
+     result in the first place, and the shared mock cannot check it — it
+     ignores filter arguments and replays whatever fixture it was given, so
+     adding a Franchise row here would prove the mock's behaviour, not the
+     route's. */
+  it('will not attach a plan outside the self-service list', async () => {
+    const res = await postSignup({ ...VALID_BODY, plan: 'franchise' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.plan).toBe('Single Branch');
   });
 });
 

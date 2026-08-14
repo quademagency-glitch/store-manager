@@ -271,8 +271,14 @@ async function teardown(businessId) {
 
 async function seed() {
   // ── Business ──────────────────────────────────────────────
-  // Slug is set explicitly rather than left to the trigger: the demo lives at
-  // a known URL (demo.app.quaderp.app) that is linked from the landing page.
+  // Slug is set explicitly rather than left to the trigger: the demo has to
+  // keep the same tenant URL (demo.app.quaderp.app) across reseeds, or every
+  // link anyone has saved to it breaks the next time this script runs.
+  //
+  // That URL is not, however, how visitors reach the demo. The landing page
+  // sends them to app.quaderp.app/login?demo=1, which Login.jsx recognises and
+  // signs in automatically — arriving at the tenant URL directly just shows a
+  // login form with no credentials on it.
   const business = must('create business', await supabaseAdmin
     .from('businesses')
     .insert({

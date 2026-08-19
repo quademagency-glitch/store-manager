@@ -257,12 +257,31 @@ export function useAuth() {
     try {
       const result = await postPublic('/auth/demo-login', {});
 
+      // location_ids is the tell that the server is new enough to carry the
+      // full payload; against an older deploy we fall back to the extra round
+      // trip rather than booting with no permissions and no locations.
+      const demoUser = result.user;
+      const canSeedFromPayload = Boolean(demoUser && Array.isArray(demoUser.location_ids));
+
+      // Claim the id BEFORE setSession, not after.
+      //
+      // setSession fires onAuthStateChange, which calls setUser — and that can
+      // flush the role effect before this function reaches applyRoleData. When
+      // it did, the effect saw no claim and issued exactly the query this whole
+      // change exists to delete. It raced, so it only happened about half the
+      // time, which is precisely the kind of thing that looks fixed in testing.
+      if (canSeedFromPayload) {
+        roleLoadedFor.current = demoUser.id;
+      }
+
       const { data, error } = await supabase.auth.setSession({
         access_token: result.session.access_token,
         refresh_token: result.session.refresh_token,
       });
 
       if (error) {
+        // Nothing was seeded, so the claim must not outlive the failure.
+        roleLoadedFor.current = null;
         setLoading(false);
         return { error };
       }
@@ -272,12 +291,8 @@ export function useAuth() {
         setUser(data.user);
 
         // Seed straight from the demo-login response instead of querying for
-        // what it already told us. location_ids is the tell that the server is
-        // new enough to carry the full payload; against an older deploy we
-        // fall back to the extra round trip rather than booting with no
-        // permissions and no locations.
-        const demoUser = result.user;
-        if (demoUser && Array.isArray(demoUser.location_ids)) {
+        // what it already told us.
+        if (canSeedFromPayload) {
           await applyRoleData({
             userId: demoUser.id,
             // The server refuses a banned demo account before it ever gets

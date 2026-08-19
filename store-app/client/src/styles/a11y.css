@@ -179,3 +179,44 @@
     block-size: 20px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Skip link
+
+   Hidden until focused, then pinned to the top-left above everything. It
+   deliberately does NOT use `display:none` or `visibility:hidden`, both of
+   which remove an element from the tab order entirely and would make this
+   unreachable — the exact failure that makes most skip links decorative.
+
+   The target is `<main id="main-content" tabIndex={-1}>`. Without the
+   tabindex, Safari and older Chrome move the browser's scroll position but
+   leave keyboard focus behind on the link, so the next Tab returns to the
+   navigation and the skip does nothing.
+   ────────────────────────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-accent-primary);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 var(--radius-md) 0;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* The landmark is `tabindex="-1"`: focusable by the skip link, never a tab
+   stop of its own.
+
+   Deliberately NOT given `outline: none`. The first attempt suppressed the
+   ring here on the grounds that it looks heavy around a whole content region —
+   and the invariant in a11y.spec.ts rejected it, correctly. Someone who has
+   just activated "skip to main content" needs confirmation that the skip
+   worked and that focus moved; silently swallowing the only signal is the
+   same defect the rest of this file exists to prevent, just in a place where
+   it looked defensible.
+*/

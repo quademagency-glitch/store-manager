@@ -301,3 +301,108 @@ test.describe('touch targets', () => {
     expect(small, 'Below the 44px minimum hit area under a coarse pointer').toEqual([]);
   });
 });
+
+/* ── Getting into, and out of, things ────────────────────────────────────
+   Three defects that no screenshot and no static check can see, because all
+   three only exist while someone is operating the app from the keyboard.
+   Each was real before these tests were written. */
+
+test('the skip link is the first tab stop and actually moves focus', async ({ page }) => {
+  await gotoApp(page, '/dashboard');
+
+  await page.keyboard.press('Tab');
+
+  const first = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    return el ? { cls: el.className, text: el.textContent?.trim(), tag: el.tagName } : null;
+  });
+  expect(first?.cls, 'The first Tab must reach the skip link — the sidebar has 39 links behind it').toContain('skip-link');
+
+  // Visible once focused. A skip link that stays off-screen while focused is
+  // the standard broken implementation: sighted keyboard users cannot see
+  // where their focus went.
+  const visible = await page.evaluate(() => {
+    const el = document.querySelector('.skip-link') as HTMLElement;
+    return el.getBoundingClientRect().left >= 0;
+  });
+  expect(visible, 'The skip link must become visible when focused').toBe(true);
+
+  await page.keyboard.press('Enter');
+
+  // The tabindex on <main> is what makes this work in Safari; without it the
+  // page scrolls but focus stays on the link, and the next Tab goes straight
+  // back into the navigation.
+  const landed = await page.evaluate(() => document.activeElement?.id);
+  expect(landed, 'Enter on the skip link must move focus to the main landmark').toBe('main-content');
+});
+
+test('an open dialog keeps Tab inside it, and gives focus back on close', async ({ page }) => {
+  await gotoApp(page, '/customers');
+
+  const trigger = page.getByRole('button', { name: /add customer/i });
+  await trigger.waitFor();
+  await trigger.click();
+
+  const dialog = page.locator('.modal-content[role="dialog"]');
+  await expect(dialog).toBeVisible();
+
+  // Tab all the way round the dialog and past where its last control is. If
+  // the trap is missing, focus walks out onto the page behind — which is
+  // covered by the overlay, so the user is editing a form they cannot see and
+  // sighted keyboard users simply lose the caret.
+  const escaped: string[] = [];
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press('Tab');
+    const inside = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return 'body';
+      return el.closest('.modal-content[role="dialog"]') ? 'in' : 'out';
+    });
+    if (inside !== 'in') escaped.push(`${i}:${inside}`);
+  }
+  expect(escaped, 'Focus left the open dialog while tabbing').toEqual([]);
+
+  // Shift+Tab off the first control must wrap backwards, not fall out.
+  await page.evaluate(() => {
+    const first = document.querySelector('.modal-content[role="dialog"] button') as HTMLElement;
+    first?.focus();
+  });
+  await page.keyboard.press('Shift+Tab');
+  const stillIn = await page.evaluate(() =>
+    Boolean(document.activeElement?.closest('.modal-content[role="dialog"]')),
+  );
+  expect(stillIn, 'Shift+Tab off the first control fell out of the dialog').toBe(true);
+
+  // Closing must hand focus back to whatever opened it. Without this a
+  // keyboard user is dropped on <body> and the next Tab restarts from the top
+  // of the page — so closing a dialog opened from a table's last row sends
+  // them back to the header.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  const returned = await page.evaluate(() => document.activeElement?.textContent?.trim());
+  expect(returned, 'Focus was not returned to the trigger after closing').toMatch(/add customer/i);
+});
+
+test('sidebar dropdowns close on Escape', async ({ page }) => {
+  await gotoApp(page, '/dashboard');
+
+  const trigger = page.locator('[data-dropdown="user"] > button');
+  await trigger.click();
+
+  const openCount = await page.locator('.user-dropdown-menu.open').count();
+  expect(openCount, 'The user menu should have opened').toBe(1);
+
+  await page.keyboard.press('Escape');
+
+  await expect(
+    page.locator('.user-dropdown-menu.open'),
+    'Escape must close the menu — it previously had no exit but selecting an item',
+  ).toHaveCount(0);
+
+  // Focus must not be stranded on a control that has just been hidden.
+  const focused = await page.evaluate(() =>
+    document.activeElement?.closest('[data-dropdown]') !== null,
+  );
+  expect(focused, 'Escape should return focus to the trigger, not to <body>').toBe(true);
+});

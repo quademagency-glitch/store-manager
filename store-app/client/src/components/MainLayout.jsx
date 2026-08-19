@@ -154,6 +154,51 @@ export default function MainLayout() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
+  // Dismiss the sidebar dropdowns on Escape or a click elsewhere.
+  //
+  // Neither had any way out but selecting an item or clicking the trigger
+  // again. A menu that survives a click on the page behind it reads as the app
+  // having frozen, and for a keyboard user the only exit was to Tab through
+  // every remaining item.
+  //
+  // `pointerdown` rather than `click`: a click fires after the mousedown has
+  // already moved focus and, for anything that re-renders on mousedown, the
+  // element under the pointer may no longer be the one the click reports.
+  //
+  // The listener is only attached while something is open, so the common case
+  // costs nothing.
+  useEffect(() => {
+    if (!isUserMenuOpen && !isBranchMenuOpen) return undefined;
+
+    const closeAll = () => {
+      setIsUserMenuOpen(false);
+      setIsBranchMenuOpen(false);
+    };
+
+    const onPointerDown = (e) => {
+      // A click inside either dropdown is that dropdown's own business; its
+      // items already close it themselves.
+      if (e.target instanceof Element && e.target.closest('[data-dropdown]')) return;
+      closeAll();
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      closeAll();
+      // Escape should leave focus somewhere sensible rather than on a control
+      // that has just been hidden, which strands the keyboard user at <body>.
+      const trigger = document.querySelector('[data-dropdown] > button');
+      if (trigger instanceof HTMLElement) trigger.focus();
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isUserMenuOpen, isBranchMenuOpen]);
+
   // locationIds is a freshly-allocated array on every auth refresh even when
   // its contents haven't changed; key off its contents so this effect doesn't
   // re-fire (and re-request /locations) for an equivalent array reference.
@@ -392,10 +437,12 @@ export default function MainLayout() {
   );
 
   const renderBranchSelector = (positionStyle, isMobileDrawer = false) => (
-    <div style={{ position: 'relative', width: isMobileDrawer ? '100%' : 'auto', ...positionStyle }}>
+    <div data-dropdown="branch" style={{ position: 'relative', width: isMobileDrawer ? '100%' : 'auto', ...positionStyle }}>
       <button 
         className="branch-selector"
         onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
+        aria-expanded={isBranchMenuOpen}
+        aria-haspopup="menu"
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-tertiary)', paddingRight: '1rem' }}
       >
         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobileDrawer ? '100%' : '150px' }}>
@@ -446,6 +493,14 @@ export default function MainLayout() {
 
   return (
     <div className="dashboard-page">
+      {/* First thing Tab reaches, and invisible until it is focused.
+          The sidebar carries 39 navigation links, so without this a keyboard
+          or screen-reader user pressed Tab 39 times to reach the page content
+          — on every single navigation, since the sidebar re-renders each time.
+          It is the single highest-value control on the page for the people who
+          need it, and it costs one element. */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
       {/* ── Mobile top bar (visible only on small screens via CSS) ── */}
       <header className="mobile-sidebar-topbar">
         {/* One className, not two — a second `className` prop silently wins in
@@ -644,10 +699,12 @@ export default function MainLayout() {
             </div>
           )}
           
-          <div style={{ position: 'relative', width: '100%' }}>
+          <div data-dropdown="user" style={{ position: 'relative', width: '100%' }}>
             <button 
               className="sidebar-signout" 
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="menu"
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', cursor: 'pointer', color: 'var(--color-text-primary)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -680,7 +737,7 @@ export default function MainLayout() {
           the palette can never offer a page this user would be refused. */}
       <CommandPalette navGroups={navGroups} />
 
-      <main className="dashboard-main">
+      <main className="dashboard-main" id="main-content" tabIndex={-1}>
         <DemoBanner />
         <div className="page-shell">
           <div className="offline-status-slot">

@@ -163,7 +163,7 @@
   color: #e2e8f0;
   display: inline;
 }
-.legal-def dt::after { content: ' — '; color: var(--color-text-tertiary, #64748b); }
+.legal-def dt::after { content: ': '; color: var(--color-text-tertiary, #64748b); }
 .legal-def dd { display: inline; margin: 0; }
 
 /* Tables — retention schedules and sub-processor lists read far better as

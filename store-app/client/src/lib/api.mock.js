@@ -69,27 +69,27 @@ const FIXTURES = {
   // genuine low-stock row to show.
   '/products': [
     {
-      id: 'p1', name: 'Perfumed Rice 5kg', sku: 'DEMO-005', price: 98, stock_quantity: 64,
+      id: 'p1', name: 'Perfumed Rice 5kg', sku: 'DEMO-005', category: 'Groceries', price: 98, stock_quantity: 64,
       product_inventory: [{ location_id: 'mock-loc', quantity: 64, low_stock_threshold: 10 }],
     },
     {
-      id: 'p2', name: 'Milo Tin 400g', sku: 'DEMO-002', price: 62, stock_quantity: 112,
+      id: 'p2', name: 'Milo Tin 400g', sku: 'DEMO-002', category: 'Drinks', price: 62, stock_quantity: 112,
       product_inventory: [{ location_id: 'mock-loc', quantity: 112, low_stock_threshold: 15 }],
     },
     {
-      id: 'p3', name: 'Indomie Chicken (40 pack)', sku: 'DEMO-011', price: 96, stock_quantity: 38,
+      id: 'p3', name: 'Indomie Chicken (40 pack)', sku: 'DEMO-011', category: 'Household', price: 96, stock_quantity: 38,
       product_inventory: [{ location_id: 'mock-loc', quantity: 38, low_stock_threshold: 10 }],
     },
     {
-      id: 'p4', name: 'Frytol Cooking Oil 2L', sku: 'DEMO-007', price: 78, stock_quantity: 52,
+      id: 'p4', name: 'Frytol Cooking Oil 2L', sku: 'DEMO-007', category: 'Personal Care', price: 78, stock_quantity: 52,
       product_inventory: [{ location_id: 'mock-loc', quantity: 52, low_stock_threshold: 12 }],
     },
     {
-      id: 'p5', name: 'Voltic Water 1.5L', sku: 'DEMO-020', price: 6.5, stock_quantity: 480,
+      id: 'p5', name: 'Voltic Water 1.5L', sku: 'DEMO-020', category: 'Pharmacy', price: 6.5, stock_quantity: 480,
       product_inventory: [{ location_id: 'mock-loc', quantity: 480, low_stock_threshold: 60 }],
     },
     {
-      id: 'p6', name: 'Gino Tomato Paste 400g', sku: 'DEMO-009', price: 18, stock_quantity: 7,
+      id: 'p6', name: 'Gino Tomato Paste 400g', sku: 'DEMO-009', category: 'Groceries', price: 18, stock_quantity: 7,
       product_inventory: [{ location_id: 'mock-loc', quantity: 7, low_stock_threshold: 24 }],
     },
   ],

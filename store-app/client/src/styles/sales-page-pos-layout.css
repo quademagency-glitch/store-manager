@@ -865,3 +865,52 @@
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }
+
+/* ── Keyboard shortcut help ──────────────────────────────────────────
+   Collapsed by default: it is a reference for the first week, not
+   something a cashier needs occupying the catalogue every day. */
+.pos-shortcut-help {
+  margin: 0 var(--space-md, 1rem) var(--space-sm, 0.75rem);
+  padding: var(--space-sm, 0.75rem) var(--space-md, 1rem);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.pos-shortcut-help dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.pos-shortcut-help dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.pos-shortcut-help dt {
+  flex-shrink: 0;
+  min-width: 2.6rem;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.pos-shortcut-help dd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.pos-shortcut-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}

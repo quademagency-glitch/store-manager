@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useCustomers } from '../hooks/useCustomers';
@@ -14,6 +14,8 @@ import PaymentModal from '../features/sales/components/PaymentModal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
 import { addToOfflineQueue } from '../lib/idb';
 import { useToast } from '../hooks/useToast';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import { PageHeader } from '../components/ui';
@@ -29,6 +31,7 @@ const SCAN_FIELD_LABELS = {
 export default function Sales() {
   const { user } = useAuthContext();
   const toast = useToast();
+  const confirm = useConfirm();
   const { business } = usePrintDocument();
   const { fmt, currencySymbol } = useCurrency(business);
   const { products } = useProducts();
@@ -63,6 +66,8 @@ export default function Sales() {
   // its own tracking codes and checkout stays blocked until all are filled.
   const [wizardItems, setWizardItems] = useState([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const productSearchRef = useRef(null);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
@@ -105,11 +110,14 @@ export default function Sales() {
   const filteredProducts = useMemo(() => {
     if (!productSearchTerm) return products;
     const lower = productSearchTerm.toLowerCase();
-    return products.filter(p =>
-      p.name.toLowerCase().includes(lower) ||
-      p.sku.toLowerCase().includes(lower) ||
-      p.category.toLowerCase().includes(lower)
-    );
+    // Coerced rather than dereferenced. name/sku/category are NOT NULL in the
+    // database today, so this is defensive rather than a live fix — but the
+    // consequence of being wrong is the entire till dropping to the error
+    // boundary mid-sale, which is not a risk worth carrying for three ??s. A
+    // narrowed .select(), a new nullable column or a partial cache hydration
+    // would all be enough.
+    const match = (value) => String(value ?? '').toLowerCase().includes(lower);
+    return products.filter(p => match(p.name) || match(p.sku) || match(p.category));
   }, [products, productSearchTerm]);
 
   // Currency formatting handled by useCurrency hook above
@@ -422,6 +430,56 @@ export default function Sales() {
   const [showCustomerDrawer, setShowCustomerDrawer] = useState(false);
 
   // ─── Render POS Grid ───
+  /**
+   * POS keyboard shortcuts.
+   *
+   * Function keys rather than letters: a cashier's hands are on the keyboard
+   * and a barcode scanner behaves like one, so single letters would collide
+   * with scanned input. The hook refuses to fire any of these while focus is in
+   * a field — except Escape, which should always close what is in front of you.
+   */
+  useKeyboardShortcuts([
+    { key: 'F1', handler: () => productSearchRef.current?.focus() },
+    { key: '/', handler: () => productSearchRef.current?.focus() },
+    {
+      key: 'F2',
+      // Same guard as the button, so the shortcut can never start a checkout
+      // the UI itself would refuse.
+      enabled: wizardItems.length > 0,
+      handler: () => {
+        if (isCheckoutReady() && selectedCustomer && !isProcessing) handleHoldSale();
+      },
+    },
+    { key: 'F3', handler: () => setSaleType(saleType === 'history' ? null : 'history') },
+    {
+      key: 'F4',
+      enabled: wizardItems.length > 0,
+      handler: async () => {
+        const ok = await confirm({
+          title: 'Clear cart?',
+          message: `This removes all ${wizardItems.length} item(s) from the current sale.`,
+          confirmText: 'Clear cart',
+          variant: 'danger',
+        });
+        if (ok) setWizardItems([]);
+      },
+    },
+    {
+      key: 'Escape',
+      allowInInput: true,
+      handler: () => {
+        if (showShortcutHelp) return setShowShortcutHelp(false);
+        if (showScanner) return setShowScanner(false);
+        if (showReceipt) return closeReceipt();
+        if (showPaymentModal) return setShowPaymentModal(false);
+        if (showNewCustomerModal) return setShowNewCustomerModal(false);
+        if (showVerifyModal) return setShowVerifyModal(false);
+        if (showCustomerDrawer) return setShowCustomerDrawer(false);
+        if (productSearchTerm) return setProductSearchTerm('');
+      },
+    },
+  ]);
+
   if (saleType === 'history') {
     return (
       <div>
@@ -446,14 +504,41 @@ export default function Sales() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             POS Terminal
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => setSaleType('history')}>History</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Discoverability: shortcuts nobody knows about save nobody time. */}
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowShortcutHelp(v => !v)}
+              aria-expanded={showShortcutHelp}
+              title="Keyboard shortcuts"
+            >
+              ⌨️ Shortcuts
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => setSaleType('history')}>History</button>
+          </div>
         </div>
+
+        {showShortcutHelp && (
+          <div className="pos-shortcut-help" role="region" aria-label="Keyboard shortcuts">
+            <dl>
+              <div><dt>F1</dt><dd>Search products</dd></div>
+              <div><dt>/</dt><dd>Search products</dd></div>
+              <div><dt>F2</dt><dd>Checkout</dd></div>
+              <div><dt>F3</dt><dd>Toggle sales history</dd></div>
+              <div><dt>F4</dt><dd>Clear cart</dd></div>
+              <div><dt>Esc</dt><dd>Close / clear search</dd></div>
+            </dl>
+            <p className="pos-shortcut-note">Shortcuts pause while you are typing in a field.</p>
+          </div>
+        )}
 
         <div className="catalog-search">
           <svg className="catalog-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" strokeWidth="2"/></svg>
           <input 
+             ref={productSearchRef}
              className="catalog-search-input" 
-             placeholder="Search products by name, SKU..."
+             placeholder="Search products by name, SKU...  (F1)"
              value={productSearchTerm}
              onChange={e => setProductSearchTerm(e.target.value)}
           />

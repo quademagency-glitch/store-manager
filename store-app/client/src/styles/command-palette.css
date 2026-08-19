@@ -1,0 +1,115 @@
+/* ── Command palette (Cmd/Ctrl+K) ───────────────────────────────────── */
+
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  /* Sits high rather than centred: the eye goes to the top of a search field,
+     and it keeps the list clear of the on-screen keyboard on tablets. */
+  align-items: flex-start;
+  padding-block-start: 12vh;
+  padding-inline: var(--space-md, 1rem);
+  background: color-mix(in srgb, var(--color-bg-primary) 70%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.command-palette {
+  width: 100%;
+  max-width: 34rem;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 35%);
+}
+
+.command-palette-input {
+  width: 100%;
+  padding: var(--space-md, 1rem);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  border-block-end: 1px solid var(--color-border);
+}
+
+/* No `outline: none`. The palette is opened by keyboard and its input is
+   focused immediately, so the one user guaranteed to be here is the one an
+   invisible focus ring strands. The default outline sits awkwardly on a
+   full-bleed input, so this substitutes an inset ring rather than removing
+   the indicator — which the a11y invariant rightly refuses to allow. */
+.command-palette-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-primary, #6366f1);
+}
+
+.command-palette-results {
+  max-height: 22rem;
+  margin: 0;
+  padding: var(--space-xs, 0.35rem);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.command-palette-item {
+  display: flex;
+  gap: var(--space-md, 1rem);
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.command-palette-item.is-active {
+  background: var(--color-bg-tertiary, var(--color-bg-primary));
+}
+
+.command-palette-label {
+  color: var(--color-text-primary);
+}
+
+.command-palette-group {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.command-palette-empty {
+  padding: var(--space-md, 1rem);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.command-palette-footer {
+  display: flex;
+  gap: var(--space-md, 1rem);
+  padding: 0.5rem var(--space-md, 1rem);
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.command-palette-footer kbd {
+  padding: 0.05rem 0.3rem;
+  margin-inline-end: 0.2rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+/* The palette is a keyboard tool; on touch there is no shortcut to open it,
+   so it only ever appears if something opens it programmatically. */
+@media (prefers-reduced-motion: no-preference) {
+  .command-palette {
+    animation: command-palette-in 120ms ease-out;
+  }
+}
+
+@keyframes command-palette-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}

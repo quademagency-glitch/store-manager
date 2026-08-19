@@ -90,6 +90,7 @@
 @import './styles/reports.css' layer(pages);
 @import './styles/qr-print-label.css' layer(pages);
 @import './styles/help-center.css' layer(pages);
+@import './styles/command-palette.css' layer(components);
 
 /* --- utilities --- */
 @import './styles/utilities.css' layer(utilities);

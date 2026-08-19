@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import OfflineStatus from './OfflineStatus';
 import DemoBanner from './DemoBanner';
 import { useTour } from './ProductTour';
+import CommandPalette from './CommandPalette';
 
 const Icons = {
   dashboard: (
@@ -675,6 +676,10 @@ export default function MainLayout() {
       </aside>
 
       {/* ── Main Content ── */}
+      {/* Fed from navGroups above, which is already permission-filtered — so
+          the palette can never offer a page this user would be refused. */}
+      <CommandPalette navGroups={navGroups} />
+
       <main className="dashboard-main">
         <DemoBanner />
         <div className="page-shell">

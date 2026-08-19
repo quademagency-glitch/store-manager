@@ -447,7 +447,7 @@ router.get('/download-receipts', authGuard, async (req, res) => {
           .download(storagePath);
           
         if (downloadError) {
-          logger.error({ err: downloadError }, 'Failed to download ${storagePath}:');
+          logger.error({ err: downloadError, storagePath }, 'Failed to download receipt');
           continue;
         }
 
@@ -457,7 +457,7 @@ router.get('/download-receipts', authGuard, async (req, res) => {
         const filename = `${entry.type}_${entry.id.substring(0,8)}.${ext}`;
         archive.append(buffer, { name: filename });
       } catch (err) {
-        logger.error({ err: err }, 'Error processing ${storagePath}:');
+        logger.error({ err, storagePath }, 'Error processing receipt');
       }
     }
 

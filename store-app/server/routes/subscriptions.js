@@ -592,7 +592,7 @@ router.post('/paystack-webhook', express.raw({ type: 'application/json' }), asyn
     }
 
     const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    logger.info('[WEBHOOK] Paystack event: ${event.event}');
+    logger.info({ event: event.event }, '[WEBHOOK] Paystack event');
 
     if (event.event === 'charge.success') {
       const { metadata, reference, amount, currency } = event.data;
@@ -662,7 +662,7 @@ router.post('/paystack-webhook', express.raw({ type: 'application/json' }), asyn
             paid_at: now.toISOString(),
           }]);
 
-        logger.info('[WEBHOOK] Payment recorded for business ${metadata.business_id}');
+        logger.info({ businessId: metadata.business_id }, '[WEBHOOK] Payment recorded');
       }
     }
 

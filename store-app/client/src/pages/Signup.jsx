@@ -192,7 +192,7 @@ export default function Signup() {
               </dl>
 
               <p className="signup-success-note">
-                Nothing in your inbox after a few minutes? Check your spam folder &mdash; the message comes from
+                Nothing in your inbox after a few minutes? Check your spam folder. The message comes from
                 QuadERP.
               </p>
 
@@ -244,7 +244,7 @@ export default function Signup() {
               <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
             </div>
             <p className="signup-plan-detail">
-              {plan.detail} No card needed &mdash; we&rsquo;ll only ask when the trial ends.
+              {plan.detail} No card needed. We&rsquo;ll only ask when the trial ends.
             </p>
           </div>
 

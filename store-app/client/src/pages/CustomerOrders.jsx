@@ -340,7 +340,7 @@ function OrderForm({ order, onSave, onClose, loading }) {
                         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
                           background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}>
                         <div className="font-bold">{p.name}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{p.sku} &mdash; {formatCurrency(p.price)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{p.sku}: {formatCurrency(p.price)}</div>
                       </button>
                     ))}
                   </div>

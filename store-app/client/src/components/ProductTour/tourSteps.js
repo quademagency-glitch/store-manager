@@ -45,7 +45,7 @@ export const TOUR_STEPS = [
   {
     id: 'reports',
     title: 'Reports that answer questions',
-    body: 'Sales performance, profit and loss, and inventory analytics — built from your live data, no spreadsheets needed.',
+    body: 'Sales performance, profit and loss, and inventory analytics, built from your live data, no spreadsheets needed.',
   },
   {
     id: 'settings',
@@ -55,7 +55,7 @@ export const TOUR_STEPS = [
   {
     id: 'setup',
     title: 'Finish setting up',
-    body: "Work through this checklist and your store will be fully configured. It ticks itself off as you go — that's the last stop on the tour.",
+    body: "Work through this checklist and your store will be fully configured. It ticks itself off as you go, and it's the last stop on the tour.",
   },
 ];
 

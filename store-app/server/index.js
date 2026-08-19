@@ -52,7 +52,7 @@ const integrationsRoutes = require('./routes/integrations');
 const { paystackWebhookHandler } = require('./routes/paystackWebhook');
 const { healthDeepHandler } = require('./routes/healthDeep');
 const auditLogsRoutes = require('./routes/auditLogs');
-const { cspReportHandler, cspReportSummary } = require('./routes/cspReport');
+const { cspReportHandler, cspReportSummaryFromDb } = require('./routes/cspReport');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -357,22 +357,42 @@ const healthDeepLimiter = rateLimit({
 app.get('/api/health/deep', healthDeepLimiter, healthDeepHandler);
 
 // Aggregated CSP violations, for deciding whether the policy is safe to
-// enforce. Same token gate as the deep health check — it reveals which
-// resources the app loads, which is reconnaissance for an attacker.
-app.get('/api/csp-report/summary', healthDeepLimiter, (req, res) => {
+// enforce. Reads from Postgres rather than process memory: the API runs one
+// worker per core and reports are spread across them, so an in-memory tally is
+// a one-in-N sample — it answered "0 violations" while sibling workers were
+// recording them. A false all-clear is the one answer this must never give.
+//
+// Same token gate as the deep health check: it reveals which resources the app
+// loads, which is reconnaissance.
+app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
   const expected = process.env.HEALTH_CHECK_TOKEN;
   if (expected && req.get('x-health-token') !== expected) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  const violations = cspReportSummary();
-  res.json({
-    violations,
-    total: violations.reduce((n, v) => n + v.count, 0),
-    distinct: violations.length,
-    note: violations.length === 0
-      ? 'No violations recorded by this worker. Note the tally is per worker process and resets on deploy.'
-      : 'Each entry is a rule the policy would block once enforcing. Allow the legitimate ones in vercel.json first.',
-  });
+  try {
+    // Nonsense input falls back to the default rather than clamping to 1.
+    // Clamping would silently narrow the window to a single day, and on this
+    // endpoint a narrow window reads as "no violations" — the one answer it
+    // must never give wrongly.
+    const requested = parseInt(req.query.days, 10);
+    const sinceDays = Number.isFinite(requested) && requested > 0 ? Math.min(90, requested) : 30;
+    const violations = await cspReportSummaryFromDb({ sinceDays });
+    const enforced = violations.filter((v) => v.disposition === 'enforce');
+    res.json({
+      windowDays: sinceDays,
+      distinct: violations.length,
+      total: violations.reduce((n, v) => n + v.count, 0),
+      violations,
+      note: violations.length === 0
+        ? 'No violations in this window. If real traffic has exercised the main flows, the policy looks safe to switch from Report-Only to enforcing.'
+        : enforced.length > 0
+          ? 'Some violations have disposition=enforce, meaning resources were actually BLOCKED for real users. Fix these first.'
+          : 'These would be blocked once enforcing. Allow the legitimate ones in vercel.json before switching the header name.',
+    });
+  } catch (err) {
+    logger.error({ err, reqId: req.id }, 'Failed to read CSP violation summary');
+    res.status(500).json({ error: 'Failed to read CSP violations' });
+  }
 });
 
 // Auth routes

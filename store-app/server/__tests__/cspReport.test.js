@@ -7,6 +7,11 @@ jest.mock('../db/supabase', () => ({
 const app = require('../index');
 const { _reset, cspReportSummary } = require('../routes/cspReport');
 
+// The summary endpoint reads from Postgres (cross-worker), so under the mocked
+// Supabase client it returns an empty set regardless of what was posted. These
+// tests therefore assert the in-process aggregation for recording behaviour,
+// and only the contract of the endpoint itself.
+
 const LEGACY = {
   'csp-report': {
     'document-uri': 'https://app.quaderp.app/sales',
@@ -101,23 +106,18 @@ describe('POST /api/csp-report', () => {
 describe('GET /api/csp-report/summary', () => {
   beforeEach(() => _reset());
 
-  it('reports nothing when the policy is clean', async () => {
+  it('answers 200 with the aggregate shape', async () => {
     const res = await request(app).get('/api/csp-report/summary');
     expect(res.status).toBe(200);
-    expect(res.body.distinct).toBe(0);
-    expect(res.body.total).toBe(0);
+    expect(res.body).toHaveProperty('violations');
+    expect(res.body).toHaveProperty('distinct');
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('windowDays');
   });
 
-  it('reports violations ordered by frequency', async () => {
-    await request(app).post('/api/csp-report')
-      .set('Content-Type', 'application/reports+json').send(JSON.stringify(MODERN));
-    for (let i = 0; i < 3; i++) {
-      await request(app).post('/api/csp-report')
-        .set('Content-Type', 'application/csp-report').send(JSON.stringify(LEGACY));
-    }
-    const res = await request(app).get('/api/csp-report/summary');
-    expect(res.body.distinct).toBe(2);
-    expect(res.body.total).toBe(4);
-    expect(res.body.violations[0].count).toBe(3);
+  it('clamps the window so a caller cannot request an unbounded scan', async () => {
+    expect((await request(app).get('/api/csp-report/summary?days=9999')).body.windowDays).toBe(90);
+    expect((await request(app).get('/api/csp-report/summary?days=-5')).body.windowDays).toBe(30);
+    expect((await request(app).get('/api/csp-report/summary?days=7')).body.windowDays).toBe(7);
   });
 });

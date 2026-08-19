@@ -14,7 +14,7 @@ dns.setDefaultResultOrder('ipv4first')
 //
 // Emitting source maps without uploading them would publish the entire
 // unminified frontend source to anyone who opens devtools on the production
-// site — strictly worse than having no maps at all. So when the token is
+// site, strictly worse than having no maps at all. So when the token is
 // absent we generate none; when it is present we generate them, upload them,
 // and have the plugin delete them from dist before deploy
 // (sourcemaps.filesToDeleteAfterUpload). Either way nothing ships publicly.
@@ -88,7 +88,7 @@ export default defineConfig({
       : []),
   ],
   build: {
-    // Only when they will actually be uploaded and then deleted — see above.
+    // Only when they will actually be uploaded and then deleted, see above.
     sourcemap: uploadSourceMaps,
   },
   resolve: {
@@ -102,7 +102,7 @@ export default defineConfig({
          The stub implements the small surface supabase-js actually touches.
          scripts/check-realtime-stub.mjs reads the installed supabase-js
          bundle and fails the build if an upgrade starts calling something the
-         stub lacks — `npm run check:realtime`, wired into `npm run build`.
+         stub lacks, `npm run check:realtime`, wired into `npm run build`.
 
          To use realtime: delete this alias and src/lib/realtime-stub.js. */
       '@supabase/realtime-js': fileURLToPath(

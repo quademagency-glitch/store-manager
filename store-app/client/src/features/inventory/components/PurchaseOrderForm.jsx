@@ -162,7 +162,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
                   style={{ textAlign: 'right', fontSize: '0.9rem' }}
                 />
                 <div style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)', padding: '0 4px' }}>
-                  {lineTotal > 0 ? lineTotal.toFixed(2) : '—'}
+                  {lineTotal > 0 ? lineTotal.toFixed(2) : '-'}
                 </div>
                 <button
                   type="button"

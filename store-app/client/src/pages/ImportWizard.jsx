@@ -20,7 +20,7 @@ const ENTITY_CONFIG = {
     optionalFields: ['opening_ar_amount', 'opening_ar_as_of_date', 'opening_ar_description'],
     fieldHints: {
       opening_ar_amount: 'Outstanding balance this customer owed you before go-live (leave blank if none)',
-      opening_ar_as_of_date: 'Required if opening_ar_amount is set — the date that balance was accurate as of',
+      opening_ar_as_of_date: 'Required if opening_ar_amount is set: the date that balance was accurate as of',
     },
   },
   suppliers: {
@@ -29,7 +29,7 @@ const ENTITY_CONFIG = {
     optionalFields: ['contact_person', 'phone', 'email', 'address', 'notes', 'opening_ap_amount', 'opening_ap_as_of_date', 'opening_ap_description'],
     fieldHints: {
       opening_ap_amount: 'Outstanding balance you owed this supplier before go-live (leave blank if none)',
-      opening_ap_as_of_date: 'Required if opening_ap_amount is set — the date that balance was accurate as of',
+      opening_ap_as_of_date: 'Required if opening_ap_amount is set: the date that balance was accurate as of',
     },
   },
 };
@@ -175,7 +175,7 @@ export default function ImportWizard() {
       {step === 1 && (
         <div className="glass-panel" style={{ padding: 'var(--space-xl)' }}>
           <h3 className="mb-lg">Map your columns</h3>
-          <p className="text-muted mb-lg">We matched what we could automatically — confirm or adjust each field below.</p>
+          <p className="text-muted mb-lg">We matched what we could automatically. Confirm or adjust each field below.</p>
 
           {allFields.map(field => (
             <div key={field} className="form-row mb-md items-center">
@@ -191,7 +191,7 @@ export default function ImportWizard() {
                   value={fieldToHeader[field] || ''}
                   onChange={(e) => setFieldToHeader(prev => ({ ...prev, [field]: e.target.value }))}
                 >
-                  <option value="">— Not in file —</option>
+                  <option value="">Not in file</option>
                   {headers.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
               </div>

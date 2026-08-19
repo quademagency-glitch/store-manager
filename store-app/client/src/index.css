@@ -35,12 +35,12 @@
 }
 
 /* ============================================================
-   Cascade layers — declared first, so this order wins over
+   Cascade layers, declared first, so this order wins over
    import order and over source order within the document.
 
    Everything is layered. Unlayered CSS beats ALL layered CSS,
    so a single unlayered file would silently out-rank the whole
-   system — if you add a stylesheet, give it a layer.
+   system, if you add a stylesheet, give it a layer.
 
    tokens      custom properties only
    base        reset, element defaults
@@ -49,13 +49,13 @@
    components  reusable surfaces, buttons, tables, modals
    pages       page- and module-specific styling
    utilities   single-purpose helpers (.text-muted, .mb-lg)
-   responsive  breakpoint overrides — later layer, so these win
+   responsive  breakpoint overrides, later layer, so these win
                regardless of which file happens to import last
-   print       @media print — must beat screen styling
+   print       @media print, must beat screen styling
    a11y        focus rings, reduced motion, touch targets. Last,
                because these are guarantees: no page stylesheet
                gets to turn a focus ring off by being specific.
-   overrides   escape hatch. Empty, and worth keeping empty — the
+   overrides   escape hatch. Empty, and worth keeping empty, the
                layer stays declared so that anything genuinely
                unavoidable lands somewhere visible instead of
                unlayered, where it would outrank the whole system.

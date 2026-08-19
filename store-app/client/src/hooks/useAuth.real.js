@@ -4,8 +4,7 @@ import { postPublic } from '../lib/api';
 import { setUserContext } from '../lib/errorReporting';
 
 /**
- * The real Supabase-backed session hook. Selected by src/hooks/useAuth.js —
- * import that, not this file.
+ * The real Supabase-backed session hook. Selected by src/hooks/useAuth.js, * import that, not this file.
  */
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -32,7 +31,7 @@ export function useAuth() {
    * Split out of fetchRole so the demo can reuse it. POST /auth/demo-login
    * already returns the role, permissions, locations and demo flag, and the
    * client used to throw that away and re-derive all of it with a second
-   * query — roughly 1.6s of the demo's load, spent on the critical path
+   * query, roughly 1.6s of the demo's load, spent on the critical path
    * asking a question the server had already answered.
    *
    * Both callers normalise into this shape, so the ban checks and the
@@ -72,7 +71,7 @@ export function useAuth() {
     setIsDemo(demoFlag);
 
     // Attach identity to error reports so a crash says which tenant hit it.
-    // Id and business only — never email or name. No-op without a DSN.
+    // Id and business only, never email or name. No-op without a DSN.
     // The id comes from the caller: this used to read it off the fetched row,
     // which never selected `id`, so every report carried id: undefined.
     setUserContext({ id: userId, business_id: userBusinessId });
@@ -104,7 +103,7 @@ export function useAuth() {
 
   // Fetch the user's role from the users table.
   // Keep this SELECT in step with the one in server/routes/auth.js's
-  // /demo-login — both feed applyRoleData above.
+  // /demo-login, both feed applyRoleData above.
   const fetchRole = useCallback(async (userId) => {
     try {
       const { data, error } = await supabase
@@ -188,7 +187,7 @@ export function useAuth() {
     let isMounted = true;
 
     if (user?.id) {
-      // Already resolved for this user — seeded by signInAsDemo from the
+      // Already resolved for this user, seeded by signInAsDemo from the
       // demo-login payload, or by the fetchRole that signIn awaited. Fetching
       // again would re-ask a question we have the answer to, on the critical
       // path to first render.
@@ -247,8 +246,8 @@ export function useAuth() {
    *
    * The demo credentials never reach the browser: the server signs in on our
    * behalf and hands back the tokens, which are installed into the Supabase
-   * client with setSession so that everything downstream — RLS reads, token
-   * refresh, the api.js bearer header — behaves exactly as it does for a real
+   * client with setSession so that everything downstream, RLS reads, token
+   * refresh, the api.js bearer header, behaves exactly as it does for a real
    * sign-in. Without setSession the app would hold a session the Supabase
    * client knew nothing about, and every direct table read would fail.
    */
@@ -265,7 +264,7 @@ export function useAuth() {
 
       // Claim the id BEFORE setSession, not after.
       //
-      // setSession fires onAuthStateChange, which calls setUser — and that can
+      // setSession fires onAuthStateChange, which calls setUser, and that can
       // flush the role effect before this function reaches applyRoleData. When
       // it did, the effect saw no claim and issued exactly the query this whole
       // change exists to delete. It raced, so it only happened about half the
@@ -353,8 +352,7 @@ export function useAuth() {
     setActiveLocationId(locationId);
     localStorage.setItem('active_location_id', locationId);
     // Pages fetch their data keyed off the location header rather than
-    // watching activeLocationId, so a reload is needed to refresh them —
-    // except for the automatic first-login default assignment, where
+    // watching activeLocationId, so a reload is needed to refresh them, // except for the automatic first-login default assignment, where
     // there's no stale data on screen yet and reloading just causes a
     // jarring flash right after sign-in.
     if (!silent) {

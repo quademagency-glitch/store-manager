@@ -465,7 +465,7 @@ export default function Returns() {
                   {refundReceiptData.items.map((item, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 8px', fontWeight: 600 }}>{item.name}</td>
-                      <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{item.sku || '—'}</td>
+                      <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{item.sku || '-'}</td>
                       <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600 }}>{item.qty}</td>
                       <td style={{ textAlign: 'right', padding: '10px 8px', fontFamily: 'monospace' }}>{fmt(item.price)}</td>
                       <td style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 700, fontFamily: 'monospace' }}>{fmt(item.total)}</td>

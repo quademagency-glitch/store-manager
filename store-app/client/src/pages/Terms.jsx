@@ -7,8 +7,8 @@ import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION } from '../legal/en
  * This is drafted in the form a commercial agreement is normally drafted in:
  * defined terms, numbered clauses, and the risk-allocation clauses (warranties,
  * indemnity, liability, termination) stated explicitly rather than left to be
- * implied. Every commercial fact in it — the 30-day trial, what a lapsed
- * subscription still permits, the export route, how suspension behaves — was
+ * implied. Every commercial fact in it, the 30-day trial, what a lapsed
+ * subscription still permits, the export route, how suspension behaves, was
  * checked against the code, not copied from a template. Where the product does
  * not do something, the clause says so instead of promising it.
  *
@@ -18,11 +18,11 @@ import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION } from '../legal/en
  *   1. Fill in `src/legal/entity.js`. An agreement that cannot identify its
  *      own party is the weakest kind there is.
  *   2. Clause 19 caps liability, but a sole proprietorship has no corporate
- *      veil — see the note in entity.js. Incorporating is the cheapest real
+ *      veil: see the note in entity.js. Incorporating is the cheapest real
  *      protection available.
  *
- * When the commercial terms change — price, trial length, what a lapsed
- * account can still reach — change the clause AND bump TERMS_VERSION, so the
+ * When the commercial terms change: price, trial length, what a lapsed
+ * account can still reach: change the clause AND bump TERMS_VERSION, so the
  * version recorded against each account still means something.
  */
 export default function Terms() {
@@ -31,7 +31,7 @@ export default function Terms() {
       <p>
         These terms are a binding agreement. They set out what we owe you, what you owe us, and
         what happens when something goes wrong. Clauses <strong>17 to 19</strong> limit our
-        liability to you and clause <strong>18</strong> asks you to cover certain claims — please
+        liability to you and clause <strong>18</strong> asks you to cover certain claims. Please
         read those in particular.
       </p>
 
@@ -58,7 +58,7 @@ export default function Terms() {
               documentation and support we provide with it.
             </Defined>
             <Defined term="“Your Data”">
-              everything you or your Users put into the Service or generate through it — customer
+              everything you or your Users put into the Service or generate through it: customer
               records, products, inventory, sales, returns, suppliers, purchase orders, invoices,
               staff records, attendance records and uploaded files.
             </Defined>
@@ -70,7 +70,7 @@ export default function Terms() {
               a paid right to use the Service for a stated period.
             </Defined>
             <Defined term="“Subscription Period”">
-              the period a Subscription is paid for in advance — monthly or annually, as selected.
+              the period a Subscription is paid for in advance: monthly or annually, as selected.
             </Defined>
             <Defined term="“Personal Data”">
               has the meaning given in the Data Protection Act, 2012 (Act 843).
@@ -143,8 +143,8 @@ export default function Terms() {
           Tell us without delay if you believe an account has been compromised.
         </Sub>
         <Sub n="5.5">
-          The Service records an audit trail of security-relevant actions — sign-ins, permission
-          changes, account suspensions, data imports and exports — including the network address
+          The Service records an audit trail of security-relevant actions: sign-ins, permission
+          changes, account suspensions, data imports and exports, including the network address
           the action came from. This exists so a disputed change can be traced, and the application
           cannot edit or delete it.
         </Sub>
@@ -251,14 +251,14 @@ export default function Terms() {
         <Sub n="10.3">
           You are responsible for Your Data: for having the right to collect it, for its accuracy,
           and for its lawfulness. This matters most for customer contact details, staff records and
-          — where you enable geofenced attendance — the location recorded when staff clock in and
+          (where you enable geofenced attendance), the location recorded when staff clock in and
           out. Location data about an identifiable employee is Personal Data; you must have a lawful
           basis for collecting it and you must tell your staff you are doing so.
         </Sub>
         <Sub n="10.4">
           You can export Your Data at any time from the admin area, at any point in the life of your
           account, including after a Subscription has lapsed. Exports exclude credentials and
-          secrets — manager PINs, API keys and payment gateway keys — which are stored in a form
+          secrets (manager PINs, API keys and payment gateway keys), which are stored in a form
           that cannot be reversed and are not recoverable by anyone, including us.
         </Sub>
         <Sub n="10.5">
@@ -313,7 +313,7 @@ export default function Terms() {
           </ul>
         </Sub>
         <Sub n="12.3">
-          We may apply technical limits — including rate limits — to protect the Service, and may
+          We may apply technical limits (including rate limits) to protect the Service, and may
           act under clause 9.1 where this clause is breached.
         </Sub>
       </Clause>
@@ -361,7 +361,7 @@ export default function Terms() {
 
       <Clause n={15} title="Data protection">
         <Sub n="15.1">
-          Where Your Data contains Personal Data — your customers, your staff — you are the data
+          Where Your Data contains Personal Data (your customers, your staff), you are the data
           controller and we are a data processor acting on your instructions, within the meaning of
           the Data Protection Act, 2012 (Act 843).
         </Sub>
@@ -371,7 +371,7 @@ export default function Terms() {
           Personal Data contained in Your Data, it prevails.
         </Sub>
         <Sub n="15.3">
-          We are the data controller for your own account information — your business details,
+          We are the data controller for your own account information: your business details,
           your Users’ identities, and your billing records. The{' '}
           <a href="/privacy">Privacy Policy</a> explains how we handle that.
         </Sub>
@@ -406,7 +406,7 @@ export default function Terms() {
         <Sub n="17.2">
           Otherwise, and to the fullest extent the law allows, the Service is provided{' '}
           <strong>“as is”</strong> and <strong>“as available”</strong>, and we exclude all other
-          warranties, conditions and terms, whether express, implied or statutory — including any
+          warranties, conditions and terms, whether express, implied or statutory, including any
           implied warranty of merchantability, fitness for a particular purpose, or
           non-infringement.
         </Sub>
@@ -438,7 +438,7 @@ export default function Terms() {
         </Sub>
         <Sub n="18.2">
           This applies only if we tell you about the claim promptly, do not admit liability without
-          your consent, and let you control the defence and settlement — provided that no
+          your consent, and let you control the defence and settlement, provided that no
           settlement imposing a non-financial obligation on us is made without our consent, which
           will not be unreasonably withheld. We will give you reasonable assistance at your cost.
         </Sub>
@@ -499,7 +499,7 @@ export default function Terms() {
           <strong>Export before you close your account.</strong> For 30 days after termination we
           will keep Your Data and let you export it on request. After that we delete it, and we
           delete it in any event within 90 days, except where we are required by law to keep
-          particular records — principally financial records, which we keep for six years to
+          particular records: principally financial records, which we keep for six years to
           meet the record-keeping obligations imposed by Ghanaian tax and company law. Deletion
           is not reversible.
         </Sub>
@@ -512,7 +512,7 @@ export default function Terms() {
       <Clause n={21} title="Force majeure">
         <Sub n="21.1">
           Neither of us is liable for failing to perform because of something beyond our reasonable
-          control — including power or internet failure, the failure of a third-party provider
+          control: including power or internet failure, the failure of a third-party provider
           named in clause 13.1, industrial action, government action, natural disaster or armed
           conflict. Payment obligations are not excused by this clause.
         </Sub>

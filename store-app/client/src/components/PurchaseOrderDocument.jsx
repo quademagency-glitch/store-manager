@@ -149,15 +149,15 @@ export default function PurchaseOrderDocument({
             <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
               <td style={{ padding: '10px 8px', fontSize: '0.85rem', color: '#94a3b8' }}>{idx + 1}</td>
               <td style={{ padding: '10px 8px', fontWeight: 600 }}>{item.product_name || 'Unknown'}</td>
-              <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{item.sku || '—'}</td>
+              <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{item.sku || '-'}</td>
               <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700 }}>{item.quantity}</td>
               {items.some(i => i.unit_cost) && (
                 <>
                   <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
-                    {item.unit_cost ? fmt(item.unit_cost) : '—'}
+                    {item.unit_cost ? fmt(item.unit_cost) : '-'}
                   </td>
                   <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {item.unit_cost ? fmt(item.unit_cost * item.quantity) : '—'}
+                    {item.unit_cost ? fmt(item.unit_cost * item.quantity) : '-'}
                   </td>
                 </>
               )}

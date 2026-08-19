@@ -16,7 +16,7 @@ const rateLimit = require('express-rate-limit');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 // How long a self-service free trial lasts. Deliberately not read from the
-// plan's `trial_days` (currently 7 across the board) — that column drives
+// plan's `trial_days` (currently 7 across the board), that column drives
 // operator-assigned subscriptions, and the public offer is 30 days.
 const TRIAL_DAYS = 30;
 const DEFAULT_SIGNUP_PLAN = 'Single Branch';
@@ -86,8 +86,8 @@ const signupSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters').max(200),
   business_name: z.string().trim().min(2, 'Business name is required').max(120),
   phone: z.string().trim().max(40).optional().or(z.literal('')),
-  // The tier chosen on the pricing table. Never trusted as-is — see the
-  // resolution step in the handler — so an unknown value is not a 400.
+  // The tier chosen on the pricing table. Never trusted as-is, see the
+  // resolution step in the handler, so an unknown value is not a 400.
   plan: z.string().trim().max(60).optional().or(z.literal('')),
 });
 
@@ -111,7 +111,7 @@ const loginSchema = z.object({
  * Two other things happen for free as a result of inserting the business,
  * and are deliberately not repeated here:
  *   - the slug (trg_set_business_slug, migration 058)
- *   - the default accounting templates (migration 028) — still called
+ *   - the default accounting templates (migration 028), still called
  *     explicitly below, idempotently, so the app notices if that trigger
  *     ever goes away.
  *
@@ -156,7 +156,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
 
     // ── Resolve the plan the trial runs against ─────────────────
     // Not fatal if it is missing: the trial is defined by trial_ends_at, and
-    // a business with no plan attached still works — it just shows nothing on
+    // a business with no plan attached still works. It just shows nothing on
     // the billing page until someone picks one.
     const { data: planRows } = await supabaseAdmin
       .from('platform_plans')
@@ -284,7 +284,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
 
     logger.info({ businessId: business.id, slug: business.slug, email }, 'Self-service signup completed');
 
-    // Unauthenticated route — authGuard hasn't run, so name the actor we just
+    // Unauthenticated route, authGuard hasn't run, so name the actor we just
     // created rather than leaving the row anonymous.
     req.auditActor = { id: authUserId, email, business_id: business.id, role: 'Business Admin' };
     logAuditEvent(req, AUDIT_ACTIONS.SIGNUP, 'business', business.id, {
@@ -311,7 +311,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
 
 /**
  * POST /api/auth/demo-login
- * Sign a visitor straight into the public sandbox — no signup, no email.
+ * Sign a visitor straight into the public sandbox, no signup, no email.
  *
  * The credentials live only on the server. Handing them to the browser to use
  * with signInWithPassword would put a working password for a real Supabase
@@ -319,7 +319,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
  * true the moment someone changes what the demo account can reach.
  *
  * What limits the session is Supabase's own access-token lifetime (one hour by
- * default) — this deliberately hands back a refresh token so the client's
+ * default), this deliberately hands back a refresh token so the client's
  * Supabase instance can hold a normal session, and the sandbox is rebuilt
  * nightly regardless of who is still in it.
  *
@@ -341,7 +341,7 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
 
     if (error || !data?.session) {
       // Almost always means the demo has not been seeded in this environment.
-      logger.error({ err: error }, 'Demo login failed — is the demo business seeded?');
+      logger.error({ err: error }, 'Demo login failed, is the demo business seeded?');
       return res.status(503).json({
         error: 'Demo unavailable',
         message: 'The demo is being rebuilt. Please try again in a minute.',
@@ -353,7 +353,7 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
     // the demo: this endpoint already had the row in hand and returned a
     // subset of it, so the browser paid ~1.6s asking Supabase for what the
     // response could have carried. Keep this SELECT in step with the one in
-    // client/src/hooks/useAuth.real.js — both feed the same applyRoleData().
+    // client/src/hooks/useAuth.real.js, both feed the same applyRoleData().
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, name, email, status, role_id, business_id, roles:role_id (name, permissions), businesses (name, is_demo, status), user_locations (location_id)')
@@ -505,8 +505,7 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) 
       // Only safe to record now that trust proxy is set (see index.js): before
       // that, req.ip was the platform edge for every request, so these rows
       // would have been a pile of identical useless addresses. Volume is bounded
-      // by loginLimiter. The attempted email is recorded, never the password —
-      // the redactor in utils/auditLog.js would strip it anyway.
+      // by loginLimiter. The attempted email is recorded, never the password, // the redactor in utils/auditLog.js would strip it anyway.
       logAuditEvent(req, AUDIT_ACTIONS.LOGIN_FAILED, 'user', null, { attempted_email: email });
 
       return res.status(401).json({
@@ -536,7 +535,7 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) 
       });
     }
 
-    // authGuard hasn't run on this route — this IS the login — so req.user
+    // authGuard hasn't run on this route, this IS the login, so req.user
     // doesn't exist yet. auditActor names the identity we just resolved.
     req.auditActor = {
       id: userData.id,
@@ -616,6 +615,5 @@ router.get('/me', authGuard, async (req, res) => {
 module.exports = router;
 // Exposed so tests can clear the per-IP counter between cases. The app is not
 // behind `trust proxy`, so every request in a test run shares one key and the
-// suite would otherwise spend its whole 5/hour budget on the first few cases —
-// which is not a reason to weaken the limit for real traffic.
+// suite would otherwise spend its whole 5/hour budget on the first few cases, // which is not a reason to weaken the limit for real traffic.
 module.exports.signupLimiter = signupLimiter;

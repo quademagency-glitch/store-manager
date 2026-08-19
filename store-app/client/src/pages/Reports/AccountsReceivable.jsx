@@ -45,12 +45,12 @@ export default function AccountsReceivable() {
               <span className="ar-bucket-count">{arAging.aging.current?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-30">
-              <span className="ar-bucket-label">1–30 Days</span>
+              <span className="ar-bucket-label">1-30 Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_30)}</span>
               <span className="ar-bucket-count">{arAging.aging.days_30?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-60">
-              <span className="ar-bucket-label">31–60 Days</span>
+              <span className="ar-bucket-label">31-60 Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_60)}</span>
               <span className="ar-bucket-count">{arAging.aging.days_60?.length || 0} invoices</span>
             </div>
@@ -89,7 +89,7 @@ export default function AccountsReceivable() {
                   allInvoices.map(inv => (
                     <tr key={inv.id}>
                       <td className="font-semibold">{inv.invoice_number || inv.id?.slice(0, 8)}</td>
-                      <td>{inv.customer?.name || '—'}</td>
+                      <td>{inv.customer?.name || '-'}</td>
                       <td>{fmt(inv.total_amount)}</td>
                       <td>{fmt(inv.amount_paid)}</td>
                       <td className="font-semibold">{fmt(inv.outstanding)}</td>

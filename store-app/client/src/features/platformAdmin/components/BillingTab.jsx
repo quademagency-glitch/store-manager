@@ -130,7 +130,7 @@ export default function BillingTab() {
                   {invoices.slice(0, 25).map(inv => (
                     <tr key={inv.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{inv.invoice_number}</td>
-                      <td>{inv.businesses?.name || '—'}</td>
+                      <td>{inv.businesses?.name || '-'}</td>
                       <td className="font-bold">{formatCurrency(inv.amount, inv.currency)}</td>
                       <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
                       <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>

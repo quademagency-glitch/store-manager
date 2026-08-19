@@ -470,7 +470,7 @@ function OrderDetail({ order, onStatusChange, onEdit, onClose, loading, canAdmin
             {order.items?.map((item, i) => (
               <tr key={i} className="border-b">
                 <td style={{ padding: '8px 0' }}>
-                  {item.product?.name || item.custom_description || '—'}
+                  {item.product?.name || item.custom_description || '-'}
                   {item.product?.sku && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>{item.product.sku}</div>}
                   {!item.product_id && item.custom_description && (
                     <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>Custom item</div>
@@ -694,7 +694,7 @@ export default function CustomerOrders() {
                   <td>{order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}</td>
                   <td className="font-bold">{formatCurrency(order.total_amount)}</td>
                   <td className="text-muted">
-                    {order.due_date ? new Date(order.due_date).toLocaleDateString() : '—'}
+                    {order.due_date ? new Date(order.due_date).toLocaleDateString() : '-'}
                   </td>
                   <td>
                     {parseFloat(order.deposit_amount) > 0 ? (
@@ -704,7 +704,7 @@ export default function CustomerOrders() {
                           ? <span className="badge badge-success ml-sm" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Paid</span>
                           : <span className="badge ml-sm" style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--color-bg-secondary)' }}>Due</span>}
                       </span>
-                    ) : '—'}
+                    ) : '-'}
                   </td>
                   <td><StatusBadge status={order.status} /></td>
                   <td className="text-right" onClick={(e) => e.stopPropagation()}>

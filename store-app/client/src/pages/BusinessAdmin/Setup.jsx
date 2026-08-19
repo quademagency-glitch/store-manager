@@ -52,7 +52,7 @@ export default function Setup() {
         subtitle={
           <>
             {completeCount} of {status.steps.length} steps complete. Especially useful if you&apos;re moving an
-            existing business onto this system — import your existing data instead of re-entering it by hand.
+            existing business onto this system, import your existing data instead of re-entering it by hand.
           </>
         }
       />

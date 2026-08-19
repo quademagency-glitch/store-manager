@@ -3,8 +3,7 @@
  *
  * WHY
  * supabase-js ships as one box: createClient() constructs a RealtimeClient
- * whether or not you ever open a channel. This app has never opened one —
- * no .channel(), no postgres_changes, nothing — but every visitor was still
+ * whether or not you ever open a channel. This app has never opened one, * no .channel(), no postgres_changes, nothing, but every visitor was still
  * downloading and parsing realtime-js plus its phoenix dependency, about
  * 52KB of the entry chunk, to run a websocket client that never connects.
  * On /signup, where someone is typing a business name into a form, that is
@@ -29,7 +28,7 @@
  * IF YOU EVER WANT REALTIME
  * Delete the alias in vite.config.js and this file. channel() throws rather
  * than returning a dead object precisely so that "I added a subscription and
- * nothing happens" cannot occur — you get told immediately.
+ * nothing happens" cannot occur, you get told immediately.
  */
 
 const DISABLED =

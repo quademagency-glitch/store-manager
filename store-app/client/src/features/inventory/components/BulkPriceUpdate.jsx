@@ -263,10 +263,10 @@ export default function BulkPriceUpdate({ onComplete }) {
                           {p.change > 0 ? '+' : ''}{fmt(p.change)} ({p.change_percent > 0 ? '+' : ''}{p.change_percent}%)
                         </span>
                       )}
-                      {p.change === 0 && <span className="text-muted">—</span>}
+                      {p.change === 0 && <span className="text-muted">-</span>}
                     </td>
                     <td style={{ textAlign: 'right', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                      {p.margin ? `${p.margin}%` : '—'}
+                      {p.margin ? `${p.margin}%` : '-'}
                     </td>
                   </tr>
                 ))}

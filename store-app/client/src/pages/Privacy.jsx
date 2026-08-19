@@ -23,7 +23,7 @@ import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE } from '../legal/entity';
  *
  * It is not legal advice and no lawyer has reviewed it. The cheapest thing you
  * can do to make it stronger is register as a data controller with the Data
- * Protection Commission and put the number in entity.js — see the note there.
+ * Protection Commission and put the number in entity.js: see the note there.
  *
  * Keep this in step with the code. If a new sub-processor is added, a new
  * category of data is collected, or a retention period changes, this page is
@@ -53,7 +53,7 @@ export default function Privacy() {
         </Sub>
       </Clause>
 
-      <Clause n={2} title="Two different relationships — and which one applies to you">
+      <Clause n={2} title="Two different relationships, and which one applies to you">
         <Sub n="2.1">
           This distinction decides who must answer a request about your data, so it comes first.
         </Sub>
@@ -64,7 +64,7 @@ export default function Privacy() {
         </Sub>
         <Sub n="2.3">
           <strong>We are a data processor</strong> for everything a subscribing business puts into
-          the Service about other people — its customers, its staff, its suppliers. That business
+          the Service about other people: its customers, its staff, its suppliers. That business
           is the data controller. It decides what to collect and why; we store and process it on
           its instructions and for no purpose of our own.
         </Sub>
@@ -92,7 +92,7 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Users</td>
-                  <td>Name, email address, assigned role and permissions, assigned branches, and — where set — a manager PIN, stored only as an irreversible hash.</td>
+                  <td>Name, email address, assigned role and permissions, assigned branches, and (where set) a manager PIN, stored only as an irreversible hash.</td>
                 </tr>
                 <tr>
                   <td>Billing</td>
@@ -100,7 +100,7 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Security audit trail</td>
-                  <td>Sign-ins and failed sign-ins, permission and role changes, account suspensions, data imports and exports — with the network (IP) address and browser the action came from.</td>
+                  <td>Sign-ins and failed sign-ins, permission and role changes, account suspensions, data imports and exports: with the network (IP) address and browser the action came from.</td>
                 </tr>
                 <tr>
                   <td>Technical logs</td>
@@ -122,12 +122,12 @@ export default function Privacy() {
           clocks in or out, to check it falls within the branch’s radius. This is personal data
           about an identifiable employee. The employing business is the controller for it, is
           responsible for having a lawful basis, and should tell its staff. We do not use it for
-          anything else and we do not track location continuously — only at those two moments.
+          anything else and we do not track location continuously: only at those two moments.
         </Sub>
         <Sub n="3.4">
-          We do not knowingly collect the special categories of personal data described in Act 843
-          — such as data about health, ethnic origin, political opinion, religious belief or
-          criminal record — and the Service provides no field for them. If a business enters such
+          We do not knowingly collect the special categories of personal data described in Act 843,
+          such as data about health, ethnic origin, political opinion, religious belief or
+          criminal record, and the Service provides no field for them. If a business enters such
           data into a free-text field, it does so as controller and on its own responsibility.
         </Sub>
       </Clause>
@@ -158,7 +158,7 @@ export default function Privacy() {
                   <td>Our legitimate interest in providing a functioning service</td>
                 </tr>
                 <tr>
-                  <td>Service notices — billing, security, changes to these documents</td>
+                  <td>Service notices: billing, security, changes to these documents</td>
                   <td>Necessary for the performance of our contract with you</td>
                 </tr>
                 <tr>
@@ -244,13 +244,13 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Resend</td>
-                  <td>Transactional email — invoices, account and security notices</td>
+                  <td>Transactional email: invoices, account and security notices</td>
                   <td>Outside Ghana</td>
                 </tr>
                 <tr>
                   <td>Sentry</td>
-                  <td>Error reporting. <strong>Not currently in use</strong> — the integration exists but is not enabled, and no data is sent to it. If we enable it we will update this table first.</td>
-                  <td>—</td>
+                  <td>Error reporting. <strong>Not currently in use</strong>: the integration exists but is not enabled, and no data is sent to it. If we enable it we will update this table first.</td>
+                  <td>None</td>
                 </tr>
               </tbody>
             </table>
@@ -292,14 +292,14 @@ export default function Privacy() {
               <tbody>
                 <tr>
                   <td>Business records held for a subscribing business</td>
-                  <td>As long as the account is open. After termination, 30 days for retrieval, then deleted — and in any event within 90 days.</td>
+                  <td>As long as the account is open. After termination, 30 days for retrieval, then deleted, and in any event within 90 days.</td>
                 </tr>
                 <tr>
                   <td>Security audit trail</td>
                   <td>400 days, so a full year plus an audit cycle can be reviewed, then deleted automatically.</td>
                 </tr>
                 <tr>
-                  <td>Financial records — invoices, payments</td>
+                  <td>Financial records: invoices, payments</td>
                   <td>Six years, to meet tax and company law record-keeping obligations. Kept even after an account closes.</td>
                 </tr>
                 <tr>
@@ -369,7 +369,7 @@ export default function Privacy() {
         <Sub n="12.3">
           For anything else, write to{' '}
           <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a>. We will respond
-          within 30 days. We may ask you to confirm your identity first — we will not hand personal
+          within 30 days. We may ask you to confirm your identity first: we will not hand personal
           data to someone who has not shown they are entitled to it. We do not charge for a request
           unless it is manifestly unfounded or repetitive.
         </Sub>
@@ -386,7 +386,7 @@ export default function Privacy() {
           non-payment, that follows directly from the contract and can be reversed by paying.
         </Sub>
         <Sub n="13.2">
-          We send service messages — billing, security, changes to these documents — because they
+          We send service messages (billing, security, changes to these documents) because they
           are necessary to the contract, and you cannot opt out of them while you hold an account.
           We will not send you marketing without your consent, and any marketing we do send will
           carry a way to stop it.
@@ -417,7 +417,7 @@ export default function Privacy() {
       <Clause n={16} title="Complaints">
         <Sub n="16.1">
           Please raise a concern with us first at{' '}
-          <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a> — most are resolved
+          <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a>: most are resolved
           quickly.
         </Sub>
         <Sub n="16.2">
@@ -433,8 +433,8 @@ export default function Privacy() {
           and effective date at the top.
         </Sub>
         <Sub n="17.2">
-          If a change materially affects how we handle your data — a new purpose, a new recipient,
-          a longer retention period — we will notify account owners by email at least 30 days
+          If a change materially affects how we handle your data: a new purpose, a new recipient,
+          a longer retention period, we will notify account owners by email at least 30 days
           before it takes effect.
         </Sub>
       </Clause>

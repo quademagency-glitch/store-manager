@@ -352,7 +352,7 @@ export default function AccountingTemplates() {
                   key={t.id} 
                   onClick={() => handleTemplateSelect(t)}
                   className={`acct-card type-${t.type}`}
-                  aria-label={`${t.name} — ${t.type} template`}
+                  aria-label={`${t.name}, ${t.type} template`}
                 >
                   <div className="acct-card-header">
                     <div className={`acct-card-icon type-${t.type}`} aria-hidden="true">

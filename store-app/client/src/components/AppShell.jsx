@@ -7,7 +7,7 @@ import MainLayout from './MainLayout';
  *
  * This exists to give those two a single lazy boundary. App.jsx used to import
  * both eagerly to build the authenticated route's element, which put the whole
- * app shell — MainLayout, its icon set and the tour — into the entry chunk.
+ * app shell, MainLayout, its icon set and the tour, into the entry chunk.
  * Everyone paid to download and parse it, including the people on /signup and
  * /login who by definition are not signed in and will never render it.
  *

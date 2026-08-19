@@ -201,7 +201,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
                   Click to upload your header letterhead
                 </p>
                 <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                  PNG, JPG or SVG — max 5MB. Recommended width: 800px+
+                  PNG, JPG or SVG, max 5MB. Recommended width: 800px+
                 </p>
                 <input
                   ref={headerInputRef}
@@ -217,7 +217,7 @@ export default function LetterheadBuilder({ letterhead, logoUrl, businessName, o
           {/* Footer Upload */}
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
-              Footer Image <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional — appears at the bottom)</span>
+              Footer Image <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional, appears at the bottom)</span>
             </label>
             {data.uploaded_footer_url ? (
               <div style={{ position: 'relative', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: '#fff' }}>

@@ -30,13 +30,13 @@ const fail = (msg) => { console.error(`\n✗ realtime stub check: ${msg}\n`); pr
 const bundle = join(root, 'node_modules/@supabase/supabase-js/dist/index.mjs');
 let src;
 try { src = readFileSync(bundle, 'utf8'); }
-catch { fail(`cannot read ${bundle} — is supabase-js installed?`); }
+catch { fail(`cannot read ${bundle}, is supabase-js installed?`); }
 
 const called = new Set(
   [...src.matchAll(/this\.realtime\.([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1])
 );
 if (called.size === 0) {
-  fail('found no `this.realtime.x()` calls in supabase-js. Its internals changed shape, so this check is no longer proving anything — re-derive it before trusting the stub.');
+  fail('found no `this.realtime.x()` calls in supabase-js. Its internals changed shape, so this check is no longer proving anything, re-derive it before trusting the stub.');
 }
 
 // 2. Does the stub implement all of them?

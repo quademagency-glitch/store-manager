@@ -165,7 +165,7 @@ export default function Locations() {
                 {locations.map(loc => (
                   <tr key={loc.id}>
                     <td className="font-medium">{loc.name}</td>
-                    <td className="text-muted">{loc.address || '—'}</td>
+                    <td className="text-muted">{loc.address || '-'}</td>
                     <td>{loc.tax_rate}%</td>
                     <td className="text-muted">{loc.currency || 'Business default'}</td>
                     <td>

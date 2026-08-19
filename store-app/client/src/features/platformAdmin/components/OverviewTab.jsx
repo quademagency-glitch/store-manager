@@ -15,7 +15,7 @@ export default function OverviewTab() {
     <>
       <PageHeader
         title="Platform Overview"
-        subtitle={<>Welcome back, <strong>{user?.email?.split('@')[0] || 'Admin'}</strong> — here's how the platform is performing.</>}
+        subtitle={<>Welcome back, <strong>{user?.email?.split('@')[0] || 'Admin'}</strong>. Here's how the platform is performing.</>}
         actions={
             <div className="dashboard-role-badge">
             <span className="role-badge" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(249,115,22,0.05))', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>

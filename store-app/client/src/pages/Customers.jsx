@@ -186,7 +186,7 @@ export default function Customers() {
                         )}
                       </td>
                       <td>{customer.phone}</td>
-                      <td className="text-muted">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '—'}</td>
+                      <td className="text-muted">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}</td>
                       {canEdit && (
                         <td className="text-right" onClick={(e) => e.stopPropagation()}>
                           <button className="btn btn-sm btn-outline mr-sm" onClick={() => openEditModal(customer)}>
@@ -285,7 +285,7 @@ export default function Customers() {
             ) : (
               <small className="text-muted">
                 {callingCodeFor(country)
-                  ? `${callingCodeFor(country)} applied automatically — or type a country code`
+                  ? `${callingCodeFor(country)} applied automatically, or type a country code`
                   : 'Include a country code if not local'}
               </small>
             )}

@@ -201,7 +201,7 @@ export default function PurchaseOrders() {
   };
 
   const formatDate = (iso) => {
-    if (!iso) return '—';
+    if (!iso) return '-';
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
@@ -260,7 +260,7 @@ export default function PurchaseOrders() {
                         onClick={() => viewPODetail(po)}
                       >
                         <td><code style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{po.po_number}</code></td>
-                        <td className="font-medium">{po.supplier?.name || '—'}</td>
+                        <td className="font-medium">{po.supplier?.name || '-'}</td>
                         <td className="text-muted">{formatDate(po.created_at)}</td>
                         <td className="text-right font-bold">{fmt(po.total_amount)}</td>
                         <td>
@@ -299,7 +299,7 @@ export default function PurchaseOrders() {
                     <div className="m-card-top">
                       <div className="flex-1 min-w-0">
                         <div className="m-card-title" style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{po.po_number}</div>
-                        <div className="m-card-sub">{po.supplier?.name || '—'}</div>
+                        <div className="m-card-sub">{po.supplier?.name || '-'}</div>
                         <div className="m-card-meta">{formatDate(po.created_at)}</div>
                       </div>
                       <span className={`badge ${getStatusBadgeClass(po.status)}`} style={{ fontSize: '0.75rem', textTransform: 'uppercase', flexShrink: 0 }}>{po.status}</span>

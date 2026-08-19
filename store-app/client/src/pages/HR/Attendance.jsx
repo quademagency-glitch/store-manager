@@ -26,19 +26,19 @@ export default function Attendance() {
   const activeLog = attendanceStatus?.active_log;
 
   const formatDuration = (minutes) => {
-    if (!minutes) return '—';
+    if (!minutes) return '-';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
   const formatTime = (dateStr) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
@@ -77,7 +77,7 @@ export default function Attendance() {
             </span>
             <span className="geofence-detail">
               {isClockedIn && activeLog
-                ? `Since ${formatTime(activeLog.clock_in)} — Use the Scanner App to clock out`
+                ? `Since ${formatTime(activeLog.clock_in)}. Use the Scanner App to clock out`
                 : 'Use the Scanner App to clock in'}
             </span>
           </div>
@@ -161,7 +161,7 @@ export default function Attendance() {
               (myAttendance.data).map(log => (
                 <tr key={log.id}>
                   <td>{formatDate(log.clock_in)}</td>
-                  <td>{log.location?.name || '—'}</td>
+                  <td>{log.location?.name || '-'}</td>
                   <td><span className="badge badge-success">{formatTime(log.clock_in)}</span></td>
                   <td>
                     {log.clock_out
@@ -170,7 +170,7 @@ export default function Attendance() {
                     }
                   </td>
                   <td>{formatDuration(log.duration_minutes)}</td>
-                  <td className="text-muted">{log.note || '—'}</td>
+                  <td className="text-muted">{log.note || '-'}</td>
                 </tr>
               ))
             )}

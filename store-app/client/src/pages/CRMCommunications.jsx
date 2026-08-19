@@ -428,8 +428,8 @@ export default function CRMCommunications() {
                         </span>
                       </div>
                       <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                        Provider: <strong>{(gw.provider ?? '—').toUpperCase()}</strong> &nbsp;|&nbsp;
-                        Type: <strong>{(gw.type ?? '—').toUpperCase()}</strong>
+                        Provider: <strong>{(gw.provider ?? '-').toUpperCase()}</strong> &nbsp;|&nbsp;
+                        Type: <strong>{(gw.type ?? '-').toUpperCase()}</strong>
                         {gw.sender_id && <>&nbsp;|&nbsp; Sender ID: <strong>{gw.sender_id}</strong></>}
                       </div>
                     </div>

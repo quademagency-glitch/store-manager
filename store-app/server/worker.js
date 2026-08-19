@@ -3,6 +3,9 @@
  * Spawned by cluster.js (one per CPU core).
  */
 
+// Must be first — see instrument.js. No-op when SENTRY_DSN is unset.
+const sentry = require('./instrument');
+
 require('dotenv').config();
 
 const { getEnv } = require('./config/env');
@@ -22,6 +25,7 @@ const server = app.listen(PORT, '0.0.0.0', 10000, () => {
     pid: process.pid,
     port: PORT,
     trustProxy: app.get('trust proxy'),
+    sentry: sentry.enabled ? 'on' : 'off',
   }, '🔧 Worker started');
 });
 
@@ -35,4 +39,9 @@ server.headersTimeout = 66000;
 // the keepAliveTimeout above is exactly why gracefulShutdown has to call
 // closeIdleConnections — otherwise close() waits 65s per idle socket.
 // Crons live in the primary, so there is nothing worker-side to stop here.
-installGracefulShutdown(server, { name: 'worker' });
+installGracefulShutdown(server, {
+  name: 'worker',
+  // Flush anything Sentry has buffered before the process goes away, otherwise
+  // the errors from the shutdown window are the ones you never see.
+  onShutdown: async () => { await sentry.close(2000); },
+});

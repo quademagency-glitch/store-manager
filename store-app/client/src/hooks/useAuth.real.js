@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { postPublic } from '../lib/api';
+import { setUserContext } from '../lib/errorReporting';
 
 /**
  * The real Supabase-backed session hook. Selected by src/hooks/useAuth.js —
@@ -64,6 +65,10 @@ export function useAuth() {
       setLocationIds(userLocations);
       setBusinessId(data.business_id || null);
       setIsDemo(data.businesses?.is_demo === true);
+
+      // Attach identity to error reports so a crash says which tenant hit it.
+      // Id and business only — never email or name. No-op without a DSN.
+      setUserContext({ id: data.id, business_id: data.business_id || null });
 
       // Initialize active location if none set or if invalid
       const currentActive = localStorage.getItem('active_location_id');
@@ -220,6 +225,7 @@ export function useAuth() {
         if (import.meta.env.DEV) console.error('Error signing out:', error.message);
       }
       setUser(null);
+      setUserContext(null);
       setSession(null);
       setRole(null);
       setPermissions([]);

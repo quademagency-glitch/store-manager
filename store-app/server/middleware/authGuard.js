@@ -2,6 +2,26 @@ const { supabaseAdmin } = require('../db/supabase');
 const { verifyToken } = require('../utils/jwtVerifier');
 const { demoWriteRefusal, respondDemoRefusal } = require('./demoGuard');
 const logger = require('../utils/logger');
+const sentry = require('../instrument');
+
+/**
+ * Attach the caller's identity to the current Sentry scope so an error report
+ * says which business and role hit it. Called from both the cache-hit and
+ * fresh-fetch paths — it is the one place that runs on every authenticated
+ * request. No-op when Sentry has no DSN.
+ *
+ * Sends the user id only: no email, no name. setupExpressErrorHandler gives
+ * each request an isolated scope, so this does not bleed between requests.
+ */
+function tagSentryScope(req) {
+  if (!sentry.enabled || !req.user) return;
+  sentry.setRequestContext({
+    userId: req.user.id,
+    businessId: req.user.business_id,
+    role: req.user.role,
+    requestId: req.id,
+  });
+}
 
 // In-memory cache: userId → { user, expiresAt }
 // NOTE: In multi-instance deployments, cache entries don't replicate across instances.
@@ -91,6 +111,7 @@ async function authGuard(req, res, next) {
       const cached = userCache.get(userId);
       if (cached && cached.expiresAt > Date.now()) {
         req.user = cached.user;
+        tagSentryScope(req);
         if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
         const cachedRefusal = demoWriteRefusal(req);
         if (cachedRefusal) return respondDemoRefusal(res, cachedRefusal);
@@ -154,6 +175,7 @@ async function authGuard(req, res, next) {
     }
 
     req.user = userDataObj.user;
+    tagSentryScope(req);
 
     if (CACHE_TTL_MS > 0) {
       userCache.set(userId, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });

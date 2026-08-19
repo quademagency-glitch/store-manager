@@ -1,3 +1,7 @@
+// MUST be first — before express and @supabase/supabase-js — so Sentry can
+// instrument them as they load. No-ops entirely when SENTRY_DSN is unset.
+const sentry = require('./instrument');
+
 require('dotenv').config();
 
 const { getEnv } = require('./config/env');
@@ -416,6 +420,11 @@ app.use((req, res) => {
     message: `Route ${req.method} ${req.path} not found.`,
   });
 });
+
+// Sentry's error handler. Goes AFTER the 404 handler (which responds without
+// calling next(), so 404s never reach Sentry — correct, they are not errors)
+// and BEFORE the handler below, which terminates the chain.
+sentry.setupExpressErrorHandler(app);
 
 // Global error handler
 app.use((err, req, res, next) => {

@@ -19,6 +19,7 @@
     "test:e2e": "playwright test --project=e2e"
   },
   "dependencies": {
+    "@sentry/react": "^10.70.0",
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/vite": "^4.3.0",
     "idb": "^8.0.3",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
+    "@sentry/vite-plugin": "^5.4.0",
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

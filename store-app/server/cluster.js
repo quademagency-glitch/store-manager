@@ -17,6 +17,10 @@
  *   duplicate job execution.
  */
 
+// Must be first — see instrument.js. The primary runs the crons, so their
+// failures should be reported too. No-op when SENTRY_DSN is unset.
+const sentry = require('./instrument');
+
 require('dotenv').config();
 
 const cluster = require('node:cluster');
@@ -139,6 +143,7 @@ if (cluster.isPrimary) {
     logger.info({ signal, pid: process.pid }, 'Primary shutting down — signalling workers');
 
     cronTasks.forEach((task) => task?.stop?.());
+    sentry.close(2000).catch(() => {});
 
     const workers = Object.values(cluster.workers ?? {});
     workers.forEach((worker) => {

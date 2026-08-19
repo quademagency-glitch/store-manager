@@ -59,3 +59,17 @@ describe('security headers', () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe('Sentry', () => {
+  it('is inert under test', () => {
+    expect(require('../instrument').enabled).toBe(false);
+  });
+
+  // The gate must be around require(), not just init(): loading the SDK
+  // installs OpenTelemetry http instrumentation that would perturb supertest
+  // and the node-fetch db/supabase.js relies on.
+  it('does not load the Sentry SDK at all when disabled', () => {
+    const loaded = Object.keys(require.cache).some((p) => p.includes('@sentry/node'));
+    expect(loaded).toBe(false);
+  });
+});

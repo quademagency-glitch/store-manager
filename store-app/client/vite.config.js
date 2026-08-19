@@ -2,10 +2,23 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import dns from 'dns'
 
 // Prefer IPv4 for localhost to avoid DNS resolution delays
 dns.setDefaultResultOrder('ipv4first')
+
+// Source maps are uploaded to Sentry ONLY when an auth token is present, and
+// this is deliberately all-or-nothing.
+//
+// Emitting source maps without uploading them would publish the entire
+// unminified frontend source to anyone who opens devtools on the production
+// site — strictly worse than having no maps at all. So when the token is
+// absent we generate none; when it is present we generate them, upload them,
+// and have the plugin delete them from dist before deploy
+// (sourcemaps.filesToDeleteAfterUpload). Either way nothing ships publicly.
+const SENTRY_AUTH_TOKEN = process.env.SENTRY_AUTH_TOKEN
+const uploadSourceMaps = Boolean(SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -56,8 +69,27 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }),
+    // Must come last so it sees the final emitted bundle.
+    ...(uploadSourceMaps
+      ? [sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: SENTRY_AUTH_TOKEN,
+          release: { name: process.env.VITE_COMMIT_SHA || undefined },
+          sourcemaps: {
+            // Remove the maps from dist after they reach Sentry, so the deployed
+            // site never serves them.
+            filesToDeleteAfterUpload: ['./dist/**/*.map'],
+          },
+          telemetry: false,
+        })]
+      : []),
   ],
+  build: {
+    // Only when they will actually be uploaded and then deleted — see above.
+    sourcemap: uploadSourceMaps,
+  },
   server: {
     host: '127.0.0.1',
     proxy: {

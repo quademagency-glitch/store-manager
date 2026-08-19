@@ -61,6 +61,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      # Must run AFTER the build: it hashes dist/index.html, not the source,
+      # because the build can alter the document around the inline scripts.
+      #
+      # Guards a trap that is otherwise invisible until production. The CSP in
+      # vercel.json allows index.html's two inline scripts by SHA-256 hash, and
+      # one of them sets the theme before first paint. Editing index.html by a
+      # single character invalidates the hash, and once the policy is enforcing
+      # the browser refuses to run that script — the app then loads as a blank
+      # white page. Failing the build is a much better place to find that out.
+      - run: npm run check:csp
       # The Playwright suites are deliberately not run here: they need a
       # browser, the visual project is serialised (~6 min), and its baselines
       # are captured on a specific machine, so pixel comparison across runners

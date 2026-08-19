@@ -52,6 +52,7 @@ const integrationsRoutes = require('./routes/integrations');
 const { paystackWebhookHandler } = require('./routes/paystackWebhook');
 const { healthDeepHandler } = require('./routes/healthDeep');
 const auditLogsRoutes = require('./routes/auditLogs');
+const { cspReportHandler, cspReportSummary } = require('./routes/cspReport');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -242,6 +243,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// CSP violation reports — registered before the global JSON parser because
+// browsers send these as application/csp-report or application/reports+json,
+// neither of which express.json() accepts by default.
+//
+// Public and unauthenticated by necessity: browsers post these with no
+// credentials. Hard rate limit because the body is entirely attacker-controlled
+// and this is a cheap thing to spray. 64kb is generous for a report.
+const cspReportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  keyGenerator: (req) => rateLimit.ipKeyGenerator(req.ip),
+  standardHeaders: false,
+  legacyHeaders: false,
+  // Reports are fire-and-forget; a throttled reporter should not see an error.
+  handler: (req, res) => res.status(204).end(),
+});
+app.post(
+  '/api/csp-report',
+  cspReportLimiter,
+  express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '64kb' }),
+  // Swallow parse failures. Four-argument middleware only runs when something
+  // before it errored, so this is skipped on the happy path. express.json is
+  // strict by default and rejects bodies that aren't an object or array, which
+  // would otherwise surface as a 400 — and a report collector should never hand
+  // an error back to a browser that was only trying to tell us something.
+  // eslint-disable-next-line no-unused-vars
+  (err, req, res, next) => res.status(204).end(),
+  cspReportHandler,
+);
+
 // Paystack webhooks — MUST be registered before the JSON parser below.
 //
 // Signature verification HMACs the exact bytes Paystack signed, and once
@@ -324,6 +355,25 @@ const healthDeepLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.get('/api/health/deep', healthDeepLimiter, healthDeepHandler);
+
+// Aggregated CSP violations, for deciding whether the policy is safe to
+// enforce. Same token gate as the deep health check — it reveals which
+// resources the app loads, which is reconnaissance for an attacker.
+app.get('/api/csp-report/summary', healthDeepLimiter, (req, res) => {
+  const expected = process.env.HEALTH_CHECK_TOKEN;
+  if (expected && req.get('x-health-token') !== expected) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const violations = cspReportSummary();
+  res.json({
+    violations,
+    total: violations.reduce((n, v) => n + v.count, 0),
+    distinct: violations.length,
+    note: violations.length === 0
+      ? 'No violations recorded by this worker. Note the tally is per worker process and resets on deploy.'
+      : 'Each entry is a rule the policy would block once enforcing. Allow the legitimate ones in vercel.json first.',
+  });
+});
 
 // Auth routes
 app.use('/api/auth', authRoutes);

@@ -16,7 +16,8 @@
     "test:visual:full": "VITE_USE_MOCKS=true FULL_MATRIX=1 playwright test --project=visual",
     "test:visual:update": "VITE_USE_MOCKS=true playwright test --project=visual --update-snapshots",
     "test:empty": "VITE_USE_MOCKS=empty playwright test --project=invariants",
-    "test:e2e": "playwright test --project=e2e"
+    "test:e2e": "playwright test --project=e2e",
+    "check:csp": "node scripts/check-csp-hashes.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.70.0",

@@ -1,3 +1,14 @@
+// utils/auditLog.js requires ../db/supabase at module load, which constructs a
+// real Supabase client — and that needs a WebSocket constructor for its realtime
+// component. Node 20 has none natively, so without this mock the whole suite
+// fails to even load on Node 20 while passing on Node 22+. CI pins Node 20, so
+// this is the difference between green locally and red in CI.
+//
+// Every other test file in this directory mocks it for the same reason.
+jest.mock('../db/supabase', () => ({
+  supabaseAdmin: require('./helpers/mockSupabase').buildMockSupabase(),
+}));
+
 const { redactAndTruncate, logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 describe('audit metadata redaction', () => {

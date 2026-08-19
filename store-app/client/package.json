@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:realtime && vite build",
+    "build": "npm run check:realtime && npm run check:legal && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:visual": "VITE_USE_MOCKS=true playwright test --project=visual",
@@ -18,7 +18,8 @@
     "test:empty": "VITE_USE_MOCKS=empty playwright test --project=invariants",
     "test:e2e": "playwright test --project=e2e",
     "check:csp": "node scripts/check-csp-hashes.mjs",
-    "check:realtime": "node scripts/check-realtime-stub.mjs"
+    "check:realtime": "node scripts/check-realtime-stub.mjs",
+    "check:legal": "node scripts/check-legal-entity.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.70.0",

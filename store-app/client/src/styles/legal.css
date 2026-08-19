@@ -1,0 +1,214 @@
+/* ==========================================================================
+   Public legal documents — Terms, Privacy Policy, Data Processing Agreement
+
+   These pages are read in two situations that pull in opposite directions:
+   someone skimming before signing up, and someone hunting for one clause
+   during a dispute. The first wants short lines and air; the second wants
+   stable numbers, a contents list and anchors that survive being pasted into
+   an email. Both are served below.
+
+   Printing matters more here than elsewhere in the app: a contract that
+   cannot be filed is a contract nobody keeps a copy of.
+   ========================================================================== */
+
+.legal-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-focus-ring, #6366f1);
+  color: #fff;
+  border-radius: 0 0 0.5rem 0;
+}
+.legal-skip:focus {
+  left: 0;
+}
+
+/* Placeholder warning. Loud on purpose — see entity.js. Development only. */
+.legal-todo {
+  border: 1px solid #f59e0b;
+  background: rgb(245 158 11 / 0.1);
+  color: #fcd34d;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+}
+.legal-todo code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.9em;
+}
+
+/* ── Contents ─────────────────────────────────────────────────────────── */
+
+.legal-toc {
+  border: 1px solid var(--color-border, #1e293b);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 3rem;
+  background: rgb(255 255 255 / 0.02);
+}
+.legal-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Two columns on anything wide enough. A 24-clause contents list as one
+     column pushes the document itself below the fold on a laptop. */
+  columns: 2;
+  column-gap: 2rem;
+}
+@media (max-width: 640px) {
+  .legal-toc ol { columns: 1; }
+}
+.legal-toc li {
+  break-inside: avoid;
+}
+.legal-toc a {
+  display: flex;
+  gap: 0.5rem;
+  /* 44px min height: these are the densest tap targets on the page and the
+     first thing a thumb reaches for on a phone. */
+  min-height: 44px;
+  align-items: center;
+  padding: 0.25rem 0;
+  color: var(--color-text-secondary, #94a3b8);
+  text-decoration: none;
+  font-size: 0.925rem;
+  line-height: 1.4;
+  transition: color var(--transition-fast);
+}
+.legal-toc a:hover {
+  color: #fff;
+}
+.legal-toc-n {
+  color: var(--color-text-tertiary, #64748b);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  min-width: 1.5rem;
+}
+
+/* ── The document ─────────────────────────────────────────────────────── */
+
+.legal-prose {
+  line-height: 1.7;
+}
+.legal-prose > p {
+  margin-bottom: 1.25rem;
+}
+
+.legal-clause {
+  /* Anchors land under the clause heading without a sticky header eating it. */
+  scroll-margin-top: 2rem;
+  margin-bottom: 2.5rem;
+}
+.legal-clause h2 {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #1e293b);
+}
+.legal-clause-n {
+  color: var(--color-text-tertiary, #64748b);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+/* Sub-clauses: number in a fixed gutter so the numbers line up down the page
+   and the eye can run the column looking for 14.2 without reading prose. */
+.legal-sub {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 2rem;
+}
+.legal-sub-n {
+  color: var(--color-text-tertiary, #64748b);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.925rem;
+  padding-top: 0.1rem;
+}
+.legal-sub-body > ul,
+.legal-sub-body > ol {
+  margin: 0.75rem 0 0.75rem 1.25rem;
+  list-style: disc;
+}
+.legal-sub-body > ol { list-style: lower-roman; }
+.legal-sub-body li { margin-bottom: 0.4rem; }
+.legal-sub-body p + p { margin-top: 0.75rem; }
+
+@media (max-width: 640px) {
+  /* The gutter costs more than it gives on a narrow screen. */
+  .legal-sub {
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0.35rem;
+  }
+}
+
+.legal-prose strong { color: #e2e8f0; font-weight: 600; }
+.legal-prose a { color: #818cf8; }
+.legal-prose a:hover { color: #a5b4fc; }
+
+/* Definitions */
+.legal-def {
+  margin-bottom: 0.85rem;
+}
+.legal-def dt {
+  font-weight: 600;
+  color: #e2e8f0;
+  display: inline;
+}
+.legal-def dt::after { content: ' — '; color: var(--color-text-tertiary, #64748b); }
+.legal-def dd { display: inline; margin: 0; }
+
+/* Tables — retention schedules and sub-processor lists read far better as
+   tables than as prose, and a regulator asking "what do you keep, and for how
+   long" is asking for exactly this shape. */
+.legal-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.25rem;
+  font-size: 0.925rem;
+}
+.legal-prose th,
+.legal-prose td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-border, #1e293b);
+  vertical-align: top;
+}
+.legal-prose th {
+  color: #cbd5e1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* Wide tables scroll inside themselves rather than pushing the page sideways. */
+.legal-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Print ────────────────────────────────────────────────────────────── */
+
+@media print {
+  .legal-skip,
+  .legal-toc,
+  .legal-back,
+  .legal-todo { display: none !important; }
+
+  .legal-prose,
+  .legal-prose strong,
+  .legal-clause h2 { color: #000 !important; }
+
+  /* A clause split across a page break is the one a reader misses. */
+  .legal-clause { break-inside: avoid-page; }
+  .legal-clause h2 { break-after: avoid-page; }
+
+  /* Anchors are useless on paper; the clause numbers are what get cited. */
+  .legal-prose a { text-decoration: none; color: #000 !important; }
+}

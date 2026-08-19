@@ -403,8 +403,9 @@ export default function Signup() {
                 reachable from here rather than only from the marketing footer. */}
             <p className="signup-legal-note">
               By creating an account you agree to our{' '}
-              <Link to="/terms">Terms of Service</Link> and{' '}
-              <Link to="/privacy">Privacy Policy</Link>.
+              <Link to="/terms">Terms of Service</Link>, our{' '}
+              <Link to="/privacy">Privacy Policy</Link> and the{' '}
+              <Link to="/dpa">Data Processing Agreement</Link>.
             </p>
           </form>
 

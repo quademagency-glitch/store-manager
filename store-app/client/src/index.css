@@ -104,6 +104,7 @@
 /* after login-page.css: signup reuses its `.login-*` surface and overrides
    a few of them (`.signup-card` padding, `.signup-container` width). */
 @import './styles/signup-page.css' layer(pages);
+@import './styles/legal.css' layer(pages);
 @import './styles/premium-dashboard-ui.css' layer(pages);
 @import './styles/sales-page-pos-layout.css' layer(pages);
 @import './styles/platform-admin-dashboard.css' layer(pages);

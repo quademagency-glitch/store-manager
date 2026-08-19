@@ -66,6 +66,7 @@ const Integrations = lazy(() => import('./pages/BusinessAdmin/Integrations'));
 const AuditLog = lazy(() => import('./pages/BusinessAdmin/AuditLog'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
+const Dpa = lazy(() => import('./pages/Dpa'));
 
 // HR Pages
 const Attendance = lazy(() => import('./pages/HR/Attendance'));
@@ -99,6 +100,7 @@ export default function App() {
                       most readers arrive without an account. */}
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
+                  <Route path="/dpa" element={<Dpa />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/platform-admin" element={

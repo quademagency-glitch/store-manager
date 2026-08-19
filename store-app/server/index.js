@@ -52,6 +52,44 @@ const { initDemoResetCron } = require('./services/demoResetCron');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust the reverse proxy in front of us so req.ip is the real client, not
+// the proxy socket. Without this every request shares one req.ip and EVERY
+// rate limiter below becomes a single platform-wide bucket — loginLimiter
+// stops meaning "10 logins per user per 15min" and starts meaning "10 logins
+// for the whole platform", which locks out real users with no clue why.
+//
+// Deliberately a NUMBER, never `true`. express-rate-limit v8 throws
+// ERR_ERL_PERMISSIVE_TRUST_PROXY on `true`, and rightly so: `true` takes the
+// leftmost X-Forwarded-For entry, which any client can forge — that would make
+// every limiter bypassable with one header and poison audit_logs.ip_address.
+//
+// DEFAULT OF 2, and it is chosen rather than assumed. The ingress paths differ:
+//   browser  → Vercel rewrite → Railway edge → app
+//   Paystack → Railway edge → app
+//
+// proxy-addr walks [socket, ...reversed X-Forwarded-For] and returns the first
+// address it does not trust, so with n=1 you get the RIGHTMOST forwarded entry
+// and with n=2 the one before it. Working that through both paths:
+//
+//   If Railway appends Vercel's egress IP, browser XFF is "client, vercel" —
+//     n=1 yields vercel's IP (every user collapses into a few buckets), n=2
+//     yields the real client. n=2 wins.
+//   If Railway forwards XFF untouched, browser XFF is just "client" — n=2 runs
+//     out of entries and returns the leftmost, which is still the client. Both
+//     work, so n=2 is no worse.
+//   Paystack's single-entry XFF behaves the same way under n=2: it runs out and
+//     returns the client. Correct either way.
+//
+// So 2 is right under both possibilities and 1 is right under only one. It is
+// also no more spoofable than 1 — a single-entry XFF is trusted at either
+// setting — and the only traffic on the direct path is signature-verified
+// webhooks and limiter-exempt healthchecks.
+//
+// Override via TRUST_PROXY_HOPS if the topology changes. GET /api/health/deep
+// reports { ip, ips, xff, remote } so you can confirm against the real
+// deployment rather than reasoning about it.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 2));
+
 // Per-business rate limit for the public storefront API. Keyed by the
 // resolved business (from apiKeyGuard, which must run before this), not
 // IP — several storefront requests can legitimately share an IP (a

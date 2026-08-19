@@ -27,6 +27,24 @@ const envSchema = z.object({
 
   // Paystack
   PAYSTACK_SECRET_KEY: z.string().optional(),
+
+  // Error monitoring — entirely optional. With no DSN, instrument.js never even
+  // requires the Sentry SDK, so the app behaves identically.
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
+
+  // Reverse-proxy hop count for req.ip resolution. See the long note in
+  // index.js — this must be a number, never `true`.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(2),
+
+  // Escape hatch for the HTTPS redirect (index.js). Set to 'false' to disable
+  // without a code change.
+  FORCE_HTTPS: z.string().optional(),
+
+  // Optional shared secret for /api/health/deep. When set, callers without the
+  // matching X-Health-Token header get a bare status with no timings or
+  // dependency names.
+  HEALTH_CHECK_TOKEN: z.string().optional(),
 });
 
 let _env;

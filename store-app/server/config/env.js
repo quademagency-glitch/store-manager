@@ -37,6 +37,11 @@ const envSchema = z.object({
   // index.js — this must be a number, never `true`.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(2),
 
+  // Ceiling for the general /api/* limiter, per signed-in session (or per IP
+  // when unauthenticated). Tunable without a deploy. Note it is per worker
+  // process, so the real ceiling is workers x this value.
+  API_RATE_LIMIT: z.coerce.number().int().min(1).default(300),
+
   // Escape hatch for the HTTPS redirect (index.js). Set to 'false' to disable
   // without a code change.
   FORCE_HTTPS: z.string().optional(),

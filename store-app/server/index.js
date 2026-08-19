@@ -395,6 +395,64 @@ app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
   }
 });
 
+// ── General API rate limit ───────────────────────────────────────────
+//
+// Everything except the public storefront API and the scanner was completely
+// unthrottled. This is the abuse ceiling, not a quota.
+//
+// KEYED BY SESSION, NOT IP. Six cashiers on one shop's NAT'd connection share
+// a single public IP, and useHR.js alone has 12 call sites — a busy till would
+// cross a naive per-IP limit during normal work. Hashing the Authorization
+// header gives each signed-in session its own budget, while unauthenticated
+// traffic (the thing actually worth throttling) still lands on the IP bucket.
+// A token-rotating attacker evades the session bucket, but that traffic is
+// attributable and revocable, which anonymous flooding is not.
+//
+// MOUNTED AT THE ROOT, not app.use('/api', ...). Inside a path-mounted
+// middleware Express strips the prefix, so req.path would be '/auth/login' and
+// every skip below would silently never match — the limiter would look correct
+// and quietly throttle the health check.
+//
+// Under cluster the real ceiling is workers x limit, because MemoryStore is
+// per-process. Fine for an abuse ceiling; it is not a precise number, and
+// pretending otherwise would be worse than saying so.
+const generalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.API_RATE_LIMIT ?? 300),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests',
+    message: 'Slow down for a moment and try again.',
+  },
+  keyGenerator: (req) => {
+    const auth = req.headers.authorization;
+    if (auth) {
+      // Hashed, never stored raw — this key ends up in memory and in logs.
+      return 'jwt:' + crypto.createHash('sha256').update(auth).digest('base64url').slice(0, 22);
+    }
+    return 'ip:' + rateLimit.ipKeyGenerator(req.ip);
+  },
+  skip: (req) =>
+    // Railway's healthcheck and any uptime monitor must never be throttled,
+    // and must never consume someone else's budget.
+    req.path === '/api/health' ||
+    req.path.startsWith('/api/health/') ||
+    // Already limited per business at 120/min. A storefront integration running
+    // at 110rpm from one server IP is inside its budget but would be cut off by
+    // an IP-keyed limiter — this is the one genuine conflict.
+    req.path.startsWith('/api/v1/public/') ||
+    // scanLimiter is 60/min, tighter than this, so it always trips first.
+    req.path.startsWith('/api/scanner/') ||
+    // Fire-and-forget browser reports with their own 60/min limit.
+    req.path === '/api/csp-report',
+  // NOTE: /api/auth/* is deliberately NOT skipped. loginLimiter (10/15min) and
+  // signupLimiter (5/hr) are far tighter, so they always trip first and there
+  // is no double penalty in practice — but this still caps someone hammering
+  // /api/auth/me, which nothing else does.
+});
+app.use(generalApiLimiter);
+
 // Auth routes
 app.use('/api/auth', authRoutes);
 

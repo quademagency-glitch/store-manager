@@ -59,6 +59,8 @@ const CommissionRules = lazy(() => import('./pages/BusinessAdmin/CommissionRules
 const BusinessSetup = lazy(() => import('./pages/BusinessAdmin/Setup'));
 const Integrations = lazy(() => import('./pages/BusinessAdmin/Integrations'));
 const AuditLog = lazy(() => import('./pages/BusinessAdmin/AuditLog'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 
 // HR Pages
 const Attendance = lazy(() => import('./pages/HR/Attendance'));
@@ -87,6 +89,11 @@ export default function App() {
                 <Routes>
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
+                  {/* Public, and deliberately outside ProtectedRoute: these are
+                      linked from the marketing footer and the signup form, so
+                      most readers arrive without an account. */}
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/platform-admin" element={

@@ -158,8 +158,8 @@ export default function LandingPage() {
             <span className="text-slate-500 font-medium">© {new Date().getFullYear()} QuadERP. All rights reserved.</span>
           </div>
           <div className="flex gap-6">
-            <Link to="#" className="text-slate-500 hover:text-slate-300">Privacy Policy</Link>
-            <Link to="#" className="text-slate-500 hover:text-slate-300">Terms of Service</Link>
+            <Link to="/privacy" className="text-slate-500 hover:text-slate-300">Privacy Policy</Link>
+            <Link to="/terms" className="text-slate-500 hover:text-slate-300">Terms of Service</Link>
           </div>
         </div>
       </footer>

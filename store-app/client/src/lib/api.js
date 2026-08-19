@@ -127,7 +127,52 @@ export const api = {
   delete: (endpoint) => fetchWithAuth(endpoint, { method: 'DELETE' }),
   // For multipart uploads — pass a FormData instance, never JSON.stringify it.
   postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),
+  // For binary downloads (the business data export ZIP).
+  getBlob: (endpoint) => fetchBlobWithAuth(endpoint),
 };
+
+/**
+ * GET a binary response as a Blob.
+ *
+ * Separate from `api.get` because that parses JSON, which would corrupt a ZIP.
+ * And it has to go through fetch rather than a plain <a href> or window.open:
+ * the endpoint requires an Authorization header, which a link cannot carry, so
+ * a direct navigation would simply 401.
+ */
+async function fetchBlobWithAuth(endpoint) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw apiError(HTTP_MESSAGES[401], { endpoint, status: 401 });
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (cause) {
+    // Same wording as fetchWithAuth, so a network failure reads identically
+    // wherever it happens.
+    throw apiError(
+      navigator.onLine === false
+        ? "You're offline. Reconnect and try again."
+        : "Couldn't reach the server. Check your connection and try again.",
+      { endpoint, cause },
+    );
+  }
+
+  if (!response.ok) {
+    // The error body is JSON even though the success body is binary.
+    let message = HTTP_MESSAGES[response.status] || `Request failed (${response.status}).`;
+    try {
+      const body = await response.json();
+      if (body?.message) message = body.message;
+    } catch { /* not JSON — keep the status-based message */ }
+    throw apiError(message, { endpoint, status: response.status });
+  }
+
+  return response.blob();
+}
 
 /**
  * POST to a public endpoint — signup, demo login — where there is no session

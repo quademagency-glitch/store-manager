@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { reportError } from '../../lib/errorReporting';
+import { useToast } from '../../hooks/useToast';
 import { usePrintDocument } from '../../hooks/usePrintDocument';
 import { useCurrency } from '../../hooks/useCurrency';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10,6 +11,7 @@ import { IS_MOCK } from '../../lib/mockMode';
 
 export default function Overview() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { business } = usePrintDocument();
   const { fmt, currencySymbol } = useCurrency(business);
   const [stats, setStats] = useState({
@@ -24,6 +26,7 @@ export default function Overview() {
   const [error, setError] = useState(null);
   const [setupStatus, setSetupStatus] = useState(null);
   const [setupBannerHidden, setSetupBannerHidden] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Hoisted out of the effect so the error banner can offer a retry.
   const fetchData = useCallback(async () => {
@@ -72,6 +75,39 @@ export default function Overview() {
     setLoading(false);
   }, []);
 
+  /**
+   * Triggers the streaming ZIP export.
+   *
+   * Uses fetch + a blob rather than pointing the browser at the URL directly,
+   * because the endpoint needs the Authorization header — a plain link or
+   * window.open cannot carry one, and the request would just 401.
+   */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob('/businesses/me/export');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quaderp-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Export downloaded.');
+    } catch (err) {
+      // 429 is the once-an-hour limit, which deserves its own message —
+      // "export failed" would send someone hunting for a fault that isn't there.
+      if (err?.status === 429) {
+        toast.error('An export can only be generated once per hour. Try again shortly.');
+      } else {
+        toast.error(err?.userMessage || "Couldn't generate the export. Please try again.");
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     // Progressive enhancement — the setup checklist banner just doesn't appear
@@ -103,6 +139,17 @@ export default function Overview() {
       <PageHeader
         title="Business Overview"
         subtitle="High-level metrics across all your locations."
+        actions={
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={handleExport}
+            disabled={exporting}
+            title="Download every record for this business as a ZIP of CSV files"
+          >
+            {exporting ? 'Preparing export…' : 'Export all data'}
+          </button>
+        }
       />
 
       <ErrorBanner error={error} onRetry={fetchData} />

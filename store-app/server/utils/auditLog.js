@@ -64,21 +64,13 @@ const AUDIT_ACTIONS = {
   RECEIPTS_DOWNLOADED: 'data.receipts_downloaded',
 };
 
-// Anything whose key matches is replaced wholesale. Substring matching rather
-// than exact, so `new_manager_pin` and `paystack_secret_key` are caught too.
-const SENSITIVE_KEY_PATTERNS = [
-  'password', 'pin', 'token', 'secret', 'key_hash', 'api_key',
-  'authorization', 'credential', 'session',
-];
+// Shared with the business data exporter — see utils/sensitiveKeys.js for why
+// there is one list rather than a copy per consumer.
+const { isSensitiveKey } = require('./sensitiveKeys');
 
 // Postgres jsonb has no hard size cap, but an unbounded metadata blob turns
 // this table into a dumping ground. 8KB is generous for structured detail.
 const MAX_METADATA_BYTES = 8 * 1024;
-
-function isSensitive(key) {
-  const lower = String(key).toLowerCase();
-  return SENSITIVE_KEY_PATTERNS.some((p) => lower.includes(p));
-}
 
 function redact(value, depth = 0) {
   if (depth > 6 || value === null || typeof value !== 'object') return value;
@@ -86,7 +78,7 @@ function redact(value, depth = 0) {
 
   const out = {};
   for (const [key, val] of Object.entries(value)) {
-    out[key] = isSensitive(key) ? '[redacted]' : redact(val, depth + 1);
+    out[key] = isSensitiveKey(key) ? '[redacted]' : redact(val, depth + 1);
   }
   return out;
 }

@@ -7,6 +7,9 @@ const { resolveCurrency } = require('../utils/currency');
 const { resolveCountry } = require('../utils/phone');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+const rateLimit = require('express-rate-limit');
+const archiver = require('archiver');
+const { appendBusinessData } = require('../services/businessExport');
 
 const router = express.Router();
 
@@ -266,6 +269,86 @@ router.post('/:id/send-welcome', authGuard, permissionCheck('manage_platform'), 
   } catch (err) {
     logger.error({ err: err }, 'Error sending welcome email:');
     res.status(500).json({ error: 'Failed to send welcome email' });
+  }
+});
+
+
+/**
+ * GET /api/businesses/me/export
+ *
+ * Streams the business's own records as a ZIP of CSVs. Backs the commitment in
+ * the Privacy Policy that an owner can retrieve their data at any time.
+ */
+const exportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 1,
+  // Keyed by business, not IP: two owners of the same shop behind one office
+  // connection should not share a budget, and one owner should not be able to
+  // start eight exports from eight devices.
+  keyGenerator: (req) => req.user?.business_id || rateLimit.ipKeyGenerator(req.ip),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Export already requested',
+    message: 'An export can be generated once per hour. Try again shortly.',
+  },
+});
+
+// authGuard -> permissionCheck -> limiter, in that order on purpose: the
+// limiter keys off req.user.business_id, which only exists once authGuard has
+// run. Same reasoning as the apiKeyGuard/publicApiLimiter pairing in index.js.
+router.get('/me/export', authGuard, permissionCheck('manage_business'), exportLimiter, async (req, res) => {
+  const businessId = req.user.business_id;
+  if (!businessId) return res.status(400).json({ error: 'No business associated with this account' });
+
+  const { data: business } = await supabaseAdmin
+    .from('businesses')
+    .select('id, name, slug')
+    .eq('id', businessId)
+    .single();
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const slug = (business?.slug || 'business').replace(/[^a-z0-9-]/gi, '');
+  res.attachment(`quaderp-export-${slug}-${stamp}.zip`);
+
+  // level 6, not 9. routes/ledger.js uses 9, but on text-heavy CSV the extra
+  // compression buys a few percent for substantially more CPU — and this runs
+  // on a worker that is also serving the POS.
+  const archive = archiver('zip', { zlib: { level: 6 } });
+
+  archive.on('warning', (err) => logger.warn({ err, reqId: req.id, businessId }, 'Export archive warning'));
+  archive.on('error', (err) => {
+    logger.error({ err, reqId: req.id, businessId }, 'Export archive failed');
+    // Headers are long gone by now, so there is no way to send a JSON error.
+    // Destroying the socket gives the client a truncated transfer it can
+    // detect, rather than a well-formed ZIP quietly missing half the data.
+    res.destroy(err);
+  });
+
+  // If the client goes away, stop. Without this a cancelled download leaves us
+  // paging Supabase for nobody — and since the limiter counts starts rather
+  // than completions, that would hand an attacker an hour of free queries per
+  // attempt.
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      logger.info({ reqId: req.id, businessId }, 'Export client disconnected — aborting');
+      archive.abort();
+    }
+  });
+
+  archive.pipe(res);
+
+  try {
+    const counters = await appendBusinessData(archive, businessId, business);
+    await archive.finalize();
+    logAuditEvent(req, AUDIT_ACTIONS.DATA_EXPORTED, 'business', businessId, {
+      rows: counters.rows,
+      tables_with_errors: counters.errors,
+    });
+  } catch (err) {
+    logger.error({ err, reqId: req.id, businessId }, 'Export failed');
+    if (!res.headersSent) return res.status(500).json({ error: 'Export failed' });
+    res.destroy(err);
   }
 });
 

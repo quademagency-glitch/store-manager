@@ -142,10 +142,11 @@ app.use(cors({
   credentials: true,
 }));
 
-// Parse JSON request bodies
-app.use(express.json());
-
-// Attach request ID and structured request logging
+// Attach request ID and structured request logging.
+//
+// This runs BEFORE the body parsers on purpose: a body that blows the size
+// limit is rejected by the parser itself, and if the request had no req.id yet
+// there'd be nothing to correlate that 413 with in the logs.
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
   res.setHeader('X-Request-Id', req.id);
@@ -161,6 +162,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Parse JSON request bodies
+app.use(express.json());
 
 // ============================================
 // Routes
@@ -292,6 +296,35 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
+  // Streaming routes (the receipts ZIP in routes/ledger.js, the business
+  // export) have already flushed headers by the time they can fail. Writing a
+  // JSON 500 on top of that throws ERR_HTTP_HEADERS_SENT from inside the error
+  // handler itself, replacing a useful error with a confusing one. Hand it to
+  // Express, which destroys the socket — the client sees a truncated transfer,
+  // which is at least detectable.
+  if (res.headersSent) return next(err);
+
+  const status = err.status || err.statusCode || 500;
+
+  // body-parser rejects an oversized body with a 413. Without this branch it
+  // fell through to the generic 500 below, so a user importing too many rows
+  // saw "Internal server error" and had no idea the request was simply too big.
+  if (status === 413) {
+    logger.warn({ reqId: req.id, path: req.path, limit: err.limit }, 'Request body too large');
+    return res.status(413).json({
+      error: 'Payload too large',
+      message: 'That request was too large to process. Try again with fewer records at a time.',
+    });
+  }
+
+  if (status === 400 && err.type === 'entity.parse.failed') {
+    logger.warn({ reqId: req.id, path: req.path }, 'Malformed JSON body');
+    return res.status(400).json({
+      error: 'Invalid JSON',
+      message: 'The request body could not be parsed as JSON.',
+    });
+  }
+
   logger.error({ err, reqId: req.id }, 'Unhandled error');
   res.status(500).json({
     error: 'Internal server error',

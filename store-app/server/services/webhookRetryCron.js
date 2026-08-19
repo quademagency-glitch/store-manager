@@ -45,17 +45,22 @@ async function sweepPendingDeliveries() {
   }
 }
 
+/**
+ * Returns a handle with stop() so a graceful shutdown can cancel the schedule.
+ */
 function initWebhookRetryCron() {
   if (!cron) {
     logger.warn('[CRON] node-cron not available. Webhook retry cron disabled.');
-    return;
+    return { stop() {} };
   }
 
-  cron.schedule('*/5 * * * *', () => {
+  const task = cron.schedule('*/5 * * * *', () => {
     sweepPendingDeliveries();
   });
 
   logger.info('✅ Webhook retry cron job initialized (runs every 5 minutes)');
+
+  return { stop() { task.stop(); } };
 }
 
 module.exports = { initWebhookRetryCron, sweepPendingDeliveries };

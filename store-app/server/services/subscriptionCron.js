@@ -203,11 +203,11 @@ async function runSubscriptionChecks() {
 function initSubscriptionCron() {
   if (!cron) {
     logger.warn('[CRON] node-cron not available. Subscription cron disabled.');
-    return;
+    return { stop() {} };
   }
 
   // Run daily at midnight
-  cron.schedule('0 0 * * *', () => {
+  const task = cron.schedule('0 0 * * *', () => {
     runSubscriptionChecks();
   }, {
     timezone: 'Africa/Accra' // Ghana timezone
@@ -216,10 +216,17 @@ function initSubscriptionCron() {
   logger.info('✅ Subscription cron job initialized (runs daily at midnight GMT)');
 
   // Also run immediately on startup (after a short delay to let the server settle)
-  setTimeout(() => {
+  const startupTimer = setTimeout(() => {
     logger.info('[CRON] Running initial subscription check...');
     runSubscriptionChecks();
   }, 5000);
+
+  return {
+    stop() {
+      clearTimeout(startupTimer);
+      task.stop();
+    },
+  };
 }
 
 module.exports = {

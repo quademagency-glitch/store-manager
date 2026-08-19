@@ -47,22 +47,29 @@ async function runDemoReset({ ifEmpty = false } = {}) {
 function initDemoResetCron() {
   if (!isDemoEnabled()) {
     logger.info('Demo mode disabled (set DEMO_MODE_ENABLED=true to enable).');
-    return;
+    return { stop() {} };
   }
 
   if (!cron) {
     logger.warn('[CRON] node-cron not available. Demo reset disabled.');
-    return;
+    return { stop() {} };
   }
 
-  cron.schedule('0 2 * * *', () => { runDemoReset({ ifEmpty: false }); }, {
+  const task = cron.schedule('0 2 * * *', () => { runDemoReset({ ifEmpty: false }); }, {
     timezone: 'Africa/Accra',
   });
 
   logger.info('✅ Demo reset cron initialized (rebuilds nightly at 02:00 GMT)');
 
   // Give the rest of the server a moment to come up before doing any work.
-  setTimeout(() => { runDemoReset({ ifEmpty: true }); }, 8000);
+  const startupTimer = setTimeout(() => { runDemoReset({ ifEmpty: true }); }, 8000);
+
+  return {
+    stop() {
+      clearTimeout(startupTimer);
+      task.stop();
+    },
+  };
 }
 
 // isDemoEnabled is re-exported for the handful of callers that already import

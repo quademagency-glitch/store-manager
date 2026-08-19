@@ -1,7 +1,9 @@
-import React, { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { initErrorReporting } from './lib/errorReporting'
 import 'virtual:pwa-register'
 
 // Lets the Playwright harness prove it is talking to the dev server *it*
@@ -13,40 +15,13 @@ if (import.meta.env.VITE_TEST_NONCE) {
   window.__TEST_NONCE__ = import.meta.env.VITE_TEST_NONCE;
 }
 
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    if (import.meta.env.DEV) console.error("React Error Boundary caught an error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '20px', color: 'white', background: '#0a0a0f', minHeight: '100vh' }}>
-          <h2 style={{ color: '#ef4444' }}>Something went wrong.</h2>
-          <pre style={{ background: '#1a1a2e', padding: '15px', borderRadius: '8px', overflowX: 'auto', marginTop: '10px' }}>
-            {this.state.error?.toString()}
-          </pre>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{ marginTop: '20px', padding: '10px 20px', background: '#6366f1', color: 'white', borderRadius: '5px' }}
-          >
-            Reload App
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+// There used to be a second ErrorBoundary class defined inline here, separate
+// from components/ErrorBoundary.jsx and with a different fallback UI. It
+// rendered `error.toString()` into a <pre> UNCONDITIONALLY, so production users
+// saw raw exception text — while the shared boundary correctly hides that
+// behind import.meta.env.DEV. Two boundaries with two behaviours also meant a
+// crash's appearance depended on which one caught it. There is now one.
+initErrorReporting();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

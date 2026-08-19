@@ -5,6 +5,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
 import { api } from '../lib/api';
+import { reportError } from '../lib/errorReporting';
 import { EmptyStateRow, TabPanel, Tabs } from '../components/ui';
 import '../styles/loyalty.css';
 
@@ -63,9 +64,12 @@ export default function Loyalty() {
   // Customer search
   useEffect(() => {
     if (customerSearch.length >= 2) {
+      // Reported, but deliberately NOT toasted: this fires on every keystroke,
+      // so a toast per failed request would bury the screen. apiError already
+      // routes it to the error sink.
       api.get(`/customers?search=${encodeURIComponent(customerSearch)}&limit=10`).then(res => {
         setCustomers(Array.isArray(res) ? res : res?.data || []);
-      }).catch(() => {});
+      }).catch(err => reportError(err, { context: 'loyalty:customer-search' }));
     }
   }, [customerSearch]);
 

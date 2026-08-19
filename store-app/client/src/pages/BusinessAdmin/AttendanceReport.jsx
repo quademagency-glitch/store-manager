@@ -17,8 +17,18 @@ export default function AttendanceReport() {
 
   useEffect(() => {
     fetchAttendanceLogs();
-    api.get('/users').then(res => setUsers(Array.isArray(res) ? res : res?.data || [])).catch(() => {});
-    api.get('/locations').then(res => setLocations(Array.isArray(res) ? res : [])).catch(() => {});
+    // Both feed the report's filter selectors — an empty one silently changes
+    // what the report is showing.
+    api.get('/users')
+      .then(res => setUsers(Array.isArray(res) ? res : res?.data || []))
+      .catch(() => toast.error("Couldn't load staff. The filter may be incomplete."));
+    api.get('/locations')
+      .then(res => setLocations(Array.isArray(res) ? res : []))
+      .catch(() => toast.error("Couldn't load branches. The filter may be incomplete."));
+    // toast is intentionally omitted — useToast returns a memoized object, but
+    // including it here would still re-run the two reference fetches on any
+    // provider re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAttendanceLogs]);
 
   const handleFilter = () => {

@@ -32,14 +32,34 @@ export default function Billing() {
   const fetchBillingData = useCallback(async () => {
     setLoading(true);
     try {
-      const [plansRes, subRes, invRes] = await Promise.all([
-        api.get('/subscriptions/plans').catch(() => []),
-        api.get(`/subscriptions/business/${user?.business_id}`).catch(() => null),
-        api.get(`/billing/invoices/${user?.business_id}`).catch(() => []),
+      // allSettled, not per-call .catch fallbacks: this is the page an owner
+      // looks at to decide whether they are paid up. Silently rendering "no
+      // invoices" or "no plan" when the request merely failed is the worst
+      // possible answer to that question.
+      const [plansR, subR, invR] = await Promise.allSettled([
+        api.get('/subscriptions/plans'),
+        api.get(`/subscriptions/business/${user?.business_id}`),
+        api.get(`/billing/invoices/${user?.business_id}`),
       ]);
-      setPlans(plansRes || []);
-      setSubscription(subRes);
-      setInvoices(invRes || []);
+
+      setPlans(plansR.status === 'fulfilled' ? (plansR.value || []) : []);
+      setSubscription(subR.status === 'fulfilled' ? subR.value : null);
+      setInvoices(invR.status === 'fulfilled' ? (invR.value || []) : []);
+
+      const failed = [
+        plansR.status === 'rejected' && 'the plan list',
+        subR.status === 'rejected' && 'your current subscription',
+        invR.status === 'rejected' && 'your invoices',
+      ].filter(Boolean);
+
+      if (failed.length > 0) {
+        const partial = new Error(
+          `Couldn't load ${failed.join(', ')}. What's shown below may be incomplete.`
+        );
+        partial.userMessage = partial.message;
+        setError(partial);
+        return;
+      }
     } catch (err) {
       if (import.meta.env.DEV) console.error('Error fetching billing data:', err);
       setError(err);

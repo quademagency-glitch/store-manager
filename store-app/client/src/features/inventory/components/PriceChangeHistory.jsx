@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../lib/api';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
+import { reportError } from '../../../lib/errorReporting';
 
 export default function PriceChangeHistory() {
   const { business } = usePrintDocument();
@@ -28,7 +29,7 @@ export default function PriceChangeHistory() {
       setPage(result.page || 1);
       setTotalPages(result.total_pages || 1);
     } catch (err) {
-      console.error('Failed to fetch price history:', err);
+      reportError(err, { context: 'inventory:price-history' });
       setHistory([]);
     } finally {
       setLoading(false);

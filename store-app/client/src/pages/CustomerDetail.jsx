@@ -116,8 +116,11 @@ export default function CustomerDetail() {
           filtered = res.filter(l => l.id === userLoc || userLocs.includes(l.id));
         }
         setLocations(filtered);
-      } 
-    }).catch(() => {});
+      }
+    }).catch(() => {
+      toast.error("Couldn't load branches. Refresh to try again.");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, user]);
 
   useEffect(() => {

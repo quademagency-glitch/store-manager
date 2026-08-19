@@ -52,16 +52,23 @@ export default function Schedules() {
   // the user switches branch; the effect above already handles refetching the
   // schedules themselves.
   useEffect(() => {
+    // Both populate the shift-assignment selectors. Failing silently leaves
+    // empty dropdowns and no way to add a shift, with nothing on screen to
+    // explain it.
     api.get('/users').then(res => {
       if (Array.isArray(res)) setUsers(res);
       else if (res?.data) setUsers(res.data);
-    }).catch(() => {});
+    }).catch(() => {
+      toast.error("Couldn't load staff. Refresh to try again.");
+    });
     api.get('/locations').then(res => {
       if (Array.isArray(res)) {
         setLocations(res);
         if (res.length > 0 && !selectedLocation) setSelectedLocation(res[0].id);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      toast.error("Couldn't load branches. Refresh to try again.");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

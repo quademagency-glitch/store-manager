@@ -25,6 +25,7 @@ import PriceListPrint from '../features/inventory/components/PriceListPrint';
 import PriceChangeHistory from '../features/inventory/components/PriceChangeHistory';
 import { useExportCsv } from '../hooks/useExportCsv';
 import { EmptyStateRow, SkeletonRows, TabPanel, Tabs } from '../components/ui';
+import { reportError } from '../lib/errorReporting';
 
 function PricingTabContent({ refreshProducts }) {
   const [activeSection, setActiveSection] = useState('bulk-update');
@@ -143,7 +144,10 @@ export default function Inventory() {
           setLocationFilter(userLocs[0].id);
         }
       }
-    }).catch(() => setLocations([]));
+    }).catch(err => {
+      setLocations([]);
+      reportError(err, { context: 'inventory:locations' });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchMovements, stockPage, isManagerOrAdmin, locationIds]);
 

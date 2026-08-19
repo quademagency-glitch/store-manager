@@ -19,7 +19,7 @@ import PlatformAdminModals from '../features/platformAdmin/components/PlatformAd
 function PlatformAdminShell() {
   const navigate = useNavigate();
   const { hasPermission, signOut } = useAuthContext();
-  const { activeTab, setActiveTab, loading, error, fetchData } = usePlatformAdmin();
+  const { activeTab, setActiveTab, loading, error, fetchData, partialFailures } = usePlatformAdmin();
 
   useEffect(() => {
     fetchData();
@@ -100,6 +100,17 @@ function PlatformAdminShell() {
 
       {/* ── MAIN CONTENT ── */}
       <div className="pa-main-content">
+        {/* Secondary data (invoices, billing stats, plans…) loads independently
+            so a failure there doesn't block this page. Naming what's missing
+            matters though: without it an empty invoice list or a zeroed revenue
+            figure is indistinguishable from a genuinely quiet month. */}
+        {partialFailures.length > 0 && (
+          <div className="alert alert-warning" role="alert" style={{ marginBottom: '1rem' }}>
+            Couldn&apos;t load: {partialFailures.join(', ')}. Those figures may be missing or
+            incomplete.{' '}
+            <button type="button" className="btn btn-sm" onClick={fetchData}>Retry</button>
+          </div>
+        )}
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'businesses' && <BusinessesTab />}
         {activeTab === 'business-detail' && <BusinessDetailTab />}

@@ -23,7 +23,11 @@ export default function ProfitLoss() {
   // / filters.endDate would refire the report on every keystroke in a date
   // field rather than when the user is done choosing.
   useEffect(() => {
-    api.get('/locations').then(res => setLocations(Array.isArray(res) ? res : [])).catch(() => {});
+    api.get('/locations')
+      .then(res => setLocations(Array.isArray(res) ? res : []))
+      // An empty branch filter silently scopes the P&L to nothing in
+      // particular, so a failure here can misrepresent the numbers.
+      .catch(() => toast.error("Couldn't load branches. The branch filter may be incomplete."));
     fetchPnl(filters.startDate, filters.endDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

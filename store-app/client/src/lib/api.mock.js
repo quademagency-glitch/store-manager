@@ -96,9 +96,11 @@ const FIXTURES = {
   '/locations': [{ id: 'mock-loc', name: 'Adom Superstore — Osu' }],
   /* Bare array of distinct category names, as GET /api/pricing/categories
      returns. The price-tag printer, bulk price update and price list all read
-     it and swallow the failure with `.catch(() => setCategories([]))`, so
-     without this their category pickers render permanently empty and nothing
-     says why. Mirrors the catalogue in the demo seeder. */
+     it. They used to swallow a failure entirely, so without this fixture their
+     category pickers rendered permanently empty with nothing saying why; they
+     now fall back to an empty list AND report the error, but the fixture is
+     still needed so the mocked runs exercise a populated picker.
+     Mirrors the catalogue in the demo seeder. */
   '/pricing/categories': ['Drinks', 'Groceries', 'Household', 'Personal Care', 'Pharmacy', 'Stationery'],
 
   // The real endpoint returns the business row plus `currency` and `country`

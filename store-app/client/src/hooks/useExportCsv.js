@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useToast } from './useToast';
+import { reportError } from '../lib/errorReporting';
 
 /**
  * Generic CSV export hook.
@@ -66,7 +67,7 @@ export function useExportCsv() {
 
       toast.success(`Exported ${data.length} rows to CSV`);
     } catch (err) {
-      console.error('CSV export error:', err);
+      reportError(err, { context: 'export:csv' });
       toast.error('Failed to export CSV');
     }
   }, [toast]);

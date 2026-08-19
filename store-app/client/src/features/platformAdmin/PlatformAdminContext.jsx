@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { api } from '../../lib/api';
+import { reportError } from '../../lib/errorReporting';
 import { getBusinessUrl } from '../../lib/subdomain';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useToast } from '../../hooks/useToast';
@@ -27,6 +28,10 @@ export function PlatformAdminProvider({ children }) {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Names of the secondary datasets that failed to load. The page still
+  // renders — these feed a banner so an admin knows which figures are missing
+  // rather than reading an empty list as real data.
+  const [partialFailures, setPartialFailures] = useState([]);
 
   // ── Navigation ──
   const [activeTab, setActiveTab] = useState('overview');
@@ -154,28 +159,51 @@ export function PlatformAdminProvider({ children }) {
       setUsers(uRes.data || []);
       setRoles(rRes.data || []);
 
-      // Fetch pricing/billing/platform data (non-blocking)
-      try {
-        const [plansRes, gwRes, invRes, statsRes, subsRes, settingsRes, templatesRes, commsGwRes] = await Promise.all([
-          api.get('/subscriptions/plans/all').catch(() => []),
-          api.get('/billing/gateways').catch(() => []),
-          api.get('/billing/invoices?limit=100').catch(() => []),
-          api.get('/billing/stats').catch(() => ({})),
-          api.get('/subscriptions').catch(() => []),
-          api.get('/platform/settings').catch(() => []),
-          api.get('/communications/templates').catch(() => []),
-          api.get('/communications/gateways').catch(() => [])
-        ]);
-        setPlans(plansRes || []);
-        setGateways(gwRes || []);
-        setInvoices(invRes || []);
-        setBillingStats(statsRes || {});
-        setSubscriptions(subsRes || []);
-        setPlatformSettings(settingsRes || []);
-        setTemplates(templatesRes || []);
-        setCommunicationGateways(commsGwRes || []);
-      } catch (billingErr) {
-        if (import.meta.env.DEV) console.warn('Secondary platform data not available:', billingErr.message);
+      // Secondary platform data. Non-blocking by design — a failure here must
+      // not take down the businesses/users/roles view above.
+      //
+      // But non-blocking is not the same as silent. These eight previously had
+      // an individual `.catch(() => [])`, so a failed /billing/invoices simply
+      // rendered an empty invoice list and a failed /billing/stats rendered
+      // zeroes — with the outer catch never firing. A platform admin looking at
+      // "0 invoices, GHS 0 revenue" could not tell that from a real empty
+      // month. allSettled keeps the page up AND names what is missing.
+      const secondary = {
+        plans: '/subscriptions/plans/all',
+        gateways: '/billing/gateways',
+        invoices: '/billing/invoices?limit=100',
+        billingStats: '/billing/stats',
+        subscriptions: '/subscriptions',
+        platformSettings: '/platform/settings',
+        templates: '/communications/templates',
+        communicationGateways: '/communications/gateways',
+      };
+      const keys = Object.keys(secondary);
+      const results = await Promise.allSettled(keys.map(k => api.get(secondary[k])));
+      const value = (key, fallback) => {
+        const r = results[keys.indexOf(key)];
+        return r.status === 'fulfilled' && r.value != null ? r.value : fallback;
+      };
+
+      setPlans(value('plans', []) || []);
+      setGateways(value('gateways', []) || []);
+      setInvoices(value('invoices', []) || []);
+      setBillingStats(value('billingStats', {}) || {});
+      setSubscriptions(value('subscriptions', []) || []);
+      setPlatformSettings(value('platformSettings', []) || []);
+      setTemplates(value('templates', []) || []);
+      setCommunicationGateways(value('communicationGateways', []) || []);
+
+      const failed = keys.filter((_, i) => results[i].status === 'rejected');
+      if (failed.length > 0) {
+        results.forEach((r, i) => {
+          if (r.status === 'rejected') {
+            reportError(r.reason, { context: `platformAdmin:${keys[i]}` });
+          }
+        });
+        setPartialFailures(failed);
+      } else {
+        setPartialFailures([]);
       }
     } catch (err) {
       if (import.meta.env.DEV) console.error('Error fetching platform data:', err);
@@ -749,6 +777,7 @@ export function PlatformAdminProvider({ children }) {
     roles, setRoles,
     loading, setLoading,
     error, setError,
+    partialFailures,
     activeTab, setActiveTab,
     businessSearchTerm, setBusinessSearchTerm,
     userSearchTerm, setUserSearchTerm,

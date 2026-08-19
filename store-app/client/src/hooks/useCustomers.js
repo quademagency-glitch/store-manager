@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { api } from '../lib/api';
 import { saveCustomersToIDB, getCustomersFromIDB } from '../lib/idb';
+import { reportError } from '../lib/errorReporting';
 
 export function useCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -20,7 +21,8 @@ export function useCustomers() {
       setPage(data.page || 1);
       setTotalPages(data.totalPages || 1);
       setTotalCustomers(data.total || 0);
-      saveCustomersToIDB(data.data || []).catch(console.error);
+      // See useProducts — offline-cache write failure, reported not surfaced.
+      saveCustomersToIDB(data.data || []).catch(err => reportError(err, { context: 'idb:save-customers' }));
       return data;
     } catch (err) {
       if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);

@@ -4,6 +4,7 @@ import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import Modal from '../components/Modal';
 import { Tabs, TabPanel } from '../components/ui';
+import { reportError } from '../lib/errorReporting';
 
 // High-quality modern SVG icons
 const Icons = {
@@ -52,16 +53,33 @@ export default function CRMCommunications() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [resTmpl, resGw, resCust] = await Promise.all([
-        api.get('/crm-communications/templates').catch(() => []),
-        api.get('/crm-communications/gateways').catch(() => []),
-        api.get('/customers').catch(() => []) 
+      // allSettled so one failing dataset doesn't blank the other two, and so
+      // a failure is named rather than rendering as "you have no templates".
+      const [tmplR, gwR, custR] = await Promise.allSettled([
+        api.get('/crm-communications/templates'),
+        api.get('/crm-communications/gateways'),
+        api.get('/customers'),
       ]);
-      setTemplates(resTmpl);
-      setGateways(resGw);
-      setCustomers(resCust.data || resCust || []);
+
+      setTemplates(tmplR.status === 'fulfilled' ? (tmplR.value || []) : []);
+      setGateways(gwR.status === 'fulfilled' ? (gwR.value || []) : []);
+      const cust = custR.status === 'fulfilled' ? custR.value : null;
+      setCustomers(cust?.data || cust || []);
+
+      const failed = [
+        tmplR.status === 'rejected' && 'templates',
+        gwR.status === 'rejected' && 'gateways',
+        custR.status === 'rejected' && 'customers',
+      ].filter(Boolean);
+
+      if (failed.length > 0) {
+        [tmplR, gwR, custR].forEach(r => {
+          if (r.status === 'rejected') reportError(r.reason, { context: 'crm:load' });
+        });
+        toast.error(`Couldn't load ${failed.join(', ')}. Some options may be missing.`);
+      }
     } catch (err) {
-      console.error(err);
+      reportError(err, { context: 'crm:load' });
       toast.error('Failed to load CRM data');
     } finally {
       setLoading(false);

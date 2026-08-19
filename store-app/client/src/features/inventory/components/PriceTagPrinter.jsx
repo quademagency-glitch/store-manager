@@ -4,6 +4,7 @@ import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
 import { api } from '../../../lib/api';
 import { EmptyStateRow } from '../../../components/ui';
+import { reportError } from '../../../lib/errorReporting';
 
 const LAYOUTS = {
   'small-labels': { label: 'Small Labels', desc: '6 per page (3×2 grid)', cols: 3, rows: 2, icon: '▦' },
@@ -26,7 +27,14 @@ export default function PriceTagPrinter() {
   const [showCategory, setShowCategory] = useState(false);
 
   useEffect(() => {
-    api.get('/pricing/categories').then(setCategories).catch(() => setCategories([]));
+    // Swallowing this rendered a permanently empty category picker with
+    // nothing on screen saying why — see the note in lib/api.mock.js.
+    api.get('/pricing/categories')
+      .then(setCategories)
+      .catch(err => {
+        setCategories([]);
+        reportError(err, { context: 'pricing:categories' });
+      });
   }, []);
 
   const filtered = products.filter(p => {

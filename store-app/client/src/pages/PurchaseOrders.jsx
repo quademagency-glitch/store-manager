@@ -46,7 +46,15 @@ export default function PurchaseOrders() {
   useEffect(() => {
     fetchOrders(1, statusFilter);
     fetchSuppliers();
-    api.get('/locations').then(res => setLocations(res || [])).catch(() => setLocations([]));
+    api.get('/locations')
+      .then(res => setLocations(res || []))
+      .catch(() => {
+        setLocations([]);
+        toast.error("Couldn't load branches. Refresh to try again.");
+      });
+    // toast is provider-memoized and stable; listing it here would add nothing
+    // but is flagged because the linter can't see that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchOrders, fetchSuppliers, statusFilter]);
 
   const statusFilters = [

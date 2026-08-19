@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { IS_MOCK } from './mockMode';
 import { resolveMock } from './api.mock';
+import { reportError } from './errorReporting';
 
 const _envUrl = import.meta.env.VITE_API_URL;
 export const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : (_envUrl ? (_envUrl.endsWith('/api') ? _envUrl : `${_envUrl}/api`) : '/api');
@@ -33,9 +34,20 @@ function apiError(message, { endpoint, status, cause } = {}) {
   err.userMessage = message;
   err.endpoint = endpoint;
   err.status = status;
-  if (import.meta.env.DEV) {
-    console.error(`[api] ${status || 'network'} ${API_BASE}${endpoint}`, cause || message);
+
+  // Every API failure in the app funnels through here, which makes this the one
+  // place worth reporting from — far better than patching ~70 call sites.
+  //
+  // 4xx below 500 are excluded deliberately: 401 on an expired session and 403
+  // on a permission check are normal application flow, and reporting them would
+  // bury real failures under routine noise. reportError handles the DEV console
+  // itself and no-ops in production without a DSN.
+  if (!status || status >= 500) {
+    reportError(err, { endpoint, status: status ?? 'network' });
+  } else if (import.meta.env.DEV) {
+    console.error(`[api] ${status} ${API_BASE}${endpoint}`, cause || message);
   }
+
   return err;
 }
 

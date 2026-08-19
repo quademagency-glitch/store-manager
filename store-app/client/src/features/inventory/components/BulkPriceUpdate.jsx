@@ -4,6 +4,7 @@ import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
 import { useToast } from '../../../hooks/useToast';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { reportError } from '../../../lib/errorReporting';
 
 export default function BulkPriceUpdate({ onComplete }) {
   const toast = useToast();
@@ -23,7 +24,14 @@ export default function BulkPriceUpdate({ onComplete }) {
   const [applying, setApplying] = useState(false);
 
   useEffect(() => {
-    api.get('/pricing/categories').then(setCategories).catch(() => setCategories([]));
+    // Swallowing this rendered a permanently empty category picker with
+    // nothing on screen saying why — see the note in lib/api.mock.js.
+    api.get('/pricing/categories')
+      .then(setCategories)
+      .catch(err => {
+        setCategories([]);
+        reportError(err, { context: 'pricing:categories' });
+      });
   }, []);
 
   const modes = [

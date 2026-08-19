@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { reportError } from '../../lib/errorReporting';
 import { usePrintDocument } from '../../hooks/usePrintDocument';
 import { useCurrency } from '../../hooks/useCurrency';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -27,33 +28,58 @@ export default function Overview() {
   // Hoisted out of the effect so the error banner can offer a retry.
   const fetchData = useCallback(async () => {
     setLoading(true);
-    try {
-      const [summaryRes, trendRes, activityRes] = await Promise.all([
-        api.get('/analytics/summary').catch(() => ({})),
-        api.get('/analytics/sales-trend').catch(() => []),
-        api.get('/analytics/recent-activity').catch(() => [])
-      ]);
 
-      setStats({
-        todaySalesTotal: summaryRes.todaySalesTotal || 0,
-        totalProducts: summaryRes.totalProducts || 0,
-        lowStockCount: summaryRes.lowStockCount || 0,
-        theftAlertsCount: summaryRes.theftAlertsCount || 0
-      });
-      setTrendData(Array.isArray(trendRes) ? trendRes : []);
-      setRecentActivity(Array.isArray(activityRes) ? activityRes : []);
-      setError(null);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Error fetching overview stats', err);
+    // allSettled, NOT Promise.all with a per-call .catch fallback.
+    //
+    // This previously read `.catch(() => ({}))` on each request, which meant a
+    // failed /analytics/summary produced an empty object, every stat fell back
+    // to 0, the outer catch never fired, and setError(null) ran — so the page
+    // rendered a completely normal-looking dashboard reading GHS 0 sales, no
+    // products, no alerts. A business owner had no way to tell that apart from
+    // a genuinely quiet day. Partial failure has to be visible.
+    const [summary, trend, activity] = await Promise.allSettled([
+      api.get('/analytics/summary'),
+      api.get('/analytics/sales-trend'),
+      api.get('/analytics/recent-activity'),
+    ]);
+
+    const summaryData = summary.status === 'fulfilled' ? (summary.value ?? {}) : {};
+    setStats({
+      todaySalesTotal: summaryData.todaySalesTotal || 0,
+      totalProducts: summaryData.totalProducts || 0,
+      lowStockCount: summaryData.lowStockCount || 0,
+      theftAlertsCount: summaryData.theftAlertsCount || 0,
+    });
+    setTrendData(trend.status === 'fulfilled' && Array.isArray(trend.value) ? trend.value : []);
+    setRecentActivity(activity.status === 'fulfilled' && Array.isArray(activity.value) ? activity.value : []);
+
+    const failures = [
+      summary.status === 'rejected' && 'summary figures',
+      trend.status === 'rejected' && 'the sales trend',
+      activity.status === 'rejected' && 'recent activity',
+    ].filter(Boolean);
+
+    if (failures.length > 0) {
+      const err = new Error(
+        `Couldn't load ${failures.join(', ')}. The figures below may be incomplete.`
+      );
+      err.userMessage = err.message;
       setError(err);
-    } finally {
-      setLoading(false);
+    } else {
+      setError(null);
     }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchData();
-    api.get('/businesses/me/setup-status').then(setSetupStatus).catch(() => {});
+    // Progressive enhancement — the setup checklist banner just doesn't appear
+    // if this fails, which is not worth interrupting the user over. apiError
+    // still routes it to the error sink.
+    api.get('/businesses/me/setup-status')
+      .then(setSetupStatus)
+      .catch(err => reportError(err, { context: 'overview:setup-status' }));
   }, [fetchData]);
 
   if (loading) return <div className="p-xl text-center">Loading overview...</div>;

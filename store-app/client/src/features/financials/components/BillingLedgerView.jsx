@@ -78,7 +78,10 @@ export default function BillingLedgerView({ kind, parties }) {
   useEffect(() => {
     api.get('/locations').then(res => {
       if (Array.isArray(res)) setLocations(res);
-    }).catch(() => {});
+    }).catch(() => {
+      toast.error("Couldn't load branches. Refresh to try again.");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const partyName = (doc) => (kind === 'ar' ? doc.customer?.name : doc.supplier?.name) || 'Unknown';

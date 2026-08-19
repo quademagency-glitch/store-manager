@@ -3,6 +3,7 @@ import { useProducts } from '../../../hooks/useProducts';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
 import { api } from '../../../lib/api';
+import { reportError } from '../../../lib/errorReporting';
 
 export default function PriceListPrint() {
   const { products } = useProducts();
@@ -16,7 +17,14 @@ export default function PriceListPrint() {
   const [showMargin, setShowMargin] = useState(false);
 
   useEffect(() => {
-    api.get('/pricing/categories').then(setCategories).catch(() => setCategories([]));
+    // Swallowing this rendered a permanently empty category picker with
+    // nothing on screen saying why — see the note in lib/api.mock.js.
+    api.get('/pricing/categories')
+      .then(setCategories)
+      .catch(err => {
+        setCategories([]);
+        reportError(err, { context: 'pricing:categories' });
+      });
   }, []);
 
   const filtered = useMemo(() => {

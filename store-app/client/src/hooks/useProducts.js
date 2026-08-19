@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { saveProductsToIDB, getProductsFromIDB } from '../lib/idb';
+import { reportError } from '../lib/errorReporting';
 
 export function useProducts() {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,9 @@ export function useProducts() {
     try {
       const data = await api.get('/products');
       setProducts(data);
-      saveProductsToIDB(data).catch(console.error); // Cache for offline
+      // Cache for offline. A failed IDB write degrades offline mode only —
+      // report it, don't surface it.
+      saveProductsToIDB(data).catch(err => reportError(err, { context: 'idb:save-products' }));
     } catch (err) {
       if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);
       try {

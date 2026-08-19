@@ -6,6 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Icons } from '../../components/icons/Icons';
 import { EmptyStateRow, PageHeader } from '../../components/ui';
+import { reportError } from '../../lib/errorReporting';
 
 export default function TeamManagement() {
   const { hasPermission } = useAuthContext();
@@ -32,7 +33,12 @@ export default function TeamManagement() {
       const [usersRes, rolesRes, locationsRes] = await Promise.all([
         api.get('/users'),
         api.get('/roles'),
-        api.get('/locations').catch(() => []) 
+        // Non-blocking: users and roles are the point of this page, and a
+        // missing branch list must not take it down. Reported, not silent.
+        api.get('/locations').catch(err => {
+          reportError(err, { context: 'team:locations' });
+          return [];
+        }),
       ]);
       setUsers(usersRes);
       setRoles(rolesRes);

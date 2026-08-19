@@ -1,4 +1,5 @@
 import React from 'react';
+import { reportError } from '../lib/errorReporting';
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,8 +13,10 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // You can also log the error to an error reporting service
-    if (import.meta.env.DEV) console.error("ErrorBoundary caught an error", error, errorInfo);
+    // reportError handles the DEV console itself and is a no-op in production
+    // when no DSN is configured. Previously this branch was DEV-only, so a
+    // crash in production left no trace anywhere.
+    reportError(error, { componentStack: errorInfo?.componentStack, boundary: this.props.name });
     this.setState({ errorInfo });
   }
 
@@ -57,6 +60,8 @@ export class ErrorBoundary extends React.Component {
       );
     }
 
-    return this.props.children; 
+    return this.props.children;
   }
 }
+
+export default ErrorBoundary;

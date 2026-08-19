@@ -7,6 +7,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import { EmptyStateRow, PageHeader } from '../components/ui';
+import { reportError } from '../lib/errorReporting';
 
 export default function Products() {
   const { hasPermission } = useAuthContext();
@@ -21,7 +22,12 @@ export default function Products() {
   const [stockFilter, setStockFilter] = useState('all');
 
   useEffect(() => {
-    api.get('/locations').then(res => setLocations(res)).catch(() => setLocations([]));
+    api.get('/locations')
+      .then(res => setLocations(res))
+      .catch(err => {
+        setLocations([]);
+        reportError(err, { context: 'products:locations' });
+      });
   }, []);
   
   // Modal state

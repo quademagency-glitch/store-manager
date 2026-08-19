@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -79,6 +80,11 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
       throw error;
     }
 
+    logAuditEvent(req, AUDIT_ACTIONS.ROLE_CREATED, 'role', data?.id, {
+      name: data?.name,
+      permissions: data?.permissions,
+    });
+
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error creating role:');
@@ -147,6 +153,14 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
       throw error;
     }
 
+    // A permissions edit silently changes what EVERY user holding this role
+    // can do, so the before/after set is the thing worth being able to
+    // reconstruct — not just that "a role was edited".
+    logAuditEvent(req, AUDIT_ACTIONS.ROLE_UPDATED, 'role', roleId, {
+      name: updatedRole?.name,
+      permissions: updatedRole?.permissions,
+    });
+
     res.json(updatedRole);
   } catch (err) {
     logger.error({ err: err }, 'Error updating role:');
@@ -187,6 +201,8 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     }
     
     if (count === 0) return res.status(404).json({ error: 'Role not found' });
+
+    logAuditEvent(req, AUDIT_ACTIONS.ROLE_DELETED, 'role', roleId);
 
     res.json({ message: 'Role deleted successfully' });
   } catch (err) {

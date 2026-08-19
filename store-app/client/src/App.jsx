@@ -58,6 +58,7 @@ const AttendanceReport = lazy(() => import('./pages/BusinessAdmin/AttendanceRepo
 const CommissionRules = lazy(() => import('./pages/BusinessAdmin/CommissionRules'));
 const BusinessSetup = lazy(() => import('./pages/BusinessAdmin/Setup'));
 const Integrations = lazy(() => import('./pages/BusinessAdmin/Integrations'));
+const AuditLog = lazy(() => import('./pages/BusinessAdmin/AuditLog'));
 
 // HR Pages
 const Attendance = lazy(() => import('./pages/HR/Attendance'));
@@ -215,6 +216,9 @@ export default function App() {
                     } />
                     <Route path="/business-admin/integrations" element={
                       <ProtectedRoute requiredPermission="manage_integrations"><Integrations /></ProtectedRoute>
+                    } />
+                    <Route path="/business-admin/audit-log" element={
+                      <ProtectedRoute requiredPermission="manage_business"><AuditLog /></ProtectedRoute>
                     } />
 
                     {/* HR Pages */}

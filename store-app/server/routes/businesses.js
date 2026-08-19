@@ -6,6 +6,7 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { resolveCurrency } = require('../utils/currency');
 const { resolveCountry } = require('../utils/phone');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -108,6 +109,13 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Business not found' });
+
+    // status is included because changing it suspends or restores every user
+    // in the tenant — the single most consequential field on this record.
+    logAuditEvent(req, AUDIT_ACTIONS.BUSINESS_UPDATED, 'business', req.params.id, {
+      name: data.name,
+      status: data.status,
+    });
 
     res.json(data);
   } catch (err) {

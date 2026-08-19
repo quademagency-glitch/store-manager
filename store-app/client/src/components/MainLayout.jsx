@@ -310,6 +310,7 @@ export default function MainLayout() {
         { path: '/business-admin/attendance-report', label: 'Attendance Report', icon: Icons.reconciliation, visible: hasPermission('view_attendance_report') },
         { path: '/business-admin/commission-rules', label: 'Commission Rules', icon: Icons.billing, visible: hasPermission('manage_commission_rules') },
         { path: '/business-admin/integrations', label: 'Integrations', icon: Icons.key, visible: hasPermission('manage_integrations') },
+        { path: '/business-admin/audit-log', label: 'Audit Log', icon: Icons.key, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
     };
     if (businessGroup.items.length > 0) groups.push(businessGroup);

@@ -10,6 +10,8 @@ const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { sendExpirationWarning, sendSuspensionNotice } = require('./emailService');
 const { claimCronRun, pruneCronRuns } = require('../utils/cronLock');
+const { logAuditEvent, systemAuditContext, pruneAuditLogs, AUDIT_ACTIONS } = require('../utils/auditLog');
+const sentry = require('../instrument');
 
 let cron;
 try {
@@ -84,6 +86,17 @@ async function processExpiredSubscriptions() {
         .update({ status: 'banned' })
         .eq('id', sub.business_id);
 
+      // Automated, so the audit row has no human actor — see
+      // systemAuditContext. Without this an owner locked out overnight has
+      // nothing showing why.
+      logAuditEvent(
+        systemAuditContext(sub.business_id, 'subscription-checks'),
+        AUDIT_ACTIONS.BUSINESS_STATUS_CHANGED,
+        'business',
+        sub.business_id,
+        { to_status: 'banned', reason: 'subscription_expired' },
+      );
+
       // Send suspension notice email
       if (sub.businesses) {
         await sendSuspensionNotice(sub.businesses);
@@ -92,7 +105,8 @@ async function processExpiredSubscriptions() {
       logger.info(`[CRON] Suspended business: ${sub.businesses?.name} (subscription expired)`);
     }
   } catch (err) {
-    logger.error('[CRON] Error processing expired subscriptions:', err);
+    sentry.captureException(err, { cron: 'subscription-checks', stage: 'expired-subscriptions' });
+    logger.error({ err }, '[CRON] Error processing expired subscriptions');
   }
 }
 
@@ -178,6 +192,16 @@ async function processExpiredTrials() {
       return;
     }
 
+    for (const biz of lapsed) {
+      logAuditEvent(
+        systemAuditContext(biz.id, 'subscription-checks'),
+        AUDIT_ACTIONS.BUSINESS_STATUS_CHANGED,
+        'business',
+        biz.id,
+        { to_status: 'expired', reason: 'trial_lapsed' },
+      );
+    }
+
     for (const business of lapsed) {
       logger.info({ businessId: business.id, name: business.name }, '[CRON] Free trial expired');
     }
@@ -199,7 +223,11 @@ async function runSubscriptionChecks() {
 }
 
 /**
- * Initialize the cron job — runs daily at midnight
+ * Initialize the cron job — runs daily at midnight.
+ *
+ * Returns a handle with stop(), so a graceful shutdown can cancel both the
+ * schedule and the pending startup run instead of letting them fire into a
+ * process that is already draining.
  */
 function initSubscriptionCron() {
   if (!cron) {
@@ -215,6 +243,9 @@ function initSubscriptionCron() {
     logger.info({ reason }, '[CRON] Running subscription checks');
     await runSubscriptionChecks();
     await pruneCronRuns();
+    // Piggy-backed on the existing daily job rather than adding a fourth cron:
+    // audit_logs is the highest-insert table here and grows without bound.
+    await pruneAuditLogs();
   };
 
   // Run daily at midnight
@@ -226,10 +257,9 @@ function initSubscriptionCron() {
 
   logger.info('✅ Subscription cron job initialized (runs daily at midnight GMT)');
 
-  // Also run immediately on startup (after a short delay to let the server settle)
-  // NOTE: this now no-ops when the day's run has already happened — previously
-  // every redeploy triggered a fresh full check. That is the intended trade for
-  // not emailing customers twice.
+  // Also run shortly after startup. NOTE: this now no-ops when the day's run
+  // has already happened — previously every redeploy triggered a fresh full
+  // check. That is the intended trade for not emailing customers twice.
   const startupTimer = setTimeout(() => {
     runIfClaimed('startup');
   }, 5000);

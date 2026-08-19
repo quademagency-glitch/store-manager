@@ -5,6 +5,7 @@ const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const { validateBody } = require('../middleware/validate');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -426,6 +427,15 @@ router.get('/download-receipts', authGuard, async (req, res) => {
     if (!data || data.length === 0) {
       return res.status(404).json({ error: 'No receipts found in this date range.' });
     }
+
+    // Logged before the stream starts: once headers are flushed this response
+    // can't report an error, and a bulk pull of financial evidence is worth
+    // recording whether or not the transfer completes.
+    logAuditEvent(req, AUDIT_ACTIONS.RECEIPTS_DOWNLOADED, 'ledger', null, {
+      receipt_count: data.length,
+      start_date: start_date || null,
+      end_date: end_date || null,
+    });
 
     res.attachment(`receipts_${new Date().toISOString().split('T')[0]}.zip`);
     const archive = archiver('zip', { zlib: { level: 9 } });

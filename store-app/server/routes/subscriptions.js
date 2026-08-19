@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { PG_UNIQUE_VIOLATION } = require('./paystackWebhook');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -322,6 +323,14 @@ router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req
       .update({ status: 'active' })
       .eq('id', business_id)
       .eq('status', 'banned');
+
+    logAuditEvent(req, AUDIT_ACTIONS.SUBSCRIPTION_CHANGED, 'subscription', subscription?.id, {
+      business_id,
+      plan_id,
+      plan_name: plan.name,
+      billing_cycle: cycle,
+      status,
+    });
 
     res.json({
       message: `Plan "${plan.name}" assigned successfully`,

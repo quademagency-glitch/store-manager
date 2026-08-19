@@ -51,6 +51,7 @@ const publicApiRoutes = require('./routes/publicApi');
 const integrationsRoutes = require('./routes/integrations');
 const { paystackWebhookHandler } = require('./routes/paystackWebhook');
 const { healthDeepHandler } = require('./routes/healthDeep');
+const auditLogsRoutes = require('./routes/auditLogs');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -419,6 +420,9 @@ app.use('/api/loyalty', loyaltyRoutes);
 
 // Reports routes
 app.use('/api/reports', reportsRoutes);
+
+// Security audit trail — read-only, manage_business gated
+app.use('/api/audit-logs', auditLogsRoutes);
 
 // Ecommerce integrations — admin CRUD for API keys/webhooks (staff auth)
 app.use('/api/integrations', integrationsRoutes);

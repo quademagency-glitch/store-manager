@@ -13,6 +13,7 @@ const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl } = require('../servic
 const { DEMO_EMAIL, DEMO_PASSWORD, isDemoEnabled } = require('../config/demo');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 // How long a self-service free trial lasts. Deliberately not read from the
 // plan's `trial_days` (currently 7 across the board) — that column drives
@@ -283,6 +284,15 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
 
     logger.info({ businessId: business.id, slug: business.slug, email }, 'Self-service signup completed');
 
+    // Unauthenticated route — authGuard hasn't run, so name the actor we just
+    // created rather than leaving the row anonymous.
+    req.auditActor = { id: authUserId, email, business_id: business.id, role: 'Business Admin' };
+    logAuditEvent(req, AUDIT_ACTIONS.SIGNUP, 'business', business.id, {
+      business_name: business.name,
+      slug: business.slug,
+      plan: plan ? plan.name : null,
+    });
+
     return res.status(201).json({
       message: 'Check your email to verify your account',
       business: { name: business.name, slug: business.slug, login_url: loginUrl },
@@ -354,6 +364,14 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
         message: 'The demo is being rebuilt. Please try again in a minute.',
       });
     }
+
+    req.auditActor = {
+      id: userData.id,
+      email: userData.email,
+      business_id: userData.business_id,
+      role: userData.roles ? userData.roles.name : 'Demo',
+    };
+    logAuditEvent(req, AUDIT_ACTIONS.DEMO_LOGIN, 'user', userData.id);
 
     return res.json({
       demo: true,
@@ -427,6 +445,11 @@ router.post('/register', authGuard, permissionCheck('manage_users'), validateBod
       });
     }
 
+    logAuditEvent(req, AUDIT_ACTIONS.USER_CREATED, 'user', userData?.id, {
+      email: userData?.email,
+      role_id: userData?.role_id,
+    });
+
     return res.status(201).json({
       message: 'User created successfully.',
       user: userData,
@@ -456,6 +479,13 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) 
     });
 
     if (error) {
+      // Only safe to record now that trust proxy is set (see index.js): before
+      // that, req.ip was the platform edge for every request, so these rows
+      // would have been a pile of identical useless addresses. Volume is bounded
+      // by loginLimiter. The attempted email is recorded, never the password —
+      // the redactor in utils/auditLog.js would strip it anyway.
+      logAuditEvent(req, AUDIT_ACTIONS.LOGIN_FAILED, 'user', null, { attempted_email: email });
+
       return res.status(401).json({
         error: 'Unauthorized',
         message: error.message || 'Invalid email or password.',
@@ -482,6 +512,16 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) 
         message: 'User account not provisioned. Please contact your manager.',
       });
     }
+
+    // authGuard hasn't run on this route — this IS the login — so req.user
+    // doesn't exist yet. auditActor names the identity we just resolved.
+    req.auditActor = {
+      id: userData.id,
+      email: userData.email,
+      business_id: userData.business_id,
+      role: userData.roles ? userData.roles.name : 'Unknown',
+    };
+    logAuditEvent(req, AUDIT_ACTIONS.LOGIN, 'user', userData.id);
 
     return res.json({
       session: {
@@ -517,6 +557,8 @@ router.post('/logout', authGuard, async (req, res) => {
   try {
     // Supabase handles token invalidation on client side.
     // Server-side we can optionally call signOut with the admin client.
+    logAuditEvent(req, AUDIT_ACTIONS.LOGOUT, 'user', req.user?.id);
+
     return res.json({
       message: 'Signed out successfully.',
     });

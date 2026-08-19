@@ -9,6 +9,7 @@ const { invalidateApiKeyCache } = require('../middleware/apiKeyGuard');
 const { attemptDelivery } = require('../services/webhookDispatcher');
 const { generateApiKey } = require('../utils/apiKeyUtils');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -70,6 +71,13 @@ router.post('/api-keys', async (req, res) => {
 
     if (error) throw error;
 
+    // Records that a key was minted and its non-secret prefix, never the key.
+    logAuditEvent(req, AUDIT_ACTIONS.API_KEY_CREATED, 'api_key', data.id, {
+      name: data.name,
+      key_prefix: data.key_prefix,
+      scopes: data.scopes,
+    });
+
     // The full key is only ever returned here, at creation time.
     res.status(201).json({ ...data, key: raw });
   } catch (err) {
@@ -90,6 +98,11 @@ router.delete('/api-keys/:id', async (req, res) => {
     if (error || !data) return res.status(404).json({ error: 'API key not found' });
 
     invalidateApiKeyCache(data.key_prefix);
+
+    logAuditEvent(req, AUDIT_ACTIONS.API_KEY_REVOKED, 'api_key', req.params.id, {
+      key_prefix: data.key_prefix,
+    });
+
     res.json({ message: 'API key revoked' });
   } catch (err) {
     logger.error({ err }, 'Error revoking API key:');

@@ -6,6 +6,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendInvoiceEmail } = require('../services/emailService');
 const { initializeTransaction } = require('../services/paystack');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -78,6 +79,14 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
       .single();
 
     if (error) throw error;
+
+    // Records the gateway identity only. The keys are never passed to the audit
+    // log — and the redactor in utils/auditLog.js would strip them regardless.
+    logAuditEvent(req, AUDIT_ACTIONS.GATEWAY_CREATED, 'payment_gateway', data.id, {
+      provider: data.provider,
+      is_active: data.is_active,
+    });
+
     res.status(201).json({
       ...data,
       secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
@@ -121,6 +130,11 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Gateway not found' });
+
+    logAuditEvent(req, AUDIT_ACTIONS.GATEWAY_UPDATED, 'payment_gateway', req.params.id, {
+      provider: data.provider,
+      is_active: data.is_active,
+    });
 
     res.json({
       ...data,
@@ -414,6 +428,12 @@ router.post('/record-payment', authGuard, permissionCheck('manage_platform'), as
         .eq('id', business_id)
         .eq('status', 'banned');
     }
+
+    logAuditEvent(req, AUDIT_ACTIONS.PAYMENT_RECORDED, 'invoice', invoice?.id, {
+      business_id,
+      amount: invoice?.amount,
+      currency: invoice?.currency,
+    });
 
     res.status(201).json({
       message: 'Payment recorded successfully',

@@ -5,6 +5,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -146,6 +147,12 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
       }
     }
 
+    logAuditEvent(req, AUDIT_ACTIONS.USER_CREATED, 'user', userId, {
+      email,
+      role_name: role_name || 'Salesperson',
+      business_id: assigned_business_id,
+    });
+
     res.json({ message: 'User created successfully', user: data.user });
   } catch (err) {
     logger.error({ err: err }, 'Error creating user:');
@@ -183,6 +190,14 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
       }
     }
 
+    // Read the prior values before overwriting them — the audit log records
+    // from/to, and after the UPDATE the previous state is gone.
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('role_id, status')
+      .eq('id', req.params.id)
+      .maybeSingle();
+
     const updates = { name, role_id };
     if (status) updates.status = status;
     
@@ -213,6 +228,24 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
         }));
         await supabaseAdmin.from('user_locations').insert(locationInserts);
       }
+    }
+
+    // Recorded as two distinct events rather than one generic "user updated".
+    // Suspending someone and re-roling them are different administrative acts
+    // with different follow-up questions, and collapsing them makes the log
+    // much harder to read after the fact. A single request can legitimately do
+    // both, in which case both rows are written.
+    if (role_id && role_id !== existingUser?.role_id) {
+      logAuditEvent(req, AUDIT_ACTIONS.USER_ROLE_CHANGED, 'user', req.params.id, {
+        from_role_id: existingUser?.role_id ?? null,
+        to_role_id: role_id,
+      });
+    }
+    if (status && status !== existingUser?.status) {
+      logAuditEvent(req, AUDIT_ACTIONS.USER_STATUS_CHANGED, 'user', req.params.id, {
+        from_status: existingUser?.status ?? null,
+        to_status: status,
+      });
     }
 
     res.json(data);
@@ -257,6 +290,10 @@ router.put('/:id/pin', authGuard, permissionCheck('manage_users'), async (req, r
       .eq('id', req.params.id);
 
     if (updateError) throw updateError;
+
+    // Records THAT a PIN was set, never the PIN. The redactor in
+    // utils/auditLog.js would strip it anyway — this passes nothing regardless.
+    logAuditEvent(req, AUDIT_ACTIONS.USER_PIN_SET, 'user', req.params.id);
 
     res.json({ message: 'Manager PIN set successfully' });
   } catch (err) {
@@ -313,6 +350,15 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
 
     if (deleteError) throw deleteError;
+
+    // Deliberately logged AFTER the delete succeeds, and the row survives it:
+    // audit_logs.actor_user_id is ON DELETE SET NULL with actor_email/role kept
+    // as denormalised copies (migration 070), precisely so that deleting a user
+    // cannot erase the record of what they did — or of who deleted them.
+    logAuditEvent(req, AUDIT_ACTIONS.USER_DELETED, 'user', req.params.id, {
+      deleted_user_business_id: userToDelete.business_id,
+      deleted_user_role: userToDelete.roles?.name,
+    });
 
     res.json({ message: 'User deleted successfully' });
   } catch (err) {

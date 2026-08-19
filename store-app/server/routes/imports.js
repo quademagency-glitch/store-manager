@@ -12,6 +12,7 @@ const { VALIDATORS, TARGET_FIELDS } = require('../services/importValidators');
 const { commitProductRow } = require('../services/importCommitters/products');
 const { commitCustomerRow } = require('../services/importCommitters/customers');
 const { commitSupplierRow } = require('../services/importCommitters/suppliers');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -170,6 +171,17 @@ router.post('/commit', authGuard, permissionCheck('manage_financials'), validate
 
     if (updateErr) throw updateErr;
 
+    // Bulk imports create or overwrite records in volume, which makes them one
+    // of the few non-security events worth a trail — the undo below is the
+    // other half of that story.
+    logAuditEvent(req, AUDIT_ACTIONS.IMPORT_COMMITTED, 'import', batch.id, {
+      entity_type,
+      source_filename,
+      total_rows: rows.length,
+      success_count: successCount,
+      error_count: errorReport.length,
+    });
+
     res.status(201).json({ batch: updatedBatch, outcomes });
   } catch (err) {
     logger.error({ err }, 'Error committing import:');
@@ -247,6 +259,15 @@ router.post('/batches/:id/undo', authGuard, permissionCheck('manage_financials')
     });
 
     if (error) throw error;
+
+    // Only audited for a real undo — a dry run changes nothing.
+    if (!dryRun) {
+      logAuditEvent(req, AUDIT_ACTIONS.IMPORT_UNDONE, 'import', req.params.id, {
+        entity_type: batch.entity_type,
+        source_filename: batch.source_filename,
+      });
+    }
+
     res.json(data);
   } catch (err) {
     logger.error({ err }, 'Error undoing import batch:');

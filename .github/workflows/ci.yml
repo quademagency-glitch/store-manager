@@ -71,6 +71,13 @@ jobs:
       # the browser refuses to run that script — the app then loads as a blank
       # white page. Failing the build is a much better place to find that out.
       - run: npm run check:csp
+      # supabase-js constructs a RealtimeClient whether or not anything opens a
+      # channel, so realtime-js is aliased to a stub to keep ~52KB out of the
+      # entry chunk. This reads the installed supabase-js bundle and fails if an
+      # upgrade starts calling a method the stub lacks. setAuth is the one that
+      # matters: it runs on every token refresh, so a gap breaks sign-in rather
+      # than breaking realtime, and it would do so in production at runtime.
+      - run: npm run check:realtime
       # The Playwright suites are deliberately not run here: they need a
       # browser, the visual project is serialised (~6 min), and its baselines
       # are captured on a specific machine, so pixel comparison across runners

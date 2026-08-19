@@ -183,7 +183,7 @@ export default function Suppliers() {
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontSize: '0.9rem' }}>{supplier.contact_person || '—'}</div>
+                        <div style={{ fontSize: '0.9rem' }}>{supplier.contact_person || '-'}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{supplier.phone || supplier.email || ''}</div>
                       </td>
                       <td><span className="badge badge-neutral">{supplier.payment_terms || 'Net 30'}</span></td>
@@ -225,7 +225,7 @@ export default function Suppliers() {
                       <div className="min-w-0">
                         <div className="m-card-title">{supplier.name}</div>
                         {!supplier.is_active && <span className="badge badge-neutral badge-sm">Archived</span>}
-                        <div className="m-card-sub">{supplier.contact_person || '—'}</div>
+                        <div className="m-card-sub">{supplier.contact_person || '-'}</div>
                         <div className="m-card-meta">{supplier.phone || supplier.email || ''}</div>
                       </div>
                     </div>
@@ -274,7 +274,7 @@ export default function Suppliers() {
                   ].map(({ label, value }) => (
                     <div key={label} style={{ padding: '12px', background: 'var(--color-bg-tertiary)', borderRadius: '8px' }}>
                       <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{value || '—'}</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{value || '-'}</div>
                     </div>
                   ))}
                 </div>

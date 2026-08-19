@@ -127,7 +127,7 @@ export default function Schedules() {
         <div className="hr-week-nav">
           <button className="btn btn-secondary btn-sm" onClick={() => setWeekOffset(w => w - 1)}>← Prev</button>
           <span className="hr-week-label">
-            {weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} — {weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+            {weekDates[0].toLocaleDateString([], { month: 'short', day: 'numeric' })} to {weekDates[6].toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
           <button className="btn btn-secondary btn-sm" onClick={() => setWeekOffset(w => w + 1)}>Next →</button>
           {weekOffset !== 0 && (
@@ -182,7 +182,7 @@ export default function Schedules() {
                       <td key={i} className={`schedule-cell ${isToday ? 'schedule-today' : ''}`}>
                         {shifts.map(s => (
                           <div key={s.id} className="schedule-shift-chip">
-                            <span className="shift-time">{s.start_time}–{s.end_time}</span>
+                            <span className="shift-time">{s.start_time} to {s.end_time}</span>
                             {s.role_label && <span className="shift-role">{s.role_label}</span>}
                             {canManage && (
                               <button

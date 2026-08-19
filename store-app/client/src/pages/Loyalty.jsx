@@ -261,7 +261,7 @@ export default function Loyalty() {
                           <td><span className={`badge ${e.type === 'earn' ? 'badge-success' : e.type === 'redeem' ? 'badge-warning' : 'badge-secondary'}`}>{e.type}</span></td>
                           <td className={e.points > 0 ? 'text-success' : 'text-error'}>{e.points > 0 ? '+' : ''}{e.points}</td>
                           <td>{e.balance_after}</td>
-                          <td className="text-muted">{e.note || '—'}</td>
+                          <td className="text-muted">{e.note || '-'}</td>
                         </tr>
                       ))
                     )}
@@ -347,7 +347,7 @@ export default function Loyalty() {
                       <td><code className="gc-code">{gc.code}</code></td>
                       <td className="font-semibold">{fmt(gc.current_balance)}</td>
                       <td>{fmt(gc.initial_balance)}</td>
-                      <td>{gc.customer?.name || '—'}</td>
+                      <td>{gc.customer?.name || '-'}</td>
                       <td><span className={`badge ${gc.active ? 'badge-success' : 'badge-secondary'}`}>{gc.active ? 'Active' : 'Inactive'}</span></td>
                       <td>{new Date(gc.issued_at).toLocaleDateString()}</td>
                     </tr>

@@ -32,7 +32,7 @@ export default function Dpa() {
     <LegalLayout title="Data Processing Agreement" version={DPA_VERSION} effective={EFFECTIVE_DATE}>
       <p>
         This agreement governs our handling of personal data that you put into {ENTITY.product}{' '}
-        about other people — your customers, your staff, your suppliers. It forms part of the{' '}
+        about other people: your customers, your staff, your suppliers. It forms part of the{' '}
         <a href="/terms">Terms of Service</a> and applies automatically to every account. You do not
         need to sign it separately.
       </p>
@@ -52,8 +52,8 @@ export default function Dpa() {
           instructions and for no purpose of our own.
         </Sub>
         <Sub n="1.3">
-          Where we process data about your account and your users — who you are, who you invited,
-          what you paid — we act as controller, and the{' '}
+          Where we process data about your account and your users (who you are, who you invited,
+          what you paid), we act as controller, and the{' '}
           <a href="/privacy">Privacy Policy</a> governs that instead.
         </Sub>
       </Clause>
@@ -219,7 +219,7 @@ export default function Dpa() {
         </Sub>
         <Sub n="9.2">
           We will tell you what happened, which categories of data and roughly how many records
-          were involved, what we have done, and what we recommend you do — and we will keep you
+          were involved, what we have done, and what we recommend you do, and we will keep you
           updated as we learn more, rather than waiting until we know everything.
         </Sub>
         <Sub n="9.3">
@@ -237,7 +237,7 @@ export default function Dpa() {
         </Sub>
         <Sub n="10.2">
           After your account is terminated we keep the data for 30 days so you can still retrieve
-          it, then delete it — and in any event within 90 days — except where the law requires us to
+          it, then delete it, and in any event within 90 days, except where the law requires us to
           keep particular records, principally financial records.
         </Sub>
         <Sub n="10.3">

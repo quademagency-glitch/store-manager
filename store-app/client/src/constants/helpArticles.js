@@ -7,7 +7,7 @@
  * exactly that moment. It also means help works offline, which matters for a
  * POS in a shop with patchy connectivity.
  *
- * `body` is a small markdown subset — see renderMarkdown in pages/HelpCenter.jsx
+ * `body` is a small markdown subset, see renderMarkdown in pages/HelpCenter.jsx
  * for exactly what is supported. Keep to headings, paragraphs, bullet and
  * numbered lists, bold, inline code and links; anything else renders literally.
  *
@@ -31,7 +31,7 @@ export const HELP_ARTICLES = [
     id: 'business-profile',
     category: 'getting-started',
     title: 'Setting up your business profile',
-    summary: 'Name, logo, currency and tax rate — the details that appear on every receipt and invoice.',
+    summary: 'Name, logo, currency and tax rate: the details that appear on every receipt and invoice.',
     body: `
 Your business profile is what customers see on receipts, invoices and purchase
 orders, so it is worth getting right before you make your first sale.
@@ -43,17 +43,17 @@ permission; if you cannot see the page, ask whoever set up your account.
 
 ## What to fill in
 
-- **Business name** — appears as the heading on every printed document.
-- **Logo** — shown on receipts, invoices and the sign-in page for your team.
+- **Business name**: appears as the heading on every printed document.
+- **Logo**: shown on receipts, invoices and the sign-in page for your team.
   A square image around 512×512 works best.
-- **Currency** — sets the symbol and formatting used everywhere in the app.
+- **Currency**: sets the symbol and formatting used everywhere in the app.
   Multi-location businesses can override this per location, which is what you
   want if you trade across borders.
-- **Country** — supplies the dialing code for phone numbers typed without one.
+- **Country**: supplies the dialing code for phone numbers typed without one.
   A number entered as \`024 123 4567\` becomes \`+233241234567\` in Ghana.
-- **Tax rate** — applied to sales by default. You can still override it on an
+- **Tax rate**: applied to sales by default. You can still override it on an
   individual sale.
-- **Return policy** — printed at the bottom of receipts.
+- **Return policy**: printed at the bottom of receipts.
 
 ## Letterhead
 
@@ -68,7 +68,7 @@ you build there is previewed live, so you can see exactly what will print.
     title: 'Adding your first location',
     summary: 'Every sale, stock movement and staff shift belongs to a location. You need at least one.',
     body: `
-QuadERP tracks everything per location — stock levels, sales, till balances and
+QuadERP tracks everything per location, stock levels, sales, till balances and
 attendance. Even a single-shop business needs one location record.
 
 ## Create it
@@ -82,8 +82,8 @@ attendance. Even a single-shop business needs one location record.
 
 A location can override the business defaults for:
 
-- **Currency** — a Nigeria branch of a Ghanaian business can price in NGN.
-- **Country** — so phone numbers entered there get the right dialing code.
+- **Currency**: a Nigeria branch of a Ghanaian business can price in NGN.
+- **Country**: so phone numbers entered there get the right dialing code.
 
 Leave both blank to inherit from the business profile, which is what you want
 in most cases.
@@ -91,7 +91,7 @@ in most cases.
 ## Switching between locations
 
 Once you have more than one, a branch selector appears in the sidebar. What you
-see across the app — stock, sales, reports — follows whichever location is
+see across the app, stock, sales, reports, follows whichever location is
 selected. Staff only see the locations they are assigned to.
 
 ## Plan limits
@@ -123,7 +123,7 @@ map yours onto them, so the column names in your file do not have to match.
 3. Map your columns onto the fields QuadERP expects. Anything it recognises by
    name is mapped for you.
 4. Review the **validation report**. Rows with problems are listed with the
-   reason — a missing price, a duplicate product code, a category that does not
+   reason, a missing price, a duplicate product code, a category that does not
    exist. Nothing is saved yet at this point.
 5. Fix anything you want to fix, or let the wizard skip the bad rows.
 6. Confirm the import.
@@ -139,7 +139,7 @@ first day rather than starting at zero.
 Every import is recorded as a batch. If you get it wrong, go to the import
 history and choose **Undo**. That reverses every row the batch created,
 including the stock movements. It only works while nothing else has touched
-those records — once you have sold one of the imported products, the batch can
+those records: once you have sold one of the imported products, the batch can
 no longer be cleanly undone.
 
 The same wizard handles **customers** and **suppliers**, including opening
@@ -157,7 +157,7 @@ balances for each.
 1. Go to **Administration → Team**.
 2. Click **Add User**.
 3. Enter their name and email. The email is what they sign in with.
-4. Choose a **role** — this decides what they can see and do.
+4. Choose a **role**: this decides what they can see and do.
 5. Assign one or more **locations**. Staff only see data for the locations they
    are assigned to.
 
@@ -175,13 +175,13 @@ it.
 ## If the welcome email does not arrive
 
 Ask them to check spam first. Failing that, they can go to the sign-in page and
-use **Forgot password** — it sends a fresh link to the same address.
+use **Forgot password**: it sends a fresh link to the same address.
 
 ## Removing someone
 
 Set their status to **banned** under **Administration → Team**. That takes
 effect on their next request and revokes access immediately, while keeping
-their history — the sales they rang up stay attributed to them, which is what
+their history. The sales they rang up stay attributed to them, which is what
 you want for reporting and for any later investigation.
 `,
   },
@@ -198,7 +198,7 @@ you want for reporting and for any later investigation.
 Go to **Store Operations → Sales POS**. Add items by:
 
 - typing a name or product code into the search box, or
-- scanning a barcode with a USB scanner — it types into the search box like a
+- scanning a barcode with a USB scanner: it types into the search box like a
   keyboard, so it just works, or
 - scanning a QR code with the QuadERP Scanner app on a phone.
 
@@ -207,13 +207,13 @@ Change a line's quantity in place. Remove a line with the button beside it.
 ## Discounts
 
 You can discount a single line or the whole sale. Your role caps how much you
-are allowed to take off — the limit is set under **Administration →
+are allowed to take off. The limit is set under **Administration →
 Organization** as *Max discount percent*. Anything above that needs a manager's
 PIN, if manager approval is switched on for your business.
 
 ## Take payment
 
-Choose a payment method — cash, card, mobile money, or on account. For a
+Choose a payment method, cash, card, mobile money, or on account. For a
 **split payment**, add more than one method and enter the amount against each;
 the sale completes when they add up to the total.
 
@@ -254,14 +254,14 @@ returned* rather than being rewritten.
 ## What happens to the stock
 
 Returned items go back into stock at the location the return is processed at.
-If an item is coming back damaged, mark it as such — it is written off instead
+If an item is coming back damaged, mark it as such, it is written off instead
 of being put back on the shelf, and shows up in the shrinkage report rather than
 quietly inflating your stock count.
 
 ## Refunding
 
 Refunds default to the method the customer originally paid with. You can
-override that — refunding a card payment as store credit, for example — if your
+override that, refunding a card payment as store credit, for example, if your
 return policy allows it.
 
 For a sale that was **on account**, the refund reduces the customer's
@@ -269,7 +269,7 @@ outstanding balance rather than paying out cash.
 
 ## Voiding versus returning
 
-A **void** cancels a sale that should never have happened — a mis-key, a
+A **void** cancels a sale that should never have happened, a mis-key, a
 duplicate. A **return** records that goods came back. Use the right one: voids
 are excluded from sales figures entirely, while returns appear as negative
 sales, which is what your accountant expects to see.
@@ -291,16 +291,16 @@ visible on the day they happen rather than at month end.
 ## Opening
 
 At the start of a shift, go to **Accounting → Till Account** and record the
-opening float — the cash you are starting with.
+opening float: the cash you are starting with.
 
 ## During the shift
 
 Cash sales add to the till automatically. Record anything else that moves cash
 as you go:
 
-- **Deposits** — money taken out and banked, or moved to mobile money.
-- **Expenses** — petty cash spent, using one of your accounting templates.
-- **Payouts** — supplier paid in cash from the drawer.
+- **Deposits**: money taken out and banked, or moved to mobile money.
+- **Expenses**: petty cash spent, using one of your accounting templates.
+- **Payouts**: supplier paid in cash from the drawer.
 
 Each entry can require supporting evidence (a photo of the slip) depending on
 how your templates are configured.
@@ -310,7 +310,7 @@ how your templates are configured.
 At the end of the shift, count the drawer and enter the actual figure. QuadERP
 compares it against what it expected and shows the variance.
 
-A variance is not automatically a problem — but it is always worth explaining
+A variance is not automatically a problem, but it is always worth explaining
 while the shift is fresh. Add a note. Repeated unexplained variances at the same
 location or under the same person surface in the loss prevention report.
 
@@ -333,7 +333,7 @@ underlying entries fit together.
 ## Where the number comes from
 
 Stock is never typed in directly. Every quantity you see is the sum of the
-**stock movements** recorded against that product at that location — the opening
+**stock movements** recorded against that product at that location: the opening
 stock, every sale, every return, every transfer and every adjustment.
 
 That is deliberate: you can always trace a quantity back to the events that
@@ -355,11 +355,11 @@ quantity at a location falls to or below it. Alerts appear:
 - in the low-stock summary you can act on straight from the inventory page.
 
 Set the reorder level to cover how long your supplier takes to deliver, not to
-zero — an alert that fires when you are already out is too late to be useful.
+zero, an alert that fires when you are already out is too late to be useful.
 
 ## Adjustments
 
-When a count does not match reality — breakage, theft, a miscount — record an
+When a count does not match reality, breakage, theft, a miscount, record an
 **adjustment** with a reason rather than editing the number. Adjustments are
 reported separately from sales, which is what makes shrinkage measurable.
 `,
@@ -375,7 +375,7 @@ reported separately from sales, which is what makes shrinkage measurable.
 Go to **Store Operations → Inventory** and choose **Stocktake**. Pick the
 location you are counting.
 
-You can count everything, or scope the count to a category or a supplier — a
+You can count everything, or scope the count to a category or a supplier, a
 partial count is far more likely to actually get finished, and counting the fast
 movers weekly beats counting everything once a year.
 
@@ -392,7 +392,7 @@ that happens mid-count does not turn into a phantom discrepancy.
 
 When you have finished counting, you get a variance report: everything where the
 count differs from the expectation, with the value of the difference. Sort by
-value — that is where the money is, and a handful of high-value discrepancies
+value, that is where the money is, and a handful of high-value discrepancies
 matter more than a long tail of ones and twos.
 
 Add a reason against each variance you can explain.
@@ -427,7 +427,7 @@ The stock leaves the sending location immediately and shows as **in transit**.
 ## Receive
 
 At the destination, open the transfer and confirm what actually arrived. If the
-received quantity differs from what was sent, record the actual figure — the
+received quantity differs from what was sent, record the actual figure, the
 shortfall stays visible as a discrepancy against that transfer instead of
 disappearing into a general adjustment.
 
@@ -458,7 +458,7 @@ Add a customer from **CRM → Customers**, or create one mid-sale at the POS
 without leaving the cart.
 
 Name and phone are usually enough to start. Phone numbers can be typed the way
-they are written on a receipt — \`024 123 4567\` — and are normalised using your
+they are written on a receipt, \`024 123 4567\`, and are normalised using your
 business's country setting.
 
 You can also bring your whole list over at once with the import wizard, opening
@@ -470,11 +470,11 @@ customer import works the same way.
 
 Open a customer to see:
 
-- **Purchase history** — every sale, with the ability to open the original
+- **Purchase history**: every sale, with the ability to open the original
   receipt.
-- **Balance** — what they currently owe on account.
-- **Statement** — invoices, payments and credits in date order.
-- **Loyalty** — points earned and redeemed, if you run a scheme.
+- **Balance**: what they currently owe on account.
+- **Statement**: invoices, payments and credits in date order.
+- **Loyalty**: points earned and redeemed, if you run a scheme.
 
 ## Selling on account
 
@@ -487,7 +487,7 @@ a limit with them rather than discovering the number at the end of the quarter.
 
 ## Merging duplicates
 
-The same person entered twice — once with a phone number, once without — splits
+The same person entered twice, once with a phone number, once without, splits
 their history. Search before adding, and where duplicates already exist, merge
 them from the customer record so the history stays in one place.
 `,
@@ -502,9 +502,9 @@ them from the customer record so the history stays in one place.
 
 Go to **CRM → Loyalty & Rewards**. You decide:
 
-- **Earn rate** — how many points a customer gets per unit of currency spent.
-- **Redemption value** — what a point is worth when spent.
-- **Minimum balance** — how many points must be accrued before any can be used.
+- **Earn rate**: how many points a customer gets per unit of currency spent.
+- **Redemption value**: what a point is worth when spent.
+- **Minimum balance**: how many points must be accrued before any can be used.
 
 Keep the arithmetic simple enough to explain at the counter in one sentence. A
 scheme your cashiers cannot explain is a scheme customers do not use.
@@ -553,7 +553,7 @@ business defines. Every new business starts with four:
 - **Bank Deposit**
 - **General Expense**
 
-Each template decides which extra fields are asked for — transaction charges on
+Each template decides which extra fields are asked for, transaction charges on
 a mobile money deposit, which machine a card settlement came from, which
 category an expense falls under.
 
@@ -594,7 +594,7 @@ does not.
 Go to **Accounting → Receivables & Invoices** and choose **New Invoice**. Pick
 the customer, add lines, set the due date and save.
 
-Invoice numbers are issued by QuadERP in an unbroken sequence — you cannot skip
+Invoice numbers are issued by QuadERP in an unbroken sequence, you cannot skip
 or reuse one, which is what your auditor is going to check.
 
 ## Sending
@@ -605,8 +605,7 @@ carries your logo, address and registration details.
 
 ## Recording payments
 
-As money arrives, record a payment against the invoice. Part payments are fine —
-the invoice moves to **partial** and shows the remaining balance. It settles to
+As money arrives, record a payment against the invoice. Part payments are fine. The invoice moves to **partial** and shows the remaining balance. It settles to
 **paid** when the balance reaches zero.
 
 Payments reduce the customer's overall account balance at the same time.
@@ -617,7 +616,7 @@ An invoice past its due date with a balance outstanding is marked **overdue**
 automatically. The receivables page filters to those, oldest first, which is the
 list to work through.
 
-The **Accounts Receivable** report under Reports gives you the aged view — what
+The **Accounts Receivable** report under Reports gives you the aged view, what
 is owed, by whom, and how long it has been outstanding.
 
 ## Voiding
@@ -636,7 +635,7 @@ accounting treatment and it is not an oversight.
 ## What the ledger is
 
 The ledger is the single ordered record of every financial event in your
-business. Nothing edits it — corrections are new entries. That is what makes it
+business. Nothing edits it, corrections are new entries. That is what makes it
 trustworthy, and why a mistake is fixed by reversing it rather than rewriting
 history.
 
@@ -669,9 +668,9 @@ not entered, a sale taken on the wrong payment method, and a genuine shortage.
 
 ## Reports built on it
 
-- **Profit & Loss** — revenue less cost of goods and expenses, over a period.
-- **Accounts Receivable** — what customers owe, aged.
-- **Accounts Payable** — what you owe suppliers.
+- **Profit & Loss**: revenue less cost of goods and expenses, over a period.
+- **Accounts Receivable**: what customers owe, aged.
+- **Accounts Payable**: what you owe suppliers.
 
 All three are computed from the ledger at the moment you run them, so they never
 disagree with the underlying entries.
@@ -687,7 +686,7 @@ disagree with the underlying entries.
     body: `
 ## How access works
 
-Everything in QuadERP is gated on a **permission** — \`create_sales\`,
+Everything in QuadERP is gated on a **permission**: \`create_sales\`,
 \`manage_inventory\`, \`view_financial_reports\` and so on. A **role** is a named
 bundle of permissions, and every user has exactly one role.
 
@@ -696,9 +695,9 @@ needs. The page will say so rather than pretending not to exist.
 
 ## The built-in roles
 
-- **Business Admin** — everything within your business. The owner's role.
-- **Manager** — day-to-day running: sales, inventory, staff, reports.
-- **Sales Executive** — the POS and their own sales history.
+- **Business Admin**: everything within your business. The owner's role.
+- **Manager**: day-to-day running: sales, inventory, staff, reports.
+- **Sales Executive**: the POS and their own sales history.
 
 ## Custom roles
 
@@ -748,11 +747,11 @@ That is the intended path and it is the fastest fix.
 
 If no prompt appears and something still looks stale:
 
-- **Windows / Linux** — \`Ctrl\` + \`Shift\` + \`R\`
-- **Mac** — \`Cmd\` + \`Shift\` + \`R\`
-- **Android Chrome** — menu → **Settings** → **Site settings** → find the site →
+- **Windows / Linux**: \`Ctrl\` + \`Shift\` + \`R\`
+- **Mac**: \`Cmd\` + \`Shift\` + \`R\`
+- **Android Chrome**: menu → **Settings** → **Site settings** → find the site →
   **Clear & reset**
-- **iOS Safari** — **Settings** → **Safari** → **Clear History and Website Data**
+- **iOS Safari**: **Settings** → **Safari** → **Clear History and Website Data**
 
 ## Clear the app's storage
 
@@ -769,15 +768,15 @@ That removes the cached app and any queued offline data.
 
 **Check the offline indicator first.** If sales are queued waiting to sync,
 clearing storage throws them away. Get back online, let the queue drain, and
-confirm it is empty — then clear.
+confirm it is empty, then clear.
 
 ## When it is not the cache
 
-- **Data looks wrong, not old** — check which location is selected in the
+- **Data looks wrong, not old**: check which location is selected in the
   sidebar. You may be looking at another branch.
-- **A page says you lack permission** — that is your role, not a cache. See
+- **A page says you lack permission**: that is your role, not a cache. See
   [Roles and permissions explained](#article:roles-and-permissions).
-- **Nothing loads at all** — check your connection. The app tells you when it
+- **Nothing loads at all**: check your connection. The app tells you when it
   cannot reach the server, and distinguishes that from an error.
 `,
   },

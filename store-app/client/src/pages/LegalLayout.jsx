@@ -29,7 +29,7 @@ export default function LegalLayout({ title, version, effective, children }) {
     const expected = ns.map((_, i) => i + 1);
     if (String(ns) !== String(expected)) {
       console.error(
-        `[legal] "${title}" clause numbers are ${ns.join(',')} — expected ` +
+        `[legal] "${title}" clause numbers are ${ns.join(',')}, expected ` +
           `${expected.join(',')}. Renumber, and fix any cross-references in the prose.`,
       );
     }

@@ -9,7 +9,7 @@ jobs:
   # The guard CLAUDE.md documents. Root-level `client/` and `server/` have
   # existed twice as stale duplicates left over from an earlier repo layout,
   # and both times Railway and Vercel silently built the root copy instead of
-  # store-app/ — so real changes never reached production and nothing failed.
+  # store-app/, so real changes never reached production and nothing failed.
   # If this job goes red, the fix is almost always to merge the new file into
   # store-app/client/ or store-app/server/ and delete the root copy, not to
   # weaken this check.
@@ -68,7 +68,7 @@ jobs:
       # vercel.json allows index.html's two inline scripts by SHA-256 hash, and
       # one of them sets the theme before first paint. Editing index.html by a
       # single character invalidates the hash, and once the policy is enforcing
-      # the browser refuses to run that script — the app then loads as a blank
+      # the browser refuses to run that script, the app then loads as a blank
       # white page. Failing the build is a much better place to find that out.
       - run: npm run check:csp
       # supabase-js constructs a RealtimeClient whether or not anything opens a

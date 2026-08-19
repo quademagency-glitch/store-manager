@@ -918,7 +918,7 @@ export default function Inventory() {
                       <input
                         type="number"
                         min="0"
-                        placeholder="—"
+                        placeholder="-"
                         value={auditCounts[p.id] ?? ''}
                         onChange={e => setAuditCounts(prev => ({ ...prev, [p.id]: e.target.value }))}
                       />

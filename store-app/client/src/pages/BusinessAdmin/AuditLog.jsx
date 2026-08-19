@@ -88,7 +88,7 @@ export default function AuditLog() {
     <div className="page-container">
       <PageHeader
         title="Audit Log"
-        subtitle={`Security and administrative events${total ? ` — ${total.toLocaleString()} recorded` : ''}`}
+        subtitle={`Security and administrative events${total ? `: ${total.toLocaleString()} recorded` : ''}`}
       />
 
       <div className="card mb-lg">
@@ -204,7 +204,7 @@ export default function AuditLog() {
                         </div>
                       )}
                     </td>
-                    <td className="text-muted">{entry.ip_address || '—'}</td>
+                    <td className="text-muted">{entry.ip_address || '-'}</td>
                     <td>
                       {entry.metadata && Object.keys(entry.metadata).length > 0 && (
                         <button

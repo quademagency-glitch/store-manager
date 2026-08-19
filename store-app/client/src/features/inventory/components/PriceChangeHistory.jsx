@@ -109,7 +109,7 @@ export default function PriceChangeHistory() {
                           {changeInfo.label}
                         </span>
                         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                          Bulk update — {batch.entries.length} products
+                          Bulk update: {batch.entries.length} products
                         </span>
                         {batch.reason && <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>"{batch.reason}"</span>}
                       </div>
@@ -141,8 +141,8 @@ export default function PriceChangeHistory() {
                             <td className="text-muted" style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                               {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </td>
-                            <td className="font-medium">{entry.product?.name || '—'}</td>
-                            <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{entry.product?.sku || '—'}</code></td>
+                            <td className="font-medium">{entry.product?.name || '-'}</td>
+                            <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{entry.product?.sku || '-'}</code></td>
                             <td>
                               {!isBulk && (
                                 <span style={{
@@ -159,7 +159,7 @@ export default function PriceChangeHistory() {
                               {change > 0 ? '+' : ''}{fmt(change)}
                             </td>
                             <td className="text-muted" style={{ fontSize: '0.85rem', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {entry.reason || '—'}
+                              {entry.reason || '-'}
                             </td>
                           </tr>
                         );

@@ -156,7 +156,7 @@ export default function Overview() {
 
       {showSetupBanner && (
         <div className="alert alert-info mb-xl flex justify-between items-center gap-md">
-          <span>{setupComplete} of {setupTotal} setup steps complete — finish setting up your business.</span>
+          <span>{setupComplete} of {setupTotal} setup steps complete. Finish setting up your business.</span>
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             <button className="btn btn-sm btn-primary" onClick={() => navigate('/business-admin/setup')}>Finish Setup</button>
             <button className="btn btn-sm btn-outline" onClick={dismissSetupBanner}>Dismiss</button>

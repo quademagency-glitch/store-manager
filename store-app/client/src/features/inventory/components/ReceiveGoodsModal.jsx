@@ -55,7 +55,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
   if (!purchaseOrder) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Receive Goods — ${purchaseOrder.po_number}`} size="large">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Receive Goods: ${purchaseOrder.po_number}`} size="large">
       <form onSubmit={handleSubmit}>
         {error && (
           <div className="alert alert-error" style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--color-error)', border: '1px solid rgba(239,68,68,0.2)', fontSize: '0.9rem' }}>

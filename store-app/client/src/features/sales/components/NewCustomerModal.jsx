@@ -72,7 +72,7 @@ export default function NewCustomerModal({ isOpen, onClose, onSubmit, country: c
             </small>
           ) : (
             <small className="text-muted">
-              {dialCode ? `${dialCode} applied automatically — or type a country code` : 'Include a country code if not local'}
+              {dialCode ? `${dialCode} applied automatically, or type a country code` : 'Include a country code if not local'}
             </small>
           )}
         </div>

@@ -249,7 +249,7 @@ export default function TillAccount() {
             />
             <div style={{ textAlign: 'center', margin: '12px 0 24px 0' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#334155' }}>TILL ACCOUNT LEDGER</h2>
-              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Period: {startDate} — {endDate}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Period: {startDate} to {endDate}</div>
             </div>
           </div>
           {/* Financial Summary for Admins */}

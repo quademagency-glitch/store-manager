@@ -284,7 +284,7 @@ export default function Products() {
                         </td>
                         <td>
                           <span className="badge badge-neutral font-medium">
-                            {product.category || '—'}
+                            {product.category || '-'}
                           </span>
                         </td>
                         <td>

@@ -26,7 +26,7 @@ export default function MyCommissions() {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
@@ -114,12 +114,12 @@ export default function MyCommissions() {
                       <span className="badge badge-secondary">
                         {c.sale.receipt_number || c.sale.id?.slice(0, 8)}
                       </span>
-                    ) : '—'}
+                    ) : '-'}
                   </td>
                   <td>
                     {c.rule ? (
                       <span>{c.rule.name} ({c.rule.type === 'percentage' ? `${c.rule.value}%` : fmt(c.rule.value)})</span>
-                    ) : '—'}
+                    ) : '-'}
                   </td>
                   <td className="font-semibold">{fmt(c.amount)}</td>
                   <td>

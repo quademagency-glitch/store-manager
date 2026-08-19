@@ -199,7 +199,7 @@ export default function Integrations() {
 
             {revealedKey && (
               <div className="glass-panel" style={{ padding: '16px', marginBottom: '16px', border: '1px solid var(--color-warning)' }}>
-                <strong>Copy this key now — it won't be shown again.</strong>
+                <strong>Copy this key now. It won't be shown again.</strong>
                 <div className="flex gap-sm items-center mt-sm">
                   <code style={{ flex: 1, wordBreak: 'break-all', fontSize: '0.85rem' }}>{revealedKey.key}</code>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => { navigator.clipboard.writeText(revealedKey.key); toast.success('Copied.'); }}>Copy</button>
@@ -272,7 +272,7 @@ export default function Integrations() {
 
             {revealedSecret && (
               <div className="glass-panel" style={{ padding: '16px', marginBottom: '16px', border: '1px solid var(--color-warning)' }}>
-                <strong>Copy this signing secret now — it won't be shown again.</strong>
+                <strong>Copy this signing secret now. It won't be shown again.</strong>
                 <div className="flex gap-sm items-center mt-sm">
                   <code style={{ flex: 1, wordBreak: 'break-all', fontSize: '0.85rem' }}>{revealedSecret.secret}</code>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => { navigator.clipboard.writeText(revealedSecret.secret); toast.success('Copied.'); }}>Copy</button>
@@ -351,8 +351,8 @@ export default function Integrations() {
                         <td>{d.event}</td>
                         <td><span className={`badge badge-sm ${d.status === 'delivered' ? 'badge-success' : d.status === 'failed' ? 'badge-error' : 'badge-warning'}`}>{d.status}</span></td>
                         <td>{d.attempt_count}</td>
-                        <td>{d.response_status || '—'}</td>
-                        <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{d.last_attempt_at ? new Date(d.last_attempt_at).toLocaleString() : '—'}</td>
+                        <td>{d.response_status || '-'}</td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{d.last_attempt_at ? new Date(d.last_attempt_at).toLocaleString() : '-'}</td>
                         <td className="text-right">
                           {d.status === 'failed' && (
                             <button className="btn btn-sm btn-secondary" onClick={() => handleRetryDelivery(d)}>Retry</button>

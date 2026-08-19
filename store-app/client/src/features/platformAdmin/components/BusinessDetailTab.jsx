@@ -21,7 +21,7 @@ export default function BusinessDetailTab() {
           <div>
             <h1 className="dashboard-title">{selectedBusiness.name}</h1>
             <p className="dashboard-subtitle">
-              Business details — Products, Sales & Inventory
+              Business details: Products, Sales & Inventory
             </p>
           </div>
         </div>
@@ -59,11 +59,11 @@ export default function BusinessDetailTab() {
                 </div>
                 <div className="pa-sub-detail">
                   <span className="pa-sub-detail-label">Period Start</span>
-                  <span className="pa-sub-detail-value">{businessSubscription.current_period_start ? new Date(businessSubscription.current_period_start).toLocaleDateString() : '—'}</span>
+                  <span className="pa-sub-detail-value">{businessSubscription.current_period_start ? new Date(businessSubscription.current_period_start).toLocaleDateString() : '-'}</span>
                 </div>
                 <div className="pa-sub-detail">
                   <span className="pa-sub-detail-label">Period End</span>
-                  <span className="pa-sub-detail-value">{businessSubscription.current_period_end ? new Date(businessSubscription.current_period_end).toLocaleDateString() : '—'}</span>
+                  <span className="pa-sub-detail-value">{businessSubscription.current_period_end ? new Date(businessSubscription.current_period_end).toLocaleDateString() : '-'}</span>
                 </div>
                 {businessSubscription.trial_ends_at && (
                   <div className="pa-sub-detail">
@@ -203,7 +203,7 @@ export default function BusinessDetailTab() {
                 <tbody>
                   {businessDetails.inventory.slice(0, 20).map(m => (
                     <tr key={m.id}>
-                      <td className="font-medium">{m.products?.name || '—'}</td>
+                      <td className="font-medium">{m.products?.name || '-'}</td>
                       <td>
                         <span className={`badge ${m.movement_type === 'restock' ? 'badge-neutral' : 'badge-warning'}`} style={m.movement_type === 'restock' ? { color: '#4ade80', borderColor: '#4ade80' } : {}}>
                           {m.movement_type}

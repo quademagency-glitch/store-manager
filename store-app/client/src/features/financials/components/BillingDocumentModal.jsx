@@ -126,7 +126,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
             />
             {errors.as_of_date && <small className="text-error">{errors.as_of_date.message}</small>}
             <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
-              Recorded as a single balance-forward entry — it does not create a backdated sale or transaction.
+              Recorded as a single balance-forward entry. It does not create a backdated sale or transaction.
             </small>
           </div>
         )}

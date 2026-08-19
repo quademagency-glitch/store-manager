@@ -28,9 +28,9 @@ const KIND_CONFIG = {
 
 const AGING_BUCKETS = [
   { key: 'current', label: 'Current' },
-  { key: '1_30', label: '1–30 days' },
-  { key: '31_60', label: '31–60 days' },
-  { key: '61_90', label: '61–90 days' },
+  { key: '1_30', label: '1-30 days' },
+  { key: '31_60', label: '31-60 days' },
+  { key: '61_90', label: '61-90 days' },
   { key: 'over_90', label: '90+ days' },
 ];
 
@@ -195,7 +195,7 @@ export default function BillingLedgerView({ kind, parties }) {
                         <td>{partyName(doc)}</td>
                         <td>{fmt(doc[amountField])}</td>
                         <td>{fmt(outstanding)}</td>
-                        <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
+                        <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '-'}</td>
                         <td><span className={`badge ${STATUS_BADGE[doc.status] || 'badge-secondary'}`}>{doc.status}</span></td>
                         <td className="text-right">
                           {doc.status !== 'void' && doc.status !== 'paid' && (

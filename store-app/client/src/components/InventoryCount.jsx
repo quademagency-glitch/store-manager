@@ -537,7 +537,7 @@ export default function InventoryCount({ locations, products }) {
                       {viewSession.product_progress.map(p => (
                         <tr key={p.product_id}>
                           <td>{p.product_name}</td>
-                          <td>{p.product_sku || '—'}</td>
+                          <td>{p.product_sku || '-'}</td>
                           <td>{p.expected}</td>
                           <td>{p.scanned}</td>
                           <td style={{ color: p.expected !== p.scanned ? 'var(--color-error-text)' : 'var(--color-success-text)', fontWeight: p.expected !== p.scanned ? 700 : 400 }}>
@@ -563,7 +563,7 @@ export default function InventoryCount({ locations, products }) {
       <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, margin: 0, fontSize: '1.1rem' }}>
-            <span aria-hidden="true" className="inline-flex">{Icons.clipboard}</span> Inventory Count — {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
+            <span aria-hidden="true" className="inline-flex">{Icons.clipboard}</span> Inventory Count: {locations.find(l => l.id === selectedLocationId)?.name || 'Unknown'}
           </h3>
           <div style={{ fontSize: '0.85rem', opacity: 0.6, marginTop: '4px' }}>
             {countedCount} / {totalProducts} products counted
@@ -630,7 +630,7 @@ export default function InventoryCount({ locations, products }) {
                     <div>
                       <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>{product.name}</div>
                       <div style={{ fontSize: '0.8rem', opacity: 0.5 }}>
-                        SKU: {product.sku || '—'} · System Qty: <strong>{product.systemQty}</strong>
+                        SKU: {product.sku || '-'} · System Qty: <strong>{product.systemQty}</strong>
                       </div>
                     </div>
                     <div>
@@ -652,7 +652,7 @@ export default function InventoryCount({ locations, products }) {
               <div className="mb-md">
                 <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{activeProduct.name}</h4>
                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                  SKU: {activeProduct.sku || '—'} | System Qty: <strong>{activeProduct.systemQty}</strong>
+                  SKU: {activeProduct.sku || '-'} | System Qty: <strong>{activeProduct.systemQty}</strong>
                 </div>
               </div>
 

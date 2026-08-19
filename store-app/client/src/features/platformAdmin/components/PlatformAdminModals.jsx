@@ -453,7 +453,7 @@ export default function PlatformAdminModals() {
         <label className="form-label">Plan</label>
         <select className="form-input" value={assignForm.plan_id} onChange={e => setAssignForm({ ...assignForm, plan_id: e.target.value })} required>
           <option value="">Select a plan...</option>
-          {plans.filter(p => p.is_active).map(p => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price_monthly, p.currency)}/mo</option>)}
+          {plans.filter(p => p.is_active).map(p => <option key={p.id} value={p.id}>{p.name}: {formatCurrency(p.price_monthly, p.currency)}/mo</option>)}
         </select>
       </div>
       <div className="form-group mb-md">

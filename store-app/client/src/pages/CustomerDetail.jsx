@@ -392,7 +392,7 @@ export default function CustomerDetail() {
                           <td className="font-bold">{doc.invoice_number}</td>
                           <td>{fmt(doc.total_amount)}</td>
                           <td>{fmt(outstanding)}</td>
-                          <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</td>
+                          <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '-'}</td>
                           <td><span className="badge badge-secondary">{doc.status}</span></td>
                           <td className="text-right">
                             {doc.status !== 'void' && doc.status !== 'paid' && (
@@ -413,7 +413,7 @@ export default function CustomerDetail() {
                       <div className="m-card-top">
                         <div className="flex-1 min-w-0">
                           <div className="m-card-title">{doc.invoice_number}</div>
-                          <div className="m-card-sub">Due {doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '—'}</div>
+                          <div className="m-card-sub">Due {doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '-'}</div>
                         </div>
                         <span className="badge badge-secondary" style={{ flexShrink: 0 }}>{doc.status}</span>
                       </div>
@@ -460,7 +460,7 @@ export default function CustomerDetail() {
                         <td className="capitalize">{entry.type}</td>
                         <td>{Number(entry.amount) >= 0 ? '+' : ''}{fmt(entry.amount)}</td>
                         <td>{fmt(entry.balance_after)}</td>
-                        <td className="text-muted">{entry.note || '—'}</td>
+                        <td className="text-muted">{entry.note || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -512,7 +512,7 @@ export default function CustomerDetail() {
                         <td className="capitalize">{entry.type}</td>
                         <td>{entry.points >= 0 ? '+' : ''}{entry.points}</td>
                         <td>{entry.balance_after}</td>
-                        <td className="text-muted">{entry.note || '—'}</td>
+                        <td className="text-muted">{entry.note || '-'}</td>
                       </tr>
                     ))}
                   </tbody>

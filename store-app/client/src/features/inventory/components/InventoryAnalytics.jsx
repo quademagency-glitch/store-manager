@@ -302,7 +302,7 @@ export default function InventoryAnalytics() {
                       <td className="text-center">{s.daily_sales_rate}/day</td>
                       <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-primary)' }}>{s.suggested_quantity}</td>
                       <td className="text-right font-bold">{fmt(s.estimated_cost)}</td>
-                      <td className="text-muted">{s.preferred_supplier?.name || '—'}</td>
+                      <td className="text-muted">{s.preferred_supplier?.name || '-'}</td>
                       <td>
                         <span
                           style={{

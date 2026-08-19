@@ -24,7 +24,7 @@ const HTTP_MESSAGES = {
  * Build an Error whose `message` is safe to render to a user, keeping the
  * technical detail on the object for logging.
  *
- * The endpoint and API host are deliberately kept OUT of `message` — they were
+ * The endpoint and API host are deliberately kept OUT of `message`. They were
  * previously interpolated into it, so users saw strings like
  * "[Target: http://localhost:3001/api/...] Network Error ... Is the backend
  * running?" on screen.
@@ -36,7 +36,7 @@ function apiError(message, { endpoint, status, cause } = {}) {
   err.status = status;
 
   // Every API failure in the app funnels through here, which makes this the one
-  // place worth reporting from — far better than patching ~70 call sites.
+  // place worth reporting from, far better than patching ~70 call sites.
   //
   // 4xx below 500 are excluded deliberately: 401 on an expired session and 403
   // on a permission check are normal application flow, and reporting them would
@@ -57,7 +57,7 @@ function apiError(message, { endpoint, status, cause } = {}) {
  */
 async function fetchWithAuth(endpoint, options = {}) {
   // Fixture short-circuit for the visual harness. Compiled out unless
-  // VITE_USE_MOCKS is set — see src/lib/mockMode.js.
+  // VITE_USE_MOCKS is set, see src/lib/mockMode.js.
   if (IS_MOCK) {
     const { hit, data } = resolveMock(endpoint);
     if (hit) return data;
@@ -75,7 +75,7 @@ async function fetchWithAuth(endpoint, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers = {
-    // Omit Content-Type for FormData bodies — the browser must set its own
+    // Omit Content-Type for FormData bodies, the browser must set its own
     // multipart/form-data boundary, which we can't replicate here.
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     'Authorization': `Bearer ${token}`,
@@ -104,7 +104,7 @@ async function fetchWithAuth(endpoint, options = {}) {
     let errorMessage = HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`;
     try {
       const errorData = await response.json();
-      // Prefer the server's own message — it's written for users.
+      // Prefer the server's own message, it's written for users.
       errorMessage = errorData.message || errorData.error || errorMessage;
     } catch {
       // Not JSON
@@ -123,14 +123,14 @@ async function fetchWithAuth(endpoint, options = {}) {
 /**
  * GETs that are already in flight, keyed by endpoint.
  *
- * Independent components fetch the same reference data on mount — /locations
- * has eleven callers — and mounting two of them in the same frame fired the
+ * Independent components fetch the same reference data on mount, /locations
+ * has eleven callers, and mounting two of them in the same frame fired the
  * same request twice. On the demo's first paint that showed up as /locations
  * being fetched, then fetched again the moment the first one landed.
  *
  * This shares the pending promise rather than caching the result: the entry is
  * dropped as soon as the request settles, so a later call still goes to the
- * network and nothing here can serve stale data. GET only — replaying a POST
+ * network and nothing here can serve stale data. GET only, replaying a POST
  * is not a de-duplication, it is a lost write.
  */
 const inFlightGets = new Map();
@@ -151,7 +151,7 @@ export const api = {
   post: (endpoint, body) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   put: (endpoint, body) => fetchWithAuth(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (endpoint) => fetchWithAuth(endpoint, { method: 'DELETE' }),
-  // For multipart uploads — pass a FormData instance, never JSON.stringify it.
+  // For multipart uploads, pass a FormData instance, never JSON.stringify it.
   postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),
   // For binary downloads (the business data export ZIP).
   getBlob: (endpoint) => fetchBlobWithAuth(endpoint),
@@ -193,7 +193,7 @@ async function fetchBlobWithAuth(endpoint) {
     try {
       const body = await response.json();
       if (body?.message) message = body.message;
-    } catch { /* not JSON — keep the status-based message */ }
+    } catch { /* not JSON, keep the status-based message */ }
     throw apiError(message, { endpoint, status: response.status });
   }
 
@@ -201,7 +201,7 @@ async function fetchBlobWithAuth(endpoint) {
 }
 
 /**
- * POST to a public endpoint — signup, demo login — where there is no session
+ * POST to a public endpoint, signup, demo login, where there is no session
  * yet, so `fetchWithAuth` would throw before it ever reached the network.
  *
  * Throws the same shape of error as `api.*` (a user-safe `message`), so
@@ -244,7 +244,7 @@ export async function postPublic(endpoint, body) {
 }
 
 // Unauthenticated lookup used to brand the login page on a business's
-// subdomain — there is no session yet at that point, so this bypasses
+// subdomain, there is no session yet at that point, so this bypasses
 // fetchWithAuth entirely. Returns null if the slug doesn't resolve.
 export async function getBusinessBySlug(slug) {
   try {

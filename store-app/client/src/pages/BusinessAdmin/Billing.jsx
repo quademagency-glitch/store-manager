@@ -191,7 +191,7 @@ export default function Billing() {
                   ? new Date(subscription.trial_ends_at).toLocaleDateString()
                   : subscription.current_period_end
                     ? new Date(subscription.current_period_end).toLocaleDateString()
-                    : '—'}
+                    : '-'}
               </span>
             </div>
             <div className="pa-sub-detail">
@@ -424,7 +424,7 @@ export default function Billing() {
                     <td className="font-bold">{formatCurrency(inv.amount, inv.currency)}</td>
                     <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
                     <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
-                    <td style={{ textTransform: 'capitalize', fontSize: '0.85rem' }}>{inv.payment_method || '—'}</td>
+                    <td style={{ textTransform: 'capitalize', fontSize: '0.85rem' }}>{inv.payment_method || '-'}</td>
                     <td className="text-right">
                       <button 
                         className="btn btn-secondary btn-sm" 

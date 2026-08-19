@@ -319,7 +319,7 @@ export default function SalesRecord() {
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="p-md border-t flex justify-between items-center">
-              <div className="text-sm text-muted">Showing {(page - 1) * 50 + 1}–{Math.min(page * 50, totalSales)} of {totalSales}</div>
+              <div className="text-sm text-muted">Showing {(page - 1) * 50 + 1} to {Math.min(page * 50, totalSales)} of {totalSales}</div>
               <div className="flex gap-sm">
                 <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</button>
                 <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>

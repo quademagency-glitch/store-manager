@@ -119,7 +119,7 @@ export default function PriceListPrint() {
                       {groupBy === 'none' && <td><span className="badge badge-neutral">{p.category}</span></td>}
                       {showCostPrice && <td className="text-right text-muted">{fmt(cost)}</td>}
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(price)}</td>
-                      {showMargin && <td style={{ textAlign: 'right', color: margin && parseFloat(margin) > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>{margin ? `${margin}%` : '—'}</td>}
+                      {showMargin && <td style={{ textAlign: 'right', color: margin && parseFloat(margin) > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>{margin ? `${margin}%` : '-'}</td>}
                     </tr>
                   );
                 })}
@@ -186,7 +186,7 @@ export default function PriceListPrint() {
                       {groupBy === 'none' && <td>{p.category}</td>}
                       {showCostPrice && <td className="pl-cost">{fmt(cost)}</td>}
                       <td className="pl-price">{fmt(price)}</td>
-                      {showMargin && <td className="pl-margin">{margin ? `${margin}%` : '—'}</td>}
+                      {showMargin && <td className="pl-margin">{margin ? `${margin}%` : '-'}</td>}
                     </tr>
                   );
                 })}

@@ -4,7 +4,7 @@
  * This is the one endpoint on the API that hands back a real Supabase session
  * to an unauthenticated caller, so its guards are the whole point of it. The
  * route also now returns the caller's business, demo flag and locations, which
- * the client trusts instead of re-querying — that payload is asserted here so
+ * the client trusts instead of re-querying, that payload is asserted here so
  * a field cannot be dropped without a test noticing.
  */
 const request = require('supertest');

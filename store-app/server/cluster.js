@@ -31,6 +31,29 @@ const WORKER_COUNT = parseInt(process.env.WEB_CONCURRENCY, 10) || os.availablePa
 // Handles for the crons started below, so shutdown can stop them.
 const cronTasks = [];
 
+// Set once the primary has been signalled, so the exit handler stops re-forking
+// workers that are leaving on purpose.
+let shuttingDown = false;
+
+// Hard deadline for the whole cluster to drain. Sits above the workers' own
+// 20s budget (utils/gracefulShutdown.js) but below Railway's ~30s SIGKILL, so
+// the primary always gets to log why it gave up.
+const CLUSTER_SHUTDOWN_TIMEOUT_MS = 25_000;
+
+// Escalating restart delay for crash-looping workers: 0, 250, 500, 1000, …
+// capped at 5s. Resets after a minute without a crash, so an isolated failure
+// hours later still restarts instantly.
+let consecutiveCrashes = 0;
+let lastCrashAt = 0;
+function restartBackoffMs() {
+  const now = Date.now();
+  if (now - lastCrashAt > 60_000) consecutiveCrashes = 0;
+  lastCrashAt = now;
+  const delay = consecutiveCrashes === 0 ? 0 : Math.min(250 * 2 ** (consecutiveCrashes - 1), 5_000);
+  consecutiveCrashes += 1;
+  return delay;
+}
+
 if (cluster.isPrimary) {
   // Tell cluster to use worker.js as the entry point for forked processes
   cluster.setupPrimary({
@@ -44,13 +67,34 @@ if (cluster.isPrimary) {
     cluster.fork();
   }
 
-  // Auto-restart crashed workers
+  // Auto-restart crashed workers — but ONLY genuine crashes.
+  //
+  // This used to fork unconditionally, which meant that during a deploy the
+  // primary re-spawned every worker it had just asked to exit. The primary
+  // ended up fighting the shutdown until the container was SIGKILLed, so a
+  // "graceful" deploy never was one. exitedAfterDisconnect covers workers we
+  // killed deliberately; the shuttingDown flag covers the window after the
+  // primary itself has been signalled.
   cluster.on('exit', (worker, code, signal) => {
+    if (shuttingDown || worker.exitedAfterDisconnect) {
+      logger.info(
+        { pid: worker.process.pid, code, signal },
+        'Worker exited intentionally — not restarting'
+      );
+      return;
+    }
+
+    // Back off before re-forking. A worker that dies during startup (bad env
+    // var, port already bound) otherwise respawns in a tight loop, pinning a
+    // core and burying the actual error in log spam.
+    const delay = restartBackoffMs();
     logger.warn(
-      { pid: worker.process.pid, code, signal },
+      { pid: worker.process.pid, code, signal, restartInMs: delay },
       '⚠️  Worker died — restarting'
     );
-    cluster.fork();
+    setTimeout(() => {
+      if (!shuttingDown) cluster.fork();
+    }, delay).unref();
   });
 
   // Run the crons ONLY in the primary process (prevents duplicate
@@ -79,6 +123,54 @@ if (cluster.isPrimary) {
   );
 
   logger.info('📋 Crons initialized in primary process');
+
+  // Fan the shutdown signal out to the workers.
+  //
+  // Node's cluster module does NOT forward signals to children, and Railway
+  // only signals PID 1. So without this the workers never learn a deploy is
+  // happening: they keep serving until the container is SIGKILLed, and every
+  // request in flight at that moment dies mid-response.
+  function shutdownPrimary(signal) {
+    if (shuttingDown) {
+      logger.warn({ signal }, 'Second shutdown signal — exiting now');
+      process.exit(1);
+    }
+    shuttingDown = true;
+    logger.info({ signal, pid: process.pid }, 'Primary shutting down — signalling workers');
+
+    cronTasks.forEach((task) => task?.stop?.());
+
+    const workers = Object.values(cluster.workers ?? {});
+    workers.forEach((worker) => {
+      // kill() sets exitedAfterDisconnect, which the exit handler above reads
+      // to distinguish a deliberate exit from a crash.
+      try { worker.kill('SIGTERM'); } catch { /* already gone */ }
+    });
+
+    if (workers.length === 0) process.exit(0);
+
+    const hardTimer = setTimeout(() => {
+      logger.error({ timeoutMs: CLUSTER_SHUTDOWN_TIMEOUT_MS }, 'Workers did not exit in time — forcing');
+      workers.forEach((worker) => {
+        try { worker.process.kill('SIGKILL'); } catch { /* already gone */ }
+      });
+      process.exit(1);
+    }, CLUSTER_SHUTDOWN_TIMEOUT_MS);
+    hardTimer.unref();
+
+    // Exit as soon as the last worker is actually gone, rather than always
+    // waiting out the full timeout.
+    cluster.on('exit', () => {
+      if (shuttingDown && Object.keys(cluster.workers ?? {}).length === 0) {
+        clearTimeout(hardTimer);
+        logger.info('All workers exited — primary exiting');
+        process.exit(0);
+      }
+    });
+  }
+
+  process.on('SIGTERM', () => shutdownPrimary('SIGTERM'));
+  process.on('SIGINT', () => shutdownPrimary('SIGINT'));
 } else {
   // This branch is reached when cluster.js is the exec target itself.
   // We use a separate worker.js file instead, so this shouldn't run.

@@ -45,6 +45,7 @@ const reportsRoutes = require('./routes/reports');
 const publicApiRoutes = require('./routes/publicApi');
 const integrationsRoutes = require('./routes/integrations');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
+const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
 const { initWebhookRetryCron } = require('./services/webhookRetryCron');
 const { initDemoResetCron } = require('./services/demoResetCron');
@@ -190,8 +191,19 @@ app.use((req, res, next) =>
 // Routes
 // ============================================
 
-// Health check
+// Health check (liveness). Railway's healthcheckPath points here — keep it
+// dependency-free so a transient Supabase blip can never block a deploy.
 app.get('/api/health', (req, res) => {
+  // Once a shutdown signal has landed, report unhealthy so the proxy stops
+  // routing new requests here while in-flight ones drain. Returning 200 during
+  // a drain is what causes the 502s people blame on the deploy itself.
+  if (isShuttingDown()) {
+    return res.status(503).json({
+      status: 'shutting_down',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -361,14 +373,26 @@ app.use((err, req, res, next) => {
 // app.listen() themselves and the primary process handles the cron.
 if (require.main === module) {
   const cluster = require('node:cluster');
-  app.listen(PORT, () => {
+  const { installGracefulShutdown } = require('./utils/gracefulShutdown');
+  const cronTasks = [];
+
+  const server = app.listen(PORT, () => {
     logger.info({ port: PORT }, 'Store Manager API started');
     // Only init cron if running standalone (not via cluster.js)
     if (!cluster.isWorker) {
-      initSubscriptionCron();
-      initWebhookRetryCron();
-      initDemoResetCron();
+      cronTasks.push(
+        initSubscriptionCron(),
+        initWebhookRetryCron(),
+        initDemoResetCron(),
+      );
     }
+  });
+
+  installGracefulShutdown(server, {
+    name: 'standalone',
+    onShutdown: async () => {
+      cronTasks.forEach((task) => task?.stop?.());
+    },
   });
 }
 

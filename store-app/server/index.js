@@ -4,6 +4,7 @@ const { getEnv } = require('./config/env');
 getEnv(); // Validate env vars at startup
 
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
@@ -110,6 +111,42 @@ const publicApiLimiter = rateLimit({
 // Middleware
 // ============================================
 
+// Security headers. Must come before CORS so every response carries them,
+// including CORS rejections.
+//
+// NOTE ON CSP — deliberately DISABLED here, and that is not an oversight.
+// Content-Security-Policy governs documents and workers; it is not applied to
+// JSON fetch/XHR responses. A CSP header on /api/sales is parsed by nobody. The
+// policy that actually constrains this product's frontend has to be attached to
+// the HTML document, which Vercel serves — so the real CSP (Supabase, Recharts
+// inline styles, the PWA worker) lives in vercel.json. Adding directives here
+// would look like security while doing nothing. See vercel.json for the live one.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+
+  // Helmet defaults this to same-origin, which would break the binary
+  // attachments this API deliberately serves cross-origin — the receipts ZIP
+  // (routes/ledger.js), the payroll CSV (routes/hr.js) and the business export.
+  // CORP does not gate CORS-enabled fetches, so this does not widen data
+  // access; the CORS allowlist above is still what authorises callers.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+
+  // 2 years, but WITHOUT includeSubDomains — intentionally.
+  //
+  // Vercel rewrites /api/* to this server, so these headers reach the browser
+  // under quaderp.app rather than the Railway host. includeSubDomains would
+  // therefore pin every *.quaderp.app name to HTTPS for two years, in every
+  // visitor's browser, with no way to revoke it — including the per-business
+  // subdomains that emailService's resolveBusinessLoginUrl generates. Turn it
+  // on only after confirming every subdomain is HTTPS-only.
+  hsts: { maxAge: 63072000, includeSubDomains: false, preload: false },
+
+  referrerPolicy: { policy: 'no-referrer' },
+  frameguard: { action: 'deny' },
+}));
+
 // CORS — allow the Vite dev server and production frontend
 const allowedOrigins = [
   'http://localhost:5173', 
@@ -143,6 +180,40 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// Redirect plaintext HTTP to HTTPS.
+//
+// HONEST ASSESSMENT: this will almost never fire. Vercel and Railway both
+// terminate TLS and redirect at their edge, so a plaintext request should never
+// reach this process. It exists as defence-in-depth against a future custom
+// domain being misconfigured — and note that by the time it *does* fire, the
+// credentials have already crossed a plaintext hop. HSTS above is the control
+// that actually prevents that. Kept behind FORCE_HTTPS so it can be disabled
+// without a deploy if it ever misbehaves.
+const HTTPS_REDIRECT_ENABLED =
+  process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS !== 'false';
+
+app.use((req, res, next) => {
+  if (!HTTPS_REDIRECT_ENABLED) return next();
+
+  // A redirected preflight is not followed by browsers — it surfaces as an
+  // opaque CORS failure that looks like nothing at all.
+  if (req.method === 'OPTIONS') return next();
+
+  // Railway's platform healthcheck and any private-network call arrive with no
+  // x-forwarded-proto. Redirecting those turns the healthcheck into a non-2xx
+  // and fails the deploy. Only act when the header explicitly says http.
+  const proto = req.get('x-forwarded-proto');
+  if (!proto) return next();
+  if (proto.split(',')[0].trim() === 'https') return next();
+
+  if (req.path === '/api/health' || req.path.startsWith('/api/health/')) return next();
+
+  // 308, never 301/302. A 301 would rewrite POST to GET and drop the body —
+  // POST /api/sales would silently become a GET, return a list, and the sale
+  // would vanish with the client seeing a success.
+  return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`);
+});
 
 // Attach request ID and structured request logging.
 //

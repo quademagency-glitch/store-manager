@@ -25,7 +25,14 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-Ivxq6tEtqgVo/tak/FuYlhQX81QNS9WUgIj4Jtax/8M=' 'sha256-ed6UmKPpSsZ7AyAjGPjjdvwTOY/mF3ntZiMnV1idNAI='; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://store-manager-api-production-c330.up.railway.app; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+        }
       ]
     }
   ]

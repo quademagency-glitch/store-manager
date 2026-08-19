@@ -1,0 +1,94 @@
+# External uptime monitoring.
+#
+# Nothing watched whether the API was up. An outage was discovered by a
+# customer failing to ring up a sale, which is the worst possible detector:
+# slow, and it costs you the customer's trust rather than a notification.
+#
+# WHY GITHUB ACTIONS, WHICH IS NOT A MONITORING PRODUCT
+#
+# Because it runs somewhere else. A check that runs on Railway cannot tell you
+# Railway is down, and a check that runs on the laptop tells you nothing while
+# the laptop is shut. This is free, needs no account, no card and no secrets —
+# the health endpoint is public and deliberately returns no timings or error
+# strings to an unauthenticated caller.
+#
+# BE HONEST ABOUT WHAT IT IS NOT
+#
+# Scheduled workflows fire on a best-effort basis. Five minutes is the shortest
+# interval GitHub accepts, and under load a run can be delayed by 10-15 minutes
+# or skipped entirely. So this reliably catches "down for half an hour" and
+# will miss "down for four minutes". That is a large improvement on nothing and
+# a poor substitute for a real monitor.
+#
+# When there is a budget, point UptimeRobot or Better Stack at the same URL —
+# both have free tiers, both check every 1-5 minutes from multiple regions, and
+# both can wake a phone. Then delete this file rather than running both.
+#
+# HOW YOU FIND OUT
+#
+# GitHub emails the repository owner when a scheduled workflow fails. Check
+# Settings -> Notifications -> Actions is on, or this is a tree falling in a
+# forest. Turning on "Send notifications for failed workflows only" is the
+# setting that makes this bearable to live with.
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+# A run still in progress when the next fires means the API is hanging, which
+# is itself the signal. Let the in-flight one finish and report rather than
+# cancelling it.
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the API health endpoint
+        run: |
+          URL="https://store-manager-api-production-c330.up.railway.app/api/health"
+
+          # Three attempts before declaring an outage. A single failed request
+          # from one GitHub runner is not evidence the service is down, and a
+          # monitor that cries wolf gets muted — at which point it is worse
+          # than not having one.
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 20 "$URL" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "✓ attempt $attempt: HTTP 200"
+              cat /tmp/body
+              exit 0
+            fi
+            echo "attempt $attempt: HTTP $code"
+            [ $attempt -lt 3 ] && sleep 20
+          done
+
+          echo "::error::API health check failed three times — last status $code"
+          echo "Body of the final attempt:"
+          cat /tmp/body || true
+          echo ""
+          echo "Check, in this order:"
+          echo "  1. Railway deployment logs and metrics"
+          echo "  2. Supabase project status — a paused or exhausted project"
+          echo "     takes the API down with it"
+          echo "  3. https://railway.statuspage.io and Supabase status"
+          exit 1
+
+      # Deep check is advisory. It reports Supabase and JWKS health, and a
+      # 503 there means degraded rather than down — the shallow probe above is
+      # what decides whether this job fails. Separating them keeps a Supabase
+      # blip from reading identically to the API being gone.
+      - name: Report dependency health
+        if: always()
+        continue-on-error: true
+        run: |
+          URL="https://store-manager-api-production-c330.up.railway.app/api/health/deep"
+          code=$(curl -s -o /tmp/deep -w '%{http_code}' --max-time 25 "$URL" || echo 000)
+          echo "deep check: HTTP $code"
+          cat /tmp/deep || true

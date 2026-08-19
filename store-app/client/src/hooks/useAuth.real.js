@@ -18,7 +18,82 @@ export function useAuth() {
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Fetch the user's role from the users table
+  /**
+   * Commit a resolved identity to state.
+   *
+   * Split out of fetchRole so the demo can reuse it. POST /auth/demo-login
+   * already returns the role, permissions, locations and demo flag, and the
+   * client used to throw that away and re-derive all of it with a second
+   * query — roughly 1.6s of the demo's load, spent on the critical path
+   * asking a question the server had already answered.
+   *
+   * Both callers normalise into this shape, so the ban checks and the
+   * active-location bootstrap below run for every sign-in path, not just the
+   * one that happens to query the table.
+   *
+   * Returns null when the identity is refused.
+   */
+  const applyRoleData = useCallback(async (identity) => {
+    const {
+      userId, status, businessStatus,
+      role: roleName, permissions: userPermissions,
+      locationIds: userLocations, businessId: userBusinessId, isDemo: demoFlag,
+    } = identity;
+
+    const clear = () => {
+      setRole(null);
+      setPermissions([]);
+      setLocationIds([]);
+      setBusinessId(null);
+      setIsDemo(false);
+    };
+
+    // Check for bans globally on the frontend
+    if (status === 'banned' || businessStatus === 'banned') {
+      if (import.meta.env.DEV) console.warn('User or Business is banned. Forcing logout.');
+      await supabase.auth.signOut();
+      clear();
+      return null;
+    }
+
+    setRole(roleName);
+    setPermissions(userPermissions);
+    setLocationIds(userLocations);
+    setBusinessId(userBusinessId);
+    setIsDemo(demoFlag);
+
+    // Attach identity to error reports so a crash says which tenant hit it.
+    // Id and business only — never email or name. No-op without a DSN.
+    // The id comes from the caller: this used to read it off the fetched row,
+    // which never selected `id`, so every report carried id: undefined.
+    setUserContext({ id: userId, business_id: userBusinessId });
+
+    // Initialize active location if none set or if invalid
+    const currentActive = localStorage.getItem('active_location_id');
+    if (roleName !== 'Platform Admin' && roleName !== 'Business Admin') {
+      if (!currentActive || !userLocations.includes(currentActive)) {
+        if (userLocations.length > 0) {
+          setActiveLocationId(userLocations[0]);
+          localStorage.setItem('active_location_id', userLocations[0]);
+        } else {
+          setActiveLocationId(null);
+          localStorage.removeItem('active_location_id');
+        }
+      }
+    }
+
+    return {
+      role: roleName,
+      permissions: userPermissions,
+      locationIds: userLocations,
+      businessId: userBusinessId,
+      isDemo: demoFlag,
+    };
+  }, []);
+
+  // Fetch the user's role from the users table.
+  // Keep this SELECT in step with the one in server/routes/auth.js's
+  // /demo-login — both feed applyRoleData above.
   const fetchRole = useCallback(async (userId) => {
     try {
       const { data, error } = await supabase
@@ -44,47 +119,16 @@ export function useAuth() {
         return null;
       }
 
-      // Check for bans globally on the frontend
-      if (data.status === 'banned' || (data.businesses && data.businesses.status === 'banned')) {
-        if (import.meta.env.DEV) console.warn('User or Business is banned. Forcing logout.');
-        await supabase.auth.signOut();
-        setRole(null);
-        setPermissions([]);
-        setLocationIds([]);
-        setBusinessId(null);
-        setIsDemo(false);
-        return null;
-      }
-
-      const roleName = data.roles?.name || null;
-      const userPermissions = data.roles?.permissions || [];
-      const userLocations = data.user_locations ? data.user_locations.map(ul => ul.location_id) : [];
-      
-      setRole(roleName);
-      setPermissions(userPermissions);
-      setLocationIds(userLocations);
-      setBusinessId(data.business_id || null);
-      setIsDemo(data.businesses?.is_demo === true);
-
-      // Attach identity to error reports so a crash says which tenant hit it.
-      // Id and business only — never email or name. No-op without a DSN.
-      setUserContext({ id: data.id, business_id: data.business_id || null });
-
-      // Initialize active location if none set or if invalid
-      const currentActive = localStorage.getItem('active_location_id');
-      if (roleName !== 'Platform Admin' && roleName !== 'Business Admin') {
-        if (!currentActive || !userLocations.includes(currentActive)) {
-          if (userLocations.length > 0) {
-            setActiveLocationId(userLocations[0]);
-            localStorage.setItem('active_location_id', userLocations[0]);
-          } else {
-            setActiveLocationId(null);
-            localStorage.removeItem('active_location_id');
-          }
-        }
-      }
-
-      return { role: roleName, permissions: userPermissions, locationIds: userLocations, businessId: data.business_id || null, isDemo: data.businesses?.is_demo === true };
+      return await applyRoleData({
+        userId,
+        status: data.status,
+        businessStatus: data.businesses?.status,
+        role: data.roles?.name || null,
+        permissions: data.roles?.permissions || [],
+        locationIds: data.user_locations ? data.user_locations.map(ul => ul.location_id) : [],
+        businessId: data.business_id || null,
+        isDemo: data.businesses?.is_demo === true,
+      });
     } catch (err) {
       if (import.meta.env.DEV) console.error('Unexpected error fetching role:', err);
       setRole(null);
@@ -94,7 +138,7 @@ export function useAuth() {
       setIsDemo(false);
       return null;
     }
-  }, []);
+  }, [applyRoleData]);
 
   useEffect(() => {
     // Listen for auth state changes without blocking the callback
@@ -205,7 +249,29 @@ export function useAuth() {
       if (data.session) {
         setSession(data.session);
         setUser(data.user);
-        if (data.user) await fetchRole(data.user.id);
+
+        // Seed straight from the demo-login response instead of querying for
+        // what it already told us. location_ids is the tell that the server is
+        // new enough to carry the full payload; against an older deploy we
+        // fall back to the extra round trip rather than booting with no
+        // permissions and no locations.
+        const demoUser = result.user;
+        if (demoUser && Array.isArray(demoUser.location_ids)) {
+          await applyRoleData({
+            userId: demoUser.id,
+            // The server refuses a banned demo account before it ever gets
+            // here, so there is nothing left for the client to re-check.
+            status: 'active',
+            businessStatus: 'active',
+            role: demoUser.role || null,
+            permissions: demoUser.permissions || [],
+            locationIds: demoUser.location_ids,
+            businessId: demoUser.business_id || null,
+            isDemo: demoUser.is_demo === true,
+          });
+        } else if (data.user) {
+          await fetchRole(data.user.id);
+        }
       }
 
       setLoading(false);
@@ -215,7 +281,7 @@ export function useAuth() {
       setLoading(false);
       return { error: { message: err.message || 'Could not start the demo. Please try again.' } };
     }
-  }, [fetchRole]);
+  }, [fetchRole, applyRoleData]);
 
   const signOut = useCallback(async () => {
     setLoading(true);

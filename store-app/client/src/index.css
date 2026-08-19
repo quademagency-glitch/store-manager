@@ -1,4 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+/* Fonts are self-hosted.
+
+   This was an @import of fonts.googleapis.com, which is the slowest way to
+   load a webfont: the browser cannot even discover the font URL until this
+   stylesheet has been fetched and parsed, so the request chain ran
+   index.css -> Google's CSS -> the woff2 files, each waiting on the last.
+   Measured on the live demo, that chain occupied 763-1653ms and sat squarely
+   on the critical path before anything could paint.
+
+   It also violated our own CSP: the policy in vercel.json allows
+   style-src 'self' and font-src 'self' data:, so the Google stylesheet was
+   being reported on every load. Self-hosting fixes the performance problem
+   and the policy violation together.
+
+   Both faces are the variable files, so the six Outfit weights and three
+   Inter weights are two downloads rather than nine. Latin subset only.
+   Preloaded in index.html. */
+
+@font-face {
+    font-family: 'Inter';
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    src: url('/fonts/inter-latin-var.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Outfit';
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    src: url('/fonts/outfit-latin-var.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* ============================================================
    Cascade layers — declared first, so this order wins over

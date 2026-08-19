@@ -12,6 +12,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="QuadERP" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
+    <!-- Self-hosted, and preloaded so the two variable faces are in flight
+         alongside the bundle rather than waiting for index.css to parse. -->
+    <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <title>QuadERP</title>
     <script>
       // Resolve the theme BEFORE first paint. This ran in a React effect

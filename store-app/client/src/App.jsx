@@ -6,7 +6,12 @@ import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
-const Signup = lazy(() => import('./pages/Signup'));
+/* Eager, like Login. Both are entry points for people arriving from
+   the marketing site, and Signup is 4KB: lazy, it was a second
+   network round trip that could not even begin until the 542KB entry
+   chunk had downloaded and executed. Folding it in costs nothing and
+   removes a serialized hop from the slowest path we have. */
+import Signup from './pages/Signup';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Sales = lazy(() => import('./pages/Sales'));
@@ -35,9 +40,9 @@ const AccountsPayableLedger = lazy(() => import('./pages/AccountsPayable'));
 const ImportWizard = lazy(() => import('./pages/ImportWizard'));
 const HelpCenter = lazy(() => import('./pages/HelpCenter'));
 
-import MainLayout from './components/MainLayout';
 import ReloadPrompt from './components/ReloadPrompt';
-import { ProductTourProvider } from './components/ProductTour';
+/* The signed-in chrome, kept out of the entry chunk. See AppShell.jsx. */
+const AppShell = lazy(() => import('./components/AppShell'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -100,16 +105,16 @@ export default function App() {
                     <ProtectedRoute requiredPermission="manage_platform"><PlatformAdmin /></ProtectedRoute>
                   } />
                   {/* ── UNIFIED LOGGED-IN ROUTES ── */}
-                  {/* The tour provider wraps MainLayout rather than the whole
-                      app: every step points at the sidebar, so there is
-                      nothing for it to do on /login or /signup, and starting
-                      it there would ambush people who are not signed in. */}
+                  {/* AppShell is the sidebar plus the product tour that points
+                      at it. Both live behind this route rather than wrapping
+                      the whole app: every tour step targets the sidebar, so
+                      there is nothing for it to do on /login or /signup, and
+                      starting it there would ambush people who are not signed
+                      in. Keeping it here is also what lets it be lazy. */}
                   <Route
                     element={
                       <ProtectedRoute>
-                        <ProductTourProvider>
-                          <MainLayout />
-                        </ProductTourProvider>
+                        <AppShell />
                       </ProtectedRoute>
                     }
                   >

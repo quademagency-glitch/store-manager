@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { postPublic } from '../lib/api';
 import { setUserContext } from '../lib/errorReporting';
@@ -17,6 +17,14 @@ export function useAuth() {
   const [businessId, setBusinessId] = useState(null);
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  /* The user id whose role is already in state.
+     Without this, the effect below re-fetches the role for a user we have
+     just resolved: signInAsDemo seeds everything from the demo-login payload,
+     then calls setUser, and the effect fires on the id change and queries for
+     exactly what we already had. The saving was real but invisible, because
+     the round trip simply moved from signInAsDemo into the effect. */
+  const roleLoadedFor = useRef(null);
 
   /**
    * Commit a resolved identity to state.
@@ -52,6 +60,7 @@ export function useAuth() {
     if (status === 'banned' || businessStatus === 'banned') {
       if (import.meta.env.DEV) console.warn('User or Business is banned. Forcing logout.');
       await supabase.auth.signOut();
+      roleLoadedFor.current = null;
       clear();
       return null;
     }
@@ -81,6 +90,8 @@ export function useAuth() {
         }
       }
     }
+
+    roleLoadedFor.current = userId;
 
     return {
       role: roleName,
@@ -177,11 +188,21 @@ export function useAuth() {
     let isMounted = true;
 
     if (user?.id) {
-      fetchRole(user.id).finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
-      });
+      // Already resolved for this user — seeded by signInAsDemo from the
+      // demo-login payload, or by the fetchRole that signIn awaited. Fetching
+      // again would re-ask a question we have the answer to, on the critical
+      // path to first render.
+      if (roleLoadedFor.current === user.id) {
+        setLoading(false);
+      } else {
+        fetchRole(user.id).finally(() => {
+          if (isMounted) {
+            setLoading(false);
+          }
+        });
+      }
+    } else {
+      roleLoadedFor.current = null;
     }
 
     return () => {

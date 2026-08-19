@@ -9,6 +9,7 @@
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { attemptDelivery } = require('./webhookDispatcher');
+const { claimCronRun } = require('../utils/cronLock');
 
 let cron;
 try {
@@ -54,8 +55,11 @@ function initWebhookRetryCron() {
     return { stop() {} };
   }
 
-  const task = cron.schedule('*/5 * * * *', () => {
-    sweepPendingDeliveries();
+  // Claimed per 5-minute slot so two replicas can't both re-deliver the same
+  // pending webhook — the receiving storefront would see the event twice.
+  const task = cron.schedule('*/5 * * * *', async () => {
+    if (!(await claimCronRun('webhook-retry-sweep', 'five-minutes'))) return;
+    await sweepPendingDeliveries();
   });
 
   logger.info('✅ Webhook retry cron job initialized (runs every 5 minutes)');

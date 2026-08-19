@@ -17,6 +17,7 @@
 
 const logger = require('../utils/logger');
 const { isDemoEnabled } = require('../config/demo');
+const { claimCronRun } = require('../utils/cronLock');
 
 let cron;
 try {
@@ -55,14 +56,29 @@ function initDemoResetCron() {
     return { stop() {} };
   }
 
-  const task = cron.schedule('0 2 * * *', () => { runDemoReset({ ifEmpty: false }); }, {
+  // The nightly rebuild is the destructive one — it tears the demo tenant down
+  // and recreates it. Two replicas doing that concurrently would interleave a
+  // teardown with the other's rebuild and leave a half-built demo, so the day
+  // slot is claimed before any of it starts.
+  const task = cron.schedule('0 2 * * *', async () => {
+    if (!(await claimCronRun('demo-reset', 'day'))) return;
+    await runDemoReset({ ifEmpty: false });
+  }, {
     timezone: 'Africa/Accra',
   });
 
   logger.info('✅ Demo reset cron initialized (rebuilds nightly at 02:00 GMT)');
 
   // Give the rest of the server a moment to come up before doing any work.
-  const startupTimer = setTimeout(() => { runDemoReset({ ifEmpty: true }); }, 8000);
+  // Claimed under a SEPARATE job name on a short bucket, not the day bucket the
+  // nightly rebuild uses. Two replicas booting together must not both seed (that
+  // would create two demo businesses), but a restart hours later still needs to
+  // be able to seed if the demo has genuinely gone missing — a day-bucketed
+  // claim shared with the nightly job would suppress exactly that.
+  const startupTimer = setTimeout(async () => {
+    if (!(await claimCronRun('demo-startup-seed', 'five-minutes'))) return;
+    await runDemoReset({ ifEmpty: true });
+  }, 8000);
 
   return {
     stop() {

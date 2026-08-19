@@ -9,6 +9,7 @@
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { sendExpirationWarning, sendSuspensionNotice } = require('./emailService');
+const { claimCronRun, pruneCronRuns } = require('../utils/cronLock');
 
 let cron;
 try {
@@ -206,9 +207,19 @@ function initSubscriptionCron() {
     return { stop() {} };
   }
 
+  // Claim the day's slot before doing anything. Without this, every Railway
+  // replica's primary runs the same check and customers get duplicate
+  // suspension and expiry emails.
+  const runIfClaimed = async (reason) => {
+    if (!(await claimCronRun('subscription-checks', 'day'))) return;
+    logger.info({ reason }, '[CRON] Running subscription checks');
+    await runSubscriptionChecks();
+    await pruneCronRuns();
+  };
+
   // Run daily at midnight
   const task = cron.schedule('0 0 * * *', () => {
-    runSubscriptionChecks();
+    runIfClaimed('schedule');
   }, {
     timezone: 'Africa/Accra' // Ghana timezone
   });
@@ -216,9 +227,11 @@ function initSubscriptionCron() {
   logger.info('✅ Subscription cron job initialized (runs daily at midnight GMT)');
 
   // Also run immediately on startup (after a short delay to let the server settle)
+  // NOTE: this now no-ops when the day's run has already happened — previously
+  // every redeploy triggered a fresh full check. That is the intended trade for
+  // not emailing customers twice.
   const startupTimer = setTimeout(() => {
-    logger.info('[CRON] Running initial subscription check...');
-    runSubscriptionChecks();
+    runIfClaimed('startup');
   }, 5000);
 
   return {

@@ -120,8 +120,34 @@ async function fetchWithAuth(endpoint, options = {}) {
   return response.json();
 }
 
+/**
+ * GETs that are already in flight, keyed by endpoint.
+ *
+ * Independent components fetch the same reference data on mount — /locations
+ * has eleven callers — and mounting two of them in the same frame fired the
+ * same request twice. On the demo's first paint that showed up as /locations
+ * being fetched, then fetched again the moment the first one landed.
+ *
+ * This shares the pending promise rather than caching the result: the entry is
+ * dropped as soon as the request settles, so a later call still goes to the
+ * network and nothing here can serve stale data. GET only — replaying a POST
+ * is not a de-duplication, it is a lost write.
+ */
+const inFlightGets = new Map();
+
+function dedupedGet(endpoint) {
+  const pending = inFlightGets.get(endpoint);
+  if (pending) return pending;
+
+  const request = fetchWithAuth(endpoint, { method: 'GET' })
+    .finally(() => inFlightGets.delete(endpoint));
+
+  inFlightGets.set(endpoint, request);
+  return request;
+}
+
 export const api = {
-  get: (endpoint) => fetchWithAuth(endpoint, { method: 'GET' }),
+  get: (endpoint) => dedupedGet(endpoint),
   post: (endpoint, body) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   put: (endpoint, body) => fetchWithAuth(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (endpoint) => fetchWithAuth(endpoint, { method: 'DELETE' }),

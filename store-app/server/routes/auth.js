@@ -348,9 +348,15 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
       });
     }
 
+    // Selects everything the client's fetchRole would otherwise go and fetch
+    // for itself. That second round trip used to sit on the critical path of
+    // the demo: this endpoint already had the row in hand and returned a
+    // subset of it, so the browser paid ~1.6s asking Supabase for what the
+    // response could have carried. Keep this SELECT in step with the one in
+    // client/src/hooks/useAuth.real.js — both feed the same applyRoleData().
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, name, email, role_id, business_id, roles:role_id (name, permissions), businesses (name, is_demo)')
+      .select('id, name, email, status, role_id, business_id, roles:role_id (name, permissions), businesses (name, is_demo, status), user_locations (location_id)')
       .eq('id', data.user.id)
       .single();
 
@@ -359,6 +365,17 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
       // real account would turn this public, unauthenticated endpoint into a
       // way to sign in as them.
       logger.error({ err: userError, email: DEMO_EMAIL }, 'Demo account is not attached to a demo business');
+      return res.status(503).json({
+        error: 'Demo unavailable',
+        message: 'The demo is being rebuilt. Please try again in a minute.',
+      });
+    }
+
+    // The client used to reach this conclusion itself, on the strength of the
+    // fetchRole round trip we are now skipping. Since the browser will trust
+    // this payload, the check has to happen here instead of being dropped.
+    if (userData.status === 'banned' || userData.businesses?.status === 'banned') {
+      logger.error({ email: DEMO_EMAIL }, 'Demo account or its business is banned');
       return res.status(503).json({
         error: 'Demo unavailable',
         message: 'The demo is being rebuilt. Please try again in a minute.',
@@ -388,6 +405,12 @@ router.post('/demo-login', demoLoginLimiter, async (req, res) => {
         role: userData.roles ? userData.roles.name : 'Unknown',
         permissions: userData.roles ? userData.roles.permissions : [],
         business_name: userData.businesses ? userData.businesses.name : null,
+        // Added so the client can seed its session without a second query.
+        business_id: userData.business_id || null,
+        is_demo: userData.businesses?.is_demo === true,
+        location_ids: Array.isArray(userData.user_locations)
+          ? userData.user_locations.map((ul) => ul.location_id)
+          : [],
       },
     });
   } catch (err) {

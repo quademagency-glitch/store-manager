@@ -17,15 +17,6 @@
   ],
   "headers": [
     {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
       "source": "/(.*)",
       "headers": [
         {
@@ -52,6 +43,24 @@
           "key": "Reporting-Endpoints",
           "value": "csp-endpoint=\"https://app.quaderp.app/api/csp-report\""
         }
+      ]
+    },
+    {
+      "//": [
+        "ORDER IS LOAD-BEARING and this rule must stay LAST.",
+        "Vercel applies every matching rule, and for a repeated header key the",
+        "last match wins. This block used to sit ABOVE the catch-all, so the",
+        "catch-all's 'max-age=0, must-revalidate' overwrote it and every hashed",
+        "asset was revalidated on every visit - observed live on",
+        "/assets/index-*.js. A content-hashed filename cannot go stale, so it",
+        "should never be revalidated: a changed file is a different URL.",
+        "Only Cache-Control is overridden here; the security headers above",
+        "still apply to /assets/ because that rule matched first.",
+        "Verify after deploy: curl -I on any /assets/*.js must say immutable."
+      ],
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
   ]

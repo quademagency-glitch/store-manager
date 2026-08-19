@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from '@tailwindcss/vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import dns from 'dns'
+import { fileURLToPath } from 'node:url'
 
 // Prefer IPv4 for localhost to avoid DNS resolution delays
 dns.setDefaultResultOrder('ipv4first')
@@ -89,6 +90,25 @@ export default defineConfig({
   build: {
     // Only when they will actually be uploaded and then deleted — see above.
     sourcemap: uploadSourceMaps,
+  },
+  resolve: {
+    alias: {
+      /* Nothing in this app opens a realtime channel, but createClient()
+         constructs a RealtimeClient regardless, so realtime-js and its
+         phoenix dependency were ~52KB of the entry chunk running a websocket
+         client that never connects. Everyone paid for it, including people
+         on /signup who are not even signed in.
+
+         The stub implements the small surface supabase-js actually touches.
+         scripts/check-realtime-stub.mjs reads the installed supabase-js
+         bundle and fails the build if an upgrade starts calling something the
+         stub lacks — `npm run check:realtime`, wired into `npm run build`.
+
+         To use realtime: delete this alias and src/lib/realtime-stub.js. */
+      '@supabase/realtime-js': fileURLToPath(
+        new URL('./src/lib/realtime-stub.js', import.meta.url)
+      ),
+    },
   },
   server: {
     host: '127.0.0.1',

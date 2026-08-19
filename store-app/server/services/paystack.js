@@ -61,14 +61,32 @@ async function verifyTransaction(reference, secretKey) {
 
 /**
  * Verifies the signature of an incoming webhook from Paystack.
- * @param {string} payload - The raw request body as string
- * @param {string} signature - The 'x-paystack-signature' header
- * @param {string} secretKey - The Paystack Secret Key
- * @returns {boolean} - True if signature is valid
+ *
+ * `rawBody` MUST be the exact bytes Paystack sent — a Buffer or the raw string.
+ * Passing a re-serialized object (JSON.stringify(req.body)) does not work: key
+ * order, whitespace and number formatting all differ from what was signed, so
+ * verification becomes a coin flip. The caller is responsible for capturing the
+ * body with express.raw() BEFORE any JSON parser has drained the stream.
+ *
+ * @param {Buffer|string} rawBody - The raw request body, exactly as received
+ * @param {string} signature - The 'x-paystack-signature' header (sha512 hex)
+ * @param {string} secretKey - The Paystack Secret Key (Paystack signs with this,
+ *                             not with a separate webhook secret)
+ * @returns {boolean} - True if the signature is valid
  */
-function verifyWebhookSignature(payload, signature, secretKey) {
-  const hash = crypto.createHmac('sha512', secretKey).update(payload).digest('hex');
-  return hash === signature;
+function verifyWebhookSignature(rawBody, signature, secretKey) {
+  if (!secretKey || rawBody == null) return false;
+
+  // Reject anything that isn't a well-formed sha512 hex digest up front. This
+  // is not just tidiness: timingSafeEqual throws RangeError on buffers of
+  // unequal length, which would turn a malformed header into a 500.
+  if (typeof signature !== 'string' || !/^[0-9a-f]{128}$/i.test(signature)) return false;
+
+  const expected = crypto.createHmac('sha512', secretKey).update(rawBody).digest();
+  const received = Buffer.from(signature, 'hex');
+  if (received.length !== expected.length) return false;
+
+  return crypto.timingSafeEqual(expected, received);
 }
 
 module.exports = {

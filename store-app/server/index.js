@@ -44,6 +44,7 @@ const loyaltyRoutes = require('./routes/loyalty');
 const reportsRoutes = require('./routes/reports');
 const publicApiRoutes = require('./routes/publicApi');
 const integrationsRoutes = require('./routes/integrations');
+const { paystackWebhookHandler } = require('./routes/paystackWebhook');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -163,6 +164,25 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Paystack webhooks — MUST be registered before the JSON parser below.
+//
+// Signature verification HMACs the exact bytes Paystack signed, and once
+// express.json() has drained the request stream those bytes are gone for good
+// (a later express.raw() is a silent no-op — body-parser skips when the stream
+// is already finished). This is the only point in the middleware chain where
+// the raw body still exists.
+//
+// Two URLs, one handler: both were live historically and which one is set in
+// the Paystack dashboard isn't knowable from here. Registering both costs
+// nothing; guessing wrong drops payments silently.
+//
+// app.post with an exact path rather than app.use with a prefix — app.use would
+// also match /api/billing/paystack/webhook/anything, which is free attack
+// surface for no benefit.
+const paystackRawBody = express.raw({ type: '*/*', limit: '256kb' });
+app.post('/api/billing/paystack/webhook', paystackRawBody, paystackWebhookHandler);
+app.post('/api/subscriptions/paystack-webhook', paystackRawBody, paystackWebhookHandler);
 
 // Parse JSON request bodies.
 //

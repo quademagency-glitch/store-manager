@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
-const crypto = require('crypto');
+const { PG_UNIQUE_VIOLATION } = require('./paystackWebhook');
 
 const router = express.Router();
 
@@ -536,8 +536,16 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
         })
         .eq('id', metadata.business_id);
 
-      // Create billing invoice record
-      await supabaseAdmin
+      // Create billing invoice record.
+      //
+      // The existingInvoice check above is a best-effort fast path, not a
+      // guarantee — this endpoint is called from the client on the Paystack
+      // callback while the webhook fires for the same payment, so both can pass
+      // that check and reach this insert. The unique index on
+      // paystack_reference (migration 069) is what actually prevents the
+      // duplicate; a 23505 here means the webhook won the race, which is a
+      // success, not a failure.
+      const { error: invoiceError } = await supabaseAdmin
         .from('billing_invoices')
         .insert([{
           business_id: metadata.business_id,
@@ -550,6 +558,10 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
           description: `${metadata.plan_name || 'Subscription'} — ${cycle} payment`,
           paid_at: now.toISOString(),
         }]);
+
+      if (invoiceError && invoiceError.code !== PG_UNIQUE_VIOLATION) {
+        throw invoiceError;
+      }
     }
 
     res.json({ message: 'Payment verified and processed successfully', status: 'success' });
@@ -559,118 +571,10 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
   }
 });
 
-/**
- * POST /api/subscriptions/paystack-webhook
- * Handle Paystack webhook events (charge.success, subscription.disable, etc.)
- * This endpoint is PUBLIC but verified via Paystack signature
- */
-router.post('/paystack-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    // Get the active Paystack gateway for webhook secret
-    const { data: gateway } = await supabaseAdmin
-      .from('payment_gateways')
-      .select('webhook_secret, secret_key')
-      .eq('provider', 'paystack')
-      .eq('is_active', true)
-      .single();
-
-    if (!gateway) {
-      logger.warn('[WEBHOOK] No active Paystack gateway found');
-      return res.sendStatus(200);
-    }
-
-    // Verify webhook signature
-    const hash = crypto
-      .createHmac('sha512', gateway.webhook_secret || gateway.secret_key)
-      .update(typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
-      .digest('hex');
-
-    const signature = req.headers['x-paystack-signature'];
-    if (signature !== hash) {
-      logger.warn('[WEBHOOK] Invalid Paystack signature');
-      return res.sendStatus(401);
-    }
-
-    const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    logger.info({ event: event.event }, '[WEBHOOK] Paystack event');
-
-    if (event.event === 'charge.success') {
-      const { metadata, reference, amount, currency } = event.data;
-
-      if (metadata?.business_id && metadata?.plan_id) {
-        const now = new Date();
-        const periodEnd = new Date(now);
-        const cycle = metadata.billing_cycle || 'monthly';
-        if (cycle === 'yearly') {
-          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        } else {
-          periodEnd.setDate(periodEnd.getDate() + 30);
-        }
-
-        // Upsert subscription
-        const { data: existingSub } = await supabaseAdmin
-          .from('business_subscriptions')
-          .select('id')
-          .eq('business_id', metadata.business_id)
-          .single();
-
-        const subData = {
-          plan_id: metadata.plan_id,
-          status: 'active',
-          billing_cycle: cycle,
-          current_period_start: now.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          trial_ends_at: null,
-          amount: amount / 100, // Convert from smallest unit
-          currency: currency || 'GHS',
-          paystack_subscription_code: reference,
-          updated_at: now.toISOString(),
-        };
-
-        if (existingSub) {
-          await supabaseAdmin
-            .from('business_subscriptions')
-            .update(subData)
-            .eq('id', existingSub.id);
-        } else {
-          await supabaseAdmin
-            .from('business_subscriptions')
-            .insert([{ business_id: metadata.business_id, ...subData }]);
-        }
-
-        // Update business plan reference and ensure active status
-        await supabaseAdmin
-          .from('businesses')
-          .update({
-            subscription_plan_id: metadata.plan_id,
-            status: 'active',
-          })
-          .eq('id', metadata.business_id);
-
-        // Create billing invoice record
-        await supabaseAdmin
-          .from('billing_invoices')
-          .insert([{
-            business_id: metadata.business_id,
-            subscription_id: existingSub?.id || null,
-            amount: amount / 100,
-            currency: currency || 'GHS',
-            status: 'paid',
-            payment_method: 'paystack',
-            paystack_reference: reference,
-            description: `${metadata.plan_name || 'Subscription'} — ${cycle} payment`,
-            paid_at: now.toISOString(),
-          }]);
-
-        logger.info({ businessId: metadata.business_id }, '[WEBHOOK] Payment recorded');
-      }
-    }
-
-    res.sendStatus(200);
-  } catch (err) {
-    logger.error({ err: err }, '[WEBHOOK] Error processing Paystack webhook:');
-    res.sendStatus(200); // Always return 200 to Paystack
-  }
-});
+// NOTE: POST /api/subscriptions/paystack-webhook is no longer defined here.
+// It is registered in index.js, above the global JSON body parser, because
+// signature verification needs the raw request bytes and the parser destroys
+// them. The handler lives in routes/paystackWebhook.js and serves this URL as
+// well as the /api/billing/paystack/webhook one. Do not re-add it here.
 
 module.exports = router;

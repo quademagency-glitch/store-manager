@@ -1,57 +1,47 @@
 /**
- * Guards the contracting party details in src/legal/entity.js.
+ * Reports which optional identity details the legal documents are publishing
+ * without.
  *
- * The Terms, the Privacy Policy and the Data Processing Agreement all name the
- * provider by interpolating that file. While a field is still a placeholder,
- * the published contract literally reads "registered in Ghana under
- * registration number [TODO: ...]" — an agreement that cannot identify its own
- * party, which is the weakest kind there is.
+ * This used to guard against placeholders reaching production: the fields were
+ * `[TODO: ...]` strings, and an unfilled one printed literally inside the
+ * contract. They are now null, and the documents omit the surrounding phrase
+ * instead, so nothing is broken while they are unset and this check no longer
+ * guards against anything.
  *
- * This does NOT fail the build. Failing it would block deploys of unrelated
- * work over a detail only the operator can supply, and a check that blocks
- * everything gets disabled. It prints a block loud enough to be seen in a
- * Vercel log instead, every single build, until the fields are filled in.
+ * It still runs, because the reason to publish them has not gone away and
+ * "we never got round to it" should stay visible rather than quietly becoming
+ * permanent. It does NOT fail the build: blocking unrelated deploys over a
+ * detail only the operator can supply is how a check gets deleted.
  *
- * Two of the three fields are worth chasing for their own sake, not just to
- * silence this:
- *
- *   • Registering as a data controller with Ghana's Data Protection
- *     Commission is a statutory duty under the Data Protection Act, 2012
- *     (Act 843), not a formality.
- *   • The registration number reveals whether the party is a company or a sole
- *     proprietorship — which decides whether the liability cap in clause 19 of
- *     the Terms sits in front of anyone's personal assets.
+ * Imports entity.js rather than parsing it. The previous version read the
+ * source with a regex for `TODO(...)`, which stopped matching the moment the
+ * representation changed. A check that has to be kept in step with the thing
+ * it checks is a check that rots.
  */
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ENTITY, OPTIONAL_IDENTITY, unresolved } from '../src/legal/entity.js';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here, '../src/legal/entity.js'), 'utf8');
+const missing = unresolved();
 
-// Read the TODO hints straight out of the source rather than importing it:
-// entity.js is an ES module the build pipeline owns, and a check that has to
-// be kept in step with an import list is a check that rots.
-const pending = [...src.matchAll(/^\s*(\w+):\s*TODO\('([^']+)'\)/gm)].map((m) => ({
-  field: m[1],
-  hint: m[2],
-}));
-
-if (pending.length === 0) {
-  console.log('✓ legal entity check: contracting party fully identified');
+if (missing.length === 0) {
+  console.log('✓ legal entity check: all identity details published');
   process.exit(0);
 }
 
-const w = Math.max(...pending.map((p) => p.field.length));
+const CONSEQUENCE = {
+  registrationNumber:
+    'Terms 1.1 and Privacy 1.1 identify the party by name and form only.',
+  address:
+    'Terms 23.2 offers a postal address on request instead of naming one.',
+  dataControllerRegistration:
+    'Privacy 1.3 is omitted. Registering is required by Act 843.',
+};
+
+const w = Math.max(...missing.map((f) => f.length));
 console.warn(`
-┌──────────────────────────────────────────────────────────────────────────┐
-│  LEGAL DOCUMENTS ARE INCOMPLETE                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+  ${ENTITY.legalName} is publishing without ${missing.length} identity detail${missing.length === 1 ? '' : 's'}.
+  The documents read correctly; these are omitted, not broken.
 
-  /terms, /privacy and /dpa are being built with ${pending.length} placeholder${pending.length === 1 ? '' : 's'}.
-  Visitors will see the literal text "[TODO: ...]" in the contract.
+${missing.map((f) => `    ${f.padEnd(w)}  ${CONSEQUENCE[f] ?? OPTIONAL_IDENTITY[f]}`).join('\n')}
 
-${pending.map((p) => `    ${p.field.padEnd(w)}  ${p.hint}`).join('\n')}
-
-  Fill these in at src/legal/entity.js, then rebuild.
+  Set them in src/legal/entity.js and the wording returns on the next build.
 `);

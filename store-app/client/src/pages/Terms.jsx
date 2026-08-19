@@ -1,5 +1,5 @@
 import LegalLayout, { Clause, Sub, Defined } from './LegalLayout';
-import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION } from '../legal/entity';
+import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION, identityPhrase, postalLine } from '../legal/entity';
 
 /**
  * NOTE FOR THE OPERATOR
@@ -37,9 +37,8 @@ export default function Terms() {
 
       <Clause n={1} title="Parties">
         <Sub n="1.1">
-          This agreement is between <strong>{ENTITY.legalName}</strong>, a {ENTITY.type} registered
-          in {ENTITY.country} under registration number {ENTITY.registrationNumber}, with its
-          address at {ENTITY.address} (<strong>“we”</strong>, <strong>“us”</strong>,{' '}
+          This agreement is between <strong>{ENTITY.legalName}</strong>, a {ENTITY.type}{' '}
+          {identityPhrase()} (<strong>“we”</strong>, <strong>“us”</strong>,{' '}
           <strong>“our”</strong>), and the business that opens an account
           (<strong>“you”</strong>, <strong>“your”</strong>).
         </Sub>
@@ -548,9 +547,8 @@ export default function Terms() {
           to keep that address current, and a notice is treated as received on the day it is sent.
         </Sub>
         <Sub n="23.2">
-          Notices to us are sent to {ENTITY.email.general}, or in writing to {ENTITY.address}. A
-          notice ending this agreement or alleging a breach must also be sent in writing to that
-          address.
+          Notices to us are sent to {ENTITY.email.general}, and are treated as received on the
+          day they are sent.{ENTITY.address ? ` A notice ending this agreement or alleging a breach must also be sent in writing to ${ENTITY.address}.` : ' If you need to serve a notice at a postal address, for example to end this agreement or to allege a breach, ask us and we will give you one.'}
         </Sub>
       </Clause>
 
@@ -608,7 +606,7 @@ export default function Terms() {
 
       <Clause n={26} title="Contact">
         <Sub n="26.1">
-          {ENTITY.legalName}, {ENTITY.address}, {ENTITY.country}.
+          {postalLine()}.
         </Sub>
         <Sub n="26.2">
           Email{' '}

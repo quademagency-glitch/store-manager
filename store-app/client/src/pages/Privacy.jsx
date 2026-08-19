@@ -1,5 +1,5 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
-import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE } from '../legal/entity';
+import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../legal/entity';
 
 /**
  * NOTE FOR THE OPERATOR
@@ -40,17 +40,22 @@ export default function Privacy() {
 
       <Clause n={1} title="Who we are">
         <Sub n="1.1">
-          {ENTITY.legalName}, a {ENTITY.type} registered in {ENTITY.country} under registration
-          number {ENTITY.registrationNumber}, of {ENTITY.address}, operates {ENTITY.product}.
+          {ENTITY.legalName}, a {ENTITY.type} {identityPhrase()}, operates {ENTITY.product}.
         </Sub>
         <Sub n="1.2">
-          Our registration with the Data Protection Commission is{' '}
-          {ENTITY.dataControllerRegistration}.
-        </Sub>
-        <Sub n="1.3">
           For any question about this notice, or to exercise a right under clause 11, contact{' '}
           <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a>.
         </Sub>
+        {/* Last in the clause on purpose. It is the only sub-clause that can be
+            absent, and an omitted 1.2 would leave the document numbered 1.1,
+            1.3 (a gap in a contract reads as something having been quietly
+            removed). At the end, its absence just makes the clause shorter. */}
+        {ENTITY.dataControllerRegistration && (
+          <Sub n="1.3">
+            Our registration with the Data Protection Commission is{' '}
+            {ENTITY.dataControllerRegistration}.
+          </Sub>
+        )}
       </Clause>
 
       <Clause n={2} title="Two different relationships, and which one applies to you">

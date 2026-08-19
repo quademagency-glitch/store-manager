@@ -59,10 +59,11 @@ export default function LegalLayout({ title, version, effective, children }) {
 
         {missing.length > 0 && (
           <div role="alert" className="legal-todo">
-            <strong>Not ready to publish.</strong> These details are still
-            placeholders: {missing.join(', ')}. Until they are filled in,
-            this document does not identify a contracting party. See{' '}
-            <code>src/legal/entity.js</code>.
+            <strong>Published without {missing.length} identity detail
+            {missing.length === 1 ? '' : 's'}:</strong> {missing.join(', ')}.
+            The document reads correctly without them, so this is a nudge
+            rather than a fault. Set them in <code>src/legal/entity.js</code>{' '}
+            and the wording returns. Development only.
           </div>
         )}
 

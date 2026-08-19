@@ -1,5 +1,5 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
-import { ENTITY, DPA_VERSION, EFFECTIVE_DATE } from '../legal/entity';
+import { ENTITY, DPA_VERSION, EFFECTIVE_DATE, postalLine } from '../legal/entity';
 
 /**
  * NOTE FOR THE OPERATOR
@@ -279,8 +279,7 @@ export default function Dpa() {
       <Clause n={13} title="Contact">
         <Sub n="13.1">
           Data protection queries:{' '}
-          <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a>. Postal notices:{' '}
-          {ENTITY.legalName}, {ENTITY.address}, {ENTITY.country}.
+          <a href={`mailto:${ENTITY.email.privacy}`}>{ENTITY.email.privacy}</a>. {postalLine()}.
         </Sub>
       </Clause>
     </LegalLayout>

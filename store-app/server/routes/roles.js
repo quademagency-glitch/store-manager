@@ -2,6 +2,7 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { invalidateRoleCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
@@ -156,6 +157,10 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     // A permissions edit silently changes what EVERY user holding this role
     // can do, so the before/after set is the thing worth being able to
     // reconstruct — not just that "a role was edited".
+    // Editing permissions changes what EVERY user holding this role can do.
+    // Invalidating only the editor would leave everyone else on the old set.
+    invalidateRoleCache(roleId);
+
     logAuditEvent(req, AUDIT_ACTIONS.ROLE_UPDATED, 'role', roleId, {
       name: updatedRole?.name,
       permissions: updatedRole?.permissions,
@@ -201,6 +206,8 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     }
     
     if (count === 0) return res.status(404).json({ error: 'Role not found' });
+
+    invalidateRoleCache(roleId);
 
     logAuditEvent(req, AUDIT_ACTIONS.ROLE_DELETED, 'role', roleId);
 

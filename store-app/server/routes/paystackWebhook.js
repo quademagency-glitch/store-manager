@@ -24,6 +24,7 @@
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');
 const { verifyWebhookSignature } = require('../services/paystack');
+const { invalidateBusinessCache } = require('../middleware/authGuard');
 const logger = require('../utils/logger');
 
 // Postgres unique-violation. Both this handler and POST /verify-paystack insert
@@ -202,6 +203,12 @@ async function handleChargeSuccess(event, gateway, reqId) {
     .update({ status: 'active', subscription_plan_id: planId })
     .eq('id', businessId);
   if (bizError) throw bizError;
+
+  // The whole point of the payment, from the customer's side: they can use the
+  // app again. authGuard gates every route on a cached copy of
+  // businesses.status, so without this they keep hitting "your trial has ended"
+  // on whichever workers still hold the stale entry — having just paid.
+  invalidateBusinessCache(businessId);
 
   logger.info({ reqId, businessId, reference: data.reference }, '[WEBHOOK] Payment applied');
 }

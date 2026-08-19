@@ -2,6 +2,7 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { PG_UNIQUE_VIOLATION } = require('./paystackWebhook');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
@@ -323,6 +324,11 @@ router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req
       .update({ status: 'active' })
       .eq('id', business_id)
       .eq('status', 'banned');
+
+    // The business may have just gone from banned/expired to active. authGuard
+    // gates the entire app on the cached business_status, so without this the
+    // customer keeps seeing "your trial has ended" after paying.
+    invalidateBusinessCache(business_id);
 
     logAuditEvent(req, AUDIT_ACTIONS.SUBSCRIPTION_CHANGED, 'subscription', subscription?.id, {
       business_id,

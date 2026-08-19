@@ -14,7 +14,7 @@ const envSchema = z.object({
   // Default bumped to 5 min (300s) since local JWT verification makes the
   // cache the primary guard against repeated DB hits. invalidateUserCache()
   // still evicts immediately on role/ban changes.
-  AUTH_CACHE_TTL_MS: z.coerce.number().int().min(0).default(300000),
+  AUTH_CACHE_TTL_MS: z.coerce.number().int().min(0).default(60000),
 
   // Email
   RESEND_API_KEY: z.string().optional(),

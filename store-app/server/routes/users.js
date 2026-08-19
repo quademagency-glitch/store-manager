@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { invalidateUserCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
@@ -235,6 +236,9 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     // with different follow-up questions, and collapsing them makes the log
     // much harder to read after the fact. A single request can legitimately do
     // both, in which case both rows are written.
+    // Their permissions changed; the cached copy is now wrong on every worker.
+    invalidateUserCache(req.params.id);
+
     if (role_id && role_id !== existingUser?.role_id) {
       logAuditEvent(req, AUDIT_ACTIONS.USER_ROLE_CHANGED, 'user', req.params.id, {
         from_role_id: existingUser?.role_id ?? null,
@@ -355,6 +359,10 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     // audit_logs.actor_user_id is ON DELETE SET NULL with actor_email/role kept
     // as denormalised copies (migration 070), precisely so that deleting a user
     // cannot erase the record of what they did — or of who deleted them.
+    // Without this, a deleted user's cached entry keeps authorising requests
+    // until it expires — they are gone from the database but still logged in.
+    invalidateUserCache(req.params.id);
+
     logAuditEvent(req, AUDIT_ACTIONS.USER_DELETED, 'user', req.params.id, {
       deleted_user_business_id: userToDelete.business_id,
       deleted_user_role: userToDelete.roles?.name,

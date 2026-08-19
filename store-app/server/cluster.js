@@ -27,6 +27,7 @@ const cluster = require('node:cluster');
 const os = require('node:os');
 const path = require('node:path');
 const logger = require('./utils/logger');
+const cacheBus = require('./utils/cacheBus');
 
 // Railway typically gives 1-8 vCPUs depending on plan.
 // Default to all available cores, or override via WEB_CONCURRENCY env var.
@@ -63,6 +64,11 @@ if (cluster.isPrimary) {
   cluster.setupPrimary({
     exec: path.join(__dirname, 'worker.js'),
   });
+
+  // Workers cannot message each other directly; every cache invalidation has
+  // to be relayed through here. Without this, invalidating on the worker that
+  // handled a payment leaves the other N-1 serving the stale entry.
+  cacheBus.installPrimaryRelay();
 
   logger.info({ pid: process.pid, workers: WORKER_COUNT }, '🚀 Primary process started');
 

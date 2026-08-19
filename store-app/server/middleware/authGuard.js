@@ -3,6 +3,7 @@ const { verifyToken } = require('../utils/jwtVerifier');
 const { demoWriteRefusal, respondDemoRefusal } = require('./demoGuard');
 const logger = require('../utils/logger');
 const sentry = require('../instrument');
+const cacheBus = require('../utils/cacheBus');
 
 /**
  * Attach the caller's identity to the current Sentry scope so an error report
@@ -29,7 +30,11 @@ function tagSentryScope(req) {
 // served. Set AUTH_CACHE_TTL_MS=0 to disable, or replace with Redis for strict consistency.
 const userCache = new Map();
 const fetchPromises = new Map();
-const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '300000', 10); // Default: 5 minutes
+// Default 60s, down from 300s. The explicit invalidations above cover the
+// paths that matter, but anything they miss still goes stale — and an active
+// user still gets a ~98% cache hit rate at 60s, so the DB load barely moves
+// while worst-case staleness drops fivefold.
+const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '60000', 10);
 
 /**
  * Route mounts an owner can still reach after their free trial lapses.
@@ -59,13 +64,78 @@ if (CACHE_TTL_MS > 0) {
   }, 5 * 60 * 1000).unref();
 }
 
-/**
- * Invalidate cached data for a specific user.
- * Call this whenever a user's role, permissions, or ban status changes.
+/* ─── Cache invalidation ──────────────────────────────────────────────
+ *
+ * The exported functions clear THIS process, then publish so every other
+ * worker does the same. The *Local variants are what the bus handler calls,
+ * so a relayed message can never bounce back and loop.
+ *
+ * The cache is keyed by userId, but a role edit or a business status change
+ * affects an unknown set of users. Rather than maintain secondary indexes,
+ * those sweep the Map — it holds at most a few thousand entries and each
+ * carries role_id and business_id, so this is microseconds.
  */
-function invalidateUserCache(userId) {
+
+function invalidateUserLocal(userId) {
   userCache.delete(userId);
 }
+
+function invalidateRoleLocal(roleId) {
+  for (const [key, entry] of userCache) {
+    if (entry.user?.role_id === roleId) userCache.delete(key);
+  }
+}
+
+function invalidateBusinessLocal(businessId) {
+  for (const [key, entry] of userCache) {
+    if (entry.user?.business_id === businessId) userCache.delete(key);
+  }
+}
+
+function invalidateAllLocal() {
+  userCache.clear();
+}
+
+/**
+ * Invalidate cached data for a specific user.
+ * Call whenever a user's role, permissions, or status changes.
+ */
+function invalidateUserCache(userId) {
+  if (!userId) return;
+  invalidateUserLocal(userId);
+  cacheBus.publish({ kind: 'user', id: userId });
+}
+
+/**
+ * Invalidate everyone holding a role. Call after editing its permissions —
+ * that silently changes what every holder can do, and they would otherwise
+ * keep their old permissions until the cache expired.
+ */
+function invalidateRoleCache(roleId) {
+  if (!roleId) return;
+  invalidateRoleLocal(roleId);
+  cacheBus.publish({ kind: 'role', id: roleId });
+}
+
+/**
+ * Invalidate every user in a business. Call after changing businesses.status —
+ * authGuard gates the whole app on the cached copy of it, so without this a
+ * business that has just paid keeps seeing "your trial has ended".
+ */
+function invalidateBusinessCache(businessId) {
+  if (!businessId) return;
+  invalidateBusinessLocal(businessId);
+  cacheBus.publish({ kind: 'business', id: businessId });
+}
+
+// Apply invalidations relayed from other workers. Local-only, so no re-publish.
+cacheBus.subscribe((msg) => {
+  if (!msg || !msg.kind) return;
+  if (msg.kind === 'user') invalidateUserLocal(msg.id);
+  else if (msg.kind === 'role') invalidateRoleLocal(msg.id);
+  else if (msg.kind === 'business') invalidateBusinessLocal(msg.id);
+  else if (msg.kind === 'all') invalidateAllLocal();
+});
 
 async function authGuard(req, res, next) {
   try {
@@ -233,3 +303,7 @@ function attachLocation(req) {
 
 module.exports = authGuard;
 module.exports.invalidateUserCache = invalidateUserCache;
+module.exports.invalidateRoleCache = invalidateRoleCache;
+module.exports.invalidateBusinessCache = invalidateBusinessCache;
+// Test hook — lets a suite assert on cache contents without exporting the Map.
+module.exports._cacheSize = () => userCache.size;

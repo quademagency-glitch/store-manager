@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendInvoiceEmail } = require('../services/emailService');
 const { initializeTransaction } = require('../services/paystack');
@@ -428,6 +429,10 @@ router.post('/record-payment', authGuard, permissionCheck('manage_platform'), as
         .eq('id', business_id)
         .eq('status', 'banned');
     }
+
+    // Recording a payment can reactivate a banned business — see the note in
+    // routes/subscriptions.js.
+    invalidateBusinessCache(business_id);
 
     logAuditEvent(req, AUDIT_ACTIONS.PAYMENT_RECORDED, 'invoice', invoice?.id, {
       business_id,

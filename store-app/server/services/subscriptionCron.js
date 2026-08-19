@@ -10,6 +10,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { sendExpirationWarning, sendSuspensionNotice } = require('./emailService');
 const { claimCronRun, pruneCronRuns } = require('../utils/cronLock');
+const { invalidateBusinessCache } = require('../middleware/authGuard');
 const { logAuditEvent, systemAuditContext, pruneAuditLogs, AUDIT_ACTIONS } = require('../utils/auditLog');
 const sentry = require('../instrument');
 
@@ -85,6 +86,11 @@ async function processExpiredSubscriptions() {
         .from('businesses')
         .update({ status: 'banned' })
         .eq('id', sub.business_id);
+
+      // Runs in the PRIMARY, which holds no cache of its own — cacheBus.publish
+      // detects that and broadcasts straight to the workers. Without it a
+      // suspended business would keep working for up to the cache TTL.
+      invalidateBusinessCache(sub.business_id);
 
       // Automated, so the audit row has no human actor — see
       // systemAuditContext. Without this an owner locked out overnight has
@@ -193,6 +199,7 @@ async function processExpiredTrials() {
     }
 
     for (const biz of lapsed) {
+      invalidateBusinessCache(biz.id);
       logAuditEvent(
         systemAuditContext(biz.id, 'subscription-checks'),
         AUDIT_ACTIONS.BUSINESS_STATUS_CHANGED,

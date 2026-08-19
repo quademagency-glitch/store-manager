@@ -163,8 +163,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON request bodies
-app.use(express.json());
+// Parse JSON request bodies.
+//
+// The default limit is 100kb, which is the right ceiling for essentially every
+// route here — the biggest legitimate body is a sale's unit_ids array (~2,000
+// UUIDs at 100kb), and letterheads store Supabase Storage URLs rather than
+// base64 (LetterheadBuilder uploads client-side).
+//
+// Bulk import is the one genuine exception. /api/imports/preview takes the file
+// as multipart (10MB, see middleware/upload.js) but then the client holds the
+// parsed rows in memory and POSTs them back as a JSON array to /validate and
+// /commit — so a ~1,000-row product import is ~200kb of JSON and was being
+// rejected outright.
+//
+// This has to be ONE parser that varies its limit by path, not a second
+// express.json() mounted in front of those routes: body-parser 2.x skips when
+// onFinished.isFinished(req) is true, so once the global parser has drained the
+// stream any later parser is a silent no-op that leaves req.body untouched.
+const LARGE_JSON_PATHS = [/^\/api\/imports\/(validate|commit)$/];
+const jsonSmall = express.json({ limit: '100kb' });
+const jsonLarge = express.json({ limit: '20mb' });
+app.use((req, res, next) =>
+  (LARGE_JSON_PATHS.some((re) => re.test(req.path)) ? jsonLarge : jsonSmall)(req, res, next));
 
 // ============================================
 // Routes

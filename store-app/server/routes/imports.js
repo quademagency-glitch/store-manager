@@ -23,10 +23,18 @@ const COMMITTERS = {
 
 const ENTITY_TYPES = ['products', 'customers', 'suppliers'];
 
+// The 20mb body limit these two routes get in index.js is a byte ceiling, not
+// a work ceiling — 20mb of JSON is roughly 100k rows, and applyColumnMapping
+// plus the validators hold the whole set in memory while the committer walks it
+// row-by-row against Supabase. Without a count cap the failure just moves from
+// a clean 413 to an OOM or a request that runs for ten minutes.
+const MAX_IMPORT_ROWS = 20_000;
+
 const validateRequestSchema = z.object({
   entity_type: z.enum(ENTITY_TYPES),
   column_mapping: z.record(z.string(), z.string()),
-  rows: z.array(z.record(z.string(), z.any())),
+  rows: z.array(z.record(z.string(), z.any()))
+    .max(MAX_IMPORT_ROWS, `Import is limited to ${MAX_IMPORT_ROWS.toLocaleString()} rows at a time.`),
 });
 
 const commitRequestSchema = validateRequestSchema.extend({

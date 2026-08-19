@@ -50,6 +50,7 @@ const reportsRoutes = require('./routes/reports');
 const publicApiRoutes = require('./routes/publicApi');
 const integrationsRoutes = require('./routes/integrations');
 const { paystackWebhookHandler } = require('./routes/paystackWebhook');
+const { healthDeepHandler } = require('./routes/healthDeep');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
 const { isShuttingDown } = require('./utils/gracefulShutdown');
 const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -305,6 +306,23 @@ app.get('/api/health', (req, res) => {
     uptime: process.uptime(),
   });
 });
+
+// Deep health check (readiness) — pings dependencies and reports timings.
+//
+// Its own limiter, mounted before the general one so a deep check never
+// consumes an app-wide budget. The 10s result cache inside the handler is the
+// real anti-amplification control; this is belt-and-braces for a cold cache.
+//
+// Deliberately NOT railway.toml's healthcheckPath — see routes/healthDeep.js.
+const healthDeepLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 6,
+  keyGenerator: (req) => rateLimit.ipKeyGenerator(req.ip),
+  message: { error: 'Too many health checks' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.get('/api/health/deep', healthDeepLimiter, healthDeepHandler);
 
 // Auth routes
 app.use('/api/auth', authRoutes);

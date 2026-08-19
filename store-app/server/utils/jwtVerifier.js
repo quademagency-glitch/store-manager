@@ -147,4 +147,15 @@ async function warmUp() {
 // Warm up immediately when this module is loaded
 warmUp();
 
-module.exports = { verifyToken, getPublicKey };
+/**
+ * Whether a JWKS key is currently cached.
+ *
+ * Read-only, for the deep health check. This failure is silent and expensive:
+ * with no cached key, verifyToken falls back to a Supabase round-trip on every
+ * single request and latency multiplies with nothing in the logs to explain it.
+ */
+function getCachedKeyStatus() {
+  return Boolean(cachedPublicKey);
+}
+
+module.exports = { verifyToken, getPublicKey, getCachedKeyStatus };

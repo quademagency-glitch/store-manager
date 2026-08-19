@@ -10,6 +10,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { attemptDelivery } = require('./webhookDispatcher');
 const { claimCronRun } = require('../utils/cronLock');
+const sentry = require('../instrument');
 
 let cron;
 try {
@@ -42,6 +43,7 @@ async function sweepPendingDeliveries() {
       await attemptDelivery(delivery, endpoint);
     }
   } catch (err) {
+    sentry.captureException(err, { cron: 'webhook-retry-sweep' });
     logger.error({ err }, '[CRON] Error sweeping webhook deliveries');
   }
 }

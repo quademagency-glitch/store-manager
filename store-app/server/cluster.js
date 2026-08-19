@@ -114,8 +114,8 @@ if (cluster.isPrimary) {
   // CAVEAT: "primary" means "primary of this replica". If Railway is ever
   // scaled beyond 1 replica each replica runs its own primary and therefore its
   // own copy of these — duplicate suspension emails, and two concurrent
-  // teardown-and-reseed cycles of the demo tenant. Keep replicas at 1 until the
-  // cron_runs claim table is in place.
+  // teardown-and-reseed cycles of the demo tenant. The cron_runs advisory row
+  // (migration 069) is what makes that safe; until then keep replicas at 1.
   const { initSubscriptionCron } = require('./services/subscriptionCron');
   const { initWebhookRetryCron } = require('./services/webhookRetryCron');
   const { initDemoResetCron } = require('./services/demoResetCron');

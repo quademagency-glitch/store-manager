@@ -45,6 +45,12 @@ async function runDemoReset({ ifEmpty = false } = {}) {
   }
 }
 
+/**
+ * Returns a handle with stop(), so a graceful shutdown can cancel both the
+ * schedule and the pending startup reseed. That matters more here than for the
+ * other crons: runDemoReset tears down and rebuilds the demo tenant, and
+ * letting it start while the process is draining risks a half-built demo.
+ */
 function initDemoResetCron() {
   if (!isDemoEnabled()) {
     logger.info('Demo mode disabled (set DEMO_MODE_ENABLED=true to enable).');
@@ -70,6 +76,7 @@ function initDemoResetCron() {
   logger.info('✅ Demo reset cron initialized (rebuilds nightly at 02:00 GMT)');
 
   // Give the rest of the server a moment to come up before doing any work.
+  //
   // Claimed under a SEPARATE job name on a short bucket, not the day bucket the
   // nightly rebuild uses. Two replicas booting together must not both seed (that
   // would create two demo businesses), but a restart hours later still needs to

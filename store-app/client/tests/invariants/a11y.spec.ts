@@ -406,3 +406,48 @@ test('sidebar dropdowns close on Escape', async ({ page }) => {
   );
   expect(focused, 'Escape should return focus to the trigger, not to <body>').toBe(true);
 });
+
+test('a destructive confirmation does not open with the destructive button focused', async ({ page }) => {
+  // Accounting templates rather than customers: the customer fixture is empty
+  // in mock mode, so there is no row to delete and the dialog never opens.
+  // A test that cannot reach the thing it tests passes for the wrong reason.
+  await gotoApp(page, '/accounting-settings');
+
+  const del = page.getByRole('button', { name: /^delete /i }).first();
+  await del.waitFor();
+  const triggerName = (await del.getAttribute('aria-label')) ?? '';
+  await del.click();
+
+  const dialog = page.locator('.confirm-dialog[role="alertdialog"]');
+  await expect(dialog).toBeVisible();
+
+  // The dialog must announce itself with its title and message, not as a bare
+  // "dialog" with no context.
+  await expect(dialog).toHaveAttribute('aria-labelledby', /.+/);
+  await expect(dialog).toHaveAttribute('aria-describedby', /.+/);
+
+  // The whole point of a confirmation is that confirming takes a deliberate
+  // act. Opening with the destructive button focused meant a reflexive Enter
+  // deleted the record with no further interaction.
+  const focused = await page.evaluate(() => document.activeElement?.textContent?.trim());
+  expect(focused, 'Focus must start on the safe option, not the destructive one').not.toMatch(/^delete$/i);
+
+  // Tab must not leave the dialog.
+  const escaped: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    const inside = await page.evaluate(() =>
+      Boolean(document.activeElement?.closest('.confirm-dialog')),
+    );
+    if (!inside) escaped.push(String(i));
+  }
+  expect(escaped, 'Focus left the open confirmation while tabbing').toEqual([]);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  const returnedTo = await page.evaluate(
+    () => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent?.trim(),
+  );
+  expect(returnedTo, 'Focus was not returned to the trigger').toBe(triggerName);
+});

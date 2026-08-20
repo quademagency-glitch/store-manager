@@ -1,10 +1,15 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useId } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 
 const ConfirmContext = createContext(null);
 
 export function ConfirmProvider({ children }) {
   const [state, setState] = useState(null);
   const resolveRef = useRef(null);
+  const dialogRef = useRef(null);
+  const cancelRef = useRef(null);
+  const titleId = useId();
+  const messageId = useId();
 
   const confirm = useCallback(({ title, message, confirmText, cancelText, variant } = {}) => {
     return new Promise((resolve) => {
@@ -29,22 +34,41 @@ export function ConfirmProvider({ children }) {
     setState(null);
   }, []);
 
-  // Handle Escape key
-  useEffect(() => {
-    if (!state) return;
-    const handleKey = (e) => {
-      if (e.key === 'Escape') handleCancel();
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [state, handleCancel]);
+  // Escape, focus trap, focus in on open and back on close.
+  //
+  // Escape was already handled; the trap and the return were not, so Tab
+  // walked out of an open confirmation onto the page behind it. That matters
+  // more here than in an ordinary modal: this dialog is the last thing between
+  // a keystroke and a deletion, and a user who cannot tell where focus is
+  // cannot tell what Enter is about to do.
+  //
+  // Focus goes to CANCEL, not to the confirm button. It used to sit on confirm
+  // via autoFocus, which meant a delete dialog opened with "Delete" already
+  // focused and a reflexive Enter or Space destroyed data with no further
+  // interaction. The safe choice gets the focus; choosing the destructive one
+  // should take a deliberate movement.
+  useFocusTrap({
+    active: Boolean(state),
+    containerRef: dialogRef,
+    initialFocusRef: cancelRef,
+    onEscape: handleCancel,
+  });
 
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
       {state && (
         <div className="confirm-overlay" onClick={handleCancel}>
-          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true">
+          <div
+            ref={dialogRef}
+            className="confirm-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={messageId}
+            tabIndex={-1}
+          >
             <div className="confirm-header">
               <div className={`confirm-icon ${state.variant === 'danger' ? 'confirm-icon-danger' : 'confirm-icon-default'}`}>
                 {state.variant === 'danger' ? (
@@ -58,17 +82,16 @@ export function ConfirmProvider({ children }) {
                   </svg>
                 )}
               </div>
-              <h3 className="confirm-title">{state.title}</h3>
+              <h3 id={titleId} className="confirm-title">{state.title}</h3>
             </div>
-            <p className="confirm-message">{state.message}</p>
+            <p id={messageId} className="confirm-message">{state.message}</p>
             <div className="confirm-actions">
-              <button className="confirm-btn confirm-btn-cancel" onClick={handleCancel}>
+              <button ref={cancelRef} className="confirm-btn confirm-btn-cancel" onClick={handleCancel}>
                 {state.cancelText}
               </button>
               <button
                 className={`confirm-btn ${state.variant === 'danger' ? 'confirm-btn-danger' : 'confirm-btn-primary'}`}
                 onClick={handleConfirm}
-                autoFocus
               >
                 {state.confirmText}
               </button>

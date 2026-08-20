@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 /**
  * Public API is unchanged — { isOpen, onClose, title, children, size } —
@@ -15,20 +16,6 @@ import { createPortal } from 'react-dom';
  *    "modal-title", so two mounted modals produced duplicate ids and
  *    `aria-labelledby` resolved to whichever came first in the document.
  */
-/**
- * What Tab may land on inside a dialog. `[tabindex]:not([tabindex^='-'])`
- * rather than `[tabindex]`, because -1 means "focusable by script, not by
- * Tab" — including those would insert stops a real Tab press never makes.
- */
-const FOCUSABLE = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex^="-"])',
-].join(',');
-
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   const titleId = useId();
   const closeRef = useRef(null);
@@ -53,76 +40,14 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
     };
   }, [isOpen]);
 
-  // Escape to dismiss, and Tab kept inside the dialog.
-  //
-  // `aria-modal="true"` already hides the background from screen readers, but
-  // it does nothing to the tab order: without this, Tab walks straight out of
-  // an open dialog and onto the page behind it, where the user is editing a
-  // form they cannot see and the modal is still covering the screen. Sighted
-  // keyboard users get the worst of it — focus simply disappears.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onClose?.();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-
-      const root = dialogRef.current;
-      if (!root) return;
-
-      // Queried on every keypress rather than cached on open: modal bodies
-      // load data, disable buttons while saving, and reveal fields
-      // conditionally, so a list captured at open time goes stale immediately.
-      const focusable = [...root.querySelectorAll(FOCUSABLE)].filter(
-        (el) => el.offsetParent !== null || el === document.activeElement,
-      );
-      if (focusable.length === 0) {
-        // Nothing to focus: keep focus on the dialog rather than letting it
-        // escape to the page behind.
-        e.preventDefault();
-        root.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-
-      if (e.shiftKey && (active === first || !root.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (active === last || !root.contains(active))) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
-
-  // Move focus into the dialog on open, and put it back where it came from on
-  // close. Without the second half, dismissing a modal drops focus onto <body>
-  // and the next Tab starts again from the top of the page — so a keyboard
-  // user who opens a dialog from a table's last row is returned to the header
-  // and has to travel back through the whole page.
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const returnTo = document.activeElement;
-    closeRef.current?.focus();
-
-    return () => {
-      // Only if it is still there and still focusable: the trigger is often a
-      // row action, and the row may have been the thing the modal deleted.
-      if (returnTo instanceof HTMLElement && document.contains(returnTo)) {
-        returnTo.focus();
-      }
-    };
-  }, [isOpen]);
+  // Escape, focus trap, focus in on open and back on close. Shared with the
+  // confirm dialog so the two cannot drift apart.
+  useFocusTrap({
+    active: isOpen,
+    containerRef: dialogRef,
+    initialFocusRef: closeRef,
+    onEscape: onClose,
+  });
 
   if (!isOpen) return null;
 

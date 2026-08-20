@@ -1,5 +1,5 @@
 /* ============================================================
-   Shared UI primitives — PageHeader, EmptyState, Skeleton
+   Shared UI primitives, PageHeader, EmptyState, Skeleton
    ============================================================ */
 
 /* --- PageHeader ---------------------------------------------
@@ -27,8 +27,8 @@
 
 /* --- EmptyState ----------------------------------------------
    Generalised from `.cart-empty`, the one fully class-driven
-   empty state the app already had. Three tiers — icon, title,
-   hint — so an empty result reads as a state rather than as a
+   empty state the app already had. Three tiers, icon, title,
+   hint, so an empty result reads as a state rather than as a
    rendering failure. */
 .empty-state {
   display: flex;
@@ -99,8 +99,7 @@
   margin-top: var(--space-sm);
 }
 
-/* The empty-state card ruleset must never land on a bare <td> —
-   it was applied that way in six places. This variant is what
+/* The empty-state card ruleset must never land on a bare <td>, it was applied that way in six places. This variant is what
    <EmptyStateRow> renders instead. */
 .empty-state-row > td {
   padding: 0;
@@ -208,7 +207,7 @@
    Two variants, because the app genuinely had two looks worth
    keeping: a segmented `pill` control (Inventory, Loyalty) and an
    `underline` strip (Settings, UserProfile, CRM). Everything else
-   about them — spacing, focus, overflow, motion — is shared, which
+   about them, spacing, focus, overflow, motion, is shared, which
    is what the five hand-rolled versions could never agree on. */
 .tabs-wrap {
   position: relative;
@@ -237,7 +236,7 @@
 }
 
 /* Overflow affordance. The old `.inventory-tabs-wrap` faded to
-   rgba(0,0,0,.35) unconditionally — a black smudge over a light
+   rgba(0,0,0,.35) unconditionally, a black smudge over a light
    page. Fading to the canvas token works in both themes. */
 .tabs-wrap.is-fade-left::before,
 .tabs-wrap.is-fade-right::after {

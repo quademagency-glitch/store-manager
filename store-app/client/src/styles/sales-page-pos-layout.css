@@ -1,5 +1,5 @@
 /* ============================================
-   Sales Page — POS Layout
+   Sales Page, POS Layout
    ============================================ */
 .sales-page {
   display: grid;
@@ -344,7 +344,7 @@
 /* ─── Right Panel: Cart ─── */
 /* Sized by its contents, not by the viewport.
 
-   `.sales-page` is a 100vh grid, and grid items stretch by default — so this
+   `.sales-page` is a 100vh grid, and grid items stretch by default, so this
    panel was always exactly one screen tall no matter what was in it, and
    `.cart-items { flex: 1 }` inflated to fill whatever was left. An empty cart
    rendered a full-height column of dead space with the checkout footer pinned
@@ -408,7 +408,7 @@
    content. With the panel now hugging its contents, the basis has to come
    from the items themselves.
 
-   `min-height: 0` is what actually lets it scroll — a flex item's default
+   `min-height: 0` is what actually lets it scroll, a flex item's default
    `min-height: auto` refuses to shrink below its content, so the overflow
    would push the checkout footer off-screen instead of scrolling. */
 .cart-items {

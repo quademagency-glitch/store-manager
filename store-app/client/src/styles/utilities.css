@@ -1,10 +1,10 @@
 /* ============================================================
-   Utilities — layer(utilities), so a helper beats the page rule
+   Utilities, layer(utilities), so a helper beats the page rule
    it is being used to correct. That is the whole point of a
    utility, and it is why none of these need `!important`.
 
    Before this file the app used 89 spacing classes that were
-   never defined anywhere — `mb-lg`, `mt-xl`, `mt-sm`, `mr-sm`,
+   never defined anywhere, `mb-lg`, `mt-xl`, `mt-sm`, `mr-sm`,
    `ml-sm`, `p-xl`, `gap-md` and friends. They looked like a
    design-token utility scale (Tailwind's scale is numeric, so
    Tailwind never supplied them either) and silently did nothing,
@@ -14,7 +14,7 @@
 
    The colour and weight helpers below were previously scattered
    across data-table.css, buttons.css, platform-admin-dashboard.css
-   and loyalty.css — four page/component sheets each owning a
+   and loyalty.css, four page/component sheets each owning a
    slice of the same global vocabulary, with `.text-error` and
    `.text-warning` defined twice.
    ============================================================ */
@@ -183,7 +183,7 @@
 
 /* --- Layout ---------------------------------------------------
    Tailwind ships equivalents for most of these, but layer(tailwind)
-   sits *below* layout/components/pages — so `w-full` loses to any
+   sits *below* layout/components/pages, so `w-full` loses to any
    component rule that sets a width, which is exactly the situation
    these are replacing an inline style in. Declaring them here puts
    them in the layer where a utility belongs. */

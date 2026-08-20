@@ -4,7 +4,7 @@
    `:root` is the COMPLETE contract and carries the light theme,
    so a page painted before any JS runs is already valid and
    styled. `[data-theme="dark"]` may only OVERRIDE keys that
-   already exist here — never introduce new ones. That rule is
+   already exist here, never introduce new ones. That rule is
    enforced by tests/invariants/tokens.spec.ts, and it is what
    stopped `--shadow-glow` from silently vanishing in dark mode.
 
@@ -40,7 +40,7 @@
   --surface-2-border: rgba(15, 23, 42, 0.12);
   --surface-3-border: rgba(15, 23, 42, 0.14);
 
-  /* Ambient canvas wash — fixed and low-frequency, which is what
+  /* Ambient canvas wash, fixed and low-frequency, which is what
      keeps each tier's composite predictable. */
   --ambient-1: rgba(99, 102, 241, 0.06);
   --ambient-2: rgba(56, 189, 248, 0.05);
@@ -51,7 +51,7 @@
   --color-text-primary: #0f172a;   /* 17.24:1  AAA */
   --color-text-secondary: #334155; /* 10.00:1  AAA */
   --color-text-tertiary: #475569;  /*  7.32:1  AAA */
-  --color-text-muted: #5a6577;     /*  5.69:1  AA  — was #94a3b8 at 2.48:1 */
+  --color-text-muted: #5a6577;     /*  5.69:1  AA, was #94a3b8 at 2.48:1 */
 
   /* --- Borders -------------------------------------------------
      `--color-border` is decorative. Anything that must be
@@ -71,7 +71,7 @@
   --color-accent-secondary: #6366f1;
   --color-accent-hover: #3730a3;
   --color-accent-glow: rgba(67, 56, 202, 0.15);
-  --color-accent-text: #4338ca;    /* 7.63:1 — accent used AS text */
+  --color-accent-text: #4338ca;    /* 7.63:1, accent used AS text */
 
   /* --- Status --------------------------------------------------
      `-text` meets 4.5:1 for labels; `-solid` is the saturated
@@ -151,7 +151,7 @@
      Deprecated aliases.
 
      These names are referenced across the app but were never
-     defined anywhere — 80 references that silently invalidated
+     defined anywhere, 80 references that silently invalidated
      their whole declaration, which is why the "Adjust Stock"
      button rendered with no background and the search input was
      invisible. Defining them here heals every call site at once.
@@ -254,8 +254,7 @@ body {
 }
 
 /* Ambient canvas wash. Fixed, so it never scrolls and never
-   introduces high-frequency detail behind a glass surface —
-   which is precisely what makes tier-1 translucency readable
+   introduces high-frequency detail behind a glass surface, which is precisely what makes tier-1 translucency readable
    without spending a compositing layer on blur. */
 body::before {
   content: '';

@@ -249,7 +249,7 @@ export default function Dashboard() {
         {/* ─── Charts Grid ─── */}
         {hasPermission('view_analytics') && (
           <div className="dashboard-charts-grid">
-            {/* Sales Trend — Area Chart */}
+            {/* Sales Trend, Area Chart */}
             <div className="bento-card chart-card">
               <div className="bento-header">
                 <h3 className="bento-title">Sales Trend (7 Days)</h3>
@@ -278,7 +278,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Top Products — Bar Chart */}
+            {/* Top Products, Bar Chart */}
             <div className="bento-card chart-card">
               <div className="bento-header">
                 <h3 className="bento-title">Top Products (30 Days)</h3>
@@ -301,7 +301,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Inventory Health — Pie Chart */}
+            {/* Inventory Health, Pie Chart */}
             <div className="bento-card chart-card">
               <div className="bento-header">
                 <h3 className="bento-title">Inventory Health</h3>
@@ -332,7 +332,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Staff Performance — Bar Chart */}
+            {/* Staff Performance, Bar Chart */}
             <div className="bento-card chart-card">
               <div className="bento-header">
                 <h3 className="bento-title">Staff Performance (This Week)</h3>

@@ -8,7 +8,7 @@ const cacheBus = require('../utils/cacheBus');
 /**
  * Attach the caller's identity to the current Sentry scope so an error report
  * says which business and role hit it. Called from both the cache-hit and
- * fresh-fetch paths — it is the one place that runs on every authenticated
+ * fresh-fetch paths, it is the one place that runs on every authenticated
  * request. No-op when Sentry has no DSN.
  *
  * Sends the user id only: no email, no name. setupExpressErrorHandler gives
@@ -31,7 +31,7 @@ function tagSentryScope(req) {
 const userCache = new Map();
 const fetchPromises = new Map();
 // Default 60s, down from 300s. The explicit invalidations above cover the
-// paths that matter, but anything they miss still goes stale — and an active
+// paths that matter, but anything they miss still goes stale, and an active
 // user still gets a ~98% cache hit rate at 60s, so the DB load barely moves
 // while worst-case staleness drops fivefold.
 const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '60000', 10);
@@ -41,15 +41,15 @@ const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '60000', 10);
  *
  * A lapsed trial (`businesses.status = 'expired'`, set by subscriptionCron)
  * is not a ban. Banning locks the account out entirely, which for an unpaid
- * trial would mean the one thing the business most needs to do — pay — is the
+ * trial would mean the one thing the business most needs to do, pay, is the
  * one thing it cannot do. So the app narrows to exactly the surface required
  * to sign in, see what happened, and buy a plan.
  *
  * Matched against req.baseUrl, i.e. the path the router was mounted at.
  */
 const EXPIRED_TRIAL_ALLOWED_MOUNTS = new Set([
-  '/api/auth',          // /me, /logout — the session itself
-  '/api/businesses',    // /me, /me/setup-status — what the shell renders from
+  '/api/auth',          // /me, /logout, the session itself
+  '/api/businesses',    // /me, /me/setup-status, what the shell renders from
   '/api/subscriptions', // plans + Paystack checkout: the way out
   '/api/billing',       // invoices and receipts for the purchase
 ]);
@@ -72,7 +72,7 @@ if (CACHE_TTL_MS > 0) {
  *
  * The cache is keyed by userId, but a role edit or a business status change
  * affects an unknown set of users. Rather than maintain secondary indexes,
- * those sweep the Map — it holds at most a few thousand entries and each
+ * those sweep the Map, it holds at most a few thousand entries and each
  * carries role_id and business_id, so this is microseconds.
  */
 
@@ -107,8 +107,7 @@ function invalidateUserCache(userId) {
 }
 
 /**
- * Invalidate everyone holding a role. Call after editing its permissions —
- * that silently changes what every holder can do, and they would otherwise
+ * Invalidate everyone holding a role. Call after editing its permissions, * that silently changes what every holder can do, and they would otherwise
  * keep their old permissions until the cache expired.
  */
 function invalidateRoleCache(roleId) {
@@ -118,8 +117,7 @@ function invalidateRoleCache(roleId) {
 }
 
 /**
- * Invalidate every user in a business. Call after changing businesses.status —
- * authGuard gates the whole app on the cached copy of it, so without this a
+ * Invalidate every user in a business. Call after changing businesses.status, * authGuard gates the whole app on the cached copy of it, so without this a
  * business that has just paid keeps seeing "your trial has ended".
  */
 function invalidateBusinessCache(businessId) {
@@ -157,7 +155,7 @@ async function authGuard(req, res, next) {
 
     // ── Step 1: Verify JWT locally (pure crypto, ~0.1ms) ──────────
     // Previously: called supabaseAdmin.auth.getUser(token) which was an
-    // HTTP round-trip to Supabase (~300-500ms) — the #1 bottleneck at scale.
+    // HTTP round-trip to Supabase (~300-500ms), the #1 bottleneck at scale.
     let userId;
     try {
       const claims = await verifyToken(token);
@@ -305,5 +303,5 @@ module.exports = authGuard;
 module.exports.invalidateUserCache = invalidateUserCache;
 module.exports.invalidateRoleCache = invalidateRoleCache;
 module.exports.invalidateBusinessCache = invalidateBusinessCache;
-// Test hook — lets a suite assert on cache contents without exporting the Map.
+// Test hook, lets a suite assert on cache contents without exporting the Map.
 module.exports._cacheSize = () => userCache.size;

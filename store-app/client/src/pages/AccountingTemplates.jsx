@@ -218,7 +218,7 @@ export default function AccountingTemplates() {
     setSubmissionResult(null);
   };
 
-  // Safe conditional logic evaluator — no eval/new Function
+  // Safe conditional logic evaluator, no eval/new Function
   const evaluateCondition = (conditionStr) => {
     if (!conditionStr) return true;
     try {

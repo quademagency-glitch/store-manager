@@ -240,7 +240,7 @@ export default function TillAccount() {
       ) : (
         /* ADVANCED LEDGER VIEW */
         <div id="till-print-area" className="flex-1 w-full space-y-12">
-          {/* Letterhead — visible only in print */}
+          {/* Letterhead, visible only in print */}
           <div className="print-only">
             <LetterheadRenderer
               letterhead={business?.letterhead}

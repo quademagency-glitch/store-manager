@@ -2,8 +2,7 @@ const { supabaseAdmin } = require('../../db/supabase');
 
 /**
  * Commits one validated product row: inserts the product, and if an
- * opening_quantity + location_id were mapped, sets aggregate opening stock —
- * the exact same sequence as the existing single-product "initial stock"
+ * opening_quantity + location_id were mapped, sets aggregate opening stock, * the exact same sequence as the existing single-product "initial stock"
  * flow in routes/products.js (insert product -> product_inventory -> a
  * RECEIPT stock_movement). No QR/unit-level tracking is touched.
  */
@@ -25,7 +24,7 @@ async function commitProductRow(row, { businessId, userId, importBatchId }) {
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error(`A product with SKU '${row.sku}' already exists (race condition with a concurrent import — please retry this row).`);
+      throw new Error(`A product with SKU '${row.sku}' already exists (race condition with a concurrent import, please retry this row).`);
     }
     throw error;
   }
@@ -52,7 +51,7 @@ async function commitProductRow(row, { businessId, userId, importBatchId }) {
         quantity_change: row.opening_quantity,
         movement_type: 'RECEIPT',
         reference_id: importBatchId,
-        notes: 'Opening stock — bulk import',
+        notes: 'Opening stock, bulk import',
       });
   }
 

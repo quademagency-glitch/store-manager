@@ -1,6 +1,6 @@
 // Per-business branded login: visiting acme-hardware.app.quaderp.app shows
 // a login page branded for that business. quaderp.app itself is the public
-// landing site (a separate app/deployment) — the ERP lives one level down,
+// landing site (a separate app/deployment), the ERP lives one level down,
 // at app.quaderp.app, so business slugs nest under that, not the apex.
 // Detection is scoped strictly to our own base domain so Vercel preview
 // URLs (*.vercel.app) and localhost are never mistaken for a business

@@ -3,14 +3,14 @@
 
    Lifted out of a <style dangerouslySetInnerHTML> inside the
    component. That block was unlayered CSS, which outranks *every*
-   cascade layer — tokens through a11y — so a single page was
+   cascade layer, tokens through a11y, so a single page was
    quietly sitting on top of the entire design system, but only
    while it happened to be mounted. `.btn-gradient` was defined
    there and disappeared app-wide on unmount; `.premium-card` is
    also defined by platform-admin-communications.css and was being
    overridden globally the moment this page rendered.
 
-   Two selectors are now scoped to `.crm-comms-container` — the
+   Two selectors are now scoped to `.crm-comms-container`, the
    ones whose markup lives inside it. The form and modal classes
    deliberately are not: Modal renders through a portal, so its
    content is not a descendant of the container and scoping those
@@ -94,7 +94,7 @@
   color: var(--color-text-primary);
 }
 
-/* Border colour only — the ring comes from a11y.css. */
+/* Border colour only, the ring comes from a11y.css. */
 .sleek-input:focus {
   border-color: var(--color-border-focus);
 }

@@ -1,5 +1,5 @@
 /* ============================================================
-   Guided product tour — spotlight + floating tooltip.
+   Guided product tour, spotlight + floating tooltip.
 
    Rendered into a portal on document.body, so nothing here can
    rely on inheriting from the app shell. Every colour comes
@@ -10,7 +10,7 @@
   position: fixed;
   inset: 0;
   z-index: 2000;
-  /* The layer itself must not eat clicks — only the card does. The dimming
+  /* The layer itself must not eat clicks, only the card does. The dimming
      is painted by the spotlight's box-shadow, so there is no full-screen
      surface here to intercept them. */
   pointer-events: none;
@@ -45,7 +45,7 @@
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   /* Near-solid rather than a true glass tier. The card floats over whatever
-     page happens to be underneath — a dense dashboard, a table — and at the
+     page happens to be underneath, a dense dashboard, a table, and at the
      usual glass opacity that content reads straight through the step text.
      The blur is kept for the edge treatment. */
   background: color-mix(in srgb, var(--surface-1-solid) 96%, transparent);
@@ -65,7 +65,7 @@
 /* The card takes tabIndex={-1} so focus can be moved into it when a step
    opens, making the tour keyboard-operable from the first keypress. That is
    programmatic focus, which does not match :focus-visible, so no ring is
-   drawn and there is nothing to suppress — an `outline: none` here would
+   drawn and there is nothing to suppress, an `outline: none` here would
    only remove the indicator in the case where it is genuinely wanted. */
 
 @keyframes tour-card-in {

@@ -3,7 +3,7 @@
  *
  * THE PROBLEM THIS SOLVES: roughly 70 `console.error` calls across the app are
  * wrapped in `if (import.meta.env.DEV)`. That correctly keeps noise out of the
- * production console — but nothing replaced them, so in production every one of
+ * production console, but nothing replaced them, so in production every one of
  * those errors vanished completely. A user hitting a broken page produced no
  * signal anywhere.
  *
@@ -37,7 +37,7 @@ export function initErrorReporting() {
         // only, once the user is known.
         sendDefaultPii: false,
         beforeSend(event) {
-          // Never ship request bodies — the auth screens post credentials.
+          // Never ship request bodies, the auth screens post credentials.
           if (event.request) delete event.request.data;
           return event;
         },
@@ -59,7 +59,7 @@ export function initErrorReporting() {
  *
  * @param {unknown} error
  * @param {object} [context] Extra detail (endpoint, page, ids). Keep it free of
- *   anything sensitive — it is attached verbatim.
+ *   anything sensitive, it is attached verbatim.
  */
 export function reportError(error, context) {
   if (import.meta.env.DEV) {
@@ -92,5 +92,5 @@ export function setUserContext(user) {
   else initErrorReporting()?.then(apply);
 }
 
-/** True when a DSN is configured — lets UI offer a "Report issue" affordance. */
+/** True when a DSN is configured, lets UI offer a "Report issue" affordance. */
 export const errorReportingEnabled = Boolean(DSN);

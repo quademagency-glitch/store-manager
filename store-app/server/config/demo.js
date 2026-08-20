@@ -1,5 +1,5 @@
 /**
- * Demo tenant identity — the two values the sign-in route needs, and nothing
+ * Demo tenant identity, the two values the sign-in route needs, and nothing
  * else.
  *
  * Separate from scripts/seed-demo-data.js on purpose. routes/auth.js only
@@ -7,7 +7,7 @@
  * module into the boot path: seeder → demoResetCron → auth → index. The
  * seeder requires `pg`, so every production boot then depended on a package
  * that is only ever needed to rebuild the sandbox. That took the API down on
- * deploy — the process exited on `Cannot find module 'pg'` before it could
+ * deploy, the process exited on `Cannot find module 'pg'` before it could
  * listen, and Railway held the previous build.
  *
  * Nothing here imports anything, which is the point.

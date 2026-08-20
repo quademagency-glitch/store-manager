@@ -4,7 +4,7 @@ import LetterheadRenderer, { LetterheadFooter } from './LetterheadRenderer';
 const _defaultFallbackRef = `GRN-${Date.now().toString(36).toUpperCase()}`;
 
 /**
- * PurchaseOrderDocument — Printable Goods Received Note / Purchase Order document.
+ * PurchaseOrderDocument, Printable Goods Received Note / Purchase Order document.
  * 
  * Future-proofed: accepts both simple stock-in data AND full PO workflow data.
  * When a PO workflow is built later, pass the PO object with supplier, PO number, etc.

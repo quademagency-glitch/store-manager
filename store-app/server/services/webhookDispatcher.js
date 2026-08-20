@@ -19,7 +19,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Creating the webhook_deliveries row has been observed to intermittently
 // fail with a spurious RLS error from Supabase's REST layer (service_role
 // has BYPASSRLS at the Postgres role level, and the exact same insert always
-// succeeds when retried moments later — this looks like a transient
+// succeeds when retried moments later, this looks like a transient
 // PostgREST-side inconsistency, not a real authorization failure). Without
 // a retry here, that flakiness would silently drop the event entirely since
 // there'd be no delivery row for the cron sweep to pick up. 3 attempts with
@@ -42,7 +42,7 @@ async function insertDeliveryWithRetry(insertPayload, attempts = 3) {
 
 /**
  * Fan out an event to every active webhook endpoint on a business that's
- * subscribed to it. Fire-and-forget from the caller's perspective — never
+ * subscribed to it. Fire-and-forget from the caller's perspective, never
  * await this in a request handler's critical path.
  */
 async function dispatchWebhook(businessId, event, payload) {

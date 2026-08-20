@@ -1,7 +1,7 @@
 const request = require('supertest');
 const { buildMockSupabase } = require('./helpers/mockSupabase');
 
-// A Business Admin's real seed permissions (migration 008) — notably no manage_platform.
+// A Business Admin's real seed permissions (migration 008), notably no manage_platform.
 const BUSINESS_ADMIN_PERMISSIONS = [
   'manage_business', 'manage_users', 'manage_products',
   'view_sales', 'create_sales', 'manage_sales',

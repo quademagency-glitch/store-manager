@@ -135,7 +135,7 @@ export default function UserProfile() {
 
       <div className="content-card" style={{ padding: '0' }}>
         {/* Four buttons of duplicated inline style, keyed off
-            `--color-primary` — a property that was never defined, so the
+            `--color-primary`, a property that was never defined, so the
             active indicator resolved to nothing and every tab looked
             inactive. */}
         <Tabs

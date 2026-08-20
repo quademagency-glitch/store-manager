@@ -5,7 +5,7 @@ export const API_BASE = 'https://app.quaderp.app/api';
 
 const REQUEST_TIMEOUT_MS = 12000;
 
-// Thrown when the server returns 401 — caller should unlink and redirect to setup
+// Thrown when the server returns 401, caller should unlink and redirect to setup
 export class AuthExpiredError extends Error {
   constructor() {
     super('Session expired. Please re-link the scanner.');
@@ -97,7 +97,7 @@ export const pushScan = async (payload: any) => {
 
 export const cancelScan = async () => {
   const token = await getToken();
-  if (!token) return; // Silent no-op — nothing to cancel
+  if (!token) return; // Silent no-op, nothing to cancel
 
   try {
     const response = await fetchWithTimeout(`${API_BASE}/scanner/cancel-scan`, {
@@ -107,7 +107,7 @@ export const cancelScan = async () => {
     });
     return handleResponse(response);
   } catch {
-    // Best-effort — don't block the caller if cancellation fails
+    // Best-effort, don't block the caller if cancellation fails
   }
 };
 

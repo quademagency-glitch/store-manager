@@ -64,7 +64,7 @@ export default function ProfitLoss() {
     toast.success('P&L exported!');
   };
 
-  /* Magnitude only — the statement shows sign through its own labelling
+  /* Magnitude only, the statement shows sign through its own labelling
      (a "Less: Cost of Goods Sold" row is understood to subtract). */
   const fmt = (v) => fmtCurrency(Math.abs(Number(v || 0)));
 

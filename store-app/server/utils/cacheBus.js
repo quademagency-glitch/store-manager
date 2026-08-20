@@ -8,15 +8,15 @@
  *
  * The user-visible symptom is not abstract. A business pays, the webhook flips
  * businesses.status to 'active', and the customer keeps seeing "Your free trial
- * has ended" — on some requests but not others, depending which worker answered
- * — until the cache expires. They have paid and the app still says no.
+ * has ended", on some requests but not others, depending which worker answered
+ *, until the cache expires. They have paid and the app still says no.
  *
  * DELIBERATELY KNOWS NOTHING ABOUT CACHES. authGuard subscribes to it rather
  * than the other way round, so there is no require cycle, and apiKeyGuard can
  * subscribe later for revoked API keys without touching this file.
  *
  * Honest about what it is: best-effort, fire-and-forget, no durability and no
- * replay. A worker forked after an invalidation never sees it — which is
+ * replay. A worker forked after an invalidation never sees it, which is
  * harmless, because it starts with an empty cache. This is a stopgap that
  * removes the common case; Redis is the answer if strict consistency is ever
  * required.
@@ -46,7 +46,7 @@ function broadcast(msg) {
  * The isPrimary branch is the piece most likely to be dropped by someone
  * simplifying this: the cron jobs run in the PRIMARY, which has no userCache of
  * its own and cannot process.send() to itself. Without it, the nightly
- * suspension and trial-expiry sweeps would invalidate nothing at all — the
+ * suspension and trial-expiry sweeps would invalidate nothing at all, the
  * case with the longest-lived staleness.
  */
 function publish(msg) {
@@ -54,7 +54,7 @@ function publish(msg) {
 
   // Gate on cluster.isWorker, NOT on process.send existing. Jest runs its
   // tests in IPC-connected child processes, so process.send is defined there
-  // too — publishing on that basis would inject unexpected messages into
+  // too, publishing on that basis would inject unexpected messages into
   // Jest's own worker protocol. Only a real cluster worker has anywhere
   // meaningful to send this.
   if (!cluster.isWorker || typeof process.send !== 'function') return;

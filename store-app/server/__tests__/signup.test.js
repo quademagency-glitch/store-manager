@@ -1,5 +1,5 @@
 /**
- * POST /api/auth/signup — self-service free trial.
+ * POST /api/auth/signup, self-service free trial.
  *
  * The happy path is covered thinly (it is mostly Supabase calls), and the
  * failure paths thickly, because that is where the damage is: a signup that
@@ -55,7 +55,7 @@ const postSignup = (body) => request(app).post('/api/auth/signup').send(body);
 /**
  * The limiter allows 5/hour per IP and its store outlives individual tests.
  * The app does not `trust proxy`, so every request in the suite arrives from
- * the same loopback address and shares one counter — hence the reset rather
+ * the same loopback address and shares one counter, hence the reset rather
  * than a spread of fake client IPs. One test below deliberately does not
  * reset, so the limit itself stays covered.
  */
@@ -91,7 +91,7 @@ beforeEach(async () => {
   useMock(happyPathOverrides());
 });
 
-describe('POST /api/auth/signup — validation', () => {
+describe('POST /api/auth/signup, validation', () => {
   it('rejects a missing body', async () => {
     const res = await postSignup({});
     expect(res.status).toBe(400);
@@ -122,7 +122,7 @@ describe('POST /api/auth/signup — validation', () => {
   });
 });
 
-describe('POST /api/auth/signup — happy path', () => {
+describe('POST /api/auth/signup, happy path', () => {
   it('creates a trialing business with a 30-day trial and returns the slug', async () => {
     const res = await postSignup(VALID_BODY);
 
@@ -157,7 +157,7 @@ describe('POST /api/auth/signup — happy path', () => {
   });
 });
 
-describe('POST /api/auth/signup — duplicates', () => {
+describe('POST /api/auth/signup, duplicates', () => {
   it('rejects an email that already has a profile, before creating anything', async () => {
     useMock({
       ...happyPathOverrides(),
@@ -172,7 +172,7 @@ describe('POST /api/auth/signup — duplicates', () => {
   });
 });
 
-describe('POST /api/auth/signup — rollback', () => {
+describe('POST /api/auth/signup, rollback', () => {
   it('deletes the business when the auth user cannot be created', async () => {
     useMock(happyPathOverrides());
     mockSupabase.auth.admin.generateLink.mockResolvedValueOnce({
@@ -193,7 +193,7 @@ describe('POST /api/auth/signup — rollback', () => {
       ...happyPathOverrides(),
       users: [
         { data: null, error: null },
-        // handle_new_user() filed them under "Pending Assignment" instead —
+        // handle_new_user() filed them under "Pending Assignment" instead, 
         // the exact failure that motivates creating the business first.
         { data: { ...OWNER_PROFILE, business_id: 'some-other-business' }, error: null },
       ],
@@ -221,7 +221,7 @@ describe('POST /api/auth/signup — rollback', () => {
   });
 });
 
-describe('POST /api/auth/signup — missing plan', () => {
+describe('POST /api/auth/signup, missing plan', () => {
   it('still creates the trial when the Single Branch plan is not configured', async () => {
     useMock({ ...happyPathOverrides(), platform_plans: { data: null, error: null } });
 
@@ -239,7 +239,7 @@ describe('POST /api/auth/signup — missing plan', () => {
  * to a bare /signup and the page hardcoded Single Branch, so anyone choosing
  * Multi-Branch was quietly signed up for the cheaper plan.
  */
-describe('POST /api/auth/signup — plan selection', () => {
+describe('POST /api/auth/signup, plan selection', () => {
   it('attaches the requested plan', async () => {
     const res = await postSignup({ ...VALID_BODY, plan: 'Multi-Branch' });
 
@@ -275,7 +275,7 @@ describe('POST /api/auth/signup — plan selection', () => {
      This asserts the half that is testable here: a plan the query did not
      return cannot be attached, however the URL asks for it. The other half is
      the `.in(SELF_SERVICE_PLANS)` filter that keeps Franchise out of that
-     result in the first place, and the shared mock cannot check it — it
+     result in the first place, and the shared mock cannot check it, it
      ignores filter arguments and replays whatever fixture it was given, so
      adding a Franchise row here would prove the mock's behaviour, not the
      route's. */
@@ -287,9 +287,9 @@ describe('POST /api/auth/signup — plan selection', () => {
   });
 });
 
-describe('POST /api/auth/signup — rate limiting', () => {
+describe('POST /api/auth/signup, rate limiting', () => {
   // Runs last and does not reset mid-way, so it spends the real budget.
-  // Only the limiter is under test here — the first five may legitimately
+  // Only the limiter is under test here, the first five may legitimately
   // 201 or 409 depending on how far the shared mock's cursors have advanced;
   // what matters is that none of them is refused and the sixth is.
   it('starts refusing after 5 attempts from one address', async () => {

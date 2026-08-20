@@ -87,12 +87,12 @@ async function processExpiredSubscriptions() {
         .update({ status: 'banned' })
         .eq('id', sub.business_id);
 
-      // Runs in the PRIMARY, which holds no cache of its own — cacheBus.publish
+      // Runs in the PRIMARY, which holds no cache of its own, cacheBus.publish
       // detects that and broadcasts straight to the workers. Without it a
       // suspended business would keep working for up to the cache TTL.
       invalidateBusinessCache(sub.business_id);
 
-      // Automated, so the audit row has no human actor — see
+      // Automated, so the audit row has no human actor, see
       // systemAuditContext. Without this an owner locked out overnight has
       // nothing showing why.
       logAuditEvent(
@@ -167,7 +167,7 @@ async function sendExpirationWarnings() {
 /**
  * Lapse self-service free trials whose clock has run out.
  *
- * These have no `business_subscriptions` row at all — nobody has paid, so
+ * These have no `business_subscriptions` row at all, nobody has paid, so
  * there is nothing to bill against. The trial lives entirely on the business
  * row (`status = 'trialing'`, `trial_ends_at`), so it has to be swept
  * separately from the subscription checks above.
@@ -230,7 +230,7 @@ async function runSubscriptionChecks() {
 }
 
 /**
- * Initialize the cron job — runs daily at midnight.
+ * Initialize the cron job, runs daily at midnight.
  *
  * Returns a handle with stop(), so a graceful shutdown can cancel both the
  * schedule and the pending startup run instead of letting them fire into a
@@ -265,7 +265,7 @@ function initSubscriptionCron() {
   logger.info('✅ Subscription cron job initialized (runs daily at midnight GMT)');
 
   // Also run shortly after startup. NOTE: this now no-ops when the day's run
-  // has already happened — previously every redeploy triggered a fresh full
+  // has already happened, previously every redeploy triggered a fresh full
   // check. That is the intended trade for not emailing customers twice.
   const startupTimer = setTimeout(() => {
     runIfClaimed('startup');

@@ -108,7 +108,7 @@ describe('installGracefulShutdown', () => {
 
     expect(onShutdownRan).toBe(true);
     expect(exitSpy).toHaveBeenCalledWith(0);
-    // Generous bound — the point is "not 65 seconds", not a precise number.
+    // Generous bound, the point is "not 65 seconds", not a precise number.
     expect(elapsed).toBeLessThan(3000);
   });
 

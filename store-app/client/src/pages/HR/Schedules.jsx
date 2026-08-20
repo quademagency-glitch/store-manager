@@ -46,7 +46,7 @@ export default function Schedules() {
   }, [fetchSchedules, weekStart, weekEnd, selectedLocation]);
 
   // Mount-only: loads the pickers and seeds a default branch. The
-  // `!selectedLocation` guard reads the mount-time value on purpose — that is
+  // `!selectedLocation` guard reads the mount-time value on purpose, that is
   // exactly when "has the user chosen a branch yet?" is being asked. Adding
   // selectedLocation to the deps would refetch users and locations every time
   // the user switches branch; the effect above already handles refetching the

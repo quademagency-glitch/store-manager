@@ -1,13 +1,13 @@
 /* ============================================================
-   Responsive — layer(responsive)
+   Responsive, layer(responsive)
 
    The single home for breakpoint overrides. This file used to be
    half the story: `mobile-overrides.css` carried the other half
    and was imported after it purely so its rules would win, which
    is what the cascade layer now does structurally. Merging them
    removed 42 rules that were byte-identical between the two, and
-   moved ~110 lines of card components — which had no media query
-   at all — into layer(components) (mobile-card-views.css).
+   moved ~110 lines of card components, which had no media query
+   at all, into layer(components) (mobile-card-views.css).
 
    Blocks run **widest to narrowest**, so a narrower breakpoint
    always refines a wider one. The old files were ordered
@@ -18,7 +18,7 @@
    Breakpoints are 1280 / 1024 / 768 / 480 and nothing else.
    ============================================================ */
 
-/* ═══ ≤1280px — compact desktop / small laptop ═══
+/* ═══ ≤1280px, compact desktop / small laptop ═══
    Closes the dead zone between the mobile drawer (≤768px) and full
    desktop. Previously a 280px rail plus 2×3.5rem padding left only
    ~888px of usable width at 1280px for tables designed for 1100px+. */
@@ -32,7 +32,7 @@
   }
 }
 
-/* ═══ ≤1024px — tablet ═══ */
+/* ═══ ≤1024px, tablet ═══ */
 @media (max-width: 1024px) {
   /* 200px, down from the 224px set above.
      The sidebar is a fixed column that every page pays for, and in this band
@@ -60,7 +60,7 @@
   }
 }
 
-/* ═══ ≤768px — mobile ═══ */
+/* ═══ ≤768px, mobile ═══ */
 @media (max-width: 768px) {
   /* ── Shell ──
      The grid collapses to one column and the sidebar leaves the
@@ -431,9 +431,9 @@
   }
 }
 
-/* ═══ ≤480px — small phones ═══ */
+/* ═══ ≤480px, small phones ═══ */
 @media (max-width: 480px) {
-  /* ── Layout padding — very tight ── */
+  /* ── Layout padding, very tight ── */
   .dashboard-main,
   .admin-main-content {
     padding: var(--space-xs) var(--space-sm);
@@ -460,7 +460,7 @@
     gap: var(--space-sm);
   }
 
-  /* ── Toolbar — full stack ── */
+  /* ── Toolbar, full stack ── */
   .toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -472,7 +472,7 @@
     max-width: 100%;
   }
 
-  /* ── Panels and tables — minimum breathing room ── */
+  /* ── Panels and tables, minimum breathing room ── */
   .glass-panel {
     padding: var(--space-sm);
     border-radius: var(--radius-lg);

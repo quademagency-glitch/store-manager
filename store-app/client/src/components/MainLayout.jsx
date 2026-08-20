@@ -238,8 +238,7 @@ export default function MainLayout() {
 
      The map holds *explicit* choices only. A section with no entry falls back
      to "collapsed unless it contains the current route" (see the nav below),
-     which is what keeps the rail short without ever hiding where you are —
-     fully expanded the nav runs ~2400px against ~660px of visible track, so
+     which is what keeps the rail short without ever hiding where you are, fully expanded the nav runs ~2400px against ~660px of visible track, so
      everything past Accounting needed a scroll to reach. */
   const SECTIONS_KEY = 'sidebar-sections';
 
@@ -247,7 +246,7 @@ export default function MainLayout() {
     try {
       return JSON.parse(localStorage.getItem(SECTIONS_KEY)) ?? {};
     } catch {
-      // Corrupt or unavailable (private mode) — fall back to the defaults.
+      // Corrupt or unavailable (private mode), fall back to the defaults.
       return {};
     }
   });
@@ -267,7 +266,7 @@ export default function MainLayout() {
     });
   };
 
-  // Dynamically build navigation groups — organized by ERP module
+  // Dynamically build navigation groups, organized by ERP module
   const navGroups = useMemo(() => {
     const groups = [];
 
@@ -385,14 +384,14 @@ export default function MainLayout() {
   }, [hasPermission]);
 
   /* The account menu hangs off the chip in the sidebar footer, which sits at
-     the *bottom* of a 100dvh sidebar — so it has to open upward.
+     the *bottom* of a 100dvh sidebar, so it has to open upward.
 
      It used to read `top: 60px` for every non-sales role, left over from the
      admin top-bar layout this component no longer renders. Anchored to a chip
      at the bottom of the screen, that dropped all 334px of the menu below the
      fold: Settings and Sign Out were unreachable at any viewport height.
 
-     `left/right: 0` rather than a fixed 240px width — the sidebar narrows to
+     `left/right: 0` rather than a fixed 240px width, the sidebar narrows to
      224px below 1440px, where a fixed width overhung the left screen edge. */
   const renderUserMenu = () => (
     <div className={`user-dropdown-menu ${isUserMenuOpen ? 'open' : ''}`} style={{
@@ -495,15 +494,14 @@ export default function MainLayout() {
     <div className="dashboard-page">
       {/* First thing Tab reaches, and invisible until it is focused.
           The sidebar carries 39 navigation links, so without this a keyboard
-          or screen-reader user pressed Tab 39 times to reach the page content
-          — on every single navigation, since the sidebar re-renders each time.
+          or screen-reader user pressed Tab 39 times to reach the page content, on every single navigation, since the sidebar re-renders each time.
           It is the single highest-value control on the page for the people who
           need it, and it costs one element. */}
       <a href="#main-content" className="skip-link">Skip to main content</a>
 
       {/* ── Mobile top bar (visible only on small screens via CSS) ── */}
       <header className="mobile-sidebar-topbar">
-        {/* One className, not two — a second `className` prop silently wins in
+        {/* One className, not two, a second `className` prop silently wins in
             JSX, and it was dropping `mobile-menu-toggle` (which is what sets
             `display: none` outside the ≤768px breakpoint). Harmless only
             because `.mobile-sidebar-topbar` is hidden on desktop too. */}
@@ -604,7 +602,7 @@ export default function MainLayout() {
             /* Most tour targets live inside a section that is collapsed by
                default, so the element the tooltip is looking for is not in
                the DOM at all when its step begins. Forcing the owning section
-               open here is what makes the step findable — and it overrides a
+               open here is what makes the step findable, and it overrides a
                stored "collapsed" choice, which is restored the moment the
                tour ends because nothing was written to collapsedSections. */
             const holdsTourTarget = isTourActive && group.items.some(item => item.tour === tourStep?.id);
@@ -715,7 +713,7 @@ export default function MainLayout() {
                   {/* Prefer the actual name, same accessor chain the dashboard
                       greeting uses. Falling straight to the email's local part
                       rendered every signed-in user as a fragment of their
-                      address — the demo owner showed up as "admin" — even
+                      address, the demo owner showed up as "admin", even
                       though `user_metadata.name` is set on every account
                       createStaffUser() makes. Email stays as the fallback for
                       accounts that genuinely have no name. */}
@@ -733,7 +731,7 @@ export default function MainLayout() {
       </aside>
 
       {/* ── Main Content ── */}
-      {/* Fed from navGroups above, which is already permission-filtered — so
+      {/* Fed from navGroups above, which is already permission-filtered, so
           the palette can never offer a page this user would be refused. */}
       <CommandPalette navGroups={navGroups} />
 

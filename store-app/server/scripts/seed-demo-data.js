@@ -9,8 +9,8 @@
  * the sandbox usable: visitors can create sales, edit products and generally
  * make a mess, and every reset puts it back.
  *
- * Everything is deterministic apart from the sales spread — same products,
- * same prices, same people every time — so a screenshot taken from the demo
+ * Everything is deterministic apart from the sales spread, same products,
+ * same prices, same people every time, so a screenshot taken from the demo
  * today matches one taken next month. Sales are randomised within fixed
  * bounds and dated across the last 30 days, because a dashboard whose charts
  * are flat is a poor advertisement.
@@ -86,8 +86,8 @@ const CUSTOMERS = [
 ];
 
 const LOCATIONS = [
-  { name: 'Adom Superstore — Osu', address: '18 Oxford Street, Osu, Accra' },
-  { name: 'Adom Superstore — Madina', address: 'Madina Market Road, Accra' },
+  { name: 'Adom Superstore, Osu', address: '18 Oxford Street, Osu, Accra' },
+  { name: 'Adom Superstore, Madina', address: 'Madina Market Road, Accra' },
 ];
 
 /* Three staff, one per role, so a visitor can see how permissions play out. */
@@ -135,7 +135,7 @@ const DEMO_EMAILS = new Set([DEMO_EMAIL, ...STAFF.map((s) => s.email)]);
  * orphans then blocked every future seed with "email already registered",
  * permanently.
  *
- * Reading from the fixed list instead makes the teardown self-healing — it
+ * Reading from the fixed list instead makes the teardown self-healing, it
  * cleans up after a half-finished run it had no part in.
  */
 async function deleteDemoAuthUsers() {
@@ -157,8 +157,8 @@ async function deleteDemoAuthUsers() {
  * Work out a safe delete order for every business-scoped table.
  *
  * `DELETE FROM businesses` does not do this on its own. Of the 46 tables
- * carrying a business_id, six — products, sales, sale_items, stock_movements,
- * returns and users — were created without ON DELETE CASCADE, so the business
+ * carrying a business_id, six, products, sales, sale_items, stock_movements,
+ * returns and users, were created without ON DELETE CASCADE, so the business
  * row cannot be removed until they are cleared by hand. And they cannot be
  * cleared in any order: sale_items references sales, sales references both
  * products and users, returns references sales.
@@ -197,7 +197,7 @@ async function resolveDeleteOrder(client) {
 
   // Depth-first post-order: everything that points at a table is emitted
   // before the table itself. `visiting` breaks cycles rather than recursing
-  // forever — a cycle means no total order exists, and an arbitrary one is
+  // forever, a cycle means no total order exists, and an arbitrary one is
   // the best available answer.
   const order = [];
   const done = new Set();
@@ -226,8 +226,8 @@ async function resolveDeleteOrder(client) {
  *
  * Order matters and is not the intuitive one. The auth accounts go **last**,
  * after the transaction. Deleting an auth user cascades into `public.users`,
- * and while this business still has sales, `sales.salesperson_id` — which has
- * no ON DELETE rule — refuses that delete. GoTrue surfaces it only as
+ * and while this business still has sales, `sales.salesperson_id`, which has
+ * no ON DELETE rule, refuses that delete. GoTrue surfaces it only as
  * "Database error deleting user", so the accounts silently survived, and on
  * the next run their addresses were already taken. Clearing the app rows
  * first leaves nothing pointing at them.
@@ -236,7 +236,7 @@ async function teardown(businessId) {
 
   // Required at point of use, not at the top of the file. This module sits in
   // the demo cron's dependency chain, and a top-level `require('pg')` meant
-  // every production boot needed the driver — which is how a deploy that had
+  // every production boot needed the driver, which is how a deploy that had
   // nothing to do with the demo failed to start at all.
   const { Client } = require('pg');
 
@@ -277,7 +277,7 @@ async function seed() {
   //
   // That URL is not, however, how visitors reach the demo. The landing page
   // sends them to app.quaderp.app/login?demo=1, which Login.jsx recognises and
-  // signs in automatically — arriving at the tenant URL directly just shows a
+  // signs in automatically, arriving at the tenant URL directly just shows a
   // login form with no credentials on it.
   const business = must('create business', await supabaseAdmin
     .from('businesses')
@@ -318,7 +318,7 @@ async function seed() {
 
   // Fatal, unlike the staff below: this is the account /auth/demo-login signs
   // in as. Without it the seed would "succeed" and leave a demo nobody can
-  // get into — far worse than failing loudly here.
+  // get into, far worse than failing loudly here.
   if (!owner) {
     throw new Error(`could not create the demo owner account (${DEMO_EMAIL})`);
   }
@@ -353,7 +353,7 @@ async function seed() {
       // Note this does NOT light up the dashboard's "low stock" tile: that
       // counts rows in `alerts` of type 'LOW_STOCK', and the alerts CHECK
       // constraint (migration 014) only permits VOID, DISCOUNT, SHRINKAGE and
-      // CASH_OVERRIDE — so no such row can exist for anyone. Left alone here
+      // CASH_OVERRIDE, so no such row can exist for anyone. Left alone here
       // rather than worked around; the tile is broken for every tenant, not
       // just the demo.
       const scarce = Math.random() < 0.08;
@@ -388,7 +388,7 @@ async function seed() {
 
   // ── Shrinkage movements ───────────────────────────────────
   // The Loss Prevention report reads `stock_movements` where movement_type is
-  // SHRINKAGE — not `alerts` — so without these rows that page is empty in the
+  // SHRINKAGE, not `alerts`, so without these rows that page is empty in the
   // sandbox no matter how many SHRINKAGE alerts exist below. It is one of the
   // screens a shop owner asks about first, and an empty one answers badly.
   const shrinkage = buildShrinkage({ businessId, products, locations, salespeople });
@@ -415,8 +415,7 @@ async function seed() {
 /**
  * Create one auth user and let handle_new_user() write the profile row, the
  * same path routes/users.js uses. Returns the user id, or null if the account
- * could not be created (a leftover auth user from a failed teardown, say) —
- * seeding carries on with whoever it did manage to create.
+ * could not be created (a leftover auth user from a failed teardown, say), * seeding carries on with whoever it did manage to create.
  */
 async function createStaffUser(businessId, { name, email, role }, locations) {
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -516,8 +515,7 @@ function buildSales({ businessId, products, customers, locations, salespeople })
 /**
  * Stock lost to theft, damage and miscounts over the last few weeks.
  *
- * The report groups these by a bracketed tag it parses back out of `notes` —
- * [THEFT_SUSPECTED], [DAMAGE], [ADMIN_ERROR], [UNKNOWN] — which is the same
+ * The report groups these by a bracketed tag it parses back out of `notes`, * [THEFT_SUSPECTED], [DAMAGE], [ADMIN_ERROR], [UNKNOWN], which is the same
  * shape POST /api/stock writes when a movement is recorded with a
  * shrinkage_reason. A note without one lands in an "unknown" slice, so the tag
  * is not decoration: it is what gives the breakdown chart its segments.
@@ -558,13 +556,13 @@ function buildShrinkage({ businessId, products, locations, salespeople }) {
  * A few operational alerts hung off real sales.
  *
  * Types are constrained by migration 014 to VOID, DISCOUNT, SHRINKAGE and
- * CASH_OVERRIDE — deliberately not LOW_STOCK, which the constraint does not
+ * CASH_OVERRIDE, deliberately not LOW_STOCK, which the constraint does not
  * allow however much the dashboard would like to count it.
  */
 function buildAlerts({ businessId, sales, salespeople }) {
   const recent = sales.slice(-40);
   const specs = [
-    { type: 'SHRINKAGE', note: 'Stock count variance on Perfumed Rice 5kg — 3 units unaccounted for.', status: 'pending' },
+    { type: 'SHRINKAGE', note: 'Stock count variance on Perfumed Rice 5kg, 3 units unaccounted for.', status: 'pending' },
     { type: 'SHRINKAGE', note: 'Two units of Milo Tin 400g missing after the evening count.', status: 'pending' },
     { type: 'DISCOUNT', note: 'Discount above the usual limit applied at checkout.', status: 'resolved' },
     { type: 'VOID', note: 'Sale voided within a minute of being rung up.', status: 'pending' },
@@ -592,7 +590,7 @@ function buildAlerts({ businessId, sales, salespeople }) {
  * process.
  *
  * @param {{ ifEmpty?: boolean }} options
- *   `ifEmpty` seeds only when no demo business exists — used on server
+ *   `ifEmpty` seeds only when no demo business exists, used on server
  *   startup, where wiping the sandbox out from under whoever is currently
  *   browsing it would be rude.
  */
@@ -609,7 +607,7 @@ async function reseedDemo({ ifEmpty = false } = {}) {
     await teardown(existing.id);
   } else {
     // No business, but a previous run may still have left auth accounts
-    // behind — and those alone are enough to block the seed below.
+    // behind, and those alone are enough to block the seed below.
     await deleteDemoAuthUsers();
   }
 

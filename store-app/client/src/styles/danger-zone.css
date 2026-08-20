@@ -7,7 +7,7 @@
    routine one.
 
    Colours come from the error token family rather than raw hex,
-   so the panel reads correctly in both themes — the audit found
+   so the panel reads correctly in both themes, the audit found
    21 stylesheets that hardcoded dark values and rendered
    unreadable in the default light theme.
    ============================================================ */

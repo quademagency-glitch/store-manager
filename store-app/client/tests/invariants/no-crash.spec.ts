@@ -9,7 +9,7 @@ import { gotoApp } from '../helpers';
  * catch by accident. It was added after a real one: sweeping the swallowed
  * catch blocks turned `error` from a string into an Error object on a page
  * that still rendered it as `{error}` directly, and React throws "Objects are
- * not valid as a React child" — taking the entire Till Account page down.
+ * not valid as a React child", taking the entire Till Account page down.
  *
  * Runs in both mock modes, since an empty collection reaches different code
  * paths than a populated one.
@@ -24,7 +24,7 @@ test.describe('routes render without crashing', () => {
 
       await expect(
         page.getByText('Something went wrong', { exact: false }),
-        'The ErrorBoundary fallback is on screen — this route threw during render',
+        'The ErrorBoundary fallback is on screen, this route threw during render',
       ).toHaveCount(0);
 
       // React child/hook violations surface here rather than in the DOM.

@@ -1,5 +1,5 @@
 /**
- * Local JWT Verifier — verifies Supabase Auth JWTs without calling the Supabase API.
+ * Local JWT Verifier, verifies Supabase Auth JWTs without calling the Supabase API.
  *
  * WHY: The previous approach called `supabaseAdmin.auth.getUser(token)` on every
  * single request. That's an HTTP round-trip to Supabase (~300-500ms) that becomes
@@ -8,7 +8,7 @@
  *
  * HOW: Supabase Auth issues JWTs signed with an ES256 private key. The matching
  * public key is available at the JWKS endpoint. We fetch it once at startup,
- * cache it, and verify all tokens locally using pure crypto — ~0.1ms vs ~400ms.
+ * cache it, and verify all tokens locally using pure crypto, ~0.1ms vs ~400ms.
  *
  * SECURITY: This is the industry-standard approach (same as Auth0, Firebase, etc.).
  * The JWT signature guarantees the token was issued by Supabase. We still check
@@ -140,7 +140,7 @@ async function warmUp() {
   try {
     await getPublicKey();
   } catch (err) {
-    logger.warn({ err: err.message }, 'JWT verifier warm-up failed — will retry on first request');
+    logger.warn({ err: err.message }, 'JWT verifier warm-up failed, will retry on first request');
   }
 }
 

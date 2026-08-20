@@ -120,7 +120,7 @@ export default function Customers() {
 
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
-      {/* Search form — customers are found on demand, not browsed wholesale */}
+      {/* Search form, customers are found on demand, not browsed wholesale */}
       <div className="glass-panel mt-xl" style={{ padding: '20px' }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div className="form-group" style={{ flex: '1 1 280px', marginBottom: 0 }}>
@@ -204,7 +204,7 @@ export default function Customers() {
             </table>
           </div>
 
-          {/* Mobile card list — shown on ≤640px */}
+          {/* Mobile card list, shown on ≤640px */}
           <div className="glass-panel mt-xl cust-mobile-cards">
             {searching ? (
               <div className="text-center p-xl">

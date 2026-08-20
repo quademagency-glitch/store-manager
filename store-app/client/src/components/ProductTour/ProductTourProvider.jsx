@@ -11,7 +11,7 @@ function readCompleted() {
     return localStorage.getItem(TOUR_COMPLETED_KEY) === 'true';
   } catch {
     // Private mode / storage disabled. Treat as "not yet seen" but never
-    // throw — the tour is a nicety and must not take the app down with it.
+    // throw, the tour is a nicety and must not take the app down with it.
     return false;
   }
 }
@@ -28,7 +28,7 @@ function writeCompleted() {
  * The tour auto-starts only where there is a sidebar to point at. Below the
  * layout breakpoint the rail is off-canvas, and ambushing someone on a phone
  * with a tour of a menu they cannot see is worse than not running it. The
- * "Take a tour" button still works there — MainLayout opens the mobile menu
+ * "Take a tour" button still works there, MainLayout opens the mobile menu
  * for the duration.
  */
 const AUTOSTART_MIN_WIDTH = 1024;
@@ -71,7 +71,7 @@ export function ProductTourProvider({ children }) {
   }, []);
 
   /**
-   * Called by the tooltip when a step's target cannot be found — either the
+   * Called by the tooltip when a step's target cannot be found, either the
    * nav item is behind a permission this user lacks, or it simply is not
    * rendered. Moves on rather than stalling the tour on an invisible anchor.
    *
@@ -87,8 +87,8 @@ export function ProductTourProvider({ children }) {
      than one mid-reflow.
 
      Never under the Playwright harness. The tour pulls keyboard focus into its
-     card the moment it opens — deliberately, so it is operable from the first
-     keypress — and a browser that has never seen it before is exactly what
+     card the moment it opens, deliberately, so it is operable from the first
+     keypress, and a browser that has never seen it before is exactly what
      every test run starts with. It was firing 900ms into unrelated specs and
      stealing focus mid-assertion, which took out the roving-tabindex tests on
      Inventory and Settings and the focus-ring check, none of which go

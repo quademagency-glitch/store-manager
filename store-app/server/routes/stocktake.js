@@ -460,7 +460,7 @@ router.post('/:id/batch-scan', authGuard, async (req, res) => {
 
 /**
  * PUT /api/stocktake/:id/complete
- * Complete a stock take session — flag missing items and generate alerts.
+ * Complete a stock take session, flag missing items and generate alerts.
  * Access: Inventory managers
  */
 router.put('/:id/complete', authGuard, permissionCheck('manage_inventory'), async (req, res) => {

@@ -8,7 +8,7 @@ export default function AccountsReceivable() {
   const toast = useToast();
 
   useEffect(() => {
-    // See AccountsPayable — an empty customer selector reads as "no customers"
+    // See AccountsPayable, an empty customer selector reads as "no customers"
     // rather than "the request failed", and blocks raising an invoice.
     api.get('/customers?limit=200').then(res => {
       setCustomers(res?.data || []);

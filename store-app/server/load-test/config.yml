@@ -2,21 +2,21 @@ config:
   # Target: Production API on Railway
   target: "https://store-manager-api-production-c330.up.railway.app"
   
-  # Load phases — ramp to ~1,000 concurrent users
+  # Load phases, ramp to ~1,000 concurrent users
   phases:
-    # Phase 1: Warm-up — gentle start
+    # Phase 1: Warm-up, gentle start
     - name: "Warm-up"
       duration: 30
       arrivalRate: 5
       rampTo: 30
 
-    # Phase 2: Ramp — climb to peak load
+    # Phase 2: Ramp, climb to peak load
     - name: "Ramp to peak"
       duration: 60
       arrivalRate: 30
       rampTo: 150
 
-    # Phase 3: Sustained peak — hold ~1,000 concurrent
+    # Phase 3: Sustained peak, hold ~1,000 concurrent
     # At 150 arrivals/sec with avg scenario duration ~5-7s ≈ 750-1050 concurrent
     - name: "Sustained peak (1000 concurrent)"
       duration: 90
@@ -30,7 +30,7 @@ config:
     headers:
       Content-Type: "application/json"
 
-  # Performance thresholds — fail the test if breached
+  # Performance thresholds, fail the test if breached
   ensure:
     thresholds:
       - http.response_time.p50: 500
@@ -45,7 +45,7 @@ config:
       useOnlyRequestNames: true
 
 # ──────────────────────────────────────────────────
-# Scenarios — weighted by real-world usage patterns
+# Scenarios, weighted by real-world usage patterns
 # ──────────────────────────────────────────────────
 scenarios:
 
@@ -131,7 +131,7 @@ scenarios:
             - statusCode: 200
 
   # ── 5. Health Check Baseline (5% of traffic) ────
-  # Unauthenticated — measures raw server responsiveness
+  # Unauthenticated, measures raw server responsiveness
   - name: "Health Check"
     weight: 5
     flow:

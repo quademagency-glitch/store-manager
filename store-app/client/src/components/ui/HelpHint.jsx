@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
  * A small "?" that deep-links to a help centre article.
  *
  * Put one next to anything a first-time user is likely to stall on. It is a
- * real link rather than a button so it can be opened in a new tab — reading
+ * real link rather than a button so it can be opened in a new tab, reading
  * the ledger explainer while a half-finished reconciliation stays on screen
  * is the whole point.
  *

@@ -5,7 +5,7 @@ const { buildMockSupabase } = require('./helpers/mockSupabase');
 const SECRET = 'sk_test_abcdef1234';
 
 // The webhook reads these via .single(), and the mock's .single() hands back
-// the override verbatim — so `data` must be the row itself, not an array.
+// the override verbatim, so `data` must be the row itself, not an array.
 const mockGateway = {
   id: 'gw-1',
   provider: 'paystack',
@@ -30,7 +30,7 @@ jest.mock('../db/supabase', () => ({ supabaseAdmin: mockSupabase }));
 // NOTE: services/paystack is deliberately NOT mocked here.
 //
 // billing.test.js mocks verifyWebhookSignature to always return true, which is
-// exactly why the signature bugs survived — no test could ever observe a
+// exactly why the signature bugs survived, no test could ever observe a
 // rejection. These tests sign real payloads with the mock gateway's key and
 // exercise the real HMAC path.
 
@@ -99,7 +99,7 @@ describe.each(WEBHOOK_URLS)('POST %s', (url) => {
   // The old handlers hashed JSON.stringify(req.body). Pretty-printed JSON
   // parses to an identical object but is different bytes, so signing the
   // compact form and sending the indented one is exactly the mismatch that
-  // used to go unnoticed — a re-serializing handler would compute the same
+  // used to go unnoticed, a re-serializing handler would compute the same
   // digest for both and wave this through.
   it('rejects a payload whose bytes differ from what was signed', async () => {
     const signed = chargeSuccessBody();

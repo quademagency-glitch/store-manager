@@ -9,7 +9,7 @@
 # WHY THIS EXISTS
 #
 # The Supabase project is on the FREE plan, which has no point-in-time
-# recovery — that is a paid add-on. So this script is not a belt-and-braces
+# recovery, that is a paid add-on. So this script is not a belt-and-braces
 # second copy alongside a managed backup. Until the plan changes, the files it
 # writes are the only backup of the business that exists.
 #
@@ -23,7 +23,7 @@
 #
 # WHY IT DOES NOT UPLOAD ANYWHERE
 #
-# The obvious move — run this in CI and keep the output as an artifact — is
+# The obvious move, run this in CI and keep the output as an artifact, is
 # wrong here: this repository is PUBLIC, and artifacts on a public repository
 # can be downloaded by anyone. That would publish every customer name and phone
 # number in the database. Uploading to object storage needs an account and a
@@ -51,7 +51,7 @@ say "── starting ───────────────────�
 
 # 1. Take it. --gzip because these are text and compress by roughly 10x.
 if ! node scripts/backup-db.js --gzip --out "$BACKUP_DIR" >>"$LOG" 2>&1; then
-  say "FAILED: backup-db.js — see $LOG"
+  say "FAILED: backup-db.js, see $LOG"
   exit 1
 fi
 
@@ -65,7 +65,7 @@ fi
 
 # 2. Prove it is readable. A backup nobody has read is a hope.
 if ! node scripts/restore-db.js --from "$LATEST" --dry-run >>"$LOG" 2>&1; then
-  say "FAILED: $LATEST did not verify — the snapshot is NOT intact"
+  say "FAILED: $LATEST did not verify, the snapshot is NOT intact"
   exit 1
 fi
 

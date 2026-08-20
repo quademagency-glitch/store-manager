@@ -35,8 +35,7 @@ const AGING_BUCKETS = [
 ];
 
 /**
- * Shared list + aging view for Accounts Receivable and Accounts Payable —
- * the two are structurally identical (invoices vs bills, customers vs
+ * Shared list + aging view for Accounts Receivable and Accounts Payable, * the two are structurally identical (invoices vs bills, customers vs
  * suppliers); only labels and the API paths (handled by useBillingLedger)
  * differ.
  */

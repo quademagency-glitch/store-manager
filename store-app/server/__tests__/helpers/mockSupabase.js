@@ -41,10 +41,9 @@ function makeQueryMock(result = { data: [], error: null, count: 0 }) {
  * @param {Object} overrides - per-table result overrides: `{ tableName: { data, error } }`.
  *   A table's override may instead be an **array** of results, consumed one
  *   per `from(table)` call and then repeating the last entry. Routes that
- *   query the same table more than once with different intent need this —
- *   `/api/auth/signup` reads `users` twice, first to reject a duplicate
+ *   query the same table more than once with different intent need this, *   `/api/auth/signup` reads `users` twice, first to reject a duplicate
  *   email (expects nothing) and later to confirm the profile trigger fired
- *   (expects a row) — and a single fixed result cannot satisfy both.
+ *   (expects a row), and a single fixed result cannot satisfy both.
  */
 function buildMockSupabase(overrides = {}) {
   // Per-table cursors for array-style overrides.

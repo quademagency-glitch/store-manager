@@ -6,14 +6,14 @@ import { gotoApp } from '../helpers';
  * Visual baseline matrix: route × theme × viewport.
  *
  * Runs against the mock harness (VITE_USE_MOCKS=true), so no backend or login
- * is required and fixture data is fixed — see src/lib/mockMode.js.
+ * is required and fixture data is fixed, see src/lib/mockMode.js.
  *
  *   npm run test:visual           compare against committed baselines
  *   npm run test:visual:update    re-baseline (phases 1-2 only, deliberately)
  *
  * Phases 1-2 change everything on purpose and get re-baselined after human
  * review. From phase 3 on, the primitives are designed to be visually
- * identical to what they replace — so a large diff here is a bug signal, not
+ * identical to what they replace, so a large diff here is a bug signal, not
  * an expected churn.
  */
 

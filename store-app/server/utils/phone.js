@@ -1,7 +1,7 @@
 /**
  * Phone numbers: global parsing and E.164 normalisation.
  *
- * Mirrors client/src/lib/phone.js, but this is the authoritative one — the
+ * Mirrors client/src/lib/phone.js, but this is the authoritative one, the
  * API is reachable without the form (bulk import, the public API, a direct
  * call), and storage format is what uniqueness and search depend on.
  *
@@ -14,7 +14,7 @@ const { parsePhoneNumberFromString } = require('libphonenumber-js');
 
 const FALLBACK_COUNTRY = 'GH';
 
-/** Ghana network prefixes — a display nicety, never a validation rule. */
+/** Ghana network prefixes, a display nicety, never a validation rule. */
 const GH_NETWORK_BY_PREFIX = {
   '024': 'MTN', '025': 'MTN', '053': 'MTN', '054': 'MTN', '055': 'MTN', '059': 'MTN',
   '020': 'Telecel', '050': 'Telecel',
@@ -26,7 +26,7 @@ const GH_NETWORK_BY_PREFIX = {
  * Effective country for a request: the active location's override, else the
  * business default, else the fallback.
  *
- * Deliberately shaped like resolveCurrency in utils/currency.js — same
+ * Deliberately shaped like resolveCurrency in utils/currency.js, same
  * override semantics, same reason (migration 057: a business can run a Ghana
  * branch and a Nigeria branch).
  */
@@ -67,8 +67,8 @@ function detectNetwork(input, country = FALLBACK_COUNTRY) {
  * Digits-only international form for SMS gateways (`233241234567`).
  *
  * Arkesel rejects a leading `+`, and sending the national form with its trunk
- * 0 delivers inconsistently. Takes whatever is stored — rows predating
- * normalisation may still hold a local spelling — so a `country` hint is
+ * 0 delivers inconsistently. Takes whatever is stored, rows predating
+ * normalisation may still hold a local spelling, so a `country` hint is
  * accepted for those.
  */
 function toSmsFormat(input, country = FALLBACK_COUNTRY) {
@@ -79,7 +79,7 @@ function toSmsFormat(input, country = FALLBACK_COUNTRY) {
 /**
  * Digits to match a stored E.164 number against, for search.
  *
- * Staff search by the number they know — `0241234567` — but storage is
+ * Staff search by the number they know, `0241234567`, but storage is
  * `+233241234567`, and a plain substring match of the typed string finds
  * nothing because of the trunk 0. Dropping it leaves `241234567`, which *is*
  * a substring of the E.164 form, and also of a legacy locally-stored value.

@@ -26,7 +26,7 @@ const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 
-// scanner_session_token is a uuid column — a non-uuid token (stray whitespace,
+// scanner_session_token is a uuid column, a non-uuid token (stray whitespace,
 // truncated copy/paste, garbage QR data) crashes the Postgres query instead of
 // cleanly reporting "invalid token", so reject bad formats before querying.
 const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

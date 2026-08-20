@@ -322,7 +322,7 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
  * from the browser's Supabase client, which meant the server's role gate never
  * ran (it leaned entirely on RLS), the page could not be exercised by the
  * mock-based test suites, and a failed query surfaced a raw Postgres string to
- * the user — "invalid input syntax for type uuid".
+ * the user, "invalid input syntax for type uuid".
  *
  * The role list is deliberately identical to /:id/approve and /:id/reject
  * below: anyone who can see the queue can act on it, and vice versa.

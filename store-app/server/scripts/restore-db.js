@@ -18,7 +18,7 @@
  *
  * `--dry-run` reads and validates every file without connecting to anything.
  * That is the mode worth running regularly: it is free, safe, and catches the
- * failures that actually happen — a truncated download, a snapshot taken
+ * failures that actually happen, a truncated download, a snapshot taken
  * against a schema that has since changed, a table whose row count no longer
  * matches its manifest entry.
  *
@@ -84,7 +84,7 @@ async function* readRows(file) {
     } catch (err) {
       // Name the line. "Unexpected end of JSON input" with no location is
       // useless against a 500MB file, and a truncated final line is by far the
-      // most common corruption — it is what a half-finished download looks like.
+      // most common corruption, it is what a half-finished download looks like.
       throw new Error(`${path.basename(file)} line ${n}: ${err.message}`);
     }
   }
@@ -110,7 +110,7 @@ async function main() {
     process.exit(2);
   }
   if (!fs.existsSync(path.join(from, 'manifest.json'))) {
-    console.error(`No manifest.json in ${from} — is that a snapshot directory?`);
+    console.error(`No manifest.json in ${from}, is that a snapshot directory?`);
     process.exit(2);
   }
 
@@ -160,7 +160,7 @@ async function main() {
   log(`\n${present.length} tables, ${total} rows.`);
 
   if (mismatches > 0) {
-    console.error(`\n✗ ${mismatches} problem(s) above. This snapshot is not intact — do not restore it.`);
+    console.error(`\n✗ ${mismatches} problem(s) above. This snapshot is not intact, do not restore it.`);
     process.exit(1);
   }
   log('✓ Snapshot is internally consistent.');
@@ -168,7 +168,7 @@ async function main() {
   if (dryRun) {
     log('\nDry run: nothing was written, and no database was contacted.');
     log('Verified the files parse, are all present, and match the manifest counts.');
-    log('It does NOT verify that the schema still accepts them — for that, restore');
+    log('It does NOT verify that the schema still accepts them, for that, restore');
     log('into a scratch schema with --schema.');
     return;
   }
@@ -228,7 +228,7 @@ If this really is a recovery into an empty database, add --i-mean-it.`);
     for (const { table, file, rows } of present) {
       const cols = await targetColumns(client, schema, table);
       if (cols.size === 0) {
-        warn(`${table}: no such table in "${schema}" — skipped`);
+        warn(`${table}: no such table in "${schema}", skipped`);
         continue;
       }
 
@@ -271,7 +271,7 @@ If this really is a recovery into an empty database, add --i-mean-it.`);
       }
       await flush();
 
-      if (dropped) warn(`${table}: snapshot has columns this schema lacks (e.g. "${dropped}") — dropped`);
+      if (dropped) warn(`${table}: snapshot has columns this schema lacks (e.g. "${dropped}"), dropped`);
       log(`  ok    ${table.padEnd(24)} ${done}/${rows} rows`);
       written += done;
     }
@@ -289,7 +289,7 @@ If this really is a recovery into an empty database, add --i-mean-it.`);
     log(`\nVerify, then clean up:\n  DROP SCHEMA "${schema}" CASCADE;`);
   } else {
     log('\nNow run the verification queries in docs/disaster-recovery.md.');
-    log('Credentials were NOT restored — they are redacted from snapshots by design.');
+    log('Credentials were NOT restored, they are redacted from snapshots by design.');
     log('Reissue manager PINs, API keys and gateway secrets before going live.');
   }
   await client.end();

@@ -12,7 +12,7 @@
  * `seedAccountingTemplates` is therefore idempotent by design: it checks for
  * an existing template first and reports `{ seeded: false, reason: 'exists' }`
  * rather than duplicating what the trigger already inserted. Keeping the
- * explicit call is still worthwhile — it is the only thing that would notice
+ * explicit call is still worthwhile, it is the only thing that would notice
  * if the trigger were ever dropped.
  */
 

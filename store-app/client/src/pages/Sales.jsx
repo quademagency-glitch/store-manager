@@ -36,12 +36,12 @@ export default function Sales() {
   const { fmt, currencySymbol } = useCurrency(business);
   const { products } = useProducts();
   // Customers are created through the POST in handleCreateCustomer, not the
-  // hook's createCustomer — it is deliberately not destructured here.
+  // hook's createCustomer, it is deliberately not destructured here.
   const { searchCustomers, verifyCustomerCode } = useCustomers();
   const loyalty = useLoyalty();
 
   // `null` is the POS terminal itself; 'history' swaps in the past-sales view.
-  // There were once 'new' and 'batch' modes here too — a wizard that asked
+  // There were once 'new' and 'batch' modes here too, a wizard that asked
   // whether you were selling one item or several, then prompted for a quantity
   // before creating that many scan slots. The cart below does both at once, so
   // the modes and everything that drove them are gone.
@@ -61,7 +61,7 @@ export default function Sales() {
 
   // The cart. Each entry is
   //   { id, product, quantity, stock, scans: [...] }
-  // with exactly one `scans` slot per unit — updateQuantity pushes and pops
+  // with exactly one `scans` slot per unit, updateQuantity pushes and pops
   // them alongside the quantity, so every physical item leaving the shop has
   // its own tracking codes and checkout stays blocked until all are filled.
   const [wizardItems, setWizardItems] = useState([]);
@@ -111,7 +111,7 @@ export default function Sales() {
     if (!productSearchTerm) return products;
     const lower = productSearchTerm.toLowerCase();
     // Coerced rather than dereferenced. name/sku/category are NOT NULL in the
-    // database today, so this is defensive rather than a live fix — but the
+    // database today, so this is defensive rather than a live fix, but the
     // consequence of being wrong is the entire till dropping to the error
     // boundary mid-sale, which is not a risk worth carrying for three ??s. A
     // narrowed .select(), a new nullable column or a partial cache hydration
@@ -280,7 +280,7 @@ export default function Sales() {
     if (!pendingSale) return;
     setIsProcessing(true);
     try {
-      // Redeem any applied customer rewards first — if this fails, the sale
+      // Redeem any applied customer rewards first, if this fails, the sale
       // stays in 'pending' state so the cashier can retry without double-charging.
       if (!pendingSale._isOffline) {
         const storeCreditToRedeem = Number(appliedStoreCredit) || 0;
@@ -436,7 +436,7 @@ export default function Sales() {
    * Function keys rather than letters: a cashier's hands are on the keyboard
    * and a barcode scanner behaves like one, so single letters would collide
    * with scanned input. The hook refuses to fire any of these while focus is in
-   * a field — except Escape, which should always close what is in front of you.
+   * a field, except Escape, which should always close what is in front of you.
    */
   useKeyboardShortcuts([
     { key: 'F1', handler: () => productSearchRef.current?.focus() },

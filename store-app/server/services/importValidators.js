@@ -3,7 +3,7 @@ const { supabaseAdmin } = require('../db/supabase');
 /**
  * Dry-run validators for bulk import. Each returns:
  *   { valid: [rowWithLineNumber], errors: [{row, field, message}], warnings: [{row, field, message}] }
- * Rows are never mutated in place — callers get back normalized copies.
+ * Rows are never mutated in place, callers get back normalized copies.
  */
 
 function isBlank(v) {
@@ -12,7 +12,7 @@ function isBlank(v) {
 
 /**
  * Products: name, sku, price required. SKU is GLOBALLY unique across the
- * whole platform (not per-business — see products.sku UNIQUE constraint),
+ * whole platform (not per-business, see products.sku UNIQUE constraint),
  * so dedup must check the entire table, not just this business.
  */
 async function validateProductRows(rows, businessId) {
@@ -55,7 +55,7 @@ async function validateProductRows(rows, businessId) {
     const sku = String(row.sku || '').trim();
     if (!sku || existingSkus.has(sku) || errors.some(e => e.row === lineNumber)) {
       if (sku && existingSkus.has(sku)) {
-        errors.push({ row: lineNumber, field: 'sku', message: `SKU '${sku}' is already in use on this platform. SKUs must be globally unique — please use a different SKU.` });
+        errors.push({ row: lineNumber, field: 'sku', message: `SKU '${sku}' is already in use on this platform. SKUs must be globally unique, please use a different SKU.` });
       }
       return;
     }
@@ -146,7 +146,7 @@ async function validateCustomerRows(rows, businessId) {
 }
 
 /**
- * Suppliers: name required only — suppliers have no DB uniqueness
+ * Suppliers: name required only, suppliers have no DB uniqueness
  * constraint even on manual entry, so import shouldn't be stricter than
  * that. Exact-name collisions are surfaced as non-blocking warnings.
  */
@@ -184,7 +184,7 @@ async function validateSupplierRows(rows, businessId) {
     const name = String(row.name).trim();
     const existingMatch = existingByName.get(name.toLowerCase());
     if (existingMatch) {
-      warnings.push({ row: lineNumber, field: 'name', message: `A supplier named '${existingMatch}' already exists — this will still import as a separate record unless you remove this row.` });
+      warnings.push({ row: lineNumber, field: 'name', message: `A supplier named '${existingMatch}' already exists, this will still import as a separate record unless you remove this row.` });
     }
 
     const openingApAmount = isBlank(row.opening_ap_amount) ? 0 : Number(row.opening_ap_amount);

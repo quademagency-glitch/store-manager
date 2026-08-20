@@ -3,7 +3,7 @@
  * Migration runner.
  *
  * Replaces `apply_migration.js` and `apply_pg.js`, both of which were stubs
- * that never applied anything — one read migration 059 and returned, the other
+ * that never applied anything, one read migration 059 and returned, the other
  * printed whether DATABASE_URL was set. Migrations were being applied by hand
  * with no record kept, so the only way to know whether one had run was to go
  * and look at the schema. Migration 066 sat written-but-unapplied for a week
@@ -60,7 +60,7 @@ async function connect() {
   const connectionString = process.env.DIRECT_URL;
   if (!connectionString) {
     throw new Error(
-      'DIRECT_URL is not set. It must be a direct Postgres connection string — ' +
+      'DIRECT_URL is not set. It must be a direct Postgres connection string, ' +
         'SUPABASE_URL and the service-role key cannot execute DDL.',
     );
   }
@@ -76,7 +76,7 @@ async function appliedMap(client) {
   return new Map(rows.map((r) => [r.filename, r]));
 }
 
-/** Files whose contents changed after they were applied — the DB no longer matches the repo. */
+/** Files whose contents changed after they were applied, the DB no longer matches the repo. */
 function findDrift(files, applied) {
   return files
     .filter((f) => applied.has(f.filename) && applied.get(f.filename).checksum !== f.checksum)
@@ -92,7 +92,7 @@ async function status(client) {
 
   if (applied.size === 0) {
     console.log('Nothing is recorded as applied.');
-    console.log('If this database already has these migrations, run `baseline` first —');
+    console.log('If this database already has these migrations, run `baseline` first, ');
     console.log('`up` would otherwise re-run all of them against a live schema.\n');
   }
 
@@ -145,7 +145,7 @@ async function up(client, { dryRun }) {
 
   const pending = files.filter((f) => !applied.has(f.filename));
   if (!pending.length) {
-    console.log('Up to date — nothing pending.');
+    console.log('Up to date, nothing pending.');
     return;
   }
 
@@ -189,7 +189,7 @@ async function baseline(client, { empty }) {
   const toRecord = files.filter((f) => !applied.has(f.filename));
 
   if (!toRecord.length) {
-    console.log('Every migration is already recorded — nothing to baseline.');
+    console.log('Every migration is already recorded, nothing to baseline.');
     return;
   }
 

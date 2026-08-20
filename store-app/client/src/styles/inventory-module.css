@@ -1,5 +1,5 @@
 /* ============================================
-   Inventory module — status badges and the Alerts filter strip.
+   Inventory module, status badges and the Alerts filter strip.
 
    The `.inventory-tab*` rules that gave this file its name are gone;
    Inventory now uses the shared `Tabs` primitive

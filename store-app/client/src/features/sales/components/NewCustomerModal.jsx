@@ -60,7 +60,7 @@ export default function NewCustomerModal({ isOpen, onClose, onSubmit, country: c
                 'Enter a valid number, or include the country code (e.g. +233…)',
             })}
           />
-          {/* Echo back what was understood — the country code is applied
+          {/* Echo back what was understood, the country code is applied
               automatically, so the number that gets stored should never be a
               surprise. A typed `+…` overrides the branch's country. */}
           {errors.phone ? (

@@ -3,7 +3,7 @@
  *
  * WHY THIS EXISTS: the CSP in vercel.json ships as Report-Only, which means the
  * browser checks every request against the policy and reports what would have
- * been blocked — but reports go to the browser console, where nobody sees them.
+ * been blocked, but reports go to the browser console, where nobody sees them.
  * A bake period you have to remember to watch is a bake period that doesn't
  * happen. This gives the reports somewhere to land, so the decision to switch
  * from Report-Only to enforcing is made on evidence rather than optimism.
@@ -79,7 +79,7 @@ function cspReportHandler(req, res) {
       if (!directive) continue;
 
       // Key on what identifies the RULE being broken, not the individual
-      // pageview — that is what collapses thousands of reports into one line.
+      // pageview, that is what collapses thousands of reports into one line.
       const key = `${directive}|${blockedUri}`;
       const now = Date.now();
       const prev = seen.get(key);
@@ -114,7 +114,7 @@ function cspReportHandler(req, res) {
         line: typeof v.line === 'number' ? v.line : null,
         disposition: truncate(v.disposition, 20),
         count: 1,
-      }, '[CSP] New violation — policy may need this allowed before enforcing');
+      }, '[CSP] New violation, policy may need this allowed before enforcing');
     }
   } catch (err) {
     // Response is already sent; this must never surface to the reporter.
@@ -125,7 +125,7 @@ function cspReportHandler(req, res) {
 /**
  * Write the violation to Postgres.
  *
- * Fire-and-forget, on the same schedule as the log line — the in-memory
+ * Fire-and-forget, on the same schedule as the log line, the in-memory
  * de-duplication above means a given directive/blocked-uri pair is written once
  * and then at most once per RELOG_AFTER_MS, so this stays cheap even when a
  * directive is badly wrong on a busy page.
@@ -147,7 +147,7 @@ function persist(v, directive, blockedUri) {
 
 /**
  * In-process aggregate. Only ever reflects THIS worker, which is why the
- * summary endpoint reads the database instead — see cspReportSummaryFromDb.
+ * summary endpoint reads the database instead, see cspReportSummaryFromDb.
  */
 function cspReportSummary() {
   return Array.from(seen.entries())
@@ -162,7 +162,7 @@ function cspReportSummary() {
  * Cross-worker aggregate, read from Postgres.
  *
  * The API runs one worker per core, and reports are distributed across them, so
- * an in-memory tally is a one-in-N sample — it reported zero violations while
+ * an in-memory tally is a one-in-N sample, it reported zero violations while
  * its siblings were recording them. Since the entire purpose is deciding
  * whether the policy is safe to enforce, a false all-clear is the one answer
  * this must never give.

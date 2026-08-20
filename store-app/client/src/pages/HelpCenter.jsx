@@ -6,7 +6,7 @@ import { HELP_ARTICLES, HELP_CATEGORIES } from '../constants/helpArticles';
 /* ============================================================
    A markdown subset, rendered to React elements.
 
-   Not a markdown library — the whole point of this page is that
+   Not a markdown library, the whole point of this page is that
    it adds nothing to the bundle. It handles exactly what
    constants/helpArticles.js uses:
 

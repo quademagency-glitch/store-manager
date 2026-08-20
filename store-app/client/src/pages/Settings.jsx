@@ -19,7 +19,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('users');
 
   // Admins only, matching the server guard on DELETE /analytics/reset. This
-  // hides the control; it is not the security boundary — the endpoint rejects
+  // hides the control; it is not the security boundary, the endpoint rejects
   // anyone else regardless of what the client renders.
   const canResetData = role === 'Business Admin' || role === 'Platform Admin';
   const [isResetting, setIsResetting] = useState(false);
@@ -193,7 +193,7 @@ export default function Settings() {
       {error && <div className="alert alert-error mb-lg"><p>{error}</p></div>}
 
       <div className="content-card" style={{ padding: '0' }}>
-        {/* Was two buttons styled with inline hex — `background: 'white'`
+        {/* Was two buttons styled with inline hex, `background: 'white'`
             on the active tab in particular meant a white slab in dark
             mode, since it never consulted a token. */}
         <Tabs
@@ -367,7 +367,7 @@ export default function Settings() {
       </Modal>
 
       {/* Deliberately last on the page and outside the tabbed card, rather
-          than sharing a row with routine actions — an irreversible wipe should
+          than sharing a row with routine actions, an irreversible wipe should
           not sit one misclick away from "Add User". */}
       {canResetData && (
         <section className="danger-zone" aria-labelledby="danger-zone-heading">

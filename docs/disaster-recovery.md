@@ -7,7 +7,7 @@ Read the first two sections before you need them. The rest is reference.
 > **Read this first.** The Supabase project is on the **free plan**, which does
 > not include point-in-time recovery. PITR is a paid add-on. An earlier version
 > of this document told you to reach for PITR as the first response to a bad
-> write — **that option does not exist on this project.** Verified 2026-08-19
+> write, **that option does not exist on this project.** Verified 2026-08-19
 > against the live organisation, which reports `plan: free`.
 >
 > The practical consequence: `backup-db.js` snapshots are not a second line of
@@ -30,9 +30,9 @@ Honest numbers, not aspirations.
 
 | | Current reality | What it would be on Supabase Pro + PITR |
 |---|---|---|
-| **RPO** (data you can lose) | **Up to 24 hours** — since the last nightly snapshot. Before scheduling one (§3), it was "since someone last remembered", which was never. | ~2 minutes |
+| **RPO** (data you can lose) | **Up to 24 hours**, since the last nightly snapshot. Before scheduling one (§3), it was "since someone last remembered", which was never. | ~2 minutes |
 | **RTO** (time to restore) | 1-2 hours: rebuild schema, load snapshot, reissue credentials, verify | Under 1 hour |
-| Verified by a real restore? | **No.** See §9. | — |
+| Verified by a real restore? | **No.** See §9. |, |
 
 **The single highest-value fix here is a Supabase paid plan.** It converts the
 worst case from "lose up to a day of every customer's sales" to "lose two
@@ -45,9 +45,9 @@ reconstructing a day of takings by hand from paper receipts.
 
 | What | Where | How you find out it broke |
 |---|---|---|
-| Nightly snapshot, 02:00 | launchd on the operator's machine — `docs/ops/app.quaderp.backup.plist` | `backup.log` in `BACKUP_DIR`; the job exits non-zero |
-| Snapshot integrity check | Runs inside the same job, immediately after | Same log — a bad snapshot fails the run |
-| API uptime probe, every 5 min | GitHub Actions — `.github/workflows/uptime.yml` | GitHub emails the repo owner on failure |
+| Nightly snapshot, 02:00 | launchd on the operator's machine, `docs/ops/app.quaderp.backup.plist` | `backup.log` in `BACKUP_DIR`; the job exits non-zero |
+| Snapshot integrity check | Runs inside the same job, immediately after | Same log, a bad snapshot fails the run |
+| API uptime probe, every 5 min | GitHub Actions, `.github/workflows/uptime.yml` | GitHub emails the repo owner on failure |
 
 Set up the nightly snapshot by following the instructions at the top of the
 plist. **Until that is installed, nothing is backing anything up.**
@@ -57,7 +57,7 @@ runs on Railway cannot tell you Railway is down.
 
 ## 2. Taking a snapshot by hand
 
-Do this before anything risky — a migration, a bulk import, a data fix.
+Do this before anything risky, a migration, a bulk import, a data fix.
 
 ```sh
 cd store-app/server
@@ -90,8 +90,8 @@ Reads and reparses every row, and compares each table against its manifest
 count. Touches no database and needs no credentials.
 
 Worth running on any snapshot you are about to rely on. Truncation is invisible
-from the outside — the file exists, the timestamp is right, the size looks
-plausible — and it is exactly what a half-finished copy to a USB drive looks
+from the outside, the file exists, the timestamp is right, the size looks
+plausible, and it is exactly what a half-finished copy to a USB drive looks
 like.
 
 ## 4. Restoring
@@ -117,7 +117,7 @@ against the database that is still fine.
 Then:
 
 4. **Reissue every credential.** Snapshots deliberately redact manager PINs,
-   API keys and gateway secrets — `manifest.json` lists which. They are stored
+   API keys and gateway secrets, `manifest.json` lists which. They are stored
    irreversibly and are not recoverable by anyone, including you. That is the
    correct behaviour, not a limitation.
 5. Point `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `DIRECT_URL` at the
@@ -144,9 +144,9 @@ into it, alongside the real data and touching none of it.
 by the real column types, and the counts come back.
 
 **What it does not prove:** that `npm run migrate:up` builds a correct schema
-from empty. Only a genuinely separate database proves that — see §9.
+from empty. Only a genuinely separate database proves that, see §9.
 
-## 6. Verification — do this every time
+## 6. Verification, do this every time
 
 A restore you have not verified is a hope.
 
@@ -198,35 +198,35 @@ cut anyone off mid-sale.
 
 **Frontend (Vercel):** Dashboard → Deployments → Promote a previous build.
 
-If a migration is involved, roll the code back **first**, then the database —
+If a migration is involved, roll the code back **first**, then the database, 
 new code against an old schema fails loudly, old code against a new schema
 often fails quietly.
 
 ## 8. Escalation
 
-- **Supabase** — dashboard support. Free plan has no SLA; this is a queue, not
+- **Supabase**, dashboard support. Free plan has no SLA; this is a queue, not
   a phone number. Have the project ref (`dkhwwjzjmfejkkqwrgev`) and the
   incident window ready.
-- **Railway** — dashboard support and their status page.
-- **Paystack** — if payments are affected, check their status page before
+- **Railway**, dashboard support and their status page.
+- **Paystack**, if payments are affected, check their status page before
   assuming the fault is ours. Webhook deliveries retry automatically via the
   5-minute sweep, so a short Paystack outage is usually self-healing.
 
-## 9. What rehearsing found — and what is still open
+## 9. What rehearsing found, and what is still open
 
 The first rehearsal, on 2026-08-19, found a defect that had been latent since
 July and could not have been found any other way.
 
 **Two migrations existed only in production.** Security hardening applied
 directly to the live database on 2026-07-26 was never written to files or
-recorded in `schema_migrations` — the directory jumps 062 to 066. Following §4
+recorded in `schema_migrations`, the directory jumps 062 to 066. Following §4
 faithfully after a total loss would have rebuilt production with privileged
 `SECURITY DEFINER` routines executable by `anon` (the key that ships in the
 browser bundle), and the `customers` RLS policies back to always-true, exposing
 every tenant's customer list to every other tenant.
 
 Nothing was ever exposed. The hardening is live and correct. What was broken
-was the ability to *rebuild* it — a failure that only surfaces on the day it
+was the ability to *rebuild* it, a failure that only surfaces on the day it
 matters most, while following the written procedure, under pressure.
 
 Fixed by `072_reassert_security_hardening.sql`, which asserts the end state

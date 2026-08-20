@@ -9,7 +9,7 @@ class SmsService {
 
   async sendCustomSMS(recipients, message, gateway) {
     if (!gateway || !gateway.api_key) {
-      logger.warn('SMS gateway API key missing — simulating send');
+      logger.warn('SMS gateway API key missing, simulating send');
       return { success: true, simulated: true, recipients };
     }
 

@@ -734,7 +734,7 @@ export default function CustomerOrders() {
         )}
       </div>
 
-      {/* Mobile card list — shown on ≤640px */}
+      {/* Mobile card list, shown on ≤640px */}
       <div className="glass-panel mt-xl co-mobile-cards p-0">
         {loading ? (
           <div className="text-center p-xl">

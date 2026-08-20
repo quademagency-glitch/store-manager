@@ -16,7 +16,7 @@ mkdir -p "${REPORT_DIR}"
 
 echo ""
 echo "╔════════════════════════════════════════════════════════╗"
-echo "║  QuadERP Load Test — 1,000 Concurrent Users           ║"
+echo "║  QuadERP Load Test, 1,000 Concurrent Users           ║"
 echo "╠════════════════════════════════════════════════════════╣"
 echo "║  Target: Railway Production API                        ║"
 echo "║  Duration: ~3 minutes                                  ║"

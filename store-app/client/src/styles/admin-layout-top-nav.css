@@ -1,5 +1,5 @@
 /* ============================================
-   App chrome — brand mark, dropdowns, mobile drawer
+   App chrome, brand mark, dropdowns, mobile drawer
 
    This file used to carry a full horizontal top-navbar. That
    layout was replaced by the sidebar in MainLayout.jsx and its
@@ -34,7 +34,7 @@
   color: var(--color-brand-erp);
 }
 
-/* Dropdown items — used by the sidebar user menu and branch selector. */
+/* Dropdown items, used by the sidebar user menu and branch selector. */
 .dropdown-link {
   display: flex;
   align-items: center;
@@ -74,8 +74,7 @@
   padding: 0.5rem;
 }
 
-/* Drawer scrim. One of the few places blur is genuinely spent —
-   the page really is moving behind it. */
+/* Drawer scrim. One of the few places blur is genuinely spent, the page really is moving behind it. */
 .mobile-drawer-overlay {
   display: none;
   position: fixed;

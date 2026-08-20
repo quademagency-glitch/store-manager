@@ -9,7 +9,7 @@ import { gotoApp } from '../helpers';
  * `styles/a11y.css` enforce all three.
  *
  * The static half is the important half. Every defect below was invisible in
- * screenshots — a missing focus ring only exists while a keyboard user is
+ * screenshots, a missing focus ring only exists while a keyboard user is
  * tabbing, and a runaway `prefers-reduced-motion` only exists for users who
  * set it. Neither shows up in a capture, so neither was caught for six
  * phases.
@@ -33,7 +33,7 @@ function walkJsx(dir: string, out: string[] = []): string[] {
 
 /* ── Layering ────────────────────────────────────────────────────────────
    The whole cascade-layer system rests on one assumption: nothing escapes
-   it. Unlayered CSS beats *every* layer — tokens through a11y — so a single
+   it. Unlayered CSS beats *every* layer, tokens through a11y, so a single
    stylesheet imported without `layer()`, or one <style> tag injected from a
    component, silently outranks the entire design system. That is not
    hypothetical: `.btn-gradient` lived in an injected block and leaked
@@ -62,7 +62,7 @@ test('every stylesheet is imported into a cascade layer', () => {
 
   expect(
     unimported,
-    'Present in src/styles but never imported — either dead, or being pulled ' +
+    'Present in src/styles but never imported, either dead, or being pulled ' +
       'in from a component where it escapes the layer order:\n' +
       unimported.map((f) => `  styles/${f}`).join('\n'),
   ).toEqual([]);
@@ -105,7 +105,7 @@ test('no component injects screen CSS through a <style> tag', () => {
   expect(
     offenders,
     'Injected <style> content is unlayered, so it outranks the entire cascade ' +
-      'layer system — and only while the component happens to be mounted. Move ' +
+      'layer system, and only while the component happens to be mounted. Move ' +
       'it to src/styles and import it into a layer:\n' + offenders.join('\n'),
   ).toEqual([]);
 });
@@ -129,7 +129,7 @@ test('no rule removes a focus outline without providing one', () => {
       // Legitimate when the same selector also defines a :focus-visible rule:
       // that is the "suppress on click, show on keyboard" pattern, and it is
       // how .tab-panel and .acct-amount-input's inner field are handled.
-      // Longest alternative first — `focus` would otherwise match the head of
+      // Longest alternative first, `focus` would otherwise match the head of
       // `focus-visible` and leave `-visible` glued to the selector.
       const base = selector
         .replace(/:(focus-visible|focus-within|focus|hover|active)\b/g, '')
@@ -167,7 +167,7 @@ test('keyboard focus is always visible', async ({ page }) => {
       const hasRing = (node: Element) => {
         const s = getComputedStyle(node);
         const outline = s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 1;
-        // A wrapper drawing the ring on :focus-within counts — the amount
+        // A wrapper drawing the ring on :focus-within counts, the amount
         // field in accounting-templates is styled that way on purpose.
         const shadow = s.boxShadow !== 'none' && s.boxShadow !== '';
         return outline || shadow;
@@ -316,7 +316,7 @@ test('the skip link is the first tab stop and actually moves focus', async ({ pa
     const el = document.activeElement as HTMLElement | null;
     return el ? { cls: el.className, text: el.textContent?.trim(), tag: el.tagName } : null;
   });
-  expect(first?.cls, 'The first Tab must reach the skip link — the sidebar has 39 links behind it').toContain('skip-link');
+  expect(first?.cls, 'The first Tab must reach the skip link, the sidebar has 39 links behind it').toContain('skip-link');
 
   // Visible once focused. A skip link that stays off-screen while focused is
   // the standard broken implementation: sighted keyboard users cannot see
@@ -347,7 +347,7 @@ test('an open dialog keeps Tab inside it, and gives focus back on close', async 
   await expect(dialog).toBeVisible();
 
   // Tab all the way round the dialog and past where its last control is. If
-  // the trap is missing, focus walks out onto the page behind — which is
+  // the trap is missing, focus walks out onto the page behind, which is
   // covered by the overlay, so the user is editing a form they cannot see and
   // sighted keyboard users simply lose the caret.
   const escaped: string[] = [];
@@ -375,7 +375,7 @@ test('an open dialog keeps Tab inside it, and gives focus back on close', async 
 
   // Closing must hand focus back to whatever opened it. Without this a
   // keyboard user is dropped on <body> and the next Tab restarts from the top
-  // of the page — so closing a dialog opened from a table's last row sends
+  // of the page, so closing a dialog opened from a table's last row sends
   // them back to the header.
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
@@ -397,7 +397,7 @@ test('sidebar dropdowns close on Escape', async ({ page }) => {
 
   await expect(
     page.locator('.user-dropdown-menu.open'),
-    'Escape must close the menu — it previously had no exit but selecting an item',
+    'Escape must close the menu, it previously had no exit but selecting an item',
   ).toHaveCount(0);
 
   // Focus must not be stranded on a control that has just been hidden.

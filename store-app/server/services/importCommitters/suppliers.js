@@ -3,7 +3,7 @@ const { supabaseAdmin } = require('../../db/supabase');
 /**
  * Commits one validated supplier row: inserts the supplier (same defaults
  * as routes/suppliers.js), and if an opening_ap_amount was mapped, creates
- * a single opening-balance ap_bills row directly — is_opening_balance=true,
+ * a single opening-balance ap_bills row directly, is_opening_balance=true,
  * no payment auto-created.
  */
 async function commitSupplierRow(row, { businessId, userId, importBatchId }) {

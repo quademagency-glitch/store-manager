@@ -156,7 +156,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
 
     // A permissions edit silently changes what EVERY user holding this role
     // can do, so the before/after set is the thing worth being able to
-    // reconstruct — not just that "a role was edited".
+    // reconstruct, not just that "a role was edited".
     // Editing permissions changes what EVERY user holding this role can do.
     // Invalidating only the editor would leave everyone else on the old set.
     invalidateRoleCache(roleId);

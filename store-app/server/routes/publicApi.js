@@ -23,7 +23,7 @@ function toPublicProduct(p) {
 
 /**
  * GET /api/v1/public/catalog
- * Storefront-safe product list — no cost_price or other internal fields.
+ * Storefront-safe product list, no cost_price or other internal fields.
  */
 router.get('/catalog', requireScope('read:catalog'), apiCache(5), async (req, res) => {
   try {
@@ -79,7 +79,7 @@ const publicCreateOrderSchema = z.object({
 /**
  * POST /api/v1/public/orders
  * Creates a draft customer order from a storefront checkout. Customers are
- * matched/deduped by (business_id, phone) — the same unique identity the
+ * matched/deduped by (business_id, phone), the same unique identity the
  * rest of this app already uses for customers; email is stored only as
  * supplementary contact info, never used for matching.
  */

@@ -55,7 +55,7 @@ export default function ShrinkageReport() {
   })).sort((a, b) => b.value - a.value);
 
   /* The bracketed marker is how the reason is stored, and it is already on
-     screen as a labelled chart segment — printing it again in front of every
+     screen as a labelled chart segment, printing it again in front of every
      note just leaks an internal token into the operator's reading. */
   const noteText = (notes) => (notes || '').replace(/^\s*\[[A-Z_]+\]\s*/, '');
 

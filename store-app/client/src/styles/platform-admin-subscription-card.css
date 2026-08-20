@@ -1,5 +1,5 @@
 /* ============================================
-   Platform Admin — Subscription Card
+   Platform Admin, Subscription Card
    ============================================ */
 
 .pa-sub-card {
@@ -128,9 +128,8 @@
   margin-top: 2rem;
 }
 
-/* This page-scoped stylesheet used to redefine nine APP-WIDE utilities —
-   .text-right, .text-center, .mb-xl, .py-xl, .text-muted, .alert-error,
-   .empty-state, .empty-state-icon, .dashboard-empty-state — silently
+/* This page-scoped stylesheet used to redefine nine APP-WIDE utilities, .text-right, .text-center, .mb-xl, .py-xl, .text-muted, .alert-error,
+   .empty-state, .empty-state-icon, .dashboard-empty-state, silently
    overriding the global definitions for every page, because it is imported
    in a later layer. They live in data-table.css, badges-alerts.css and
    ui-primitives.css; removed from here. */

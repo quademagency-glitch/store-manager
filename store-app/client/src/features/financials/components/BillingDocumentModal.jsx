@@ -4,7 +4,7 @@ import Modal from '../../../components/Modal';
 
 /**
  * Create form for an AR invoice or AP bill. Shared between Accounts Receivable
- * and Accounts Payable since the two are structurally identical — only the
+ * and Accounts Payable since the two are structurally identical, only the
  * party list (customers vs suppliers) and labels differ.
  */
 export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, parties, isSubmitting, error }) {
@@ -32,7 +32,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
     },
   });
 
-  /* See RecordPaymentModal — `watch()` blocks React Compiler memoization
+  /* See RecordPaymentModal, `watch()` blocks React Compiler memoization
      for the whole component; `useWatch` subscribes via `control` instead. */
   const isOpeningBalance = useWatch({ control, name: 'is_opening_balance' });
 

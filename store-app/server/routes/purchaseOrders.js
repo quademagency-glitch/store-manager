@@ -454,7 +454,7 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), asyn
         continue;
       }
 
-      // Upsert product_inventory — add received qty
+      // Upsert product_inventory, add received qty
       const { data: currentInv } = await supabaseAdmin
         .from('product_inventory')
         .select('quantity')
@@ -480,7 +480,7 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), asyn
         location_id,
         quantity_change: actualReceive,
         movement_type: 'RECEIPT',
-        notes: `PO ${po.po_number} — received ${actualReceive} units${notes ? '. ' + notes : ''}`
+        notes: `PO ${po.po_number}, received ${actualReceive} units${notes ? '. ' + notes : ''}`
       });
 
       receivedItems.push({

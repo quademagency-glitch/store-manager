@@ -59,7 +59,7 @@ router.get('/me', authGuard, async (req, res) => {
 
     // Active location's currency (if set) overrides the business default,
     // so the whole app follows whichever location is currently selected.
-    // Country is resolved the same way and for the same reason — it is what
+    // Country is resolved the same way and for the same reason, it is what
     // supplies the dialing code for phone numbers typed without one, and a
     // Nigeria branch of a Ghanaian business must not stamp +233 on its
     // customers.
@@ -114,7 +114,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
     if (!data) return res.status(404).json({ error: 'Business not found' });
 
     // status is included because changing it suspends or restores every user
-    // in the tenant — the single most consequential field on this record.
+    // in the tenant, the single most consequential field on this record.
     logAuditEvent(req, AUDIT_ACTIONS.BUSINESS_UPDATED, 'business', req.params.id, {
       name: data.name,
       status: data.status,
@@ -129,7 +129,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
 
 /**
  * GET /api/businesses/me/setup-status
- * Guided setup checklist — every step's completion is computed live from
+ * Guided setup checklist, every step's completion is computed live from
  * existing data rather than persisted, except the dismissed flag.
  * Access: Any authenticated user from the business
  */
@@ -312,7 +312,7 @@ router.get('/me/export', authGuard, permissionCheck('manage_business'), exportLi
   res.attachment(`quaderp-export-${slug}-${stamp}.zip`);
 
   // level 6, not 9. routes/ledger.js uses 9, but on text-heavy CSV the extra
-  // compression buys a few percent for substantially more CPU — and this runs
+  // compression buys a few percent for substantially more CPU, and this runs
   // on a worker that is also serving the POS.
   const archive = archiver('zip', { zlib: { level: 6 } });
 
@@ -326,12 +326,12 @@ router.get('/me/export', authGuard, permissionCheck('manage_business'), exportLi
   });
 
   // If the client goes away, stop. Without this a cancelled download leaves us
-  // paging Supabase for nobody — and since the limiter counts starts rather
+  // paging Supabase for nobody, and since the limiter counts starts rather
   // than completions, that would hand an attacker an hour of free queries per
   // attempt.
   res.on('close', () => {
     if (!res.writableEnded) {
-      logger.info({ reqId: req.id, businessId }, 'Export client disconnected — aborting');
+      logger.info({ reqId: req.id, businessId }, 'Export client disconnected, aborting');
       archive.abort();
     }
   });

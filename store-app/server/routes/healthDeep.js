@@ -1,5 +1,5 @@
 /**
- * Deep health check — dependency status for external monitoring.
+ * Deep health check, dependency status for external monitoring.
  *
  * Distinct from GET /api/health, which is a dependency-free liveness probe and
  * is what railway.toml's healthcheckPath points at. Keep it that way: if the
@@ -7,7 +7,7 @@
  * block deploys and turn a minor incident into an outage.
  *
  * ANTI-AMPLIFICATION: the result is cached for 10 seconds at module scope. That
- * matters more than the rate limiter — without it, an attacker converts N cheap
+ * matters more than the rate limiter, without it, an attacker converts N cheap
  * HTTP requests into N Supabase round-trips. With it, concurrent callers all
  * receive the same cached object and only one query happens per window,
  * regardless of request volume.
@@ -25,7 +25,7 @@ let cached = null;
 
 /**
  * db/supabase.js uses node-fetch with no default timeout, so a hung Supabase
- * would hang this handler indefinitely — your monitoring becoming the outage.
+ * would hang this handler indefinitely, your monitoring becoming the outage.
  */
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -55,7 +55,7 @@ async function checkSupabase() {
 }
 
 /**
- * Configuration presence only — deliberately does NOT call Resend's API.
+ * Configuration presence only, deliberately does NOT call Resend's API.
  * A monitor polling every 60s would otherwise burn quota and hit their rate
  * limit around the clock to learn something a string check already tells us.
  */
@@ -64,7 +64,7 @@ function checkResend() {
   return {
     status: configured ? 'ok' : 'degraded',
     ms: 0,
-    ...(configured ? {} : { error: 'RESEND_API_KEY not set — outbound email disabled' }),
+    ...(configured ? {} : { error: 'RESEND_API_KEY not set, outbound email disabled' }),
   };
 }
 
@@ -83,7 +83,7 @@ function checkJwks() {
     return {
       status: loaded ? 'ok' : 'degraded',
       ms: 0,
-      ...(loaded ? {} : { error: 'JWKS key not loaded — falling back to per-request Supabase verification' }),
+      ...(loaded ? {} : { error: 'JWKS key not loaded, falling back to per-request Supabase verification' }),
     };
   } catch {
     return { status: 'unknown', ms: 0 };
@@ -145,7 +145,7 @@ async function healthDeepHandler(req, res) {
     // Diagnostic for choosing TRUST_PROXY_HOPS (see index.js). Hit this through
     // app.quaderp.app and again directly against the Railway host, then compare:
     // `ip` should be the real client on the path you care about. Authorised
-    // callers only — this echoes request headers.
+    // callers only, this echoes request headers.
     proxy: {
       ip: req.ip,
       ips: req.ips,
@@ -157,7 +157,7 @@ async function healthDeepHandler(req, res) {
   });
 }
 
-/** Test hook — the module-level cache would otherwise leak between cases. */
+/** Test hook, the module-level cache would otherwise leak between cases. */
 function _resetCache() {
   cached = null;
 }

@@ -18,7 +18,7 @@
  *   node scripts/backup-db.js --business <uuid>  # one tenant only
  *   node scripts/backup-db.js --gzip             # compress
  *
- * Requires DIRECT_URL. Writes NDJSON — one JSON object per line — so a
+ * Requires DIRECT_URL. Writes NDJSON, one JSON object per line, so a
  * multi-gigabyte table never has to be held in memory at either end.
  */
 
@@ -119,7 +119,7 @@ async function* streamTable(client, table, businessId) {
 async function main() {
   const connectionString = process.env.DIRECT_URL;
   if (!connectionString) {
-    console.error('DIRECT_URL is not set. It must be a DIRECT Postgres connection string —\n' +
+    console.error('DIRECT_URL is not set. It must be a DIRECT Postgres connection string, \n' +
                   'the Supabase JS client cannot do this. See store-app/server/db/README.md.');
     process.exit(2);
   }

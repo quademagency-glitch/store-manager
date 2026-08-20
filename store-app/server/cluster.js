@@ -1,5 +1,5 @@
 /**
- * Cluster entry point — spawns one worker per CPU core.
+ * Cluster entry point, spawns one worker per CPU core.
  *
  * WHY: Node.js is single-threaded. A single process can only use one CPU core.
  * Under load, the event loop saturates and connections start timing out.
@@ -17,7 +17,7 @@
  *   duplicate job execution.
  */
 
-// Must be first — see instrument.js. The primary runs the crons, so their
+// Must be first, see instrument.js. The primary runs the crons, so their
 // failures should be reported too. No-op when SENTRY_DSN is unset.
 const sentry = require('./instrument');
 
@@ -77,7 +77,7 @@ if (cluster.isPrimary) {
     cluster.fork();
   }
 
-  // Auto-restart crashed workers — but ONLY genuine crashes.
+  // Auto-restart crashed workers, but ONLY genuine crashes.
   //
   // This used to fork unconditionally, which meant that during a deploy the
   // primary re-spawned every worker it had just asked to exit. The primary
@@ -89,7 +89,7 @@ if (cluster.isPrimary) {
     if (shuttingDown || worker.exitedAfterDisconnect) {
       logger.info(
         { pid: worker.process.pid, code, signal },
-        'Worker exited intentionally — not restarting'
+        'Worker exited intentionally, not restarting'
       );
       return;
     }
@@ -100,7 +100,7 @@ if (cluster.isPrimary) {
     const delay = restartBackoffMs();
     logger.warn(
       { pid: worker.process.pid, code, signal, restartInMs: delay },
-      '⚠️  Worker died — restarting'
+      '⚠️  Worker died, restarting'
     );
     setTimeout(() => {
       if (!shuttingDown) cluster.fork();
@@ -112,14 +112,14 @@ if (cluster.isPrimary) {
   //
   // All THREE must be listed here. index.js starts three crons in its
   // standalone branch, but this file previously started only the subscription
-  // one — and `npm start` is `node cluster.js`, so in production the webhook
+  // one, and `npm start` is `node cluster.js`, so in production the webhook
   // retry sweep and the demo reset had never run at all. Failed storefront
   // webhook deliveries sat at `pending` forever and the public demo was never
   // rebuilt. If you add a cron to index.js, add it here too.
   //
   // CAVEAT: "primary" means "primary of this replica". If Railway is ever
   // scaled beyond 1 replica each replica runs its own primary and therefore its
-  // own copy of these — duplicate suspension emails, and two concurrent
+  // own copy of these, duplicate suspension emails, and two concurrent
   // teardown-and-reseed cycles of the demo tenant. The cron_runs advisory row
   // (migration 069) is what makes that safe; until then keep replicas at 1.
   const { initSubscriptionCron } = require('./services/subscriptionCron');
@@ -142,11 +142,11 @@ if (cluster.isPrimary) {
   // request in flight at that moment dies mid-response.
   function shutdownPrimary(signal) {
     if (shuttingDown) {
-      logger.warn({ signal }, 'Second shutdown signal — exiting now');
+      logger.warn({ signal }, 'Second shutdown signal, exiting now');
       process.exit(1);
     }
     shuttingDown = true;
-    logger.info({ signal, pid: process.pid }, 'Primary shutting down — signalling workers');
+    logger.info({ signal, pid: process.pid }, 'Primary shutting down, signalling workers');
 
     cronTasks.forEach((task) => task?.stop?.());
     sentry.close(2000).catch(() => {});
@@ -161,7 +161,7 @@ if (cluster.isPrimary) {
     if (workers.length === 0) process.exit(0);
 
     const hardTimer = setTimeout(() => {
-      logger.error({ timeoutMs: CLUSTER_SHUTDOWN_TIMEOUT_MS }, 'Workers did not exit in time — forcing');
+      logger.error({ timeoutMs: CLUSTER_SHUTDOWN_TIMEOUT_MS }, 'Workers did not exit in time, forcing');
       workers.forEach((worker) => {
         try { worker.process.kill('SIGKILL'); } catch { /* already gone */ }
       });
@@ -174,7 +174,7 @@ if (cluster.isPrimary) {
     cluster.on('exit', () => {
       if (shuttingDown && Object.keys(cluster.workers ?? {}).length === 0) {
         clearTimeout(hardTimer);
-        logger.info('All workers exited — primary exiting');
+        logger.info('All workers exited, primary exiting');
         process.exit(0);
       }
     });

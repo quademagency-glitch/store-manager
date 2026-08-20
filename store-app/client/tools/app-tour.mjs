@@ -1,18 +1,17 @@
 /**
- * App tour — screenshots, a narrated walkthrough video, and load metrics for
+ * App tour, screenshots, a narrated walkthrough video, and load metrics for
  * every route in the app.
  *
  * Drives the same mock harness the Playwright suites use (VITE_USE_MOCKS), so
  * it needs no backend, no login and no real data, and the route list is
- * imported from tests/routes.ts rather than duplicated — adding a page to the
+ * imported from tests/routes.ts rather than duplicated, adding a page to the
  * manifest puts it in the tour automatically.
  *
  *   node tools/app-tour.mjs --port=5178
  *
  * `--out` is resolved against this file's own directory, not the cwd, so the
  * default already points at the repo's docs/app-tour and is usually what you
- * want. Passing `--out=../../docs/app-tour` — as this line used to suggest —
- * is one level short and silently writes a whole parallel set into
+ * want. Passing `--out=../../docs/app-tour`, as this line used to suggest, * is one level short and silently writes a whole parallel set into
  * store-app/docs/ instead, leaving the real screenshots untouched.
  *
  * Point it at a `vite preview` server (a real production build) rather than
@@ -65,7 +64,7 @@ const SECTIONS = [
 const stops = [...APP_ROUTES, ...PUBLIC_ROUTES];
 
 /* SECTIONS and DARK_REEL address routes by name, so renumbering the manifest
-   silently unhooks them — the title cards and the dark reel just stop
+   silently unhooks them, the title cards and the dark reel just stop
    appearing, and the tour still exits 0. Fail here instead. */
 {
   const known = new Set(stops.map((r) => r.name));
@@ -73,7 +72,7 @@ const stops = [...APP_ROUTES, ...PUBLIC_ROUTES];
   if (missing.length) {
     console.error(
       `These names are referenced by SECTIONS/DARK_REEL but are not in tests/routes.ts: ${missing.join(', ')}.\n` +
-        'The route manifest was probably renumbered — update the names above to match.',
+        'The route manifest was probably renumbered, update the names above to match.',
     );
     process.exit(1);
   }
@@ -110,7 +109,7 @@ if (!routes.length) {
 
 /**
  * Seeds an active location so location-scoped pages don't sit in a null state,
- * and a theme *only if one isn't already set* — this script flips the theme at
+ * and a theme *only if one isn't already set*, this script flips the theme at
  * runtime between passes, and an unconditional set would stomp it on every
  * subsequent navigation, since init scripts re-run per document.
  */
@@ -119,7 +118,7 @@ const INIT = `
     localStorage.setItem('active_location_id', 'mock-loc');
     if (!localStorage.getItem('app-theme')) localStorage.setItem('app-theme', 'light');
     // The in-app product tour auto-starts for anyone who hasn't finished it,
-    // and storage is fresh on every capture — so its spotlight modal landed on
+    // and storage is fresh on every capture, so its spotlight modal landed on
     // top of all 80 stills, showing the dashboard's opening step over whatever
     // page was really being shot. This tour films the app, not that one.
     localStorage.setItem('tour_completed', 'true');
@@ -134,7 +133,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * A plain overwrite is wrong for exactly the reason `--skip` exists: the public
  * pages are captured in a second pass (`--only=90-login,91-forgot-password`
  * against a server with mocks off), and that pass used to replace the whole
- * file with its own two rows — silently discarding the timings for the other
+ * file with its own two rows, silently discarding the timings for the other
  * 37 routes that had just been measured. The screenshots were protected from
  * this; the metrics were not.
  *
@@ -148,7 +147,7 @@ async function writeMetrics(rows, problems) {
   try {
     previous = JSON.parse(await readFile(file, 'utf8')).routes ?? [];
   } catch {
-    // No usable file yet — first run, or it was hand-edited into invalid JSON.
+    // No usable file yet, first run, or it was hand-edited into invalid JSON.
     // Either way this run's rows are the whole truth.
   }
 
@@ -175,7 +174,7 @@ async function main() {
   // Timings without re-shooting anything. The capture pass is the slow part
   // (80 full-page screenshots and a 4-minute recording), and re-running it just
   // to refresh numbers also overwrites stills that were deliberately captured
-  // against a different server — which is how the real /login screenshots got
+  // against a different server, which is how the real /login screenshots got
   // clobbered once already.
   if (flag('metrics-only')) {
     const perf = await measurePass(browser, () => {});
@@ -228,7 +227,7 @@ async function main() {
     }
   }
 
-  // Dark-mode reel — a handful of pages, choreographed like the light tour.
+  // Dark-mode reel, a handful of pages, choreographed like the light tour.
   if (WITH_VIDEO && THEMES.includes('dark')) {
     await titleCard(page, 'Dark Mode', 'The same pages, second theme');
     for (const route of routes.filter((r) => DARK_REEL.has(r.name))) {
@@ -244,7 +243,7 @@ async function main() {
 
   /* The remaining stills run in their own context, with no recorder attached.
      They used to share the tour's page, which meant all 40 dark navigations
-     were filmed as well — the recording ended with 40 seconds of uncaptioned
+     were filmed as well, the recording ended with 40 seconds of uncaptioned
      pages flicking past, because the camera does not care that the loop only
      asked for screenshots. */
   for (const theme of THEMES.filter((t) => t !== 'light')) {
@@ -266,7 +265,7 @@ async function main() {
   if (WITH_VIDEO) {
     const raw = await readdir(path.join(OUT, '.video-raw'));
     // Skip macOS AppleDouble stubs. On this exFAT volume every real file gets a
-    // 4 KB `._name` sidecar, and `.find()` matched that first — the rename then
+    // 4 KB `._name` sidecar, and `.find()` matched that first, the rename then
     // produced a 4 KB "video" that no player could open while the real 21 MB
     // recording sat untouched next to it. Same hazard the Playwright config
     // already filters with `testIgnore: '**/._*'`.
@@ -311,7 +310,7 @@ async function visit(page, route, theme, { index, total, video = false, quiet = 
   await sleep(350);
   rec.settledMs = Date.now() - t0;
 
-  // Route-specific setup shared with the Playwright suites — see `prepare` in
+  // Route-specific setup shared with the Playwright suites, see `prepare` in
   // tests/routes.ts. Failures are recorded rather than thrown: a tour that
   // aborts halfway leaves a half-written screenshot set behind.
   if (route.prepare) {
@@ -327,7 +326,7 @@ async function visit(page, route, theme, { index, total, video = false, quiet = 
   const landed = new URL(page.url()).pathname;
   if (landed !== route.path) rec.redirectedTo = landed;
   if (/^\/login/.test(landed) && !route.path.startsWith('/login')) {
-    rec.error = 'redirected to /login — mock mode not active on this server';
+    rec.error = 'redirected to /login, mock mode not active on this server';
   }
 
   const file = path.join(OUT, 'screenshots', `${route.name}-${theme}.png`);
@@ -357,7 +356,7 @@ async function visit(page, route, theme, { index, total, video = false, quiet = 
  *
  * It cannot share the capture pass: `clock.setFixedTime` pins the wall clock so
  * the dashboard greeting and relative dates stay stable across runs, but it
- * also empties the Performance timeline — navigation, paint and resource
+ * also empties the Performance timeline, navigation, paint and resource
  * entries all come back missing, which is what made every timing here null on
  * the first run. So the tour keeps its frozen clock and the numbers are taken
  * again with a real one.

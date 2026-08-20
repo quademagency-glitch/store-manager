@@ -5,7 +5,7 @@ const { supabaseAdmin } = require('../../db/supabase');
  * Commits one validated customer row: inserts the customer (same
  * customer_code generation as routes/customers.js), and if an
  * opening_ar_amount was mapped, creates a single opening-balance ar_invoices
- * row directly — is_opening_balance=true, no payment auto-created. The
+ * row directly, is_opening_balance=true, no payment auto-created. The
  * balance starts fully open; any historical collections are recorded later
  * through the normal AR payment flow if the business chooses to.
  */
@@ -26,7 +26,7 @@ async function commitCustomerRow(row, { businessId, userId, importBatchId }) {
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error(`A customer with phone '${row.phone}' already exists (race condition with a concurrent import — please retry this row).`);
+      throw new Error(`A customer with phone '${row.phone}' already exists (race condition with a concurrent import, please retry this row).`);
     }
     throw error;
   }

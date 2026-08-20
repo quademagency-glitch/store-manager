@@ -59,7 +59,7 @@ export default function OfflineStatus() {
     setIsSyncing(true);
     try {
       const queue = await getOfflineQueue();
-      // Dead-lettered items are not retried automatically — they need a
+      // Dead-lettered items are not retried automatically, they need a
       // deliberate retry so a permanently-failing item can't block the queue.
       const replayable = queue.filter((i) => i.status !== 'failed');
 
@@ -77,7 +77,7 @@ export default function OfflineStatus() {
           if (item.endpoint === '/sales/offline-sync') {
             const { stage1, stage2 } = item.payload;
             // Resume at stage 2 if stage 1 already succeeded on an earlier
-            // attempt. Replaying stage 1 would create a duplicate sale — the
+            // attempt. Replaying stage 1 would create a duplicate sale, the
             // remote id is persisted the moment it exists, so a failure
             // between the two stages can never double-post.
             let saleId = item.remoteSaleId;
@@ -142,7 +142,7 @@ export default function OfflineStatus() {
     handleSync();
   };
 
-  // Dead-lettered items take priority — this is the state a user must not miss.
+  // Dead-lettered items take priority, this is the state a user must not miss.
   if (failedCount > 0) {
     return (
       <button

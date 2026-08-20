@@ -9,7 +9,7 @@ import { Icons } from '../icons/Icons';
  * dropping a dashed-border card ruleset onto a table cell.
  *
  * The visual spec is generalised from `.cart-empty` in
- * sales-page-pos-layout.css — the one fully class-driven empty state that
+ * sales-page-pos-layout.css, the one fully class-driven empty state that
  * already existed, and the only one with a proper icon/title/hint hierarchy.
  */
 export function EmptyState({
@@ -39,7 +39,7 @@ export function EmptyState({
 /**
  * Table-body variant. Exists so callers stop putting a card ruleset on a <td>.
  *
- * `colSpan` is required — a short colSpan silently misaligns the row, and the
+ * `colSpan` is required, a short colSpan silently misaligns the row, and the
  * failure is easy to miss because the table still renders.
  */
 export function EmptyStateRow({ colSpan, ...props }) {

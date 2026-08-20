@@ -2,7 +2,7 @@
  * Cross-process/replica locking for scheduled jobs.
  *
  * WHY: cluster.js runs the crons in the primary process, which makes them run
- * once per *replica*. That is correct at 1 replica and wrong at any more — each
+ * once per *replica*. That is correct at 1 replica and wrong at any more, each
  * replica has its own primary, so scaling out silently doubles every job.
  * For subscriptionCron that means duplicate suspension emails; for
  * demoResetCron it means two concurrent teardown-and-reseed cycles of the same
@@ -17,7 +17,7 @@
  * INSERTs a row keyed by (job_name, scheduled_for) before doing any work.
  * Exactly one INSERT can succeed per slot; everyone else gets a unique
  * violation and stands down. No lock to release, no lease to renew, and a
- * crashed job simply leaves its claim behind — which is the safe failure
+ * crashed job simply leaves its claim behind, which is the safe failure
  * direction for jobs that email customers or rebuild tenants.
  */
 
@@ -68,7 +68,7 @@ async function claimCronRun(jobName, granularity, now = new Date()) {
 
   if (error.code === PG_UNIQUE_VIOLATION) {
     logger.info({ jobName, scheduledFor: scheduledFor.toISOString() },
-      '[CRON] Slot already claimed by another instance — skipping');
+      '[CRON] Slot already claimed by another instance, skipping');
     return false;
   }
 
@@ -78,7 +78,7 @@ async function claimCronRun(jobName, granularity, now = new Date()) {
   // cost of being wrong is the duplicate-run risk that existed before this
   // file, and a loud log line.
   logger.error({ err: error, jobName },
-    '[CRON] Could not claim run slot — proceeding anyway (fail-open)');
+    '[CRON] Could not claim run slot, proceeding anyway (fail-open)');
   return true;
 }
 

@@ -24,7 +24,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* The background/border were `rgba(255,255,255,.03/.08)` — invisible on
+/* The background/border were `rgba(255,255,255,.03/.08)`, invisible on
    a light canvas, so the search field had no perceivable boundary at
    all in the default theme. `--color-border-strong` holds the 3:1
    non-text minimum a form control needs to be seen. */

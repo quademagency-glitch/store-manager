@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
- * Tabs — one keyboard-accessible tab strip replacing the five that
+ * Tabs, one keyboard-accessible tab strip replacing the five that
  * existed before it:
  *
  *   .inventory-tab*      Inventory        pill, scrollable
@@ -23,7 +23,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
  *
  * Panels are siblings of the strip in all five call sites rather than
  * children, so the aria wiring is threaded through an explicit `idPrefix`
- * instead of context — see TabPanel below.
+ * instead of context, see TabPanel below.
  */
 export default function Tabs({
   items,
@@ -41,7 +41,7 @@ export default function Tabs({
   const enabled = items.filter((t) => !t.disabled);
 
   /* Overflow affordance. Generalised from `.inventory-tabs-wrap`, which
-     was the only strip that had it — and whose gradient was a hardcoded
+     was the only strip that had it, and whose gradient was a hardcoded
      rgba(0,0,0,.35), i.e. a black smudge in light mode. */
   const updateFade = useCallback(() => {
     const el = scrollerRef.current;
@@ -59,8 +59,7 @@ export default function Tabs({
     return () => ro.disconnect();
   }, [updateFade, items.length]);
 
-  /* Keep the selected tab in view when selection changes from outside —
-     UserProfile drives it from a URL search param, so the active tab can
+  /* Keep the selected tab in view when selection changes from outside, UserProfile drives it from a URL search param, so the active tab can
      start off-screen on a narrow viewport. */
   useEffect(() => {
     const el = tabRefs.current.get(value);
@@ -157,7 +156,7 @@ export default function Tabs({
 }
 
 /**
- * The panel half of the pair. `idPrefix` must match the strip's — a DEV
+ * The panel half of the pair. `idPrefix` must match the strip's, a DEV
  * check below fails loudly on a typo, because a mismatched `aria-labelledby`
  * is invisible in the browser and only shows up in an audit.
  */

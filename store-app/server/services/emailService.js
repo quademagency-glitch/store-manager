@@ -42,7 +42,7 @@ function resolveBusinessLoginUrl(business) {
       if (host.includes('.') && !isIp && host !== 'localhost') {
         return `${u.protocol}//${business.slug}.${host}`;
       }
-    } catch { /* malformed APP_URL — fall through to default */ }
+    } catch { /* malformed APP_URL, fall through to default */ }
   }
   return APP_URL;
 }
@@ -360,8 +360,7 @@ function buildSuspensionNoticeHtml(business) {
  * @param {'set-password'|'verify-email'} ctaMode
  *   Operator-provisioned businesses (`set-password`) have had a password
  *   generated for them and must choose their own before they can get in.
- *   Self-service signups (`verify-email`) already chose one during signup —
- *   what stands between them and the app is confirming they own the address.
+ *   Self-service signups (`verify-email`) already chose one during signup, *   what stands between them and the app is confirming they own the address.
  *   Same branded shell either way; only the CTA and the copy around it move.
  */
 function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, loginUrl, planName, ctaMode = 'set-password', trialEndsAt = null }) {
@@ -707,7 +706,7 @@ async function sendBusinessWelcomeEmail(business, admin, opts = {}) {
 
   const loginUrl = resolveBusinessLoginUrl(business);
   // A self-service signup supplies its own action link (an email-confirmation
-  // link) and must not have a password-reset link minted for it — the owner
+  // link) and must not have a password-reset link minted for it, the owner
   // already chose a password.
   const setPasswordUrl = opts.setPasswordUrl !== undefined
     ? opts.setPasswordUrl

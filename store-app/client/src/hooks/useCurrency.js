@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 /**
- * useCurrency — Provides a standardized currency formatter based on business config.
+ * useCurrency, Provides a standardized currency formatter based on business config.
  * 
  * Resolves the inconsistency where some pages use USD and others GHS.
  * Falls back to GHS if no business data is provided.

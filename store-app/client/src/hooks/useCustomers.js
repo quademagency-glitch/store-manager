@@ -21,7 +21,7 @@ export function useCustomers() {
       setPage(data.page || 1);
       setTotalPages(data.totalPages || 1);
       setTotalCustomers(data.total || 0);
-      // See useProducts — offline-cache write failure, reported not surfaced.
+      // See useProducts, offline-cache write failure, reported not surfaced.
       saveCustomersToIDB(data.data || []).catch(err => reportError(err, { context: 'idb:save-customers' }));
       return data;
     } catch (err) {

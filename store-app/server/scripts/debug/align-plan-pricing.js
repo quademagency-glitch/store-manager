@@ -2,8 +2,8 @@
  * Align platform_plans with the prices the landing page advertises.
  *
  * Applied against production on 2026-08-15. Kept because the change lives only
- * in data — plans are operator-managed through Platform Admin, not seeded by a
- * migration (015 seeds `Free` and nothing else) — so without this file there is
+ * in data, plans are operator-managed through Platform Admin, not seeded by a
+ * migration (015 seeds `Free` and nothing else), so without this file there is
  * no record of what was changed or what the numbers were before.
  *
  * The two sides had drifted to roughly double: the site quoted GHS 250/mo for
@@ -21,7 +21,7 @@
  * new prices the old "was" figures would advertise a ~49% discount that is not
  * real, and Single Branch's intro yearly (5000) had ended up *higher* than its
  * regular yearly (2750), which renders as nonsense. With both empty, PricingTab
- * derives "1 month free" from monthly x 12 on its own — the same badge the
+ * derives "1 month free" from monthly x 12 on its own, the same badge the
  * landing page's annual toggle already shows.
  *
  * Idempotent: every value is absolute, so re-running changes nothing.

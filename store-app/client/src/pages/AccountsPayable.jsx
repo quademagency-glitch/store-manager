@@ -9,7 +9,7 @@ export default function AccountsPayable() {
 
   useEffect(() => {
     // A failure here leaves the supplier selector empty, which is
-    // indistinguishable from genuinely having no suppliers — so the user sits
+    // indistinguishable from genuinely having no suppliers, so the user sits
     // there unable to record a bill with no idea why. Say so.
     api.get('/suppliers').then(res => {
       setSuppliers(Array.isArray(res) ? res : []);

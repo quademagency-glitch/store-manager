@@ -8,7 +8,7 @@
  *
  * Matched as a SUBSTRING, case-insensitively, so `manager_pin`,
  * `paystack_secret_key` and `new_password` are all caught without having to be
- * listed. That deliberately errs towards over-redaction — a wrongly hidden
+ * listed. That deliberately errs towards over-redaction, a wrongly hidden
  * field is an inconvenience, a wrongly exported one is an incident.
  */
 const SENSITIVE_KEY_PATTERNS = [

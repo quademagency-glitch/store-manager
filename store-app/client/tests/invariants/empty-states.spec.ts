@@ -9,7 +9,7 @@ import { gotoApp } from '../helpers';
  * blank rectangle.
  *
  * Runs against VITE_USE_MOCKS=empty, where every collection endpoint resolves
- * to `[]` — which is the only practical way to reach 40-odd empty states
+ * to `[]`, which is the only practical way to reach 40-odd empty states
  * without hand-building a scenario per page.
  *
  *   VITE_USE_MOCKS=empty npx playwright test --project=visual empty-states

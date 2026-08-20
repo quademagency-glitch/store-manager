@@ -12,7 +12,7 @@ function validateBody(schema) {
       next();
     } catch (err) {
       if (err instanceof z.ZodError) {
-        // Log the field paths and messages only — never err.issues wholesale.
+        // Log the field paths and messages only, never err.issues wholesale.
         // Zod puts the offending value in `received`, so dumping the raw issues
         // writes user-submitted data (passwords, PINs, card refs) into the logs.
         logger.warn({

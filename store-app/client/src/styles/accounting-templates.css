@@ -782,7 +782,7 @@
   color: var(--color-text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   /* The ring is suppressed in a11y.css instead, next to the comment
-     explaining why — the wrapper draws it on :focus-within. */
+     explaining why, the wrapper draws it on :focus-within. */
   min-width: 0;
 }
 

@@ -1,8 +1,7 @@
 /**
  * Read-mostly enforcement for the public demo tenant.
  *
- * The sandbox is more convincing if visitors can actually *do* something —
- * ring up a sale, add a product, register a customer — so this does not
+ * The sandbox is more convincing if visitors can actually *do* something, * ring up a sale, add a product, register a customer, so this does not
  * blanket-block writes. It blocks the two categories that would ruin it:
  *
  *   1. Destruction. Deleting the catalogue or voiding the sales history
@@ -12,11 +11,11 @@
  *   2. Account and platform surface. Billing, subscriptions, team management,
  *      roles, integrations, API keys. Nothing here is interesting to
  *      demonstrate, and all of it is a way to make a mess that outlives the
- *      session — an invited "team member" would get a real email.
+ *      session, an invited "team member" would get a real email.
  *
  * Invoked from inside authGuard rather than mounted as its own middleware.
  * authGuard is what every authenticated route already goes through, and it is
- * the only place req.user exists — mounting this globally would run it before
+ * the only place req.user exists, mounting this globally would run it before
  * authGuard, where there is no user to check and nothing would ever be
  * blocked. Calling it there means a new router is covered the day it is
  * written, with nobody having to remember.
@@ -66,7 +65,7 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * of its exit points (cache hit and cache miss) without the two of them
  * drifting apart.
  *
- * @param {import('express').Request} req — must already have req.user
+ * @param {import('express').Request} req, must already have req.user
  * @returns {string|null} a message written for the visitor, or null
  */
 function demoWriteRefusal(req) {

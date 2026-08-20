@@ -1,5 +1,5 @@
 /* ============================================================
-   Mobile card views — layer(components)
+   Mobile card views, layer(components)
 
    The app's answer to wide tables on narrow screens: each list
    page renders a `.desktop-table-view` and a `.mobile-card-view`,
@@ -7,7 +7,7 @@
 
    These are plain component styles with no media query of their
    own, but they lived inside responsive.css and
-   mobile-overrides.css — two files in layer(responsive), which
+   mobile-overrides.css, two files in layer(responsive), which
    sits *after* components. So a card style declared here silently
    out-ranked every component rule in the app, and the only way to
    adjust one was to add another responsive-layer rule. Moving

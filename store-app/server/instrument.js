@@ -9,7 +9,7 @@
  * WHY THE GATE IS AROUND require(), NOT JUST init():
  * Calling Sentry.init({ dsn: undefined }) still loads the SDK, which installs
  * OpenTelemetry instrumentation that monkey-patches http/https. That is exactly
- * what would perturb the Jest suites — supertest, and the node-fetch that
+ * what would perturb the Jest suites, supertest, and the node-fetch that
  * db/supabase.js uses deliberately instead of undici. Not requiring the module
  * at all is the only way to guarantee zero effect. __tests__/setup.js also
  * deletes SENTRY_DSN so a developer's local .env can't leak into a test run.
@@ -49,7 +49,7 @@ if (enabled) {
     dsn,
     environment: process.env.NODE_ENV || 'development',
     release: process.env.RAILWAY_GIT_COMMIT_SHA || undefined,
-    // Tracing off unless explicitly turned on — it is the expensive part and
+    // Tracing off unless explicitly turned on, it is the expensive part and
     // this is being adopted for error visibility, not performance work.
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0),
     // Never auto-attach IPs, cookies or user identity. authGuard sets the

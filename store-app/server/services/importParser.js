@@ -3,7 +3,7 @@ const ExcelJS = require('exceljs');
 
 /**
  * Parses an uploaded file buffer into { headers, rows }. Rows are plain
- * objects keyed by the raw header text — no column mapping applied yet.
+ * objects keyed by the raw header text, no column mapping applied yet.
  */
 async function parseFile(buffer, filename) {
   const lower = filename.toLowerCase();
@@ -77,7 +77,7 @@ function applyColumnMapping(rows, mapping) {
 
 /**
  * Suggests a column mapping by fuzzy-matching header text against known
- * target fields. Pure convenience for pre-filling the mapping UI — not
+ * target fields. Pure convenience for pre-filling the mapping UI, not
  * authoritative; the user confirms/adjusts before validating.
  */
 function suggestColumnMapping(headers, targetFields) {

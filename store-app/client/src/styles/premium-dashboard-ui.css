@@ -171,7 +171,7 @@
 
    `display`/`flex-direction` came from the deleted premium-ui-utilities
    copy. The cascade resolves per *declaration*, not per rule, so a
-   property the losing rule declared alone still applied — dropping the
+   property the losing rule declared alone still applied, dropping the
    duplicate without folding those two in would silently turn every
    bento card back into a block. */
 .bento-card {

@@ -10,7 +10,7 @@ import { ENTITY, unresolved } from '../legal/entity';
  * most readers arrive without an account.
  *
  * The structure here is not decoration. Legal documents are drafted as
- * numbered clauses because clauses have to be citable — a term that says
+ * numbered clauses because clauses have to be citable, a term that says
  * "subject to clause 14.2" is worthless if the reader cannot find 14.2, and a
  * dispute is argued clause by clause. So: stable numbers, a contents list, and
  * a linkable anchor per clause.
@@ -21,7 +21,7 @@ export default function LegalLayout({ title, version, effective, children }) {
   );
 
   // Numbers are the document's identifiers, so a gap or a duplicate is a real
-  // defect — a cross-reference to "clause 9" that matches two clauses, or none,
+  // defect, a cross-reference to "clause 9" that matches two clauses, or none,
   // is exactly the ambiguity these documents exist to remove. Caught in
   // development, where it is cheap.
   if (import.meta.env.DEV) {
@@ -106,7 +106,7 @@ export default function LegalLayout({ title, version, effective, children }) {
  *
  * `n` is explicit rather than derived from position on purpose. Auto-numbering
  * silently renumbers every following clause when one is inserted, which
- * quietly invalidates every cross-reference in the prose — and cross-references
+ * quietly invalidates every cross-reference in the prose, and cross-references
  * are the load-bearing part of a contract. An explicit number makes the change
  * visible in the diff, and the check in LegalLayout catches a mistake.
  */
@@ -121,7 +121,7 @@ export function Clause({ n, title, children }) {
   );
 }
 
-/** A numbered sub-clause, e.g. 14.2 — the level disputes are actually argued at. */
+/** A numbered sub-clause, e.g. 14.2, the level disputes are actually argued at. */
 export function Sub({ n, children }) {
   return (
     <div className="legal-sub">

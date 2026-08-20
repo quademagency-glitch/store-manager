@@ -1,4 +1,4 @@
-// MUST be first — before express and @supabase/supabase-js — so Sentry can
+// MUST be first, before express and @supabase/supabase-js, so Sentry can
 // instrument them as they load. No-ops entirely when SENTRY_DSN is unset.
 const sentry = require('./instrument');
 
@@ -64,13 +64,13 @@ const PORT = process.env.PORT || 3001;
 
 // Trust the reverse proxy in front of us so req.ip is the real client, not
 // the proxy socket. Without this every request shares one req.ip and EVERY
-// rate limiter below becomes a single platform-wide bucket — loginLimiter
+// rate limiter below becomes a single platform-wide bucket, loginLimiter
 // stops meaning "10 logins per user per 15min" and starts meaning "10 logins
 // for the whole platform", which locks out real users with no clue why.
 //
 // Deliberately a NUMBER, never `true`. express-rate-limit v8 throws
 // ERR_ERL_PERMISSIVE_TRUST_PROXY on `true`, and rightly so: `true` takes the
-// leftmost X-Forwarded-For entry, which any client can forge — that would make
+// leftmost X-Forwarded-For entry, which any client can forge, that would make
 // every limiter bypassable with one header and poison audit_logs.ip_address.
 //
 // DEFAULT OF 2, and it is chosen rather than assumed. The ingress paths differ:
@@ -81,18 +81,18 @@ const PORT = process.env.PORT || 3001;
 // address it does not trust, so with n=1 you get the RIGHTMOST forwarded entry
 // and with n=2 the one before it. Working that through both paths:
 //
-//   If Railway appends Vercel's egress IP, browser XFF is "client, vercel" —
+//   If Railway appends Vercel's egress IP, browser XFF is "client, vercel", 
 //     n=1 yields vercel's IP (every user collapses into a few buckets), n=2
 //     yields the real client. n=2 wins.
-//   If Railway forwards XFF untouched, browser XFF is just "client" — n=2 runs
+//   If Railway forwards XFF untouched, browser XFF is just "client", n=2 runs
 //     out of entries and returns the leftmost, which is still the client. Both
 //     work, so n=2 is no worse.
 //   Paystack's single-entry XFF behaves the same way under n=2: it runs out and
 //     returns the client. Correct either way.
 //
 // So 2 is right under both possibilities and 1 is right under only one. It is
-// also no more spoofable than 1 — a single-entry XFF is trusted at either
-// setting — and the only traffic on the direct path is signature-verified
+// also no more spoofable than 1, a single-entry XFF is trusted at either
+// setting, and the only traffic on the direct path is signature-verified
 // webhooks and limiter-exempt healthchecks.
 //
 // Override via TRUST_PROXY_HOPS if the topology changes. GET /api/health/deep
@@ -102,7 +102,7 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 2));
 
 // Per-business rate limit for the public storefront API. Keyed by the
 // resolved business (from apiKeyGuard, which must run before this), not
-// IP — several storefront requests can legitimately share an IP (a
+// IP, several storefront requests can legitimately share an IP (a
 // server-side integration). req.ip is only a fallback for the (rare)
 // case apiKeyGuard let a request through with no req.business.
 const publicApiLimiter = rateLimit({
@@ -121,11 +121,11 @@ const publicApiLimiter = rateLimit({
 // Security headers. Must come before CORS so every response carries them,
 // including CORS rejections.
 //
-// NOTE ON CSP — deliberately DISABLED here, and that is not an oversight.
+// NOTE ON CSP, deliberately DISABLED here, and that is not an oversight.
 // Content-Security-Policy governs documents and workers; it is not applied to
 // JSON fetch/XHR responses. A CSP header on /api/sales is parsed by nobody. The
 // policy that actually constrains this product's frontend has to be attached to
-// the HTML document, which Vercel serves — so the real CSP (Supabase, Recharts
+// the HTML document, which Vercel serves, so the real CSP (Supabase, Recharts
 // inline styles, the PWA worker) lives in vercel.json. Adding directives here
 // would look like security while doing nothing. See vercel.json for the live one.
 app.use(helmet({
@@ -134,18 +134,18 @@ app.use(helmet({
   crossOriginOpenerPolicy: false,
 
   // Helmet defaults this to same-origin, which would break the binary
-  // attachments this API deliberately serves cross-origin — the receipts ZIP
+  // attachments this API deliberately serves cross-origin, the receipts ZIP
   // (routes/ledger.js), the payroll CSV (routes/hr.js) and the business export.
   // CORP does not gate CORS-enabled fetches, so this does not widen data
   // access; the CORS allowlist above is still what authorises callers.
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 
-  // 2 years, but WITHOUT includeSubDomains — intentionally.
+  // 2 years, but WITHOUT includeSubDomains, intentionally.
   //
   // Vercel rewrites /api/* to this server, so these headers reach the browser
   // under quaderp.app rather than the Railway host. includeSubDomains would
   // therefore pin every *.quaderp.app name to HTTPS for two years, in every
-  // visitor's browser, with no way to revoke it — including the per-business
+  // visitor's browser, with no way to revoke it, including the per-business
   // subdomains that emailService's resolveBusinessLoginUrl generates. Turn it
   // on only after confirming every subdomain is HTTPS-only.
   hsts: { maxAge: 63072000, includeSubDomains: false, preload: false },
@@ -154,7 +154,7 @@ app.use(helmet({
   frameguard: { action: 'deny' },
 }));
 
-// CORS — allow the Vite dev server and production frontend
+// CORS, allow the Vite dev server and production frontend
 const allowedOrigins = [
   'http://localhost:5173', 
   'http://127.0.0.1:5173',
@@ -193,7 +193,7 @@ app.use(cors({
 // HONEST ASSESSMENT: this will almost never fire. Vercel and Railway both
 // terminate TLS and redirect at their edge, so a plaintext request should never
 // reach this process. It exists as defence-in-depth against a future custom
-// domain being misconfigured — and note that by the time it *does* fire, the
+// domain being misconfigured, and note that by the time it *does* fire, the
 // credentials have already crossed a plaintext hop. HSTS above is the control
 // that actually prevents that. Kept behind FORCE_HTTPS so it can be disabled
 // without a deploy if it ever misbehaves.
@@ -203,7 +203,7 @@ const HTTPS_REDIRECT_ENABLED =
 app.use((req, res, next) => {
   if (!HTTPS_REDIRECT_ENABLED) return next();
 
-  // A redirected preflight is not followed by browsers — it surfaces as an
+  // A redirected preflight is not followed by browsers, it surfaces as an
   // opaque CORS failure that looks like nothing at all.
   if (req.method === 'OPTIONS') return next();
 
@@ -216,7 +216,7 @@ app.use((req, res, next) => {
 
   if (req.path === '/api/health' || req.path.startsWith('/api/health/')) return next();
 
-  // 308, never 301/302. A 301 would rewrite POST to GET and drop the body —
+  // 308, never 301/302. A 301 would rewrite POST to GET and drop the body, 
   // POST /api/sales would silently become a GET, return a list, and the sale
   // would vanish with the client seeing a success.
   return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`);
@@ -243,7 +243,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// CSP violation reports — registered before the global JSON parser because
+// CSP violation reports, registered before the global JSON parser because
 // browsers send these as application/csp-report or application/reports+json,
 // neither of which express.json() accepts by default.
 //
@@ -266,18 +266,18 @@ app.post(
   // Swallow parse failures. Four-argument middleware only runs when something
   // before it errored, so this is skipped on the happy path. express.json is
   // strict by default and rejects bodies that aren't an object or array, which
-  // would otherwise surface as a 400 — and a report collector should never hand
+  // would otherwise surface as a 400, and a report collector should never hand
   // an error back to a browser that was only trying to tell us something.
   // eslint-disable-next-line no-unused-vars
   (err, req, res, next) => res.status(204).end(),
   cspReportHandler,
 );
 
-// Paystack webhooks — MUST be registered before the JSON parser below.
+// Paystack webhooks, MUST be registered before the JSON parser below.
 //
 // Signature verification HMACs the exact bytes Paystack signed, and once
 // express.json() has drained the request stream those bytes are gone for good
-// (a later express.raw() is a silent no-op — body-parser skips when the stream
+// (a later express.raw() is a silent no-op, body-parser skips when the stream
 // is already finished). This is the only point in the middleware chain where
 // the raw body still exists.
 //
@@ -285,7 +285,7 @@ app.post(
 // the Paystack dashboard isn't knowable from here. Registering both costs
 // nothing; guessing wrong drops payments silently.
 //
-// app.post with an exact path rather than app.use with a prefix — app.use would
+// app.post with an exact path rather than app.use with a prefix, app.use would
 // also match /api/billing/paystack/webhook/anything, which is free attack
 // surface for no benefit.
 const paystackRawBody = express.raw({ type: '*/*', limit: '256kb' });
@@ -295,14 +295,14 @@ app.post('/api/subscriptions/paystack-webhook', paystackRawBody, paystackWebhook
 // Parse JSON request bodies.
 //
 // The default limit is 100kb, which is the right ceiling for essentially every
-// route here — the biggest legitimate body is a sale's unit_ids array (~2,000
+// route here, the biggest legitimate body is a sale's unit_ids array (~2,000
 // UUIDs at 100kb), and letterheads store Supabase Storage URLs rather than
 // base64 (LetterheadBuilder uploads client-side).
 //
 // Bulk import is the one genuine exception. /api/imports/preview takes the file
 // as multipart (10MB, see middleware/upload.js) but then the client holds the
 // parsed rows in memory and POSTs them back as a JSON array to /validate and
-// /commit — so a ~1,000-row product import is ~200kb of JSON and was being
+// /commit, so a ~1,000-row product import is ~200kb of JSON and was being
 // rejected outright.
 //
 // This has to be ONE parser that varies its limit by path, not a second
@@ -319,7 +319,7 @@ app.use((req, res, next) =>
 // Routes
 // ============================================
 
-// Health check (liveness). Railway's healthcheckPath points here — keep it
+// Health check (liveness). Railway's healthcheckPath points here, keep it
 // dependency-free so a transient Supabase blip can never block a deploy.
 app.get('/api/health', (req, res) => {
   // Once a shutdown signal has landed, report unhealthy so the proxy stops
@@ -339,13 +339,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Deep health check (readiness) — pings dependencies and reports timings.
+// Deep health check (readiness), pings dependencies and reports timings.
 //
 // Its own limiter, mounted before the general one so a deep check never
 // consumes an app-wide budget. The 10s result cache inside the handler is the
 // real anti-amplification control; this is belt-and-braces for a cold cache.
 //
-// Deliberately NOT railway.toml's healthcheckPath — see routes/healthDeep.js.
+// Deliberately NOT railway.toml's healthcheckPath, see routes/healthDeep.js.
 const healthDeepLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 6,
@@ -359,7 +359,7 @@ app.get('/api/health/deep', healthDeepLimiter, healthDeepHandler);
 // Aggregated CSP violations, for deciding whether the policy is safe to
 // enforce. Reads from Postgres rather than process memory: the API runs one
 // worker per core and reports are spread across them, so an in-memory tally is
-// a one-in-N sample — it answered "0 violations" while sibling workers were
+// a one-in-N sample, it answered "0 violations" while sibling workers were
 // recording them. A false all-clear is the one answer this must never give.
 //
 // Same token gate as the deep health check: it reveals which resources the app
@@ -372,7 +372,7 @@ app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
   try {
     // Nonsense input falls back to the default rather than clamping to 1.
     // Clamping would silently narrow the window to a single day, and on this
-    // endpoint a narrow window reads as "no violations" — the one answer it
+    // endpoint a narrow window reads as "no violations", the one answer it
     // must never give wrongly.
     const requested = parseInt(req.query.days, 10);
     const sinceDays = Number.isFinite(requested) && requested > 0 ? Math.min(90, requested) : 30;
@@ -401,7 +401,7 @@ app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
 // unthrottled. This is the abuse ceiling, not a quota.
 //
 // KEYED BY SESSION, NOT IP. Six cashiers on one shop's NAT'd connection share
-// a single public IP, and useHR.js alone has 12 call sites — a busy till would
+// a single public IP, and useHR.js alone has 12 call sites, a busy till would
 // cross a naive per-IP limit during normal work. Hashing the Authorization
 // header gives each signed-in session its own budget, while unauthenticated
 // traffic (the thing actually worth throttling) still lands on the IP bucket.
@@ -410,7 +410,7 @@ app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
 //
 // MOUNTED AT THE ROOT, not app.use('/api', ...). Inside a path-mounted
 // middleware Express strips the prefix, so req.path would be '/auth/login' and
-// every skip below would silently never match — the limiter would look correct
+// every skip below would silently never match, the limiter would look correct
 // and quietly throttle the health check.
 //
 // Under cluster the real ceiling is workers x limit, because MemoryStore is
@@ -428,7 +428,7 @@ const generalApiLimiter = rateLimit({
   keyGenerator: (req) => {
     const auth = req.headers.authorization;
     if (auth) {
-      // Hashed, never stored raw — this key ends up in memory and in logs.
+      // Hashed, never stored raw, this key ends up in memory and in logs.
       return 'jwt:' + crypto.createHash('sha256').update(auth).digest('base64url').slice(0, 22);
     }
     return 'ip:' + rateLimit.ipKeyGenerator(req.ip);
@@ -440,7 +440,7 @@ const generalApiLimiter = rateLimit({
     req.path.startsWith('/api/health/') ||
     // Already limited per business at 120/min. A storefront integration running
     // at 110rpm from one server IP is inside its budget but would be cut off by
-    // an IP-keyed limiter — this is the one genuine conflict.
+    // an IP-keyed limiter, this is the one genuine conflict.
     req.path.startsWith('/api/v1/public/') ||
     // scanLimiter is 60/min, tighter than this, so it always trips first.
     req.path.startsWith('/api/scanner/') ||
@@ -448,7 +448,7 @@ const generalApiLimiter = rateLimit({
     req.path === '/api/csp-report',
   // NOTE: /api/auth/* is deliberately NOT skipped. loginLimiter (10/15min) and
   // signupLimiter (5/hr) are far tighter, so they always trip first and there
-  // is no double penalty in practice — but this still caps someone hammering
+  // is no double penalty in practice, but this still caps someone hammering
   // /api/auth/me, which nothing else does.
 });
 app.use(generalApiLimiter);
@@ -549,13 +549,13 @@ app.use('/api/loyalty', loyaltyRoutes);
 // Reports routes
 app.use('/api/reports', reportsRoutes);
 
-// Security audit trail — read-only, manage_business gated
+// Security audit trail, read-only, manage_business gated
 app.use('/api/audit-logs', auditLogsRoutes);
 
-// Ecommerce integrations — admin CRUD for API keys/webhooks (staff auth)
+// Ecommerce integrations, admin CRUD for API keys/webhooks (staff auth)
 app.use('/api/integrations', integrationsRoutes);
 
-// Public storefront API — API-key auth, not staff JWT. apiKeyGuard must run
+// Public storefront API, API-key auth, not staff JWT. apiKeyGuard must run
 // before publicApiLimiter so the limiter can key by req.business.id.
 app.use('/api/v1/public', apiKeyGuard, publicApiLimiter, publicApiRoutes);
 
@@ -572,7 +572,7 @@ app.use((req, res) => {
 });
 
 // Sentry's error handler. Goes AFTER the 404 handler (which responds without
-// calling next(), so 404s never reach Sentry — correct, they are not errors)
+// calling next(), so 404s never reach Sentry, correct, they are not errors)
 // and BEFORE the handler below, which terminates the chain.
 sentry.setupExpressErrorHandler(app);
 
@@ -582,7 +582,7 @@ app.use((err, req, res, next) => {
   // export) have already flushed headers by the time they can fail. Writing a
   // JSON 500 on top of that throws ERR_HTTP_HEADERS_SENT from inside the error
   // handler itself, replacing a useful error with a confusing one. Hand it to
-  // Express, which destroys the socket — the client sees a truncated transfer,
+  // Express, which destroys the socket, the client sees a truncated transfer,
   // which is at least detectable.
   if (res.headersSent) return next(err);
 
@@ -619,7 +619,7 @@ app.use((err, req, res, next) => {
 // ============================================
 
 // Start server if this file is run directly (e.g. via `node index.js`).
-// When run via cluster.js, workers import this as a module — they call
+// When run via cluster.js, workers import this as a module, they call
 // app.listen() themselves and the primary process handles the cron.
 if (require.main === module) {
   const cluster = require('node:cluster');

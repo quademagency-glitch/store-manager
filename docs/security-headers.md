@@ -12,7 +12,7 @@ Two places set headers, and they are not interchangeable.
 CSP applies to **documents and workers**, not to `fetch`/XHR responses. A
 `Content-Security-Policy` header on `GET /api/sales` is parsed by nothing. The
 policy that constrains what the frontend may load, execute or connect to has to
-be attached to the HTML document — which Vercel serves, not Express.
+be attached to the HTML document, which Vercel serves, not Express.
 
 Putting CSP directives in helmet would look like a control while doing nothing.
 `contentSecurityPolicy: false` in `index.js` is deliberate; don't "fix" it.
@@ -20,7 +20,7 @@ Putting CSP directives in helmet would look like a control while doing nothing.
 Two related corrections to assumptions that keep resurfacing:
 
 - **Paystack needs no CSP allowance.** `BusinessAdmin/Billing.jsx` redirects via
-  `window.location.href` — a top-level navigation. There is no iframe and no
+  `window.location.href`, a top-level navigation. There is no iframe and no
   popup, and CSP has no shipped directive that restricts top-level navigation
   (`navigate-to` was never shipped; `form-action` only covers form submissions).
 - **Recharts needs `style-src-attr 'unsafe-inline'`, not blanket
@@ -31,12 +31,12 @@ Two related corrections to assumptions that keep resurfacing:
 
 `store-app/client/index.html` contains **two inline `<script>` blocks**:
 
-1. the pre-paint theme resolver (must stay synchronous and inline — as an
+1. the pre-paint theme resolver (must stay synchronous and inline, as an
    external file it would flash an unstyled page), and
 2. the service-worker `controllerchange` reload hook.
 
-`script-src` allows them by **SHA-256 hash**. If you edit either script — even
-one character of whitespace or a comment — its hash changes and the browser
+`script-src` allows them by **SHA-256 hash**. If you edit either script, even
+one character of whitespace or a comment, its hash changes and the browser
 will refuse to run it. Blocking the theme script renders the app as an
 unstyled white page.
 
@@ -54,7 +54,7 @@ let m; while((m=re.exec(html))!==null)
 "
 ```
 
-Hashes must be computed from **`dist/index.html`**, not the source file — the
+Hashes must be computed from **`dist/index.html`**, not the source file, the
 build can alter the document around them.
 
 ## Rollout: Report-Only first
@@ -66,13 +66,13 @@ POS at 9am on a Monday is worse than no CSP.
 Before switching the header name to `Content-Security-Policy`:
 
 1. Leave it in report-only for at least a week of real traffic.
-2. Check the browser console on the main flows — login, dashboard, a full sale
+2. Check the browser console on the main flows, login, dashboard, a full sale
    with a printed receipt, inventory, reports (Recharts), and a letterhead
-   upload — for `[Report Only]` violation messages.
+   upload, for `[Report Only]` violation messages.
 3. **Verify `VITE_API_URL` in the Vercel dashboard.** If it is unset, the client
    calls `/api` same-origin and `connect-src 'self'` covers it. If it is set to
    the Railway host, the explicit Railway origin in `connect-src` covers it.
-   Both are currently allowed, so either configuration works — but if the API
+   Both are currently allowed, so either configuration works, but if the API
    host ever changes, that entry must change with it or every API call is
    blocked.
 4. Only then rename the header.
@@ -87,7 +87,7 @@ Because Vercel rewrites `/api/*` to Railway, the API's response headers reach
 the browser under **`quaderp.app`**, not the Railway hostname. An HSTS header
 with `includeSubDomains` would therefore pin `quaderp.app` *and every
 subdomain* to HTTPS for two years, in every visitor's browser, with no way to
-revoke it — including the per-business subdomains that
+revoke it, including the per-business subdomains that
 `services/emailService.js`'s `resolveBusinessLoginUrl` generates.
 
 Enable it only after confirming every `*.quaderp.app` host is HTTPS-only.
@@ -97,5 +97,5 @@ Enable it only after confirming every `*.quaderp.app` host is HTTPS-only.
 Helmet defaults this to `same-origin`, which would break the binary attachments
 the API deliberately serves cross-origin: the receipts ZIP (`routes/ledger.js`),
 the payroll CSV (`routes/hr.js`), and the business export. CORP does not gate
-CORS-enabled fetches, so this does not widen data access — the CORS allowlist in
+CORS-enabled fetches, so this does not widen data access, the CORS allowlist in
 `index.js` is still what authorises callers.

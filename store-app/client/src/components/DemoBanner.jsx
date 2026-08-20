@@ -7,7 +7,7 @@ import { useAuthContext } from '../lib/AuthContext';
  *
  * Deliberately not dismissible. Someone who forgets they are in the demo will
  * spend twenty minutes setting up their real catalogue and lose it at the
- * nightly reset — the banner is the only thing standing between them and that,
+ * nightly reset, the banner is the only thing standing between them and that,
  * so it is worth the vertical space on every screen.
  *
  * The CTA is a plain link, and the demo session is ended by the signup page

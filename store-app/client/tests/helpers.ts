@@ -7,7 +7,7 @@ import { TEST_NONCE } from './nonce';
  *
  * Asserts we did NOT land on /login. Without this guard a misconfigured mock
  * flag silently redirects every route to the login page, and the whole suite
- * reports green while measuring nothing — which is exactly what happened when
+ * reports green while measuring nothing, which is exactly what happened when
  * a stale dev server was reused across runs.
  */
 export async function gotoApp(page: Page, path: string, theme: Theme = 'light', prepare?: (page: Page) => Promise<void>) {
@@ -19,7 +19,7 @@ export async function gotoApp(page: Page, path: string, theme: Theme = 'light', 
   // fallback until its chunk arrives. `networkidle` alone does not cover this:
   // the chunk request can start after the network has gone quiet, and a capture
   // taken in that window is a blank page compared against a real baseline.
-  // Wait for the fallback to detach — it is absent entirely once mounted.
+  // Wait for the fallback to detach, it is absent entirely once mounted.
   await page
     .locator('.route-suspense-fallback')
     .waitFor({ state: 'detached', timeout: 20000 })
@@ -66,13 +66,13 @@ export async function gotoApp(page: Page, path: string, theme: Theme = 'light', 
  *
  * index.css pulls Outfit and Inter from Google Fonts with `display=swap`, so a
  * fallback paints first and the real face swaps in later. Occasionally a
- * capture lands mid-swap and every glyph on the page shifts sub-pixel — ~3,000
+ * capture lands mid-swap and every glyph on the page shifts sub-pixel, ~3,000
  * px of diff on a text-heavy route, indistinguishable from a real regression.
  * Retries absorb it; it shows up as ~2 flaky per full run.
  *
  * Do NOT reach for `document.fonts.check('1em Outfit')` to harden this. It
  * returns false for a face that is available but not yet materialised, so it
- * never becomes true here — measured: `status: "loaded"`, `check('1em Inter')`
+ * never becomes true here, measured: `status: "loaded"`, `check('1em Inter')`
  * true, `check('1em Outfit')` false, all 33 faces reporting "unloaded". Polling
  * on it burns its full timeout on every test and took the suite from 6 minutes
  * to 25 without fixing anything.
@@ -92,7 +92,7 @@ async function settleFonts(page: Page) {
  * Recharts animates its series in with a JS-driven timeline, and renders pie
  * labels only once that timeline completes. Playwright's `animations:
  * 'disabled'` freezes CSS animations but has no effect on it, so a capture can
- * land mid-animation — which produced a "dark mode is missing its donut
+ * land mid-animation, which produced a "dark mode is missing its donut
  * labels" diff that was really just two captures catching different frames.
  *
  * Waits for the SVG text-node count to stop changing.

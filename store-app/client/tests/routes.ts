@@ -13,7 +13,7 @@ export type Route = {
    * Optional interaction run after the route settles, before it is captured.
    *
    * Lives here rather than in any one spec so the visual suite, the invariant
-   * specs and the app tour all reach the same state — a page whose real story
+   * specs and the app tour all reach the same state, a page whose real story
    * only appears mid-flow tells it in every capture, not just one.
    *
    * Must no-op when the data it needs is missing: `empty-states.spec.ts` walks
@@ -31,7 +31,7 @@ export const APP_ROUTES: Route[] = [
   //
   // `/products` is deliberately absent: App.jsx redirects it to /inventory, so
   // capturing it produced a second, identical picture of the Inventory page
-  // under a name that promised a Products screen — and a "route problem" line
+  // under a name that promised a Products screen, and a "route problem" line
   // in every tour run. The sidebar still links it; the redirect is what needs
   // a test, not a screenshot.
   { path: '/inventory', name: '02-inventory' },
@@ -41,7 +41,7 @@ export const APP_ROUTES: Route[] = [
     /* A POS terminal with an empty cart is a picture of nothing happening: no
        line items, no per-unit scan rows, no total, and the checkout button
        disabled. The cart is local component state, so the only way to capture
-       one mid-sale is to actually ring one up — three taps on the catalogue,
+       one mid-sale is to actually ring one up, three taps on the catalogue,
        which is also the shortest real path a cashier takes. */
     prepare: async (page) => {
       const tiles = page.locator('.product-card');
@@ -99,7 +99,7 @@ export const APP_ROUTES: Route[] = [
   { path: '/reports/accounts-receivable', name: '37-ar-aging' },
 ];
 
-/** Unauthenticated surface — rendered without the app shell. */
+/** Unauthenticated surface, rendered without the app shell. */
 export const PUBLIC_ROUTES: Route[] = [
   { path: '/login', name: '90-login' },
   { path: '/forgot-password', name: '91-forgot-password' },
@@ -117,7 +117,7 @@ export type Theme = (typeof THEMES)[number];
  * time of day ("Good afternoon" vs "Good evening"), and the fixtures date
  * their rows relative to `Date.now()`, so every activity row reads "1 days
  * ago" today and "2 days ago" tomorrow. Baselines committed in the afternoon
- * failed by the evening — a diff that says nothing about the CSS.
+ * failed by the evening, a diff that says nothing about the CSS.
  *
  * Set via `page.clock.setFixedTime`, which pins `Date.now()` and leaves
  * timers real, so React transitions and Recharts animations still run.
@@ -143,7 +143,7 @@ export const VIEWPORTS = [
  *   - the product tour marked as already seen
  *
  * That last one is not cosmetic. The tour auto-starts for anyone who has not
- * completed it, and every capture begins with fresh storage — so its spotlight
+ * completed it, and every capture begins with fresh storage, so its spotlight
  * modal was being drawn over the page on all 80 screenshots, pinned to the
  * dashboard's first step regardless of which route was actually being shot.
  * The baselines recorded the tour, not the app.

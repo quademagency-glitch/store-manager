@@ -7,9 +7,9 @@ const cacheBus = require('../utils/cacheBus');
 describe('cacheBus', () => {
   // Standalone (`node index.js`) and Jest both run outside cluster, where
   // process.send is undefined. Publishing must be a silent no-op there, not a
-  // crash — the local invalidation has already happened by that point.
+  // crash, the local invalidation has already happened by that point.
   // Jest runs tests in IPC-connected child processes, so process.send EXISTS
-  // here — which is exactly why publish gates on cluster.isWorker instead.
+  // here, which is exactly why publish gates on cluster.isWorker instead.
   // Gating on process.send would inject stray messages into Jest's own worker
   // protocol.
   it('publish is a no-op outside a cluster worker, and never throws', () => {
@@ -44,7 +44,7 @@ describe('authGuard cache invalidation', () => {
   });
 
   // Guards against a null/undefined id clearing nothing but also not throwing
-  // into a request path — these are called from route handlers after a write.
+  // into a request path, these are called from route handlers after a write.
   it('ignores empty ids rather than throwing', () => {
     expect(() => authGuard.invalidateUserCache(undefined)).not.toThrow();
     expect(() => authGuard.invalidateRoleCache(null)).not.toThrow();

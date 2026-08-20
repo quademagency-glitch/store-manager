@@ -12,7 +12,7 @@ const router = express.Router();
 
 // Field names here (total_amount, issued_date, status values) match the
 // ar_invoices table shape, which itself matches what reports.js / the
-// Reports > Accounts Receivable page already expect — see migration 044.
+// Reports > Accounts Receivable page already expect, see migration 044.
 const invoiceSchema = z.object({
   customer_id: z.string().uuid(),
   description: z.string().optional().nullable(),

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Artillery Processor — handles auth token acquisition and injection.
+ * Artillery Processor, handles auth token acquisition and injection.
  *
  * Strategy:
  *   1. Before the test starts, login once to get a valid JWT.

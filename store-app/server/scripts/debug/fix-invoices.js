@@ -29,7 +29,7 @@ async function fixInvoices() {
       status: 'paid',
       payment_method: 'paystack',
       paystack_reference: 'manual_fix_month_1',
-      description: `Premium Plan — monthly payment`,
+      description: `Premium Plan, monthly payment`,
       paid_at: lastMonth.toISOString(),
       created_at: lastMonth.toISOString()
     },
@@ -41,7 +41,7 @@ async function fixInvoices() {
       status: 'paid',
       payment_method: 'paystack',
       paystack_reference: 'manual_fix_month_2',
-      description: `Premium Plan — monthly payment`,
+      description: `Premium Plan, monthly payment`,
       paid_at: now.toISOString(),
       created_at: now.toISOString()
     }

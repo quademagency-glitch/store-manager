@@ -263,7 +263,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
 
     // In double mode, whether a serial number must be scanned is a per-product
     // setting. Fetched in one round trip for the whole sale rather than one per
-    // line item — a ten-product batch sale was issuing ten sequential queries
+    // line item, a ten-product batch sale was issuing ten sequential queries
     // before anything was written.
     //
     // A product missing from the result stays required: absent means we could

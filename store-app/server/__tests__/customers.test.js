@@ -114,7 +114,7 @@ describe('Customers API', () => {
       expect(res.status).toBe(400);
     });
 
-    // A local number is the normal case — staff type what is on the receipt,
+    // A local number is the normal case, staff type what is on the receipt,
     // not E.164. The country code is supplied from the business/location.
     it.each(['0241234567', '024 123 4567', '024-123-4567', '+233241234567', '233241234567'])(
       'accepts local spelling %s',

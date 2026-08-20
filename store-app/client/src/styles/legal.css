@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Public legal documents — Terms, Privacy Policy, Data Processing Agreement
+   Public legal documents, Terms, Privacy Policy, Data Processing Agreement
 
    These pages are read in two situations that pull in opposite directions:
    someone skimming before signing up, and someone hunting for one clause
@@ -25,7 +25,7 @@
   left: 0;
 }
 
-/* Placeholder warning. Loud on purpose — see entity.js. Development only. */
+/* Placeholder warning. Loud on purpose, see entity.js. Development only. */
 .legal-todo {
   border: 1px solid #f59e0b;
   background: rgb(245 158 11 / 0.1);
@@ -166,7 +166,7 @@
 .legal-def dt::after { content: ': '; color: var(--color-text-tertiary, #64748b); }
 .legal-def dd { display: inline; margin: 0; }
 
-/* Tables — retention schedules and sub-processor lists read far better as
+/* Tables, retention schedules and sub-processor lists read far better as
    tables than as prose, and a regulator asking "what do you keep, and for how
    long" is asking for exactly this shape. */
 .legal-prose table {

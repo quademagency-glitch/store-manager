@@ -2,7 +2,7 @@ import { MOCK_MODE } from './mockMode';
 
 /**
  * Fixture data for the Playwright visual harness. Only reachable when
- * VITE_USE_MOCKS is set — see src/lib/mockMode.js.
+ * VITE_USE_MOCKS is set, see src/lib/mockMode.js.
  *
  * Timestamps are fixed, not relative to `Date.now()`, so screenshots are
  * byte-stable across runs and don't need masking.
@@ -57,15 +57,15 @@ const FIXTURES = {
   //
   // It is the field the POS actually reads. Without it the cart computed a
   // stock of 0 and refused every product with "This product is out of stock",
-  // which made the entire per-unit scanning flow — cart, Unit 1..N rows, Scan
-  // QR, the checkout gate — unreachable under mocks, and therefore invisible
+  // which made the entire per-unit scanning flow, cart, Unit 1..N rows, Scan
+  // QR, the checkout gate, unreachable under mocks, and therefore invisible
   // to both the visual and invariant suites. `stock_quantity` alone looked
   // like stock but is not what addToCart consults.
   //
   // Names, prices and SKUs are lifted from the real demo seeder
   // (server/scripts/seed-demo-data.js) so a screenshot taken from the mock
   // harness and one taken from the live sandbox show the same shop. `p6` sits
-  // under its reorder threshold on purpose — the inventory pages need a
+  // under its reorder threshold on purpose, the inventory pages need a
   // genuine low-stock row to show.
   '/products': [
     {
@@ -93,7 +93,7 @@ const FIXTURES = {
       product_inventory: [{ location_id: 'mock-loc', quantity: 7, low_stock_threshold: 24 }],
     },
   ],
-  '/locations': [{ id: 'mock-loc', name: 'Adom Superstore — Osu' }],
+  '/locations': [{ id: 'mock-loc', name: 'Adom Superstore, Osu' }],
   /* Bare array of distinct category names, as GET /api/pricing/categories
      returns. The price-tag printer, bulk price update and price list all read
      it. They used to swallow a failure entirely, so without this fixture their
@@ -105,7 +105,7 @@ const FIXTURES = {
 
   // The real endpoint returns the business row plus `currency` and `country`
   // resolved against the active location. `country` is what supplies the
-  // dialing code for phone numbers typed without one — without this fixture
+  // dialing code for phone numbers typed without one, without this fixture
   // the forms fall back to the *browser's* locale, so under a headless en-US
   // Chromium every Ghanaian number would be rejected as invalid and the whole
   // phone flow would be untestable under mocks.
@@ -127,7 +127,7 @@ const FIXTURES = {
      and the baselines recorded a red "Failed to fetch data." banner instead
      of the UI. The visual suite cannot regress a screen it never renders.
 
-     Envelope shapes are taken from the server handlers, not guessed — the
+     Envelope shapes are taken from the server handlers, not guessed, the
      paginated ones return `{ data, total, page, totalPages }` while the
      plain lists return a bare array, and a page reading `res.data` off an
      array (or `.map` off an envelope) breaks in a way a fixture is supposed
@@ -161,7 +161,7 @@ const FIXTURES = {
       message: 'Gino Tomato Paste 400g is below its reorder threshold', created_at: T0,
       product: { name: 'Gino Tomato Paste 400g', sku: 'DEMO-009' } },
     { id: 'a2', type: 'shrinkage', severity: 'critical', status: 'pending',
-      message: 'Stock count variance on Perfumed Rice 5kg — 3 units unaccounted for', created_at: T0,
+      message: 'Stock count variance on Perfumed Rice 5kg, 3 units unaccounted for', created_at: T0,
       product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005' } },
     { id: 'a3', type: 'shrinkage', severity: 'warning', status: 'resolved',
       message: 'Two units of Milo Tin 400g missing after the evening count', created_at: T0,
@@ -188,7 +188,7 @@ const FIXTURES = {
     total: 3, page: 1, totalPages: 1,
   },
   /* Payment methods are constrained to 'cash' | 'card' | 'mobile' by
-     sales_payment_method_check — 'momo' would never come back from the server. */
+     sales_payment_method_check, 'momo' would never come back from the server. */
   '/sales/history': {
     data: [
       { id: 'sale1', receipt_number: 'DEMO-00412', total_amount: 248.5, payment_method: 'cash',
@@ -217,15 +217,15 @@ const FIXTURES = {
   '/ledger/pending': [
     { id: 'le1', type: 'expense', amount: 240, description: 'Generator fuel', status: 'pending',
       created_at: T0, date: '2026-07-31', receipt_url: null, metadata: { vendor: 'Total Filling Station' },
-      users: { name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com' }, locations: { name: 'Adom Superstore — Osu' } },
+      users: { name: 'Kofi Boateng', email: 'kofi@adomsuperstore.com' }, locations: { name: 'Adom Superstore, Osu' } },
     { id: 'le2', type: 'deposit_to_bank', amount: 5000, description: 'Daily banking', status: 'pending',
       created_at: T0, date: '2026-07-31', receipt_url: null, metadata: {},
-      users: { name: 'Ama Mensah', email: 'ama@adomsuperstore.com' }, locations: { name: 'Adom Superstore — Osu' } },
+      users: { name: 'Ama Mensah', email: 'ama@adomsuperstore.com' }, locations: { name: 'Adom Superstore, Osu' } },
   ],
   /* Shape mirrors GET /api/ledger/financial-summary exactly. The previous
      fixture invented `expenses.total_purchases` and a flat `net`, so every
-     figure the Till Account summary reads — income.total, expenses.total,
-     expenses.categories, deposits.total, net_position — came back undefined
+     figure the Till Account summary reads, income.total, expenses.total,
+     expenses.categories, deposits.total, net_position, came back undefined
      and the whole panel rendered GH₵0.00 with no category bars at all. */
   '/ledger/financial-summary': {
     period: { start: '2026-07-01', end: '2026-07-31' },
@@ -244,8 +244,8 @@ const FIXTURES = {
     net_position: 56150,
     entry_count: 214,
   },
-  /* Outstanding is derived — BillingLedgerView computes
-     `doc[amountField] - doc.amount_paid` — so `amount_paid` is the field that
+  /* Outstanding is derived, BillingLedgerView computes
+     `doc[amountField] - doc.amount_paid`, so `amount_paid` is the field that
      has to be here. A `balance` key is never read, which is why both rows
      previously rendered their outstanding column as NaN.
      AP's amount field is `amount`; AR's is `total_amount` (see KIND_CONFIG). */
@@ -260,7 +260,7 @@ const FIXTURES = {
   },
   /* Matches the aging fixture below, which already had this right:
      total 4820 less 3180 paid leaves 1640 outstanding. Statuses come from
-     KIND_CONFIG's AR vocabulary — 'unpaid' is an AP-ism and rendered as
+     KIND_CONFIG's AR vocabulary, 'unpaid' is an AP-ism and rendered as
      unstyled text where a real status gets a badge. */
   '/ar/invoices': {
     data: [
@@ -287,7 +287,7 @@ const FIXTURES = {
       voidCount: 2, totalVoidValue: 174, shrinkageCount: 2, totalShrinkageValue: 214 },
   ],
   /* The loss-prevention pie chart groups by tags parsed out of `notes`
-     ([THEFT_SUSPECTED] / [DAMAGE] / [ADMIN_ERROR] / [UNKNOWN]) — an entry
+     ([THEFT_SUSPECTED] / [DAMAGE] / [ADMIN_ERROR] / [UNKNOWN]), an entry
      without one lands in an "unknown" slice. A single row, as this fixture
      used to hold, drew a one-segment pie and a one-line table, which is not a
      picture of a loss-prevention tool. `value_lost` is quantity × price, the
@@ -323,8 +323,7 @@ const FIXTURES = {
     expenses: 41500, netProfit: 52700, grossMargin: 22.8, netMargin: 12.8,
   },
   /* `aging` is four *bucket arrays* keyed current/days_30/days_60/days_90_plus,
-     and `summary` totals them under those same keys plus `totalOutstanding` —
-     see GET /api/reports/ar-aging. The old fixture made `aging` a flat array of
+     and `summary` totals them under those same keys plus `totalOutstanding`, see GET /api/reports/ar-aging. The old fixture made `aging` a flat array of
      per-customer rows, so `arAging.aging.current` was undefined: every bucket
      tile showed zero and the invoice table below rendered its empty state. */
   '/reports/ar-aging': {
@@ -365,7 +364,7 @@ const FIXTURES = {
     { id: 'ct2', name: 'Receipt Follow-up', type: 'email', subject: 'Your receipt',
       content: 'Thanks for shopping with us.' },
   ],
-  // Secrets come back masked from the server — mirror that, never a real key.
+  // Secrets come back masked from the server, mirror that, never a real key.
   '/crm-communications/gateways': [
     { id: 'g1', provider: 'arkesel', type: 'sms', display_name: 'Arkesel SMS',
       sender_id: 'QUADERP', api_key: '••••••••', is_active: true, is_default: true },
@@ -384,19 +383,19 @@ const FIXTURES = {
   // ── HR (routes/hr.js) ──
   '/hr/attendance/status': { clocked_in: false, active_log: null },
   '/hr/attendance/me': {
-    data: [{ id: 'al1', clock_in: T0, clock_out: T0, hours: 8, location: { name: 'Adom Superstore — Osu' } }],
+    data: [{ id: 'al1', clock_in: T0, clock_out: T0, hours: 8, location: { name: 'Adom Superstore, Osu' } }],
     total: 1, page: 1, limit: 20, totalPages: 1,
   },
   '/hr/attendance': {
     data: [
       { id: 'al1', clock_in: T0, clock_out: T0, hours: 8,
-        user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore — Osu' } },
+        user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore, Osu' } },
     ],
     total: 1, page: 1, limit: 20, totalPages: 1,
   },
   '/hr/schedules': [
     { id: 'sc1', shift_date: '2026-07-31', start_time: '08:00', end_time: '17:00',
-      user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore — Osu' } },
+      user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore, Osu' } },
   ],
   '/hr/commission-rules': [
     { id: 'cr1', name: 'Standard 5%', rate: 5, basis: 'revenue', is_active: true },
@@ -420,7 +419,7 @@ const FIXTURES = {
   ],
   '/billing/invoices/mock-biz': [
     { id: 'bi1', invoice_number: 'QDE-0001', amount: 250, currency: 'GHS', status: 'paid',
-      description: 'Growth plan — July 2026', created_at: T0 },
+      description: 'Growth plan, July 2026', created_at: T0 },
   ],
 
   // ── Onboarding + device pairing ──
@@ -447,7 +446,7 @@ const MISS = { hit: false, data: undefined };
 /**
  * Resolve an endpoint against the fixtures.
  *
- * Matching is on the exact pathname (query string stripped) — NOT a substring
+ * Matching is on the exact pathname (query string stripped), NOT a substring
  * test. A substring test made `/products/123/batches` return the `/products`
  * collection, which silently fed list data to detail views.
  *
@@ -459,11 +458,10 @@ export function resolveMock(endpoint) {
 
   if (!Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
     /* A miss falls through to the real network path in api.js, which has no
-       session under the harness and throws "No authentication token found" —
-       so the page screenshots its *error* state and the baseline records a red
+       session under the harness and throws "No authentication token found", so the page screenshots its *error* state and the baseline records a red
        banner instead of the UI. That is silent today: the thrown error names
        no endpoint. Name it here so a gap is obvious rather than mysterious. */
-    console.warn(`[mock] no fixture for ${path} — page will render its error state`);
+    console.warn(`[mock] no fixture for ${path}, page will render its error state`);
     return MISS;
   }
 

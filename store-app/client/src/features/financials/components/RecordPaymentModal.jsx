@@ -8,7 +8,7 @@ const TILL_METHODS = ['cash', 'mobile_money'];
 
 /**
  * Records a payment against an AR invoice or AP bill. Shared between Accounts
- * Receivable and Accounts Payable — only the outstanding-balance context and
+ * Receivable and Accounts Payable, only the outstanding-balance context and
  * submit handler differ.
  */
 export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document, outstanding = 0, locations, isSubmitting, error }) {

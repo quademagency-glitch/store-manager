@@ -12,14 +12,14 @@ import { fileURLToPath } from 'node:url';
  * renders a plain unstyled button, and `className="m-card" …
  * className="cursor-pointer"` renders a card with no card styling. The one
  * that made this visible was `MainLayout`'s hamburger, which lost
- * `mobile-menu-toggle` — the class carrying `display: none` above 768px.
+ * `mobile-menu-toggle`, the class carrying `display: none` above 768px.
  *
  * Nothing catches it today: it is valid JavaScript, so the build is happy,
  * and `eslint-plugin-react` (which has `jsx-no-duplicate-props`) is not a
  * dependency of this project. Rather than add one for a single rule, the
  * check lives here alongside the other static invariants.
  *
- * Scanning is textual on purpose — no parser dependency. The scanner tracks
+ * Scanning is textual on purpose, no parser dependency. The scanner tracks
  * quote and bracket depth so that a `=>` inside an `onClick`, a template
  * literal, or nested JSX in a prop expression (`actions={<div
  * className="…">}`) is not mistaken for the end of the tag or for a
@@ -41,7 +41,7 @@ function walkJsx(dir: string, out: string[] = []): string[] {
 
 type Dup = { file: string; line: number; prop: string; tag: string };
 
-/** Attribute names worth guarding — the ones whose loss is silent. */
+/** Attribute names worth guarding, the ones whose loss is silent. */
 const WATCHED = ['className', 'style', 'onClick', 'onChange', 'key', 'value'];
 
 function findDuplicateProps(source: string, file: string): Dup[] {
@@ -65,7 +65,7 @@ function findDuplicateProps(source: string, file: string): Dup[] {
       if (c === '{' || c === '(' || c === '[') { depth++; continue; }
       if (c === '}' || c === ')' || c === ']') { depth--; continue; }
 
-      // Only count a name as an attribute at depth 0 — inside a `{}` prop
+      // Only count a name as an attribute at depth 0, inside a `{}` prop
       // expression it belongs to nested JSX, not to this tag.
       if (depth === 0 && /\s/.test(source[j - 1] ?? '')) {
         for (const prop of WATCHED) {
@@ -111,8 +111,7 @@ test('no JSX element declares the same prop twice', () => {
   ).toEqual([]);
 });
 
-/* The scanner is doing enough parsing-by-hand to be worth testing itself —
-   a silent false negative here would let the real defect back in. */
+/* The scanner is doing enough parsing-by-hand to be worth testing itself, a silent false negative here would let the real defect back in. */
 test('scanner distinguishes real duplicates from lookalikes', () => {
   const cases: Array<[string, number, string]> = [
     ['<button className="a" className="b">', 1, 'plain duplicate'],

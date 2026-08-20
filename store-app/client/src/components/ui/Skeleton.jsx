@@ -1,7 +1,7 @@
 /**
  * Loading placeholders.
  *
- * Nothing like this existed — five pages replaced the entire view with the
+ * Nothing like this existed, five pages replaced the entire view with the
  * bare text "Loading…", which swaps the whole layout and flashes.
  *
  * Presets are dimensionally matched to the real components they stand in for,
@@ -57,8 +57,7 @@ export function SkeletonTable({ rows = 5, cols = 4, showHeader = true, caption =
 /**
  * Loading rows for a table that is already rendered.
  *
- * `SkeletonTable` builds its own grid, so it cannot go inside a <tbody> —
- * and a <div> there is invalid markup the browser hoists out of the table.
+ * `SkeletonTable` builds its own grid, so it cannot go inside a <tbody>, * and a <div> there is invalid markup the browser hoists out of the table.
  * Every in-table loading state in the app was a single centred cell reading
  * "Loading…", which collapses the column widths and then snaps back when the
  * data lands. These are real <tr>/<td>, so the columns hold their positions.

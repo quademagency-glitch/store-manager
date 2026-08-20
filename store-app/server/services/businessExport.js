@@ -1,8 +1,8 @@
 /**
  * Streams a business's own records out as a ZIP of CSV files.
  *
- * Backs the promise made in the Privacy Policy — that an owner can retrieve
- * their data at any time — and gives them a way to leave without losing years
+ * Backs the promise made in the Privacy Policy, that an owner can retrieve
+ * their data at any time, and gives them a way to leave without losing years
  * of trading history.
  *
  * STREAMING IS THE POINT. A busy shop's sales and stock_movements run to
@@ -28,7 +28,7 @@ const PAGE_SIZE = 1000;
  *
  *   api_keys, communication_gateways, webhook_endpoints
  *     Hold credentials for other systems. Even hashed, handing them out in a
- *     downloadable file is the wrong default — and they are recoverable from
+ *     downloadable file is the wrong default, and they are recoverable from
  *     the admin UI by someone already authenticated.
  *   *_number_sequences
  *     Internal counters. Meaningless outside the database and confusing in an
@@ -153,7 +153,7 @@ async function appendBusinessData(archive, businessId, business) {
     notes: [
       'Row counts were taken at the start of the export; a busy shop may write more rows while it runs.',
       'Columns holding credentials (PINs, API keys, gateway secrets) are omitted by design.',
-      'API keys, webhook endpoints and communication gateways are not included — retrieve those from the admin area.',
+      'API keys, webhook endpoints and communication gateways are not included, retrieve those from the admin area.',
     ],
   };
   archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });

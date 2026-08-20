@@ -78,7 +78,7 @@ test('the dark theme block introduces no token the light default lacks', () => {
   const dark = keys(blockOf('[data-theme="dark"]'));
 
   // `:root` is the complete contract; the dark block may only override.
-  // Anything defined only in dark is missing in light — that asymmetry is what
+  // Anything defined only in dark is missing in light, that asymmetry is what
   // left `.btn-primary:hover` with no glow in dark mode.
   const darkOnly = [...dark].filter((k) => !root.has(k));
 

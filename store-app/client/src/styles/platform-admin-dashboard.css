@@ -325,7 +325,7 @@
 }
 
 /* ── Button size modifier ── */
-/* `.btn-sm` sizing lives in buttons.css — see the note there. */
+/* `.btn-sm` sizing lives in buttons.css, see the note there. */
 .btn-sm svg {
   width: 14px;
   height: 14px;

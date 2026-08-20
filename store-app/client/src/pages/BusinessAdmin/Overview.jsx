@@ -36,7 +36,7 @@ export default function Overview() {
     //
     // This previously read `.catch(() => ({}))` on each request, which meant a
     // failed /analytics/summary produced an empty object, every stat fell back
-    // to 0, the outer catch never fired, and setError(null) ran — so the page
+    // to 0, the outer catch never fired, and setError(null) ran, so the page
     // rendered a completely normal-looking dashboard reading GHS 0 sales, no
     // products, no alerts. A business owner had no way to tell that apart from
     // a genuinely quiet day. Partial failure has to be visible.
@@ -79,7 +79,7 @@ export default function Overview() {
    * Triggers the streaming ZIP export.
    *
    * Uses fetch + a blob rather than pointing the browser at the URL directly,
-   * because the endpoint needs the Authorization header — a plain link or
+   * because the endpoint needs the Authorization header, a plain link or
    * window.open cannot carry one, and the request would just 401.
    */
   const handleExport = async () => {
@@ -96,7 +96,7 @@ export default function Overview() {
       URL.revokeObjectURL(url);
       toast.success('Export downloaded.');
     } catch (err) {
-      // 429 is the once-an-hour limit, which deserves its own message —
+      // 429 is the once-an-hour limit, which deserves its own message, 
       // "export failed" would send someone hunting for a fault that isn't there.
       if (err?.status === 429) {
         toast.error('An export can only be generated once per hour. Try again shortly.');
@@ -110,7 +110,7 @@ export default function Overview() {
 
   useEffect(() => {
     fetchData();
-    // Progressive enhancement — the setup checklist banner just doesn't appear
+    // Progressive enhancement, the setup checklist banner just doesn't appear
     // if this fails, which is not worth interrupting the user over. apiError
     // still routes it to the error sink.
     api.get('/businesses/me/setup-status')

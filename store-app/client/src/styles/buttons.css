@@ -3,12 +3,12 @@
 
    The base `.btn` previously set no background, border or colour,
    so any variant that wasn't defined rendered as bare text. Four
-   were used in JSX and never defined for screen — `.btn-outline`
+   were used in JSX and never defined for screen, `.btn-outline`
    (69 uses across 22 files, defined only inside print.css's
    `@media print { display: none }`), `.btn-gradient` (8, defined
    only in a <style dangerouslySetInnerHTML> that leaked globally
    once CRMCommunications mounted), `.btn-danger` (2) and
-   `.btn-close` (1) — 80 buttons rendering as plain text.
+   `.btn-close` (1), 80 buttons rendering as plain text.
 
    There was also no `:focus-visible`, no `:active`, no size
    scale and no busy state anywhere in the file.
@@ -58,7 +58,7 @@
   transform: none;
 }
 
-/* Busy state — `aria-busy` drives both the visuals and the
+/* Busy state, `aria-busy` drives both the visuals and the
    assistive-tech announcement from one attribute. */
 .btn[aria-busy='true'] {
   cursor: progress;

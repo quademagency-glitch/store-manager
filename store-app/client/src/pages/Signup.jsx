@@ -6,8 +6,8 @@ import { postPublic } from '../lib/api';
 /**
  * Mirror of the server's slug rule (public.slugify, migration 058) so the
  * preview under the business-name field matches what the account will
- * actually get. The server stays authoritative — it also has to de-duplicate
- * against every existing slug, which the browser cannot see — so a signup for
+ * actually get. The server stays authoritative, it also has to de-duplicate
+ * against every existing slug, which the browser cannot see, so a signup for
  * a name already taken lands on `acme-2` and the success screen shows that,
  * not this guess.
  */
@@ -27,7 +27,7 @@ const TRIAL_DAYS = 30;
  *
  * This map is a label, not a decision. The API re-resolves the plan name
  * against platform_plans and is the only thing that decides what gets
- * attached, so a stale entry here can show the wrong blurb — it cannot put
+ * attached, so a stale entry here can show the wrong blurb, it cannot put
  * anyone on the wrong plan. Franchise is deliberately absent: it is quoted by
  * hand and the pricing table routes it to sales, not to this form.
  */
@@ -69,7 +69,7 @@ export default function Signup() {
   const slugPreview = useMemo(() => slugify(form.business_name), [form.business_name]);
 
   /* Someone arriving here from inside the sandbox is signed in, and the
-     redirect below would bounce them straight back to the demo — making
+     redirect below would bounce them straight back to the demo, making
      "Start your free trial", the single most important link in the whole
      demo, do nothing at all.
 

@@ -10,7 +10,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
  * go. This turns navigation into typing three letters.
  *
  * IT DOES NOT DEFINE ITS OWN LIST. Entries come from MainLayout's navGroups,
- * which is already filtered by the signed-in user's permissions — so the
+ * which is already filtered by the signed-in user's permissions, so the
  * palette can never offer a page the user would be refused, and a nav item
  * added later appears here automatically. Duplicating the list is how a
  * palette ends up advertising pages that 403.
@@ -18,7 +18,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 /**
  * Subsequence match: every character of the query appears in order, not
- * necessarily adjacently. Lets "acrec" find "Accounts Receivable" — which is
+ * necessarily adjacently. Lets "acrec" find "Accounts Receivable", which is
  * the point of a palette over a plain filter.
  */
 function fuzzyScore(query, text) {

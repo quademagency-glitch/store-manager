@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
  *
  * THE GUARD IS THE WHOLE POINT. A cashier types product names, customer names
  * and payment amounts all day. A shortcut that fires while they are typing is
- * worse than no shortcut — imagine "/" clearing the cart mid-sale. So by
+ * worse than no shortcut, imagine "/" clearing the cart mid-sale. So by
  * default nothing fires while focus is in an input, textarea, select or
  * contenteditable.
  *
@@ -54,7 +54,7 @@ export function useKeyboardShortcuts(bindings) {
           ? event.key.toLowerCase() !== b.key.toLowerCase()
           : event.key !== b.key) continue;
 
-        // metaKey on macOS, ctrlKey elsewhere — accepting either means the same
+        // metaKey on macOS, ctrlKey elsewhere, accepting either means the same
         // binding works on both without sniffing the platform.
         const wantsModifier = b.meta === true;
         const hasModifier = event.metaKey || event.ctrlKey;

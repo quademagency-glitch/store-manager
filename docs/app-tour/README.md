@@ -11,13 +11,13 @@ store-app/client/tools/app-tour.mjs
 
 | File | What it is |
 | --- | --- |
-| `screenshots/` | 78 full-page PNGs — 39 routes × light and dark, 1440×900 at 2× |
+| `screenshots/` | 78 full-page PNGs, 39 routes × light and dark, 1440×900 at 2× |
 | `app-tour.mp4` | Narrated walkthrough of every page, H.264, 1440×900 |
 | `app-tour.webm` | The same recording as Playwright produced it (VP8) |
 | `metrics.json` | Per-route load timings from a production build |
 
 The flow chart that explains how the app fits together is a separate
-deliverable — see the artifact link in the chat, or rebuild it from
+deliverable, see the artifact link in the chat, or rebuild it from
 `docs/app-tour/` if it moves into the repo.
 
 ## Reproducing it
@@ -25,7 +25,7 @@ deliverable — see the artifact link in the chat, or rebuild it from
 The tour drives the same mock harness the Playwright suites use, so it needs
 no backend, no login and no real data. It reads its route list from
 `store-app/client/tests/routes.ts`, so adding a page to that manifest puts it
-in the tour automatically — the map cannot drift from the app without the
+in the tour automatically, the map cannot drift from the app without the
 visual suite noticing first.
 
 Point it at a **production build**, not the dev server. Dev serves unbundled
@@ -35,13 +35,13 @@ ESM over hundreds of requests and its timings mean nothing.
 cd store-app/client
 
 # 1. Build with mocks compiled in, to a throwaway outDir.
-#    Never build mocks into dist/ — that is the directory Vercel deploys.
+#    Never build mocks into dist/, that is the directory Vercel deploys.
 VITE_USE_MOCKS=true npx vite build --outDir dist-tour
 
 # 2. Serve it.
 npx vite preview --outDir dist-tour --port 5179
 
-# 3. Capture. Skips the public pages — see below.
+# 3. Capture. Skips the public pages, see below.
 node tools/app-tour.mjs --port=5179 --skip=90-login,91-forgot-password
 
 # 4. Transcode for sharing.
@@ -68,10 +68,10 @@ node tools/app-tour.mjs --port=5180 --no-video \
 | Flag | Effect |
 | --- | --- |
 | `--port=N` | Server to drive (default 5178) |
-| `--out=DIR` | Output root. Resolved against `tools/`, not the cwd, so the default already lands on `docs/app-tour` — passing a relative path here is how a full parallel set once got written into `store-app/docs/` while the real screenshots sat untouched |
+| `--out=DIR` | Output root. Resolved against `tools/`, not the cwd, so the default already lands on `docs/app-tour`, passing a relative path here is how a full parallel set once got written into `store-app/docs/` while the real screenshots sat untouched |
 | `--only=a,b` | Capture just these routes, by manifest name |
 | `--skip=a,b` | Capture everything except these |
-| `--limit=N` | First N routes only — for smoke tests |
+| `--limit=N` | First N routes only, for smoke tests |
 | `--themes=a,b` | Themes to capture stills for (default `light,dark`) |
 | `--no-video` | Screenshots and metrics only |
 | `--metrics-only` | Refresh `metrics.json` without re-shooting anything |
@@ -81,7 +81,7 @@ node tools/app-tour.mjs --port=5180 --no-video \
 Timings are collected in a **second pass with a real wall clock**. The capture
 pass pins time with `clock.setFixedTime` so the dashboard greeting and relative
 dates stay stable across runs, and that also empties the Performance
-timeline — navigation, paint and resource entries all come back missing. The
+timeline, navigation, paint and resource entries all come back missing. The
 two cannot share a page.
 
 Two caveats worth keeping in mind when quoting these numbers:

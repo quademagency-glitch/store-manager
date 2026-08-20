@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const envSchema = z.object({
-  // Supabase — required
+  // Supabase, required
   SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10, 'SUPABASE_SERVICE_ROLE_KEY is required'),
 
@@ -10,7 +10,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).default('info'),
 
-  // Auth cache — how long to cache user roles/permissions after DB lookup.
+  // Auth cache, how long to cache user roles/permissions after DB lookup.
   // Default bumped to 5 min (300s) since local JWT verification makes the
   // cache the primary guard against repeated DB hits. invalidateUserCache()
   // still evicts immediately on role/ban changes.
@@ -28,13 +28,13 @@ const envSchema = z.object({
   // Paystack
   PAYSTACK_SECRET_KEY: z.string().optional(),
 
-  // Error monitoring — entirely optional. With no DSN, instrument.js never even
+  // Error monitoring, entirely optional. With no DSN, instrument.js never even
   // requires the Sentry SDK, so the app behaves identically.
   SENTRY_DSN: z.string().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
 
   // Reverse-proxy hop count for req.ip resolution. See the long note in
-  // index.js — this must be a number, never `true`.
+  // index.js, this must be a number, never `true`.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(2),
 
   // Ceiling for the general /api/* limiter, per signed-in session (or per IP

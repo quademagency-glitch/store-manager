@@ -40,7 +40,7 @@ export function ToastProvider({ children }) {
   // and the copy used in cleanup. That advice is wrong here and would be a bug:
   // this effect runs once at mount, when the map is still empty, so the copy
   // would clear nothing and every pending toast timer would leak past unmount.
-  // Reading `.current` at teardown is the whole point — we want whatever timers
+  // Reading `.current` at teardown is the whole point, we want whatever timers
   // exist *then*.
   useEffect(() => () => Object.values(timersRef.current).forEach(clearTimeout), []);
 

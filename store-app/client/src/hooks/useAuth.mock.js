@@ -4,7 +4,7 @@ import { getFlatPermissions } from '../constants/permissions';
 
 /**
  * Mock session for the Playwright visual harness. Only reachable when
- * VITE_USE_MOCKS is set — see src/lib/mockMode.js.
+ * VITE_USE_MOCKS is set, see src/lib/mockMode.js.
  *
  * `hasPermission` deliberately mirrors the real hook's rules rather than
  * returning `true` for everything, so captured screenshots show the nav and
@@ -24,8 +24,8 @@ export function useAuth() {
        ("Good afternoon, Ama Mensah"), and that greeting is the first line of
        the first screenshot anyone sees. Matches `u1` in api.mock.js.
 
-       `user_metadata.name` is where the real hook carries it — that is the
-       Supabase auth shape, written by createStaffUser() — so the mock mirrors
+       `user_metadata.name` is where the real hook carries it, that is the
+       Supabase auth shape, written by createStaffUser(), so the mock mirrors
        it rather than inventing a flatter one the app would have to special-case. */
     user: {
       id: 'mock-user',

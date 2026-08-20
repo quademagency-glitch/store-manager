@@ -18,7 +18,7 @@ export default function PriceListPrint() {
 
   useEffect(() => {
     // Swallowing this rendered a permanently empty category picker with
-    // nothing on screen saying why — see the note in lib/api.mock.js.
+    // nothing on screen saying why, see the note in lib/api.mock.js.
     api.get('/pricing/categories')
       .then(setCategories)
       .catch(err => {

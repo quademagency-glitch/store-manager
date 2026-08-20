@@ -80,7 +80,7 @@ describe('POST /api/csp-report', () => {
     expect(cspReportSummary()).toHaveLength(2);
   });
 
-  // The body is entirely attacker-controlled — this endpoint is public.
+  // The body is entirely attacker-controlled, this endpoint is public.
   it('does not fall over on junk', async () => {
     for (const body of ['{}', '[]', '{"csp-report":{}}', 'null', '{"nonsense":true}']) {
       const res = await request(app).post('/api/csp-report')

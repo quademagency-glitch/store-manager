@@ -1,4 +1,4 @@
-# QERP Store — Codebase Audit & Improvement Roadmap
+# QERP Store, Codebase Audit & Improvement Roadmap
 
 ## Summary
 
@@ -12,7 +12,7 @@ After reading through the entire client and server codebase, I've categorized fi
 > [!CAUTION]
 > [AccountingTemplates.jsx:L133](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/pages/AccountingTemplates.jsx#L133) uses `new Function()` to evaluate conditional logic strings. This is essentially `eval()` and opens a **code injection** vulnerability if an admin creates a malicious condition string.
 
-**Fix:** Replace with a safe expression parser (e.g., a simple tokenizer that only supports `==`, `!=`, `&&`, `||` on known field values — no arbitrary JS execution).
+**Fix:** Replace with a safe expression parser (e.g., a simple tokenizer that only supports `==`, `!=`, `&&`, `||` on known field values, no arbitrary JS execution).
 
 ---
 
@@ -45,7 +45,7 @@ Native browser `alert()` and `confirm()` dialogs are jarring, non-styleable, and
 |------|-------|-------|
 | [PlatformAdmin.jsx](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/pages/PlatformAdmin.jsx) | **1,961** | Way too large. Should be split into sub-pages like BusinessAdmin was. |
 | [index.css](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/index.css) | **4,514** | One monolithic CSS file. Should be split into per-component/per-page stylesheets. |
-| [MainLayout.jsx](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/components/MainLayout.jsx) | **670+** | Contains sidebar, topbar, mobile drawer, user menu — should be broken into smaller components. |
+| [MainLayout.jsx](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/components/MainLayout.jsx) | **670+** | Contains sidebar, topbar, mobile drawer, user menu, should be broken into smaller components. |
 | [Sales.jsx](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/pages/Sales.jsx) | **856** | POS logic, cart, payment, receipt all in one file. |
 | [Inventory.jsx](file:///Volumes/QUADEM/Personal/VIBE%20CODING/ERP/store-app/client/src/pages/Inventory.jsx) | **851** | Stock transfers, audits, product list all in one file. |
 
@@ -97,7 +97,7 @@ The Express server has no rate limiting middleware. The login and signup endpoin
 ## 🟢 Nice-to-Have Improvements
 
 ### 9. No Pagination on Major List Views
-Sales, Inventory, Ledger, Customers — all fetch **every** record from the database in a single query. As the business grows, these pages will become extremely slow.
+Sales, Inventory, Ledger, Customers, all fetch **every** record from the database in a single query. As the business grows, these pages will become extremely slow.
 
 **Fix:** Add server-side pagination (`?page=1&limit=50`) and infinite scroll or page controls on the client.
 
@@ -113,7 +113,7 @@ Sales, Inventory, Ledger, Customers — all fetch **every** record from the data
 ### 11. PWA Service Worker Caching Issue
 As we experienced tonight, the Service Worker aggressively caches old assets. Users don't see updates unless they hard-refresh.
 
-**Fix:** Configure the `vite-plugin-pwa` to use a `skipWaiting` + `clientsClaim` strategy so new versions activate immediately, and optionally show a "New version available — click to refresh" banner.
+**Fix:** Configure the `vite-plugin-pwa` to use a `skipWaiting` + `clientsClaim` strategy so new versions activate immediately, and optionally show a "New version available, click to refresh" banner.
 
 ---
 

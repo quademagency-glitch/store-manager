@@ -45,7 +45,7 @@ describe('security headers', () => {
     expect(res.headers['cross-origin-resource-policy']).toBe('cross-origin');
   });
 
-  // CSP on a JSON API is inert — it belongs on the document, which Vercel
+  // CSP on a JSON API is inert, it belongs on the document, which Vercel
   // serves. Asserting its absence keeps someone from "helpfully" adding it back
   // and believing the API is protected by it.
   it('does not set CSP on the API (it belongs in vercel.json)', async () => {

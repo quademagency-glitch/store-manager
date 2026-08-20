@@ -7,7 +7,7 @@
 }
 
 /* `.page-header` and `.dashboard-header` were byte-identical apart from
-   `.dashboard-header` lacking flex-wrap and gap — which is why every
+   `.dashboard-header` lacking flex-wrap and gap, which is why every
    consumer of it hand-added `style={{ marginBottom: '24px' }}`. Aliased
    here so the ~40 existing call sites keep working unchanged while the
    <PageHeader> component rolls out. */

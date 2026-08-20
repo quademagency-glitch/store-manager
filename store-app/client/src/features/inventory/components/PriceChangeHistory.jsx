@@ -15,7 +15,7 @@ export default function PriceChangeHistory() {
   const [loading, setLoading] = useState(true);
   const [filterBatch, setFilterBatch] = useState('');
 
-  // Memoized on `filterBatch`, the only value it closes over — so the effect
+  // Memoized on `filterBatch`, the only value it closes over, so the effect
   // below fires on exactly the same condition it did before.
   const fetchHistory = useCallback(async (p = 1) => {
     setLoading(true);

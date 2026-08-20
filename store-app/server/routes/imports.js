@@ -25,7 +25,7 @@ const COMMITTERS = {
 const ENTITY_TYPES = ['products', 'customers', 'suppliers'];
 
 // The 20mb body limit these two routes get in index.js is a byte ceiling, not
-// a work ceiling — 20mb of JSON is roughly 100k rows, and applyColumnMapping
+// a work ceiling, 20mb of JSON is roughly 100k rows, and applyColumnMapping
 // plus the validators hold the whole set in memory while the committer walks it
 // row-by-row against Supabase. Without a count cap the failure just moves from
 // a clean 413 to an OOM or a request that runs for ten minutes.
@@ -44,7 +44,7 @@ const commitRequestSchema = validateRequestSchema.extend({
 
 /**
  * POST /api/imports/preview
- * Multipart upload — parses the file's headers + full row set and returns
+ * Multipart upload, parses the file's headers + full row set and returns
  * a fuzzy-matched suggested column mapping. Nothing is persisted yet; the
  * client holds the parsed rows in memory through map -> validate -> commit.
  */
@@ -106,7 +106,7 @@ router.post('/validate', authGuard, permissionCheck('manage_financials'), valida
  * POST /api/imports/commit
  * JSON body: { entity_type, source_filename, column_mapping, rows }.
  * Re-validates server-side (never trusts a client-reported "this is
- * valid"), then commits each valid row independently — one bad row (e.g. a
+ * valid"), then commits each valid row independently, one bad row (e.g. a
  * race-condition duplicate) must not roll back hundreds of good ones.
  */
 router.post('/commit', authGuard, permissionCheck('manage_financials'), validateBody(commitRequestSchema), async (req, res) => {
@@ -172,7 +172,7 @@ router.post('/commit', authGuard, permissionCheck('manage_financials'), validate
     if (updateErr) throw updateErr;
 
     // Bulk imports create or overwrite records in volume, which makes them one
-    // of the few non-security events worth a trail — the undo below is the
+    // of the few non-security events worth a trail, the undo below is the
     // other half of that story.
     logAuditEvent(req, AUDIT_ACTIONS.IMPORT_COMMITTED, 'import', batch.id, {
       entity_type,
@@ -260,7 +260,7 @@ router.post('/batches/:id/undo', authGuard, permissionCheck('manage_financials')
 
     if (error) throw error;
 
-    // Only audited for a real undo — a dry run changes nothing.
+    // Only audited for a real undo, a dry run changes nothing.
     if (!dryRun) {
       logAuditEvent(req, AUDIT_ACTIONS.IMPORT_UNDONE, 'import', req.params.id, {
         entity_type: batch.entity_type,

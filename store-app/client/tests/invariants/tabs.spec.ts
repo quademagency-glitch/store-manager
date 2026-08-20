@@ -4,8 +4,8 @@ import { gotoApp } from '../helpers';
 /**
  * Guards the Tabs primitive's accessibility contract.
  *
- * Before it there were five hand-rolled tab strips — `.inventory-tab`,
- * `.loyalty-tab`, `.modern-tab` and two sets of inline-styled buttons — and
+ * Before it there were five hand-rolled tab strips, `.inventory-tab`,
+ * `.loyalty-tab`, `.modern-tab` and two sets of inline-styled buttons, and
  * not one of them exposed `role="tablist"`, `aria-selected`, or arrow-key
  * navigation. A screen reader announced a row of unrelated buttons with no
  * indication of which one was current, and a keyboard user had to Tab through

@@ -78,7 +78,7 @@ export default function Login() {
     }
 
     // On a business-branded subdomain, the signed-in account must actually
-    // belong to that business — otherwise bounce them back out rather than
+    // belong to that business, otherwise bounce them back out rather than
     // letting them land on someone else's portal.
     if (slug && business && businessId !== business.id) {
       await signOut();
@@ -107,7 +107,7 @@ export default function Login() {
   };
 
   // A slug resolved from the subdomain but no matching (or active) business
-  // was found — this is not a generic login attempt, so don't show the form.
+  // was found, this is not a generic login attempt, so don't show the form.
   if (slug && (!business || business.status === 'banned')) {
     return (
       <div className="login-page">
@@ -259,7 +259,7 @@ export default function Login() {
           </form>
 
           {/* Only offered on the plain login page. A business-branded
-              subdomain is that tenant's own portal — inviting visitors there
+              subdomain is that tenant's own portal, inviting visitors there
               to create a *different* business, or to wander into a sandbox,
               would be nonsense. */}
           {!slug && (

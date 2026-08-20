@@ -17,7 +17,7 @@ const router = express.Router();
 
 /**
  * GET /api/billing/gateways
- * List all configured payment gateways — Platform Admin only
+ * List all configured payment gateways, Platform Admin only
  */
 router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -45,7 +45,7 @@ router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (re
 
 /**
  * POST /api/billing/gateways
- * Add a payment gateway configuration — Platform Admin only
+ * Add a payment gateway configuration, Platform Admin only
  */
 router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -82,7 +82,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
     if (error) throw error;
 
     // Records the gateway identity only. The keys are never passed to the audit
-    // log — and the redactor in utils/auditLog.js would strip them regardless.
+    // log, and the redactor in utils/auditLog.js would strip them regardless.
     logAuditEvent(req, AUDIT_ACTIONS.GATEWAY_CREATED, 'payment_gateway', data.id, {
       provider: data.provider,
       is_active: data.is_active,
@@ -101,7 +101,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
 
 /**
  * PUT /api/billing/gateways/:id
- * Update a gateway configuration — Platform Admin only
+ * Update a gateway configuration, Platform Admin only
  */
 router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -150,7 +150,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
 
 /**
  * DELETE /api/billing/gateways/:id
- * Remove a gateway — Platform Admin only
+ * Remove a gateway, Platform Admin only
  */
 router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -250,7 +250,7 @@ router.post('/paystack/initialize', authGuard, async (req, res) => {
 
 /**
  * GET /api/billing/invoices
- * Get all invoices (filterable by business_id, status) — Platform Admin
+ * Get all invoices (filterable by business_id, status), Platform Admin
  */
 router.get('/invoices', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -307,7 +307,7 @@ router.get('/invoices/:businessId', authGuard, async (req, res) => {
 
 /**
  * POST /api/billing/invoices/send
- * Send an invoice email — Platform Admin only
+ * Send an invoice email, Platform Admin only
  */
 router.post('/invoices/send', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -368,7 +368,7 @@ router.post('/invoices/send', authGuard, permissionCheck('manage_platform'), asy
 
 /**
  * POST /api/billing/record-payment
- * Manually record a payment — Platform Admin only
+ * Manually record a payment, Platform Admin only
  */
 router.post('/record-payment', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -430,7 +430,7 @@ router.post('/record-payment', authGuard, permissionCheck('manage_platform'), as
         .eq('status', 'banned');
     }
 
-    // Recording a payment can reactivate a banned business — see the note in
+    // Recording a payment can reactivate a banned business, see the note in
     // routes/subscriptions.js.
     invalidateBusinessCache(business_id);
 
@@ -452,7 +452,7 @@ router.post('/record-payment', authGuard, permissionCheck('manage_platform'), as
 
 /**
  * GET /api/billing/stats
- * Revenue summary stats — Platform Admin only
+ * Revenue summary stats, Platform Admin only
  */
 router.get('/stats', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {

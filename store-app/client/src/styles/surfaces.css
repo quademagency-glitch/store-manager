@@ -2,7 +2,7 @@
    Glass surface tiers
 
    Every panel, card, table and overlay in the app resolves to
-   one of four tiers. A tier is not just a background — it also
+   one of four tiers. A tier is not just a background, it also
    RE-DECLARES the text tokens it can guarantee at AA on itself.
    That is what makes the system tractable: a component author
    never has to ask "what am I sitting on?", because the surface
@@ -12,12 +12,12 @@
    Contrast is computed against the COMPOSITED colour (the glass
    alpha over the actual canvas), not the rgba token. Because the
    canvas is a flat base plus a fixed, low-frequency ambient wash,
-   that composite is predictable — and each tier ships a `-solid`
+   that composite is predictable, and each tier ships a `-solid`
    token that IS the computed composite. So the no-backdrop-filter
    fallback is pixel-identical and one set of contrast numbers
    covers both paths. See design-tokens-custom-properties.css.
 
-   BLUR BUDGET — at most ~6 blurred elements on screen.
+   BLUR BUDGET, at most ~6 blurred elements on screen.
    `backdrop-filter` promotes an element to its own compositing
    layer and re-rasterises the backdrop on every paint. 73
    .glass-panel + 41 .glass-table + 15 .pos-glass-card all
@@ -25,7 +25,7 @@
    scroll. Tier 1 therefore uses translucency ONLY: blurring a
    fixed gradient with no high-frequency detail is a visual no-op
    that costs frames and buys nothing. Blur is spent only where
-   something genuinely moves behind the surface — the sidebar,
+   something genuinely moves behind the surface, the sidebar,
    sticky headers, and tier-3 overlays.
    ============================================================ */
 
@@ -87,8 +87,8 @@
 
 /* --- Glass upgrade -------------------------------------------
    Opaque is the DEFAULT declaration and glass is the
-   enhancement, so anything that can't do backdrop-filter — old
-   Safari, forced colors, print — gets the accessible state
+   enhancement, so anything that can't do backdrop-filter, old
+   Safari, forced colors, print, gets the accessible state
    rather than a broken one. */
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .surface-1,
@@ -117,7 +117,7 @@
   }
 
   /* Opt-in blur for the handful of surfaces with real motion
-     behind them. Keep this list short — it is the blur budget. */
+     behind them. Keep this list short, it is the blur budget. */
   .surface--blur {
     backdrop-filter: blur(14px) saturate(1.3);
     -webkit-backdrop-filter: blur(14px) saturate(1.3);
@@ -195,15 +195,14 @@
     background-color: var(--surface-2-bg);
     backdrop-filter: blur(20px) saturate(1.3);
     -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    /* Own layer, promoted once. Never use `will-change` on glass —
-       it pins a permanent layer per element. */
+    /* Own layer, promoted once. Never use `will-change` on glass, it pins a permanent layer per element. */
     transform: translateZ(0);
   }
 }
 
 /* --- Reduced transparency / high contrast / print -------------
    All three collapse to the `-solid` values, which are the exact
-   composites the glass produces — so nothing shifts perceptually,
+   composites the glass produces, so nothing shifts perceptually,
    it just stops being translucent. */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .surface-1,

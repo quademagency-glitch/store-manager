@@ -109,7 +109,7 @@ async function resolveApiKey(rawKey, prefix) {
   };
 }
 
-// Fire-and-forget — never blocks the request on a write.
+// Fire-and-forget, never blocks the request on a write.
 function touchLastUsed(apiKeyId) {
   supabaseAdmin
     .from('api_keys')

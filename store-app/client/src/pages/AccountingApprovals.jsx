@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 // Still needed for storage: getPublicUrl builds a receipt URL, it is not a
-// database query, and it only runs when a receipt is clicked — so page load
+// database query, and it only runs when a receipt is clicked, so page load
 // goes entirely through the API and is fully mockable.
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';

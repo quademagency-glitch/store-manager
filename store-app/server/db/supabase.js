@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   logger.warn('Supabase credentials not found. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env file.');
 }
 
-// Service role client — bypasses RLS, used for admin operations
+// Service role client, bypasses RLS, used for admin operations
 const supabaseAdmin = createClient(
   supabaseUrl || '',
   supabaseServiceKey || '',
@@ -23,7 +23,7 @@ const supabaseAdmin = createClient(
       // connections for the life of the process. Under real traffic this
       // client was observed intermittently getting "new row violates
       // row-level security policy" on inserts that a fresh process (or
-      // curl) with identical credentials/headers always succeeded at —
+      // curl) with identical credentials/headers always succeeded at, 
       // consistent with a persistent connection getting pinned to a
       // Supabase-side backend with stale role/policy state. node-fetch
       // doesn't pool connections by default, forcing a fresh connection

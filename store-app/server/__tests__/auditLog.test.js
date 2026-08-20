@@ -1,5 +1,5 @@
 // utils/auditLog.js requires ../db/supabase at module load, which constructs a
-// real Supabase client — and that needs a WebSocket constructor for its realtime
+// real Supabase client, and that needs a WebSocket constructor for its realtime
 // component. Node 20 has none natively, so without this mock the whole suite
 // fails to even load on Node 20 while passing on Node 22+. CI pins Node 20, so
 // this is the difference between green locally and red in CI.
@@ -27,7 +27,7 @@ describe('audit metadata redaction', () => {
     expect(Object.values(out).every((v) => v === '[redacted]')).toBe(true);
   });
 
-  // Substring matching, not exact — the real column names in this codebase are
+  // Substring matching, not exact, the real column names in this codebase are
   // manager_pin, webhook_secret, paystack_secret_key, new_password.
   it('redacts by substring, catching prefixed and suffixed variants', () => {
     const out = redactAndTruncate({

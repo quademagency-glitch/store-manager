@@ -1,8 +1,8 @@
 /**
  * Keeps the public demo business fresh.
  *
- * Visitors can add products, ring up sales and edit customers — that is the
- * point of a sandbox — so without a reset the demo drifts into whatever the
+ * Visitors can add products, ring up sales and edit customers, that is the
+ * point of a sandbox, so without a reset the demo drifts into whatever the
  * last person left behind. A nightly rebuild puts it back to a store that
  * looks like a going concern.
  *
@@ -11,7 +11,7 @@
  *   startup   seeds only if there is no demo business at all. Restarting the
  *             API must not wipe the sandbox out from under someone mid-browse,
  *             and Railway restarts on every deploy.
- *   nightly   full teardown and rebuild, at 02:00 Accra time — after the
+ *   nightly   full teardown and rebuild, at 02:00 Accra time, after the
  *             subscription cron at midnight, and while nobody is looking.
  */
 
@@ -30,8 +30,8 @@ async function runDemoReset({ ifEmpty = false } = {}) {
   if (!isDemoEnabled()) return;
 
   try {
-    // Required here rather than at the top of the file so the seeder — and
-    // the `pg` driver it needs to rebuild the sandbox — is loaded only when a
+    // Required here rather than at the top of the file so the seeder, and
+    // the `pg` driver it needs to rebuild the sandbox, is loaded only when a
     // reset actually runs. An environment with the demo switched off never
     // touches it, and neither does startup.
     const { reseedDemo } = require('../scripts/seed-demo-data');
@@ -62,7 +62,7 @@ function initDemoResetCron() {
     return { stop() {} };
   }
 
-  // The nightly rebuild is the destructive one — it tears the demo tenant down
+  // The nightly rebuild is the destructive one, it tears the demo tenant down
   // and recreates it. Two replicas doing that concurrently would interleave a
   // teardown with the other's rebuild and leave a half-built demo, so the day
   // slot is claimed before any of it starts.
@@ -80,7 +80,7 @@ function initDemoResetCron() {
   // Claimed under a SEPARATE job name on a short bucket, not the day bucket the
   // nightly rebuild uses. Two replicas booting together must not both seed (that
   // would create two demo businesses), but a restart hours later still needs to
-  // be able to seed if the demo has genuinely gone missing — a day-bucketed
+  // be able to seed if the demo has genuinely gone missing, a day-bucketed
   // claim shared with the nightly job would suppress exactly that.
   const startupTimer = setTimeout(async () => {
     if (!(await claimCronRun('demo-startup-seed', 'five-minutes'))) return;

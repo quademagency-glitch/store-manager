@@ -267,7 +267,7 @@ async function checkShrinkageSpike(businessId, locationId) {
 }
 
 /**
- * Main entry point — run all applicable checks.
+ * Main entry point, run all applicable checks.
  * Called from sales.js and stock.js after key events.
  */
 async function runChecks(event, { userId, businessId, locationId }) {
@@ -293,7 +293,7 @@ async function runChecks(event, { userId, businessId, locationId }) {
     }
   } catch (err) {
     logger.error('Loss prevention engine error:', err);
-    // Never throw — detection failures shouldn't block operations
+    // Never throw, detection failures shouldn't block operations
   }
 }
 

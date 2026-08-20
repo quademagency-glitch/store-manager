@@ -1,5 +1,5 @@
 /* ============================================================
-   Signup page — self-service free trial.
+   Signup page, self-service free trial.
 
    Deliberately thin. The signup form reuses the whole `.login-*`
    surface from login-page.css (card, field, input, button, error)
@@ -8,7 +8,7 @@
    the two-up name/phone row, and the "check your email" screen.
    ============================================================ */
 
-/* The form is taller and wider than the login card — two-up rows need
+/* The form is taller and wider than the login card, two-up rows need
    the room, and 440px makes them cramp. */
 .signup-container {
   max-width: 520px;
@@ -221,7 +221,7 @@
   }
 }
 
-/* Consent line under the signup button. Muted and small — it has to be present
+/* Consent line under the signup button. Muted and small, it has to be present
    and readable, but it should not compete with the call to action. */
 .signup-legal-note {
   margin-block-start: var(--space-md, 1rem);

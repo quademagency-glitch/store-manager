@@ -11,7 +11,7 @@
  *     owns it; the tooltip retries for a beat before giving up.
  *   - A step's target may not exist at all for this user, because the nav item
  *     is behind a permission they do not have. Those steps are skipped
- *     silently — a Sales Executive should not be told about Loss Prevention.
+ *     silently, a Sales Executive should not be told about Loss Prevention.
  *
  * Adding a step therefore means adding `tour: '<id>'` to a nav item in
  * MainLayout as well; a step whose id nothing carries is simply never shown.

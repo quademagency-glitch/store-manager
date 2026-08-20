@@ -6,7 +6,7 @@
    used to hardcode `linear-gradient(145deg, rgba(30,30,46,.7),
    rgba(20,20,30,.9))` with no light-theme counterpart, so in the
    default light theme these rendered as near-black cards carrying
-   light-theme grey text — the unreadable KPI tiles on the
+   light-theme grey text, the unreadable KPI tiles on the
    reconciliation page. */
 .pos-glass-card {
   padding: 1.25rem;
@@ -22,7 +22,7 @@
     box-shadow var(--transition-fast);
 }
 
-/* Sheen sweep. Not applied to non-interactive cards — a KPI tile that
+/* Sheen sweep. Not applied to non-interactive cards, a KPI tile that
    lights up on hover reads as clickable when it isn't. */
 .pos-glass-card--interactive {
   cursor: pointer;

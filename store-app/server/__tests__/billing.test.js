@@ -67,7 +67,7 @@ describe('POST /api/billing/paystack/initialize', () => {
   });
 });
 
-describe('Billing security — secret key masking', () => {
+describe('Billing security, secret key masking', () => {
   it('never exposes full secret keys in gateway list', async () => {
     const res = await request(app)
       .get('/api/billing/gateways')

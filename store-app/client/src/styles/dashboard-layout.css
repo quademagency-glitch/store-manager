@@ -7,7 +7,7 @@
    track and is `sticky` rather than `fixed`, so the track both
    reserves its width AND pins it on scroll. There is no
    `margin-left` to be overridden and no way for main content to
-   slide underneath — which is exactly what used to happen when
+   slide underneath, which is exactly what used to happen when
    `.admin-main-content { margin: 0 auto }` cancelled
    `.dashboard-main { margin-left: var(--sidebar-width) }`,
    hiding 280px of every page beneath the opaque sidebar.
@@ -346,7 +346,7 @@
   display: none;
 }
 
-/* Mobile-only sidebar topbar — hidden by default, shown via responsive.css */
+/* Mobile-only sidebar topbar, hidden by default, shown via responsive.css */
 .mobile-sidebar-topbar {
   display: none;
   align-items: center;
@@ -361,7 +361,7 @@
   flex-shrink: 0;
 }
 
-/* Close button inside sidebar — hidden by default, shown via responsive.css */
+/* Close button inside sidebar, hidden by default, shown via responsive.css */
 .sidebar-mobile-close {
   display: none;
   background: none;
@@ -524,7 +524,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
-  /* Lets .stat-value size against this tile rather than the viewport — see
+  /* Lets .stat-value size against this tile rather than the viewport, see
      the note there. */
   container-type: inline-size;
   transition:
@@ -610,7 +610,7 @@
  *
  * A fixed 1.75rem fits "154" and "$12,450.50" and nothing longer. The tile is
  * 244px wide in the 4-up grid and the icon, gap and padding claim 112px of it,
- * so a GHS total — "GH₵14,382.50", 198px at that size — ran 43px past the
+ * so a GHS total, "GH₵14,382.50", 198px at that size, ran 43px past the
  * card's right edge and clipped. Currency length is not ours to control:
  * GH₵, ₦, CFA and plain codes all land here depending on the tenant.
  *
@@ -644,7 +644,7 @@
   margin-top: var(--space-xs);
 }
 
-/* Empty State — `.empty-state` and `.empty-state-icon` are owned by
+/* Empty State, `.empty-state` and `.empty-state-icon` are owned by
    ui-primitives.css. The copy that lived here animated the icon with a
    2s infinite bounce, which is a lot of perpetual motion for a "nothing
    to show" state and ignored prefers-reduced-motion. */
@@ -681,7 +681,7 @@
 
    Holds the viewport height while a route chunk loads so the page does not
    collapse to zero and bounce the scroll position back to the top. Empty on
-   purpose — each route renders its own loading state once mounted, and a
+   purpose, each route renders its own loading state once mounted, and a
    second loader in front of it read as a flash. */
 .route-suspense-fallback {
   min-height: 100dvh;

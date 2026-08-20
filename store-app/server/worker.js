@@ -1,9 +1,9 @@
 /**
- * Worker entry point — runs a single Express server instance.
+ * Worker entry point, runs a single Express server instance.
  * Spawned by cluster.js (one per CPU core).
  */
 
-// Must be first — see instrument.js. No-op when SENTRY_DSN is unset.
+// Must be first, see instrument.js. No-op when SENTRY_DSN is unset.
 const sentry = require('./instrument');
 
 require('dotenv').config();
@@ -37,7 +37,7 @@ server.headersTimeout = 66000;
 // Drain in-flight requests on deploy instead of dying mid-response. The primary
 // fans SIGTERM out to each worker (node's cluster does not do this for us), and
 // the keepAliveTimeout above is exactly why gracefulShutdown has to call
-// closeIdleConnections — otherwise close() waits 65s per idle socket.
+// closeIdleConnections, otherwise close() waits 65s per idle socket.
 // Crons live in the primary, so there is nothing worker-side to stop here.
 installGracefulShutdown(server, {
   name: 'worker',

@@ -22,7 +22,7 @@ class OrderError extends Error {
 /**
  * Generate next customer order number for a business.
  * Format: CO-0001, CO-0002, ...
- * NOTE: count-based, not concurrency-safe — pre-existing behavior carried
+ * NOTE: count-based, not concurrency-safe, pre-existing behavior carried
  * over from routes/customerOrders.js, not fixed as part of this extraction.
  */
 async function generateOrderNumber(businessId) {
@@ -71,7 +71,7 @@ function validateItems(items) {
 /**
  * Create a draft customer order with line items. Shared by the internal
  * staff route (routes/customerOrders.js) and the public storefront API
- * (routes/publicApi.js) — callers are responsible for resolving/validating
+ * (routes/publicApi.js), callers are responsible for resolving/validating
  * the customer_id belongs to businessId before calling this.
  */
 async function createOrder({ businessId, customerId, items, notes, dueDate, depositAmount, depositPaid, createdBy }) {

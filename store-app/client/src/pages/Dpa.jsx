@@ -22,7 +22,7 @@ import { ENTITY, DPA_VERSION, EFFECTIVE_DATE, postalLine } from '../legal/entity
  * The commitments here are real obligations. Clause 5's sub-processor list,
  * clause 7's security measures and clause 9's notification timing all describe
  * what the system actually does today. Do not strengthen the wording without
- * changing the system first — an undertaking you cannot meet is worse than a
+ * changing the system first, an undertaking you cannot meet is worse than a
  * modest one you can.
  *
  * It is not legal advice and no lawyer has reviewed it.

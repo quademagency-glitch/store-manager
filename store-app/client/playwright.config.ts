@@ -3,11 +3,11 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Three suites:
  *
- *   invariants — runtime DOM assertions (tokens, layout, tabs, empty states,
+ *   invariants, runtime DOM assertions (tokens, layout, tabs, empty states,
  *                no-crash). Mock harness, no backend, no login.
- *   visual     — screenshot baselines. Same harness, but runs *after*
+ *   visual, screenshot baselines. Same harness, but runs *after*
  *                invariants rather than beside them.
- *   e2e        — real login against a real server. Mocks OFF, or the login
+ *   e2e, real login against a real server. Mocks OFF, or the login
  *                flow can't work.
  *
  * visual and e2e previously fought each other: the login-based specs could
@@ -16,13 +16,13 @@ import { defineConfig, devices } from '@playwright/test';
  * visual and invariants then fought each other too, less obviously. Both drove
  * one dev server, and once the invariant suite grew to ~75 navigations the
  * added contention meant screenshots were being taken of pages that had not
- * finished settling — 68 of 80 captures "failed" against baselines that had
+ * finished settling, 68 of 80 captures "failed" against baselines that had
  * been written minutes earlier and that pass cleanly when the capture suite
  * runs on its own. `dependencies` serialises them: invariants complete first,
  * then the screenshots get an unloaded server.
  */
 
-/* Overridable because 5175 is a common Vite fallback — a dev server from an
+/* Overridable because 5175 is a common Vite fallback, a dev server from an
    unrelated project sitting on it fails the whole run at startup, and killing
    someone else's server is not the right fix. `PW_CLIENT_PORT=5185 npm run
    test:visual` moves this suite instead. */
@@ -34,7 +34,7 @@ const baseURL = `http://localhost:${CLIENT_PORT}`;
  *
  * `reuseExistingServer: false` is not enough on its own: when a server is
  * already on the port the run can end up driving it, and it serves whatever
- * modules it was started with. That happened here — a leftover server from a
+ * modules it was started with. That happened here, a leftover server from a
  * manual screenshot probe served pre-edit code, so 80 capture tests compared a
  * stale app against stale baselines and the suite reported green.
  *
@@ -71,7 +71,7 @@ export default defineConfig({
          `fullPage: true` the denominator is the whole scrollable page (~2.7M px
          on a tall route), while the things that regress are anti-aliased text
          strokes on an unchanged background. Collapsing every sidebar nav group
-         across all 38 routes measured 8,396 px — 0.31% — and passed. So did a
+         across all 38 routes measured 8,396 px, 0.31%, and passed. So did a
          new Danger Zone panel and a fixture change that repopulated a page.
          The taller the page, the weaker the check, which is backwards.
 
@@ -79,7 +79,7 @@ export default defineConfig({
          project serialised (see `fullyParallel` below), 37 of 38 routes are
          byte-identical run to run. The margin is for genuine environment
          variation, not for the app changing. The smallest real change measured
-         here — a one-line flex fix on the POS cart total — was 598 px. */
+         here, a one-line flex fix on the POS cart total, was 598 px. */
       maxDiffPixels: 200,
     },
   },
@@ -97,7 +97,7 @@ export default defineConfig({
       dependencies: ['invariants'],
       /* Serialised deliberately. Under four parallel workers, two routes
          intermittently shifted text by a sub-pixel and diffed by 4,000-8,200
-         px — indistinguishable from a real regression, and the reason a 1%
+         px, indistinguishable from a real regression, and the reason a 1%
          tolerance looked necessary. At one worker the same routes are
          byte-identical, which is what lets `maxDiffPixels: 200` above hold.
          Costs a few minutes; invariants still run in parallel. */

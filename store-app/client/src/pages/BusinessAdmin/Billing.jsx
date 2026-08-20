@@ -132,7 +132,7 @@ export default function Billing() {
       setTimeout(() => fetchBillingData(), 1000);
     }
     // `toast` is memoized by the provider, so it is stable across renders and
-    // safe to depend on — it will not retrigger this payment-verification pass.
+    // safe to depend on, it will not retrigger this payment-verification pass.
   }, [fetchBillingData, toast]);
 
   if (loading) {

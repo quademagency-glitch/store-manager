@@ -49,7 +49,7 @@ export default function CRMCommunications() {
   const [gatewayForm, setGatewayForm] = useState({ provider: 'arkesel', type: 'sms', display_name: '', api_key: '', secret_key: '', sender_id: '', is_active: true, is_default: false });
 
   // `toast` is provider-memoized, so this is stable and the effect below stays
-  // mount-only — same behaviour as the previous empty dep array.
+  // mount-only, same behaviour as the previous empty dep array.
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);

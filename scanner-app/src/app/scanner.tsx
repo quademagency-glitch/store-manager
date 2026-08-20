@@ -238,7 +238,7 @@ export default function ScannerScreen() {
     const start = timeWindow[`${action}_start` as keyof typeof timeWindow];
     const end = timeWindow[`${action}_end` as keyof typeof timeWindow];
     if (!start || !end) return null;
-    return `${isClockedIn ? 'Sign out' : 'Sign in'}: ${start} – ${end}`;
+    return `${isClockedIn ? 'Sign out' : 'Sign in'}: ${start}, ${end}`;
   };
 
   const handleClockIn = async () => {

@@ -38,7 +38,7 @@ export default function LandingPage() {
             <Link to="/signup" className="w-full sm:w-auto px-8 py-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-xl shadow-indigo-500/20 text-lg">
               Start free trial
             </Link>
-            {/* Straight into the sandbox — no form, no email. The heavier
+            {/* Straight into the sandbox, no form, no email. The heavier
                 secondary weight is deliberate: for a shop owner deciding
                 whether this is worth their evening, seeing it beats reading
                 a feature list. */}

@@ -191,7 +191,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
       }
     }
 
-    // Read the prior values before overwriting them — the audit log records
+    // Read the prior values before overwriting them, the audit log records
     // from/to, and after the UPDATE the previous state is gone.
     const { data: existingUser } = await supabaseAdmin
       .from('users')
@@ -296,7 +296,7 @@ router.put('/:id/pin', authGuard, permissionCheck('manage_users'), async (req, r
     if (updateError) throw updateError;
 
     // Records THAT a PIN was set, never the PIN. The redactor in
-    // utils/auditLog.js would strip it anyway — this passes nothing regardless.
+    // utils/auditLog.js would strip it anyway, this passes nothing regardless.
     logAuditEvent(req, AUDIT_ACTIONS.USER_PIN_SET, 'user', req.params.id);
 
     res.json({ message: 'Manager PIN set successfully' });
@@ -358,9 +358,9 @@ router.delete('/:id', authGuard, permissionCheck('manage_users'), async (req, re
     // Deliberately logged AFTER the delete succeeds, and the row survives it:
     // audit_logs.actor_user_id is ON DELETE SET NULL with actor_email/role kept
     // as denormalised copies (migration 070), precisely so that deleting a user
-    // cannot erase the record of what they did — or of who deleted them.
+    // cannot erase the record of what they did, or of who deleted them.
     // Without this, a deleted user's cached entry keeps authorising requests
-    // until it expires — they are gone from the database but still logged in.
+    // until it expires, they are gone from the database but still logged in.
     invalidateUserCache(req.params.id);
 
     logAuditEvent(req, AUDIT_ACTIONS.USER_DELETED, 'user', req.params.id, {

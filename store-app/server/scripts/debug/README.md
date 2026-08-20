@@ -1,7 +1,7 @@
 # Debug & one-off scripts
 
 Local operator tooling. **Nothing in this directory is imported by the running
-server** — `index.js`, `worker.js` and `cluster.js` never require anything from
+server**, `index.js`, `worker.js` and `cluster.js` never require anything from
 here, so these files ship to Railway as dead weight but cannot execute on their
 own.
 
@@ -12,7 +12,7 @@ record of how a past incident was diagnosed and repaired.
 ## Before running any of these
 
 Most connect to **production** via `DIRECT_URL` or the service-role Supabase key
-— they bypass RLS entirely and several of them write. There is no dry-run flag
+, they bypass RLS entirely and several of them write. There is no dry-run flag
 and no confirmation prompt. Read the file before you run it, and check which
 database your `.env` currently points at.
 
@@ -29,12 +29,12 @@ database your `.env` currently points at.
 ## Pricing caveat
 
 The landing page is the source of truth for pricing, not `platform_plans`. If
-you run `align-plan-pricing.js`, also check `compare_at` and `promo_mode` — a
+you run `align-plan-pricing.js`, also check `compare_at` and `promo_mode`, a
 price edit that leaves a stale `compare_at` behind turns into a fake discount on
 the pricing page.
 
 ## Adding to this directory
 
 Prefer a real test in `__tests__/` or a documented command in `db/README.md`.
-A script only belongs here if it is a genuine one-off against live data — and if
+A script only belongs here if it is a genuine one-off against live data, and if
 it destroys data, say so in a header comment at the top of the file.

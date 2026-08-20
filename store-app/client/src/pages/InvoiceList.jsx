@@ -10,7 +10,7 @@ export default function InvoiceList() {
   const [error, setError] = useState(null);
 
   // Previously the catch only logged in DEV, so a failed request rendered
-  // the "No Invoices Yet" empty state — telling the user their billing
+  // the "No Invoices Yet" empty state, telling the user their billing
   // history was empty when in fact it had not loaded.
   const fetchInvoices = useCallback(async () => {
     setLoading(true);

@@ -52,8 +52,8 @@ AUTH_EMAIL=your@email.com AUTH_PASSWORD=yourpassword \
 ## Reports
 
 After the test, find reports in `./reports/`:
-- `report_YYYYMMDD_HHMMSS.json` — raw Artillery data
-- `report_YYYYMMDD_HHMMSS.html` — visual HTML report (open in browser)
+- `report_YYYYMMDD_HHMMSS.json`, raw Artillery data
+- `report_YYYYMMDD_HHMMSS.html`, visual HTML report (open in browser)
 
 ## Performance Targets
 

@@ -35,7 +35,7 @@ router.get('/plans', authGuard, async (req, res) => {
 
 /**
  * GET /api/subscriptions/plans/all
- * List all plans (including inactive) — Platform Admin only
+ * List all plans (including inactive), Platform Admin only
  */
 router.get('/plans/all', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -54,7 +54,7 @@ router.get('/plans/all', authGuard, permissionCheck('manage_platform'), async (r
 
 /**
  * POST /api/subscriptions/plans
- * Create a new plan — Platform Admin only
+ * Create a new plan, Platform Admin only
  */
 router.post('/plans', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -108,7 +108,7 @@ router.post('/plans', authGuard, permissionCheck('manage_platform'), async (req,
 
 /**
  * PUT /api/subscriptions/plans/:id
- * Update a plan — Platform Admin only
+ * Update a plan, Platform Admin only
  */
 router.put('/plans/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -136,7 +136,7 @@ router.put('/plans/:id', authGuard, permissionCheck('manage_platform'), async (r
 
 /**
  * DELETE /api/subscriptions/plans/:id
- * Soft-delete a plan (set is_active = false) — Platform Admin only
+ * Soft-delete a plan (set is_active = false), Platform Admin only
  */
 router.delete('/plans/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -190,7 +190,7 @@ router.get('/business/:id', authGuard, async (req, res) => {
 
 /**
  * GET /api/subscriptions
- * Get all subscriptions — Platform Admin only
+ * Get all subscriptions, Platform Admin only
  */
 router.get('/', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -209,7 +209,7 @@ router.get('/', authGuard, permissionCheck('manage_platform'), async (req, res) 
 
 /**
  * POST /api/subscriptions/assign
- * Assign or change a plan for a business — Platform Admin only
+ * Assign or change a plan for a business, Platform Admin only
  */
 router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
@@ -554,7 +554,7 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
       // Create billing invoice record.
       //
       // The existingInvoice check above is a best-effort fast path, not a
-      // guarantee — this endpoint is called from the client on the Paystack
+      // guarantee, this endpoint is called from the client on the Paystack
       // callback while the webhook fires for the same payment, so both can pass
       // that check and reach this insert. The unique index on
       // paystack_reference (migration 069) is what actually prevents the
@@ -570,7 +570,7 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
           status: 'paid',
           payment_method: data.channel || 'paystack',
           paystack_reference: reference,
-          description: `${metadata.plan_name || 'Subscription'} — ${cycle} payment`,
+          description: `${metadata.plan_name || 'Subscription'}, ${cycle} payment`,
           paid_at: now.toISOString(),
         }]);
 

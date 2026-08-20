@@ -3,8 +3,8 @@ import { EmptyState } from './EmptyState';
 /**
  * The error half of PageState on its own.
  *
- * Most pages in this app do not need the loading/empty orchestration — they
- * already render their own skeleton and empty row — they just need the thing
+ * Most pages in this app do not need the loading/empty orchestration, they
+ * already render their own skeleton and empty row, they just need the thing
  * that was missing everywhere: a visible signal that a fetch failed, and a way
  * to try it again. Dropping one of these under a page header is a one-line
  * change, which is what makes fixing 20-odd swallowed catches tractable.
@@ -34,7 +34,7 @@ export function ErrorBanner({ error, onRetry, className = 'mb-lg' }) {
  * correctly at 36 sites: show the error ABOVE the existing content rather than
  * replacing the page with it. Two pages replaced the whole view on error,
  * leaving the user with no header, no filters and no way to retry the thing
- * that failed — those become explicit opt-outs rather than the norm.
+ * that failed, those become explicit opt-outs rather than the norm.
  *
  * The `onRetry` slot matters as much as the message: 29 catch blocks in this
  * codebase swallowed their error entirely, so a failed fetch was

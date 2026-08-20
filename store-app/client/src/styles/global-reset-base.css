@@ -29,7 +29,7 @@ body {
 }
 
 /* `.glass-panel` was defined here AND in premium-ui-utilities.css, with
-   these two [data-theme] variants out-specifying both — a three-way
+   these two [data-theme] variants out-specifying both, a three-way
    cascade fight across 73 call sites. It now has exactly one definition,
    in surfaces.css, as an alias of `.surface-1`. */
 
@@ -55,7 +55,7 @@ input {
   color: inherit;
   /* No `outline: none` here. It stripped the focus ring from every
      text field in the app and put nothing back, which is not a
-     reset — the UA outline is the only focus indicator an input
+     reset, the UA outline is the only focus indicator an input
      has until a component draws its own. Components that replace
      it with a border-and-glow still may; a11y.css restores a ring
      for the ones that don't. */

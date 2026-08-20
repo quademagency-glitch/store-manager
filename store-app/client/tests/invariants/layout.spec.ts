@@ -14,11 +14,11 @@ const SAMPLE = APP_ROUTES.filter((r) =>
 test.describe('content fits the viewport', () => {
   // Guards two distinct failures:
   //
-  //  1. Real horizontal overflow — an element extending past the right edge.
+  //  1. Real horizontal overflow, an element extending past the right edge.
   //     `document.scrollWidth` alone can't see this when an ancestor sets
   //     `overflow-x: hidden`, so element rects are measured directly.
   //
-  //  2. Occlusion — `.admin-main-content { margin: 0 auto }` overriding
+  //  2. Occlusion, `.admin-main-content { margin: 0 auto }` overriding
   //     `.dashboard-main { margin-left: var(--sidebar-width) }` left main
   //     content starting at x=0 underneath the opaque fixed 280px sidebar.
   //     Nothing overflowed; 280px of content was simply covered up.
@@ -94,8 +94,8 @@ test.describe('values fit inside their card', () => {
   // screen, so neither the viewport check nor a full-page screenshot diff
   // flagged it.
   //
-  // Currency width is tenant data, not a constant — GH₵, ₦, CFA and bare
-  // codes all render here — so a tile sized around "$12,450.50" breaks for
+  // Currency width is tenant data, not a constant, GH₵, ₦, CFA and bare
+  // codes all render here, so a tile sized around "$12,450.50" breaks for
   // somebody. This guards the containment, not any particular string.
   for (const route of ['/dashboard', '/business-admin', '/till-account', '/reconciliation', '/business-admin/shrinkage']) {
     for (const viewport of VIEWPORTS) {
@@ -143,7 +143,7 @@ test.describe('values fit inside their card', () => {
 
 test.describe('no dead space above the page content', () => {
   // Guards a bug the overflow check could never see, because nothing
-  // overflowed and nothing was occluded — there was simply 114px of empty
+  // overflowed and nothing was occluded, there was simply 114px of empty
   // grid between the mobile topbar and the page title, on every page.
   //
   // `.dashboard-page` sets `min-height: 100dvh` and, below the breakpoint,

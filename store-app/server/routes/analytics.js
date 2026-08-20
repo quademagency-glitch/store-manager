@@ -42,14 +42,14 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
       .from('products')
       .select('id', { count: 'exact' });
 
-    // 3. Alerts (Shrinkage). Low stock is NOT read from here — see below.
+    // 3. Alerts (Shrinkage). Low stock is NOT read from here, see below.
     let alertsQuery = supabaseAdmin
       .from('alerts')
       .select('type', { count: 'exact' });
 
     /* Low stock, counted from actual stock levels.
        It used to come from `alerts` rows of type 'LOW_STOCK', which the
-       alerts CHECK constraint (migration 014) does not permit — it allows
+       alerts CHECK constraint (migration 014) does not permit, it allows
        only VOID, DISCOUNT, SHRINKAGE and CASH_OVERRIDE. No such row could
        ever exist, so the tile was hard-wired to zero for every business
        since the day it shipped. Computing it live also keeps it in step
@@ -325,7 +325,7 @@ router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
     const movements = movementsRes.data;
 
     /* `amount` is a display string, not a number, because the feed mixes
-       money ("GH₵248.50") with counts ("15 items") in one column — so the
+       money ("GH₵248.50") with counts ("15 items") in one column, so the
        client cannot format it and the currency has to be applied here.
        It was hardcoded to `$`, which is why a Ghanaian shop's activity feed
        contradicted every other figure on its own dashboard.
@@ -379,7 +379,7 @@ router.delete('/reset', authGuard, async (req, res) => {
   try {
     // Admins only. Managers were permitted here originally, which put an
     // irreversible wipe of the entire sales history behind a role that exists
-    // to run a shop floor — a branch manager clearing "their" dashboard would
+    // to run a shop floor, a branch manager clearing "their" dashboard would
     // have destroyed the whole business's records.
     if (!['Platform Admin', 'Business Admin'].includes(req.user.role)) {
       return res.status(403).json({
@@ -507,8 +507,7 @@ router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
  */
 router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
   try {
-    /* Stock lives in product_inventory, one row per product per location —
-       `products` has no quantity column at all. This used to select
+    /* Stock lives in product_inventory, one row per product per location, `products` has no quantity column at all. This used to select
        `stock_quantity, min_stock_level` from products, which meant the
        endpoint threw for every business on every call and the chart has
        never rendered. Counting per stock row (rather than per product) is

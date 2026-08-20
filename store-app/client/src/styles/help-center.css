@@ -1,5 +1,5 @@
 /* ============================================================
-   Help centre — category rail, article cards, article body.
+   Help centre, category rail, article cards, article body.
    ============================================================ */
 
 .help-layout {
@@ -46,7 +46,7 @@
   color: var(--color-text-muted);
 }
 
-/* A colour change alone is not a focus indicator — it fails for anyone who
+/* A colour change alone is not a focus indicator, it fails for anyone who
    cannot distinguish the two border colours. Keep the ring and tint the
    border as a bonus. */
 .help-search input:focus-visible {
@@ -104,7 +104,7 @@
 
 /* `.help-content` carries tabIndex={-1} purely so the page can move focus
    there when an article opens. It is never tabbed to, so it never matches
-   :focus-visible and no ring is drawn — which is why there is deliberately
+   :focus-visible and no ring is drawn, which is why there is deliberately
    no `outline: none` here. Suppressing it by hand would also strip the
    indicator for the keyboard case, if one ever appears. */
 
@@ -260,7 +260,7 @@
 }
 
 /* Tailwind's preflight strips list markers globally, so prose lists have to
-   ask for them back explicitly — without this the bullets render as bare
+   ask for them back explicitly, without this the bullets render as bare
    indented lines. */
 ul.help-list {
   list-style: disc;

@@ -25,7 +25,7 @@ router.get('/pnl', authGuard, permissionCheck('manage_business'), async (req, re
 
     const businessId = req.user.business_id;
 
-    // 1. Revenue — sum of finalized sales
+    // 1. Revenue, sum of finalized sales
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('total_amount, sale_items:sale_items(quantity, unit_price, product:products!product_id(cost_price))')
@@ -52,7 +52,7 @@ router.get('/pnl', authGuard, permissionCheck('manage_business'), async (req, re
 
     const grossProfit = revenue - cogs;
 
-    // 2. Expenses — from business_ledger entries of type 'expense'
+    // 2. Expenses, from business_ledger entries of type 'expense'
     let expenseQuery = supabaseAdmin
       .from('business_ledger')
       .select('amount')

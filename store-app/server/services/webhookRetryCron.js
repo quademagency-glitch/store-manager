@@ -2,7 +2,7 @@
  * Webhook Retry Cron Service
  * Sweeps webhook_deliveries every 5 minutes for anything pending a retry
  * (status='pending' with next_retry_at due) and re-attempts delivery.
- * No queue infra in this codebase — this cron sweep is the retry mechanism,
+ * No queue infra in this codebase, this cron sweep is the retry mechanism,
  * following the same optional node-cron pattern as subscriptionCron.js.
  */
 
@@ -58,7 +58,7 @@ function initWebhookRetryCron() {
   }
 
   // Claimed per 5-minute slot so two replicas can't both re-deliver the same
-  // pending webhook — the receiving storefront would see the event twice.
+  // pending webhook, the receiving storefront would see the event twice.
   const task = cron.schedule('*/5 * * * *', async () => {
     if (!(await claimCronRun('webhook-retry-sweep', 'five-minutes'))) return;
     await sweepPendingDeliveries();

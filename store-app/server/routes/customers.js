@@ -133,7 +133,7 @@ router.post('/', authGuard, async (req, res) => {
     // Store one canonical spelling, in E.164. Without this, `024 123 4567`,
     // `0241234567` and `+233241234567` are three different strings, so the
     // unique constraint below never fires and the same person is created
-    // repeatedly — each copy with its own loyalty balance and ledger.
+    // repeatedly, each copy with its own loyalty balance and ledger.
     //
     // The country supplies the dialing code for a number typed without one;
     // an explicit `+…` overrides it, so a foreign customer can be entered at

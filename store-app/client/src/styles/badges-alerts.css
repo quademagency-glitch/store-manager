@@ -14,7 +14,7 @@
   font-size: 0.65rem;
 }
 /* All four hardcoded dark-mode-tuned pale text (#fbbf24, #f87171,
-   #4ade80) on translucent-white fills — unreadable on a light canvas.
+   #4ade80) on translucent-white fills, unreadable on a light canvas.
    Now token-driven, so both themes are correct from one definition. */
 .badge-neutral {
   background: var(--color-bg-tertiary);

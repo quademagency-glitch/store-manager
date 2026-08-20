@@ -29,7 +29,7 @@ export function PlatformAdminProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Names of the secondary datasets that failed to load. The page still
-  // renders — these feed a banner so an admin knows which figures are missing
+  // renders, these feed a banner so an admin knows which figures are missing
   // rather than reading an empty list as real data.
   const [partialFailures, setPartialFailures] = useState([]);
 
@@ -159,13 +159,13 @@ export function PlatformAdminProvider({ children }) {
       setUsers(uRes.data || []);
       setRoles(rRes.data || []);
 
-      // Secondary platform data. Non-blocking by design — a failure here must
+      // Secondary platform data. Non-blocking by design, a failure here must
       // not take down the businesses/users/roles view above.
       //
       // But non-blocking is not the same as silent. These eight previously had
       // an individual `.catch(() => [])`, so a failed /billing/invoices simply
       // rendered an empty invoice list and a failed /billing/stats rendered
-      // zeroes — with the outer catch never firing. A platform admin looking at
+      // zeroes, with the outer catch never firing. A platform admin looking at
       // "0 invoices, GHS 0 revenue" could not tell that from a real empty
       // month. allSettled keeps the page up AND names what is missing.
       const secondary = {
@@ -740,7 +740,7 @@ export function PlatformAdminProvider({ children }) {
   /* Rows that are plumbing rather than customers, and so must not be counted.
      "Pending Assignment" is the holding pen for users with no business yet;
      the demo tenant is the public sandbox. Both still appear in the business
-     *list* — an operator needs to be able to go and look at them — they are
+     *list*, an operator needs to be able to go and look at them, they are
      just excluded from the headline figures, which are meant to answer "how
      many businesses do we have". */
   const isCountable = (b) => b.name !== 'Pending Assignment' && !b.is_demo;

@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 /**
- * Public API is unchanged — { isOpen, onClose, title, children, size } —
- * so all 32 consumers are unaffected.
+ * Public API is unchanged, { isOpen, onClose, title, children, size }, * so all 32 consumers are unaffected.
  *
  * Two structural fixes:
  *

@@ -2,7 +2,7 @@
 /**
  * Verifies that the inline-script hashes in the CSP still match the built app.
  *
- * WHY: index.html contains two inline <script> blocks — one resolves the
+ * WHY: index.html contains two inline <script> blocks, one resolves the
  * light/dark theme before first paint and must stay inline to avoid a flash of
  * unstyled content. The CSP allows them by SHA-256 hash. Change index.html by
  * even one character and the hash no longer matches; once the policy is
@@ -42,7 +42,7 @@ const csp = (config.headers ?? [])
 
 if (!csp) fail('No Content-Security-Policy header found in vercel.json.');
 
-// Inline scripts only — those with a src attribute are covered by 'self'.
+// Inline scripts only, those with a src attribute are covered by 'self'.
 const inline = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 
 if (inline.length === 0) {

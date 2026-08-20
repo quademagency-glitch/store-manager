@@ -1,5 +1,5 @@
 -- ============================================
--- Shadow-database bootstrap — TEST SCAFFOLD ONLY
+-- Shadow-database bootstrap, TEST SCAFFOLD ONLY
 --
 -- NEVER run this against production. It fabricates the parts of Supabase's
 -- managed surface that our migrations reference, so that a plain Postgres
@@ -34,7 +34,7 @@ CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
 
 -- Only the columns our migrations actually touch. This is not GoTrue's real
--- table and is not meant to be — foreign keys to auth.users need a target,
+-- table and is not meant to be, foreign keys to auth.users need a target,
 -- and triggers on it need it to exist.
 CREATE TABLE IF NOT EXISTS auth.users (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -94,7 +94,7 @@ GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 
 -- Supabase's default privilege posture on a new project. Without this the
 -- shadow starts locked down while production starts open, and every table
--- would show as a grant difference — drowning the real signal. Migration 063
+-- would show as a grant difference, drowning the real signal. Migration 063
 -- is precisely the work of *narrowing* these, so the baseline has to match or
 -- the comparison is meaningless.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES    TO anon, authenticated, service_role;

@@ -19,7 +19,7 @@ describe('GET /api/businesses/me/export', () => {
 });
 
 describe('export table allowlist', () => {
-  // An allowlist, not "every table with a business_id" — so adding a table to
+  // An allowlist, not "every table with a business_id", so adding a table to
   // the schema can never silently start exporting it.
   it('excludes tables that hold credentials for other systems', () => {
     for (const t of ['api_keys', 'communication_gateways', 'webhook_endpoints']) {
@@ -46,7 +46,7 @@ describe('export table allowlist', () => {
 
 describe('CSV escaping', () => {
   // A product named  Rice, 5kg  or a note containing a quote must not shift
-  // every following column — silent corruption is the worst outcome for a file
+  // every following column, silent corruption is the worst outcome for a file
   // someone may be migrating from.
   it('quotes cells containing commas, quotes or newlines', () => {
     expect(csvCell('Rice, 5kg')).toBe('"Rice, 5kg"');

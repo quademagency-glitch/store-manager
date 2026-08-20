@@ -8,7 +8,7 @@ import { Icons } from './icons/Icons';
 import { EmptyStateRow, SkeletonRows } from './ui';
 
 /**
- * InventoryCount — Full inventory count flow:
+ * InventoryCount, Full inventory count flow:
  * Step 1: Select branch → Start session
  * Step 2: View all products grouped by category/model
  * Step 3: Click a model → open count form (qty, QR scans for in-stock/returns/damaged)
@@ -556,7 +556,7 @@ export default function InventoryCount({ locations, products }) {
     );
   }
 
-  // Step 3: Counting — product list with active product form
+  // Step 3: Counting, product list with active product form
   return (
     <div>
       {/* Header Bar */}

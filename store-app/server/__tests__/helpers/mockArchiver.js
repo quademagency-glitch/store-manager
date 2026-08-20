@@ -2,7 +2,7 @@
 //
 // pipe() previously returned `this` and finalize() resolved without touching
 // the destination, so any supertest request against a route that streams a ZIP
-// hung until the suite timed out — with no useful message. ledger.js's ZIP
+// hung until the suite timed out, with no useful message. ledger.js's ZIP
 // route was never tested, so the trap sat unsprung until the business export
 // needed it. The stub now behaves enough like the real thing for a route test
 // to complete: it retains the destination and ends it on finalize.

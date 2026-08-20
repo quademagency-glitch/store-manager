@@ -54,7 +54,7 @@ describe('request body size limits', () => {
       expect(res.status).toBe(401);
     });
 
-    // The allowlist is exact — a neighbouring imports route must not silently
+    // The allowlist is exact, a neighbouring imports route must not silently
     // inherit the 20mb ceiling.
     it('does not extend the large limit to other /api/imports routes', async () => {
       const res = await request(app).post('/api/imports/preview').send(bodyOfSize(200));

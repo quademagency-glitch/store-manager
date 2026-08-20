@@ -7,7 +7,7 @@ import { PageHeader, PageState, EmptyStateRow, SkeletonRows } from '../../compon
  * Read-only viewer for the security audit trail (migration 070).
  *
  * There is no edit or delete affordance anywhere on this page, and that is not
- * an omission — the table grants no write policy to authenticated users at all.
+ * an omission, the table grants no write policy to authenticated users at all.
  * An audit trail the audited party can edit is not an audit trail.
  */
 

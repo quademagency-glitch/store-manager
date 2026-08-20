@@ -344,7 +344,7 @@ router.post('/transfers', authGuard, permissionCheck('manage_inventory'), async 
 
 /**
  * PUT /api/stock/transfers/:id/complete
- * Complete a pending transfer — adds stock to destination location.
+ * Complete a pending transfer, adds stock to destination location.
  */
 router.put('/transfers/:id/complete', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
@@ -417,7 +417,7 @@ router.put('/transfers/:id/complete', authGuard, permissionCheck('manage_invento
 
 /**
  * PUT /api/stock/transfers/:id/cancel
- * Cancel a pending transfer — returns stock to source location.
+ * Cancel a pending transfer, returns stock to source location.
  */
 router.put('/transfers/:id/cancel', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
@@ -459,7 +459,7 @@ router.put('/transfers/:id/cancel', authGuard, permissionCheck('manage_inventory
       location_id: transfer.from_location_id,
       quantity_change: transfer.quantity,
       movement_type: 'ADJUSTMENT',
-      notes: `Transfer cancelled — stock returned`
+      notes: `Transfer cancelled, stock returned`
     });
 
     // Update status

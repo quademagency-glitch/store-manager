@@ -39,7 +39,7 @@
    focused immediately, so the one user guaranteed to be here is the one an
    invisible focus ring strands. The default outline sits awkwardly on a
    full-bleed input, so this substitutes an inset ring rather than removing
-   the indicator — which the a11y invariant rightly refuses to allow. */
+   the indicator, which the a11y invariant rightly refuses to allow. */
 .command-palette-input:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--color-primary, #6366f1);

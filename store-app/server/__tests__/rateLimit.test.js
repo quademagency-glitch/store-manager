@@ -51,7 +51,7 @@ describe('general /api rate limiter', () => {
     for (let i = 0; i < 6; i++) {
       codes.push((await request(app).get('/api/v1/public/catalog')).status);
     }
-    // 401 (no API key) is expected — the point is that none are 429 from THIS
+    // 401 (no API key) is expected, the point is that none are 429 from THIS
     // limiter, which would mean the skip failed.
     expect(codes.every((c) => c !== 429)).toBe(true);
   });

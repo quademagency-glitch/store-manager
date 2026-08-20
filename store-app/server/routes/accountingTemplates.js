@@ -179,7 +179,7 @@ router.post('/:id/duplicate', authGuard, async (req, res) => {
 /**
  * POST /api/accounting/templates/starter-pack
  * Installs the same default templates every new business gets automatically
- * (migration 028's trigger) — for businesses created before that trigger
+ * (migration 028's trigger), for businesses created before that trigger
  * existed. Dedup-safe by name, so re-clicking it is harmless.
  */
 router.post('/starter-pack', authGuard, async (req, res) => {

@@ -100,8 +100,7 @@
 /* The one `.form-row`. There were three: this grid, a `display: flex`
    copy in hr.css and a hardcoded-gap copy in
    platform-admin-subscription-card.css. Both of those are in
-   layer(pages), which beats layer(components), and hr.css imports last
-   — so every form row in every modal in the app was actually laid out
+   layer(pages), which beats layer(components), and hr.css imports last, so every form row in every modal in the app was actually laid out
    by the HR page's flex rule, and responsive.css's
    `grid-template-columns: 1fr` at ≤768px did nothing at all. */
 .form-row {

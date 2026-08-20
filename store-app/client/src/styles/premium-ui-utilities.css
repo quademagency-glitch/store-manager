@@ -5,7 +5,7 @@
 /* Surface, border and background for `.glass-panel` and `.glass-table`
    now live in surfaces.css, which is theme-aware. The rules here
    hardcoded rgba(255,255,255,…) values that only worked on a dark
-   canvas — the reason table headers were invisible in light mode.
+   canvas, the reason table headers were invisible in light mode.
    Only geometry and typography remain. */
 .glass-panel {
   border-radius: var(--radius-xl);

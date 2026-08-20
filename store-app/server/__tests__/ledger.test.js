@@ -6,7 +6,7 @@ const { buildMockSupabase, makeQueryMock } = require('./helpers/mockSupabase');
  *
  * This queue used to be fetched by the browser querying `business_ledger`
  * through the Supabase client directly, which meant no server-side role check
- * ran at all — it relied entirely on RLS. These tests exist to pin the gate
+ * ran at all, it relied entirely on RLS. These tests exist to pin the gate
  * that replaced it, and specifically to keep its role list identical to
  * /:id/approve and /:id/reject: if the two ever drift, someone can see entries
  * they cannot act on, or act on entries they cannot see.
@@ -71,7 +71,7 @@ describe('GET /api/ledger/pending', () => {
     expect(res.body[0].locations.name).toBe('Main Branch');
   });
 
-  // Same list as /:id/approve. Manager included deliberately — they approve.
+  // Same list as /:id/approve. Manager included deliberately, they approve.
   it.each(['Manager', 'Business Admin', 'Platform Admin'])('allows %s', async (roleName) => {
     asRole(roleName);
     const res = await request(app).get('/api/ledger/pending').set(AUTH);

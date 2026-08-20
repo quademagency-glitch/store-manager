@@ -62,7 +62,7 @@ async function verifyTransaction(reference, secretKey) {
 /**
  * Verifies the signature of an incoming webhook from Paystack.
  *
- * `rawBody` MUST be the exact bytes Paystack sent — a Buffer or the raw string.
+ * `rawBody` MUST be the exact bytes Paystack sent, a Buffer or the raw string.
  * Passing a re-serialized object (JSON.stringify(req.body)) does not work: key
  * order, whitespace and number formatting all differ from what was signed, so
  * verification becomes a coin flip. The caller is responsible for capturing the

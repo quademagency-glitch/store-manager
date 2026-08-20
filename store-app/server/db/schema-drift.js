@@ -4,7 +4,7 @@
  *
  * Migrations 027 and 063-065 were applied to production but their files are
  * not in this repo. A rebuild from the migration set therefore produces a
- * schema *missing* 063's security hardening — a fresh environment would be
+ * schema *missing* 063's security hardening, a fresh environment would be
  * less locked down than production, and nothing would say so. This reports
  * that difference instead of leaving it to be discovered.
  *
@@ -157,7 +157,7 @@ async function startShadowCluster() {
 
   // `--locale=C` and a scrubbed LC_ALL are not optional on macOS: initdb
   // rejects the inherited locale outright ("invalid locale settings"). C is
-  // also the right choice here — collation must not vary by machine when the
+  // also the right choice here, collation must not vary by machine when the
   // whole point is comparing two schemas.
   runOrExplain('initdb', ['-D', dataDir, '-U', 'postgres', '--auth=trust', '-E', 'UTF8', '--locale=C']);
   // Unix socket in the temp dir so this cannot collide with a local server.

@@ -1,10 +1,10 @@
 /**
- * LetterheadRenderer — Shared component for rendering letterhead header/footer
+ * LetterheadRenderer, Shared component for rendering letterhead header/footer
  * on receipts, invoices, and other printable documents.
  * 
  * Supports two modes:
- *   1. "build" — renders structured header from letterhead fields
- *   2. "upload" — renders an uploaded letterhead image
+ *   1. "build", renders structured header from letterhead fields
+ *   2. "upload", renders an uploaded letterhead image
  * 
  * Usage:
  *   <LetterheadRenderer 
@@ -139,7 +139,7 @@ export default function LetterheadRenderer({ letterhead, logoUrl, businessName, 
 }
 
 /**
- * LetterheadFooter — Standalone footer for use at the bottom of documents
+ * LetterheadFooter, Standalone footer for use at the bottom of documents
  * when the header and footer need to be separate (e.g., wrapping receipt content).
  */
 export function LetterheadFooter({ letterhead }) {

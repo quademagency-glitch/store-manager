@@ -12,7 +12,7 @@
  * 3. It snapshots `req` synchronously, then defers the write. Reading req.user
  *    inside the deferred callback would race the response lifecycle.
  * 4. Metadata is redacted before it is written. This is the difference between
- *    an audit log and the most sensitive table in the database — routes/billing
+ *    an audit log and the most sensitive table in the database, routes/billing
  *    handles Paystack gateway secrets and routes/users handles manager PINs.
  */
 
@@ -64,7 +64,7 @@ const AUDIT_ACTIONS = {
   RECEIPTS_DOWNLOADED: 'data.receipts_downloaded',
 };
 
-// Shared with the business data exporter — see utils/sensitiveKeys.js for why
+// Shared with the business data exporter, see utils/sensitiveKeys.js for why
 // there is one list rather than a copy per consumer.
 const { isSensitiveKey } = require('./sensitiveKeys');
 
@@ -92,7 +92,7 @@ function redactAndTruncate(metadata) {
     }
     return redacted;
   } catch {
-    // Circular reference or similar — never let metadata shape break the write.
+    // Circular reference or similar, never let metadata shape break the write.
     return { _unserialisable: true };
   }
 }
@@ -120,7 +120,7 @@ function logAuditEvent(req, action, resourceType, resourceId, metadata = {}) {
     // meaningful with an identity attached.
     const actor = req?.auditActor ?? req?.user ?? {};
 
-    // Snapshot synchronously — req is not safe to read once deferred.
+    // Snapshot synchronously, req is not safe to read once deferred.
     row = {
       business_id: actor.business_id ?? null,
       actor_user_id: actor.id ?? null,
@@ -169,7 +169,7 @@ async function pruneAuditLogs(days = 400) {
 }
 
 /**
- * A stand-in "request" for events that happen outside one — the cron jobs.
+ * A stand-in "request" for events that happen outside one, the cron jobs.
  *
  * logAuditEvent is req-shaped because almost every event has a human behind it.
  * Automated suspensions and expiries do not, and attributing them to whichever

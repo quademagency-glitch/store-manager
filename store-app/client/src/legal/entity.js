@@ -94,7 +94,7 @@ export const ENTITY = {
  * Document versions.
  *
  * Bump `version` whenever a clause changes meaning, and set `effective` to the
- * date the new version takes effect — not the date it was written. Clause 22
+ * date the new version takes effect, not the date it was written. Clause 22
  * of the Terms promises notice before a material change takes effect, so those
  * two dates are normally different.
  *

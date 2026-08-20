@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { receiptFormatClass } from '../lib/receiptWidth';
 
 /**
- * usePrintDocument — Shared hook for printing any element as a document.
+ * usePrintDocument, Shared hook for printing any element as a document.
  * 
  * Features:
  *   - Fetches and caches business data (name, logo, letterhead)

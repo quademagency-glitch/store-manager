@@ -1,7 +1,7 @@
 /**
  * One page header for the whole app.
  *
- * There were six different header shapes across 47 pages — `.page-header` vs
+ * There were six different header shapes across 47 pages, `.page-header` vs
  * `.dashboard-header`, `.page-title` vs `.dashboard-title` vs a bare <h1>,
  * and every action slot a hand-rolled inline-styled flex div.
  *

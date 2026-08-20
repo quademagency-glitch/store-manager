@@ -34,7 +34,7 @@ function measure(target) {
     : Math.max(MARGIN, rect.left - OFFSET - TOOLTIP_WIDTH);
 
   // Vertically centred on the target, then clamped inside the viewport. The
-  // clamp is why the caret is positioned separately below — once the card is
+  // clamp is why the caret is positioned separately below, once the card is
   // pushed away from centre, an arrow fixed to its middle points at nothing.
   const rawTop = rect.top + rect.height / 2;
 
@@ -62,7 +62,7 @@ export default function TourTooltip() {
   const stepId = step?.id;
 
   // Find the target for this step, retrying while the sidebar section that
-  // owns it opens. Gives up — and skips the step — after TARGET_TIMEOUT_MS.
+  // owns it opens. Gives up, and skips the step, after TARGET_TIMEOUT_MS.
   useEffect(() => {
     if (!stepId) return undefined;
 
@@ -137,8 +137,8 @@ export default function TourTooltip() {
 
   return createPortal(
     <div className="tour-layer" role="presentation">
-      {/* One element does both jobs: the ring around the target, and — via a
-          viewport-swallowing spread — the dimmed backdrop over everything
+      {/* One element does both jobs: the ring around the target, and, via a
+          viewport-swallowing spread, the dimmed backdrop over everything
           else. Two stacked elements would need their geometry kept in sync. */}
       <div
         className="tour-spotlight"

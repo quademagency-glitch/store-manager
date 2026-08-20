@@ -1,12 +1,12 @@
 /**
- * Paystack webhook — the single handler for incoming payment events.
+ * Paystack webhook, the single handler for incoming payment events.
  *
  * WHY THIS FILE EXISTS
  * There used to be two webhook endpoints, in routes/billing.js and
  * routes/subscriptions.js, and both were broken in the same way: they computed
  * the HMAC over `JSON.stringify(req.body)` rather than the bytes Paystack
  * actually signed. subscriptions.js appeared to guard against this with
- * express.raw(), but that parser was a no-op — the global express.json() in
+ * express.raw(), but that parser was a no-op, the global express.json() in
  * index.js had already drained the stream, and body-parser skips when
  * onFinished.isFinished(req) is true. So any signature that verified did so by
  * luck. On top of that, billing.js only enforced the signature when
@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
 
 // Postgres unique-violation. Both this handler and POST /verify-paystack insert
 // an invoice for the same payment, and Paystack retries on any non-2xx, so
-// hitting this is expected rather than exceptional — see migration 069, which
+// hitting this is expected rather than exceptional, see migration 069, which
 // adds the unique index that makes it happen.
 const PG_UNIQUE_VIOLATION = '23505';
 
@@ -43,7 +43,7 @@ async function paystackWebhookHandler(req, res) {
     // ever remounted below a JSON parser it must fail closed, not silently
     // start verifying a re-serialized object again.
     if (!Buffer.isBuffer(req.body)) {
-      logger.error({ reqId }, '[WEBHOOK] Raw body unavailable — handler is mounted below a body parser');
+      logger.error({ reqId }, '[WEBHOOK] Raw body unavailable, handler is mounted below a body parser');
       return res.status(500).send('Webhook misconfigured');
     }
     const rawBody = req.body;
@@ -56,7 +56,7 @@ async function paystackWebhookHandler(req, res) {
       .single();
 
     // 500, not 200. The old subscriptions.js handler returned 200 here, which
-    // told Paystack the event was handled and stopped it retrying — a real
+    // told Paystack the event was handled and stopped it retrying, a real
     // payment acknowledged and thrown away. A 5xx makes Paystack retry, so a
     // misconfigured gateway becomes a recoverable delay instead of lost money.
     if (gatewayError || !gateway) {
@@ -72,7 +72,7 @@ async function paystackWebhookHandler(req, res) {
     // Enforced in EVERY environment. The old production-only check meant a
     // staging deployment pointed at a shared database was a live mint.
     if (!verifyWebhookSignature(rawBody, signature, signingKey)) {
-      logger.warn({ reqId }, '[WEBHOOK] Invalid Paystack signature — rejected');
+      logger.warn({ reqId }, '[WEBHOOK] Invalid Paystack signature, rejected');
       return res.status(401).send('Invalid signature');
     }
 
@@ -107,7 +107,7 @@ async function paystackWebhookHandler(req, res) {
  * Applies a successful charge: activate the subscription, clear the trial,
  * record the invoice, and reactivate the business.
  *
- * Merges what the two previous handlers each did — between them they set
+ * Merges what the two previous handlers each did, between them they set
  * different subsets of the same columns, so dropping either would have
  * regressed whichever fields only the other one wrote.
  */
@@ -118,7 +118,7 @@ async function handleChargeSuccess(event, gateway, reqId) {
   const planId = metadata.plan_id;
 
   if (!businessId || !planId) {
-    logger.warn({ reqId, reference: data.reference }, '[WEBHOOK] charge.success without business_id/plan_id — ignoring');
+    logger.warn({ reqId, reference: data.reference }, '[WEBHOOK] charge.success without business_id/plan_id, ignoring');
     return;
   }
 
@@ -186,16 +186,16 @@ async function handleChargeSuccess(event, gateway, reqId) {
       status: 'paid',
       payment_method: data.channel || 'paystack',
       paystack_reference: data.reference,
-      description: `${metadata.plan_name || 'Subscription'} — ${cycle} payment`,
+      description: `${metadata.plan_name || 'Subscription'}, ${cycle} payment`,
       paid_at: now.toISOString(),
     }]);
 
-  // Already recorded — by a webhook retry, or by the client-side
+  // Already recorded, by a webhook retry, or by the client-side
   // /verify-paystack call that races this one. Not an error; the payment is
   // applied either way and re-raising would make Paystack retry forever.
   if (invoiceError && invoiceError.code !== PG_UNIQUE_VIOLATION) throw invoiceError;
   if (invoiceError) {
-    logger.info({ reqId, reference: data.reference }, '[WEBHOOK] Invoice already recorded — treating as success');
+    logger.info({ reqId, reference: data.reference }, '[WEBHOOK] Invoice already recorded, treating as success');
   }
 
   const { error: bizError } = await supabaseAdmin
@@ -207,7 +207,7 @@ async function handleChargeSuccess(event, gateway, reqId) {
   // The whole point of the payment, from the customer's side: they can use the
   // app again. authGuard gates every route on a cached copy of
   // businesses.status, so without this they keep hitting "your trial has ended"
-  // on whichever workers still hold the stale entry — having just paid.
+  // on whichever workers still hold the stale entry, having just paid.
   invalidateBusinessCache(businessId);
 
   logger.info({ reqId, businessId, reference: data.reference }, '[WEBHOOK] Payment applied');

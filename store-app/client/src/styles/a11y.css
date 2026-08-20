@@ -1,9 +1,9 @@
 /* ============================================================
-   Accessibility floor — focus, motion, touch targets
+   Accessibility floor, focus, motion, touch targets
 
    A late layer on purpose. Everything in here is a guarantee that
    has to hold regardless of what a page stylesheet says, and
-   cascade layers resolve by layer order *before* specificity — so
+   cascade layers resolve by layer order *before* specificity, so
    a one-line `outline: none` in `pages` can no longer take the
    focus ring back off a control, however specific its selector.
 
@@ -19,7 +19,7 @@
    beat every normal declaration before them.
 
    The one thing that still outranks this file is unlayered CSS.
-   Keep it that way — `tests/invariants/a11y.spec.ts` fails the
+   Keep it that way, `tests/invariants/a11y.spec.ts` fails the
    build if a stylesheet is imported without a `layer()`, or if a
    component injects screen CSS through a <style> tag.
 
@@ -30,7 +30,7 @@
    ============================================================ */
 
 /* --- Focus ---------------------------------------------------
-   :focus-visible only, never :focus — a mouse user clicking a
+   :focus-visible only, never :focus, a mouse user clicking a
    button should not get a ring, a keyboard user must. Browsers
    already resolve that distinction correctly for text inputs,
    which show a ring on click too because they accept typing. */
@@ -88,7 +88,7 @@
 /* --- Motion --------------------------------------------------
    Collapsed to 1ms rather than removed. `transition: none` looks
    equivalent but silently breaks any component that reveals
-   itself *through* a transition — an element animating up from
+   itself *through* a transition, an element animating up from
    opacity 0 never arrives, and `transitionend` never fires, so
    handlers waiting on it stall. A 1ms duration keeps the end
    state and the event, and removes the movement. */
@@ -104,7 +104,7 @@
   }
 
   /* Progress indicators are the deliberate exception. An infinite
-     spinner is reporting "still working" — stopping it removes
+     spinner is reporting "still working", stopping it removes
      information rather than decoration, and leaves the user
      looking at a frozen UI with no way to tell it apart from a
      hang. Slowed to a non-vestibular rate instead, matching what
@@ -186,7 +186,7 @@
    Hidden until focused, then pinned to the top-left above everything. It
    deliberately does NOT use `display:none` or `visibility:hidden`, both of
    which remove an element from the tab order entirely and would make this
-   unreachable — the exact failure that makes most skip links decorative.
+   unreachable, the exact failure that makes most skip links decorative.
 
    The target is `<main id="main-content" tabIndex={-1}>`. Without the
    tabindex, Safari and older Chrome move the browser's scroll position but
@@ -213,8 +213,7 @@
    stop of its own.
 
    Deliberately NOT given `outline: none`. The first attempt suppressed the
-   ring here on the grounds that it looks heavy around a whole content region —
-   and the invariant in a11y.spec.ts rejected it, correctly. Someone who has
+   ring here on the grounds that it looks heavy around a whole content region, and the invariant in a11y.spec.ts rejected it, correctly. Someone who has
    just activated "skip to main content" needs confirmation that the skip
    worked and that focus moved; silently swallowing the only signal is the
    same defect the rest of this file exists to prevent, just in a place where

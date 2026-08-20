@@ -1,17 +1,42 @@
+import { useState } from 'react';
 import Modal from '../../../components/Modal';
 import LetterheadRenderer, { LetterheadFooter } from '../../../components/LetterheadRenderer';
+import {
+  RECEIPT_WIDTHS,
+  getReceiptWidth,
+  setReceiptWidth,
+  receiptFormatClass,
+} from '../../../lib/receiptWidth';
 
 export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, actions, business }) {
+  // Read once per mount rather than on every render: this is localStorage, and
+  // the only thing that changes it is the control below.
+  const [width, setWidth] = useState(getReceiptWidth);
+
   if (!receiptData) return null;
+
+  const chooseWidth = (w) => {
+    setReceiptWidth(w);
+    setWidth(w);
+  };
 
   const handlePrint = () => {
     const el = document.getElementById('printable-receipt');
-    if (el) {
-      // Add printable classes
-      el.classList.add('printable-area', 'print-format-thermal');
+    if (!el) return;
+
+    // The format class decides the paper width, so it has to match the roll
+    // actually loaded in this till's printer. Previously hardcoded to 80mm,
+    // which cropped roughly a third off every line on the 58mm printers that
+    // most small shops use.
+    const formatClass = receiptFormatClass(width);
+    el.classList.add('printable-area', formatClass);
+    try {
       window.print();
-      // Clean up
-      el.classList.remove('printable-area', 'print-format-thermal');
+    } finally {
+      // In a finally: window.print() throws in some embedded browsers, and
+      // leaving the print classes on would keep the receipt styled as paper
+      // for the rest of the session.
+      el.classList.remove('printable-area', formatClass);
     }
   };
 
@@ -153,6 +178,28 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
               Print Receipt
             </button>
           </div>
+
+          {/* Roll width, next to the button that uses it.
+              Kept here rather than buried in settings because it is a property
+              of the printer in front of you, it is remembered per device, and
+              the moment you discover it is wrong is the moment a receipt comes
+              out cropped. */}
+          <fieldset className="receipt-width-picker">
+            <legend>Paper roll</legend>
+            {RECEIPT_WIDTHS.map((w) => (
+              <label key={w}>
+                <input
+                  type="radio"
+                  name="receipt-width"
+                  value={w}
+                  checked={width === w}
+                  onChange={() => chooseWidth(w)}
+                />
+                <span>{w}</span>
+              </label>
+            ))}
+            <span className="receipt-width-hint">Saved on this device</span>
+          </fieldset>
         </div>
 
       </div>

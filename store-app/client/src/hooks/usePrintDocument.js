@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
+import { receiptFormatClass } from '../lib/receiptWidth';
 
 /**
  * usePrintDocument — Shared hook for printing any element as a document.
@@ -46,7 +47,8 @@ export function usePrintDocument() {
    * Just ensure the target element has className="printable-area" (or id="printable-receipt").
    * 
    * @param {string} elementId - The DOM id of the element to print
-   * @param {'thermal'|'a4'} [format] - Print format (adds .print-format-thermal or .print-format-a4)
+   * @param {'thermal'|'thermal-58'|'a4'} [format] - Print format. 'thermal' follows
+   *        this device's saved roll width; pass 'thermal-58' to force 58mm.
    */
   const printElement = useCallback((elementId, format) => {
     const el = document.getElementById(elementId);
@@ -62,7 +64,12 @@ export function usePrintDocument() {
     }
 
     // Add format class
-    const formatClass = format === 'thermal' ? 'print-format-thermal' : 'print-format-a4';
+    // 'thermal' resolves through the device preference so a till set to 58mm
+    // prints 58mm everywhere, without every call site having to know about it.
+    const formatClass =
+      format === 'thermal' ? receiptFormatClass()
+      : format === 'thermal-58' ? 'print-format-thermal-58'
+      : 'print-format-a4';
     el.classList.add(formatClass);
 
     // Trigger print

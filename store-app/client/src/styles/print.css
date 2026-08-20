@@ -126,36 +126,107 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     FORMAT: THERMAL RECEIPT (58mm / 80mm)
-     Use class: .print-format-thermal on the .printable-area
+     PAGE GEOMETRY
+
+     Named pages, because `@page` cannot be scoped by selector: a bare
+     `@page { margin: 15mm 12mm }` applies to every printed document. That is
+     what happened here. The A4 margins below used to be unnamed, so an 80mm
+     receipt inherited 12mm of margin on each side and printed its content into
+     56mm of a roll it had been told was 80mm wide. Receipts came out clipped
+     at the right edge, and the rule that caused it looked like it belonged to
+     the A4 section it was written under.
+
+     `size: <width> auto` matters as much as the margin. Without it the browser
+     lays the receipt out on A4 and a thermal printer either scales it down or
+     feeds a page and a half of blank roll per sale. `auto` height is what
+     continuous roll paper actually is.
+
+     Named pages need Chrome 85+ or Safari 16.4+. That covers anything running
+     a browser-based POS; on anything older the receipt still prints, it just
+     keeps the default margins.
      ═══════════════════════════════════════════════════════════ */
-  .print-format-thermal {
-    max-width: 80mm !important;
-    width: 80mm !important;
+  @page thermal-80 {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  @page thermal-58 {
+    size: 58mm auto;
+    margin: 0;
+  }
+
+  @page a4-doc {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     FORMAT: THERMAL RECEIPT
+
+     Two real paper widths, not one. The section header claimed
+     "58mm / 80mm" while only 80mm existed, so every 58mm printer, which is
+     the cheaper and more common of the two in a small shop, was handed an
+     80mm layout and silently cropped roughly a third off the right of every
+     line. Totals sit on the right.
+
+     Use .print-format-thermal (80mm) or .print-format-thermal-58.
+     ═══════════════════════════════════════════════════════════ */
+  .print-format-thermal,
+  .print-format-thermal-58 {
     margin: 0 !important;
-    padding: 4mm !important;
     font-family: 'Courier New', Courier, monospace !important;
-    font-size: 9pt !important;
     line-height: 1.4 !important;
   }
 
-  .print-format-thermal table {
+  .print-format-thermal {
+    page: thermal-80;
+    max-width: 80mm !important;
+    width: 80mm !important;
+    padding: 4mm !important;
     font-size: 9pt !important;
   }
 
-  .print-format-thermal h2 {
-    font-size: 12pt !important;
+  /* 58mm roll, less 3mm of padding a side, leaves ~52mm. At 8pt Courier that
+     is about 30 characters, which is the width these receipts are designed
+     around. Keeping 9pt here would push the amount column off the paper,
+     which is the bug this variant exists to fix. */
+  .print-format-thermal-58 {
+    page: thermal-58;
+    max-width: 58mm !important;
+    width: 58mm !important;
+    padding: 3mm !important;
+    font-size: 8pt !important;
+  }
+
+  .print-format-thermal table { font-size: 9pt !important; }
+  .print-format-thermal-58 table { font-size: 8pt !important; }
+
+  .print-format-thermal h2 { font-size: 12pt !important; }
+  .print-format-thermal-58 h2 { font-size: 10pt !important; }
+
+  /* Nothing on a roll should be wider than the roll. Images and tables are
+     the two that overflow in practice: a letterhead logo sized for screen is
+     several hundred pixels wide and will otherwise drag the layout out past
+     the paper edge, taking the totals with it. */
+  .print-format-thermal img,
+  .print-format-thermal-58 img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .print-format-thermal table,
+  .print-format-thermal-58 table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    word-break: break-word !important;
   }
 
   /* ═══════════════════════════════════════════════════════════
      FORMAT: A4 DOCUMENT (invoices, GRNs, reports)
      Use class: .print-format-a4 on the .printable-area
      ═══════════════════════════════════════════════════════════ */
-  @page {
-    margin: 15mm 12mm;
-  }
-
   .print-format-a4 {
+    page: a4-doc;
     max-width: 100% !important;
     width: 100% !important;
     padding: 0 !important;
@@ -226,4 +297,43 @@
     color: #666 !important;
     text-align: center !important;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Receipt roll picker (screen only)
+
+   Outside the @media print block on purpose: this control chooses what gets
+   printed, so it must never appear on the printed page. print.css hides
+   everything outside .printable-area anyway, and the picker sits outside it.
+   ────────────────────────────────────────────────────────────────────── */
+.receipt-width-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.9rem;
+  margin-top: 0.75rem;
+}
+.receipt-width-picker legend {
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.receipt-width-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* 44px so it is usable with a thumb on a till tablet, which is where this
+     control is most likely to be touched. */
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+.receipt-width-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
 }

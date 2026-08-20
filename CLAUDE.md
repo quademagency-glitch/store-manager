@@ -48,3 +48,50 @@ assuming:
 ```sh
 curl -sI https://<deployment>/assets/<hashed>.js | grep -i cache-control
 ```
+
+# Working on this repo from more than one session
+
+Never take the `main` branch into a second working copy. Two working copies on
+`main` at once is how the index silently desynchronises, and the symptom looks
+completely ordinary.
+
+It happened on 2026-08-19. One session was committing to `main` from a
+temporary worktree while the primary checkout ran `git reset` onto `main`:
+
+```
+23:46:23  checkout: moving from chore/bump-landing-copy to main
+23:46:26  reset: moving to origin/main            <- primary checkout
+23:46:55  commit: copy(legal): omit the identity  <- other worktree
+```
+
+`main` advanced under the primary checkout, whose index and files stayed on the
+older tree. `git status` then showed six staged files, indistinguishable from
+work someone had staged deliberately. Committing would have reverted a change
+that was already live in production, and nothing would have said so. Git
+normally refuses to check out one branch in two worktrees; `checkout -B` and
+`reset` walk straight past that.
+
+**Use a detached worktree and push with an explicit refspec.** The branch is
+never checked out twice, so the situation cannot arise:
+
+```sh
+git worktree add --detach /tmp/work origin/main
+cd /tmp/work
+# ... commit ...
+git push origin HEAD:main
+```
+
+Do *not* `git checkout -B main` inside the worktree. That is the step that
+caused this.
+
+`.githooks/pre-commit` catches it if it happens anyway: it refuses a commit
+whose staged content is byte-identical to an older version of the same file,
+which is the signature of a stale index. `git revert` is unaffected, and
+`git commit --no-verify` overrides it.
+
+Hooks are versioned in `.githooks/` rather than `.git/hooks`, so a fresh clone
+needs one command to arm them:
+
+```sh
+git config core.hooksPath .githooks
+```

@@ -1,0 +1,107 @@
+#!/bin/sh
+#
+# Refuses a commit that would silently revert work already pushed to main.
+#
+# WHY THIS EXISTS
+#
+# On 2026-08-19 this repo had two working copies on branch `main` at the same
+# moment: the primary checkout, and a temporary worktree an agent session was
+# committing from. The reflog shows it plainly:
+#
+#   23:46:23  checkout: moving from chore/bump-landing-copy to main
+#   23:46:26  reset: moving to origin/main            <- primary checkout
+#   23:46:55  commit: copy(legal): omit the identity  <- other worktree
+#
+# `main` advanced under the primary checkout, whose index and files stayed on
+# the older tree. The result looked completely ordinary: six files showing as
+# staged in `git status`, exactly as though someone had staged them on purpose.
+# Committing would have reverted a change that was already live in production,
+# with nothing anywhere saying so.
+#
+# Git normally refuses to check out one branch in two worktrees. `checkout -B`
+# and `reset` walk straight past that, which is how this arose.
+#
+# WHAT IT CHECKS
+#
+# For each staged file, whether the staged content is byte-identical to that
+# file at an OLDER commit in this branch's history while differing from HEAD.
+# That is the signature of a stale index: you are not writing something new,
+# you are putting a previous version back.
+#
+# Blob hashes only, so it costs a few milliseconds and is exact rather than
+# heuristic. It does not diff, and it does not care what changed.
+#
+# DELIBERATE REVERTS
+#
+# `git revert` does not run this hook, so use that. For a hand-made revert:
+#
+#     git commit --no-verify
+#
+# Bypassing is fine when you mean it. The point is that you cannot do it by
+# accident, which is the only way it happened.
+
+set -e
+
+# Nothing staged, or the very first commit: nothing to compare against.
+git rev-parse --verify HEAD >/dev/null 2>&1 || exit 0
+
+staged=$(git diff --cached --name-only --diff-filter=M)
+[ -z "$staged" ] && exit 0
+
+# How far back to look. A stale index is nearly always a handful of commits
+# behind, and this bounds the cost on a long history.
+DEPTH=40
+
+reverts=""
+for path in $staged; do
+  index_blob=$(git rev-parse ":$path" 2>/dev/null) || continue
+  head_blob=$(git rev-parse "HEAD:$path" 2>/dev/null) || continue
+
+  # Unchanged relative to HEAD: not a revert, and nothing to say about it.
+  [ "$index_blob" = "$head_blob" ] && continue
+
+  # Walk the commits that actually touched this path.
+  for commit in $(git rev-list -n "$DEPTH" HEAD -- "$path"); do
+    old_blob=$(git rev-parse "$commit:$path" 2>/dev/null) || continue
+    [ "$old_blob" != "$index_blob" ] && continue
+
+    # The staged content is a previous version of this file. Name the commit
+    # whose work is about to disappear, because "this is a revert" is far less
+    # useful than "this undoes the commit you are looking for".
+    subject=$(git log -1 --format='%h %s' "$commit")
+    reverts="$reverts
+  $path
+      staged content is the version from: $subject"
+    break
+  done
+done
+
+[ -z "$reverts" ] && exit 0
+
+cat >&2 <<MSG
+
+  COMMIT BLOCKED: this would put back older versions of these files.
+$reverts
+
+  The staged content is not new work. It is a previous version of each file,
+  which means committing it would undo whatever replaced it.
+
+  This is almost always a stale index: the branch moved while this checkout
+  was not looking, usually because another worktree or session was on the same
+  branch. Confirm with:
+
+      git log --oneline -5
+      git diff --cached
+
+  If the files on disk are the ones you want to keep, you are fine. If they
+  are stale, discard them and take what the branch already has:
+
+      git restore --staged --worktree <path>...
+
+  If you genuinely mean to revert, prefer 'git revert <commit>', which does not
+  trip this hook. To override once:
+
+      git commit --no-verify
+
+MSG
+exit 1

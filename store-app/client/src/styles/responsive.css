@@ -34,6 +34,15 @@
 
 /* ═══ ≤1024px — tablet ═══ */
 @media (max-width: 1024px) {
+  /* 200px, down from the 224px set above.
+     The sidebar is a fixed column that every page pays for, and in this band
+     the screen is narrow enough that 24px is the difference between two
+     product tiles and one in the POS catalogue. Nav labels still fit; the
+     longest ("Marketing & Comms") wraps to two lines at 180px, not at 200px. */
+  :root {
+    --sidebar-width: 200px;
+  }
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }

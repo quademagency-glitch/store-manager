@@ -843,7 +843,50 @@
   margin-top: var(--space-sm);
 }
 
-/* ─── Sales Page Responsive ─── */
+/* ─── Sales Page Responsive ───
+
+   THE TABLET GAP
+
+   `.sales-page` is `1fr 380px`, and the only breakpoint below was 768px. So
+   between 769px and 1024px, which is where most tablets sit in landscape and
+   where a POS is most likely to be used, the layout stayed desktop: a cart
+   pinned at 380px, which at 820px was 64% of the POS area, leaving the
+   catalogue a single column.
+
+   The band ends at 1024px inclusive, matching responsive.css. An earlier
+   version stopped at 1023px and iPad landscape, which is exactly 1024px and
+   one of the likeliest tills there is, fell through to the desktop layout.
+
+   Nothing looked broken in a screenshot at 1440px or at 390px, which is why it
+   survived. The fix is a middle breakpoint that gives the cart a share of the
+   width rather than a fixed slab of it, and shrinks the product tiles so more
+   than two fit.
+   ─────────────────────────────────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* The nav sidebar is narrowed to 200px across this band in responsive.css,
+     which owns --sidebar-width. It is the third column nobody counts: at 820px
+     it took 224px before the POS got a pixel, leaving the catalogue ~216px,
+     which is one product tile. */
+  .sales-page {
+    /* A share, not a slab. The old fixed 380px was 64% of the POS area on an
+       820px tablet. */
+    grid-template-columns: minmax(0, 1fr) clamp(240px, 30vw, 300px);
+  }
+
+  .sales-catalog {
+    padding: var(--space-sm);
+  }
+
+  /* 140px tiles fit two columns at 820px and three by 1024px. Three at 820px
+     is not reachable while the nav sidebar is fixed-width; that would need the
+     sidebar to collapse to icons, which is a change to every page rather than
+     to this one. */
+  .catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-sm);
+  }
+}
+
 @media (max-width: 768px) {
   .sales-page {
     grid-template-columns: 1fr;

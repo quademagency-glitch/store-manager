@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useTheme } from '../lib/ThemeContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { RouteErrorBoundary } from './ErrorBoundary';
 import { api } from '../lib/api';
 import OfflineStatus from './OfflineStatus';
 import DemoBanner from './DemoBanner';
@@ -743,7 +744,14 @@ export default function MainLayout() {
           <div className="offline-status-slot">
             <OfflineStatus />
           </div>
-          <Outlet />
+          {/* Inside the shell, so a page that throws takes only the content
+              area with it. The single boundary in App.jsx wraps <Routes>, and
+              therefore unmounted the sidebar and the navigation too, leaving a
+              blank screen whose only exit was a reload. On a till mid-sale
+              that costs the cart. */}
+          <RouteErrorBoundary>
+            <Outlet />
+          </RouteErrorBoundary>
         </div>
       </main>
     </div>

@@ -78,6 +78,11 @@ const Loyalty = lazy(() => import('./pages/Loyalty'));
 const ProfitLoss = lazy(() => import('./pages/Reports/ProfitLoss'));
 const AccountsReceivable = lazy(() => import('./pages/Reports/AccountsReceivable'));
 
+/** Test fixture for the route error boundary. Never reachable in production. */
+function ThrowOnRender() {
+  throw new Error('Deliberate test error from /__boom');
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -121,6 +126,16 @@ export default function App() {
                     }
                   >
                     <Route path="/dashboard" element={<Dashboard />} />
+                    {/* A route that throws on render, so the route-level error
+                        boundary can be tested against a real React error
+                        rather than a simulated one. Stripped from production
+                        builds by the DEV guard: Vite evaluates
+                        import.meta.env.DEV to false there and drops the
+                        branch. Without it the boundary would be code nobody
+                        has ever seen work. */}
+                    {import.meta.env.DEV && (
+                      <Route path="/__boom" element={<ThrowOnRender />} />
+                    )}
                     <Route path="/products" element={<Navigate to="/inventory" replace />} />
                     <Route path="/sales" element={
                       <ProtectedRoute requiredPermission="create_sales"><Sales /></ProtectedRoute>

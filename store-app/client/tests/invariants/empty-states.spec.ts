@@ -24,6 +24,19 @@ test.describe('empty collections explain themselves', () => {
     test(route.name, async ({ page }) => {
       await gotoApp(page, route.path);
 
+      // A crashed page has no <tbody>, so every check below would find nothing
+      // to complain about and the route would pass having verified nothing.
+      // That is exactly what happened to /reports/accounts-receivable: it threw
+      // on an empty payload and this suite reported 37 green.
+      //
+      // Checked first, and separately, so the failure says "the page crashed"
+      // rather than "no empty state", which are different problems.
+      await expect(
+        page.locator('.error-boundary'),
+        `${route.path} crashed rather than rendering an empty state. ` +
+          'Nothing below this line can check anything on a page that is not there.',
+      ).toHaveCount(0);
+
       const bare = await page.evaluate(() => {
         const offenders: string[] = [];
         for (const tbody of document.querySelectorAll('tbody')) {
@@ -54,6 +67,29 @@ test.describe('empty collections explain themselves', () => {
       expect(
         bare,
         `Table(s) rendered column headers over nothing: ${bare.join(', ')}`,
+      ).toEqual([]);
+
+      // The same data is rendered twice on several pages: a table for desktop
+      // and a stack of cards for narrow screens. Only the table half was ever
+      // checked, so a page could use EmptyStateRow correctly in its <tbody>
+      // and hand-roll a blank div for the cards directly underneath.
+      const bareCards = await page.evaluate(() => {
+        const offenders: string[] = [];
+        for (const view of document.querySelectorAll('.mobile-card-view')) {
+          const el = view as HTMLElement;
+          // Hidden by CSS at this viewport is not an offender; it is simply
+          // the half of the page this screen does not use.
+          if (el.offsetParent === null) continue;
+          if ((el.textContent || '').trim().length === 0) {
+            offenders.push(el.className || '.mobile-card-view');
+          }
+        }
+        return offenders;
+      });
+
+      expect(
+        bareCards,
+        `Card view(s) rendered nothing at all: ${bareCards.join(', ')}`,
       ).toEqual([]);
     });
   }

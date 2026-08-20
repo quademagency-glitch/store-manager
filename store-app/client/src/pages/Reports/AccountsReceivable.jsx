@@ -16,12 +16,27 @@ export default function AccountsReceivable() {
 
   const summary = arAging?.summary || {};
 
-  const allInvoices = arAging ? [
-    ...(arAging.aging.current || []),
-    ...(arAging.aging.days_30 || []),
-    ...(arAging.aging.days_60 || []),
-    ...(arAging.aging.days_90_plus || []),
-  ] : [];
+  // Optional-chained through `aging` as well as `arAging`.
+  //
+  // The guard checked one level and then dereferenced two, so any 200 whose
+  // body lacks `aging` threw on render and took the page out. The server
+  // always sends { aging, summary }, and the hook leaves arAging null on
+  // error, so this is not reachable from the live API today. It was reachable
+  // from the empty-collection test mode, and that mattered more than it
+  // sounds: a crashed page has no <tbody>, so the empty-state test for this
+  // route had nothing to inspect and passed without checking anything.
+  // NOTE ON THE ?. PLACEMENT: the bucket counts below were written as
+  // `arAging.aging.current?.length`, which guards `current` and dereferences
+  // `aging` unguarded. The optional chain has to sit on the link that can
+  // actually be missing, which is `aging`. That is why they all read from this
+  // one variable now rather than re-walking the chain five times.
+  const buckets = arAging?.aging;
+  const allInvoices = [
+    ...(buckets?.current || []),
+    ...(buckets?.days_30 || []),
+    ...(buckets?.days_60 || []),
+    ...(buckets?.days_90_plus || []),
+  ];
 
   return (
     <div className="reports-page">
@@ -42,22 +57,22 @@ export default function AccountsReceivable() {
             <div className="ar-bucket-card ar-current">
               <span className="ar-bucket-label">Current</span>
               <span className="ar-bucket-value">{fmt(summary.current)}</span>
-              <span className="ar-bucket-count">{arAging.aging.current?.length || 0} invoices</span>
+              <span className="ar-bucket-count">{buckets?.current?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-30">
               <span className="ar-bucket-label">1-30 Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_30)}</span>
-              <span className="ar-bucket-count">{arAging.aging.days_30?.length || 0} invoices</span>
+              <span className="ar-bucket-count">{buckets?.days_30?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-60">
               <span className="ar-bucket-label">31-60 Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_60)}</span>
-              <span className="ar-bucket-count">{arAging.aging.days_60?.length || 0} invoices</span>
+              <span className="ar-bucket-count">{buckets?.days_60?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-90">
               <span className="ar-bucket-label">90+ Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_90_plus)}</span>
-              <span className="ar-bucket-count">{arAging.aging.days_90_plus?.length || 0} invoices</span>
+              <span className="ar-bucket-count">{buckets?.days_90_plus?.length || 0} invoices</span>
             </div>
           </div>
 

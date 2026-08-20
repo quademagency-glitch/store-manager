@@ -469,7 +469,41 @@ export function resolveMock(endpoint) {
 
   const data = FIXTURES[path];
   if (MOCK_MODE === 'empty') {
-    return { hit: true, data: Array.isArray(data) ? [] : {} };
+    return { hit: true, data: emptyLike(data) };
   }
   return { hit: true, data };
+}
+
+/**
+ * The empty version of a response, keeping its SHAPE.
+ *
+ * This used to be `Array.isArray(data) ? [] : {}`, which threw away every key
+ * of an object response. `/businesses/me/setup-status` returns
+ * `{ steps: [...], dismissed }` and became `{}`, so `status.steps` was
+ * undefined and the page threw on render.
+ *
+ * Four pages crashed that way in empty mode, and the crash hid itself: a page
+ * that has thrown renders no table, so the empty-state suite found no <tbody>
+ * to object to and reported green for all 37 routes. The mode meant to prove
+ * empty states worked was silently unable to reach four of them.
+ *
+ * An empty response from the API is not a shapeless one. The server still
+ * sends `{ steps: [] }`, `{ branches: [] }`, `{ aging: { current: [] , ... } }`
+ * when a business has no data, so the fixture has to as well, or "empty mode"
+ * is testing a shape production never produces.
+ *
+ * Numbers go to 0 and booleans to false, because a business with no sales
+ * genuinely has a total of 0. Strings are kept: they are names, currency codes
+ * and ids, which a new business still has.
+ */
+function emptyLike(value) {
+  if (Array.isArray(value)) return [];
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, emptyLike(v)]),
+    );
+  }
+  if (typeof value === 'number') return 0;
+  if (typeof value === 'boolean') return false;
+  return value;
 }

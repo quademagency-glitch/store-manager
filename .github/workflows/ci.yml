@@ -13,6 +13,35 @@ jobs:
   # If this job goes red, the fix is almost always to merge the new file into
   # store-app/client/ or store-app/server/ and delete the root copy, not to
   # weaken this check.
+  # A hook that is not executable is not a hook. Git skips it silently, prints
+  # a one-line hint at most, and every commit sails through as though the guard
+  # were running.
+  #
+  # This repo lives on a volume with core.fileMode=false, so git ignores the
+  # executable bit on disk and records new files as 100644 whatever `chmod`
+  # says. .githooks/pre-commit was committed that way and was inert in every
+  # fresh clone, including the worktree that found this. It is exactly the
+  # failure the hook itself exists to catch: looks installed, does nothing.
+  #
+  # Checks the mode recorded in the index, not on the runner's disk, because
+  # the index is what a clone gets.
+  executable-hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if any hook is not marked executable in git
+        run: |
+          bad=$(git ls-files -s .githooks | awk '$1 != "100755" { print $4 }')
+          if [ -n "$bad" ]; then
+            echo "::error::Hooks not executable in the index:"
+            echo "$bad"
+            echo ""
+            echo "Fix with:"
+            for f in $bad; do echo "  git update-index --chmod=+x $f"; done
+            exit 1
+          fi
+          echo "All hooks are executable."
+
   no-stale-root-dirs:
     runs-on: ubuntu-latest
     steps:

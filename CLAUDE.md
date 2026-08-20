@@ -95,3 +95,18 @@ needs one command to arm them:
 ```sh
 git config core.hooksPath .githooks
 ```
+
+**A hook that is not executable is not a hook.** Git skips it silently, so a
+non-executable one looks installed and does nothing. This repo lives on a
+volume with `core.fileMode=false`, which means git ignores the executable bit
+on disk and records a new file as `100644` however you `chmod` it. The
+pre-commit hook was committed that way and was inert in every fresh clone,
+which is the same shape of failure it exists to catch. Set the bit in the index
+explicitly:
+
+```sh
+git update-index --chmod=+x .githooks/<hook>
+```
+
+CI's `executable-hooks` job fails the build if any hook in `.githooks/` is not
+`100755` in the index.

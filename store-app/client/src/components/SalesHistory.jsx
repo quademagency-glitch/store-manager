@@ -6,6 +6,7 @@ import { useCurrency } from '../hooks/useCurrency';
 import Modal from './Modal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { SkeletonRows } from './ui';
 
 export default function SalesHistory() {
   const { sales, fetchSales, voidSale, approveVoid, rejectVoid, deleteSale, loading, page, totalPages, totalSales } = useSales();
@@ -117,12 +118,7 @@ export default function SalesHistory() {
         </thead>
         <tbody>
           {loading ? (
-            <tr>
-              <td colSpan="7" className="text-center py-xl text-muted">
-                <div className="spinner mx-auto mb-sm"></div>
-                <p>Loading sales history...</p>
-              </td>
-            </tr>
+            <SkeletonRows rows={5} cols={7} />
           ) : sales.length === 0 ? (
             <tr>
               <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>

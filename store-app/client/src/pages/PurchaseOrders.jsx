@@ -11,7 +11,7 @@ import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 import PurchaseOrderForm from '../features/inventory/components/PurchaseOrderForm';
 import ReceiveGoodsModal from '../features/inventory/components/ReceiveGoodsModal';
 import { api } from '../lib/api';
-import { EmptyStateRow } from '../components/ui';
+import { EmptyStateRow, SkeletonTable } from '../components/ui';
 
 export default function PurchaseOrders() {
   const toast = useToast();
@@ -237,7 +237,7 @@ export default function PurchaseOrders() {
         {/* PO Table */}
         <div className="glass-panel">
           {loading ? (
-            <div className="table-loading"><div className="spinner"></div><p>Loading purchase orders...</p></div>
+            <SkeletonTable rows={5} cols={6} caption="Loading purchase orders" />
           ) : (
             <>
               <div className="desktop-table-view">

@@ -8,7 +8,7 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import SupplierModal from '../features/inventory/components/SupplierModal';
-import { EmptyStateRow } from '../components/ui';
+import { EmptyStateRow, SkeletonTable } from '../components/ui';
 
 export default function Suppliers() {
   const toast = useToast();
@@ -150,7 +150,7 @@ export default function Suppliers() {
         {/* Suppliers Table */}
         <div className="glass-panel suppliers-table-wrapper">
           {loading ? (
-            <div className="table-loading"><div className="spinner"></div><p>Loading suppliers...</p></div>
+            <SkeletonTable rows={5} cols={5} caption="Loading suppliers" />
           ) : (
             <>
             <div className="desktop-table-view">

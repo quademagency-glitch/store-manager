@@ -3,6 +3,7 @@ import { api } from '../../../lib/api';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
 import { reportError } from '../../../lib/errorReporting';
+import { SkeletonTable } from '../../../components/ui';
 
 export default function PriceChangeHistory() {
   const { business } = usePrintDocument();
@@ -75,7 +76,7 @@ export default function PriceChangeHistory() {
 
       <div className="glass-panel">
         {loading ? (
-          <div className="table-loading"><div className="spinner"></div><p>Loading history...</p></div>
+          <SkeletonTable rows={5} cols={8} caption="Loading price history" />
         ) : history.length === 0 ? (
           <div className="text-center py-xl text-muted">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.3, margin: '0 auto 12px' }}>

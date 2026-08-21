@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
-import { EmptyStateRow, PageHeader } from '../components/ui';
+import { EmptyStateRow, PageHeader, SkeletonTable } from '../components/ui';
 import { reportError } from '../lib/errorReporting';
 
 export default function Products() {
@@ -233,10 +233,7 @@ export default function Products() {
         {/* Desktop table */}
         <div className="table-container desktop-table-view">
           {loading ? (
-            <div className="table-loading">
-              <div className="spinner"></div>
-              <p>Loading inventory...</p>
-            </div>
+            <SkeletonTable rows={6} cols={5} caption="Loading inventory" />
           ) : (
             <table className="glass-table">
               <thead>

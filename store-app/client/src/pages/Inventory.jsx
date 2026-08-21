@@ -24,7 +24,7 @@ import PriceTagPrinter from '../features/inventory/components/PriceTagPrinter';
 import PriceListPrint from '../features/inventory/components/PriceListPrint';
 import PriceChangeHistory from '../features/inventory/components/PriceChangeHistory';
 import { useExportCsv } from '../hooks/useExportCsv';
-import { EmptyStateRow, SkeletonRows, TabPanel, Tabs } from '../components/ui';
+import { EmptyStateRow, SkeletonRows, TabPanel, Tabs, SkeletonTable } from '../components/ui';
 import { reportError } from '../lib/errorReporting';
 
 function PricingTabContent({ refreshProducts }) {
@@ -606,7 +606,7 @@ export default function Inventory() {
           </div>
           <div className="glass-panel">
             {productsLoading ? (
-              <div className="table-loading"><div className="spinner"></div><p>Loading products...</p></div>
+              <SkeletonTable rows={6} cols={3} caption="Loading products" />
             ) : (<>
               <div className="desktop-table-view">
               <table className="glass-table">

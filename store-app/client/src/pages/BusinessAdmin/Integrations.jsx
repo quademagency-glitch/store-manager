@@ -3,7 +3,7 @@ import { api } from '../../lib/api';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Icons } from '../../components/icons/Icons';
-import { EmptyStateRow, PageHeader } from '../../components/ui';
+import { EmptyStateRow, PageHeader, SkeletonTable } from '../../components/ui';
 
 const SCOPE_OPTIONS = [
   { value: 'read:catalog', label: 'Read Catalog (products, prices, stock)' },
@@ -337,7 +337,7 @@ export default function Integrations() {
             </div>
             <div className="org-section-body">
               {deliveriesLoading ? (
-                <div className="table-loading"><div className="spinner"></div><p>Loading deliveries...</p></div>
+                <SkeletonTable rows={5} cols={6} caption="Loading deliveries" />
               ) : (
                 <table className="glass-table">
                   <thead>

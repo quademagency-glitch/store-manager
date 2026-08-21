@@ -49,12 +49,25 @@ function planSlug(name) {
  * The account being attempted, lowercased, as the throttling key.
  *
  * WHY NOT req.ip: the SPA reaches this API through Vercel's rewrite of
- * /api/*, and that rewrite does not carry the visitor's address. Measured
- * against production on 2026-08-21, a request from 154.163.174.227 arrived as
- * 13.247.245.82, and as 15.240.64.77 on the retry: both Vercel's own machines,
- * with the real address absent from x-forwarded-for entirely. So req.ip on
- * this route is not a person, it is whichever Vercel node relayed the call,
- * and a handful of those serve everybody.
+ * /api/*, and req.ip does not survive it. Measured against production on
+ * 2026-08-21, a request from 154.163.174.227 arrived with
+ * x-forwarded-for: 15.240.64.77, 152.233.29.1, Vercel's egress and Railway's
+ * edge, and as 13.247.245.82 on the retry. Express derives req.ip from that
+ * header, so on this route it is not a person, it is whichever Vercel node
+ * relayed the call, and a handful of those serve everybody.
+ *
+ * The address is NOT lost, and an earlier version of this comment said it was.
+ * Vercel does pass it, as `x-vercel-forwarded-for: 154.163.174.227` and in the
+ * RFC 7239 `forwarded` header; Railway's edge simply rewrites x-forwarded-for
+ * rather than appending to it, so Express never sees it. That is worth knowing
+ * because signupLimiter below still keys on req.ip and has the same problem,
+ * and it can only be fixed by reading one of those headers. Worth being
+ * careful about for the same reason: the Railway host is publicly reachable,
+ * so anyone calling it directly can put whatever they like in them, and a
+ * limiter that trusts them unconditionally is weaker than one that does not.
+ *
+ * None of which changes the key here. Even with a trustworthy address, the
+ * account is the better thing to count for a login.
  *
  * "10 per IP per 15 minutes" was therefore close to 10 for the whole platform.
  * On a busy morning the eleventh person to sign in got "Too many login

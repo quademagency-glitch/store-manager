@@ -1,10 +1,13 @@
 /**
  * Login throttling is keyed on the account, not the caller's address.
  *
- * The SPA reaches this API through Vercel's rewrite of /api/*, which does not
- * pass the visitor's address along. Measured against production on 2026-08-21:
- * a request from 154.163.174.227 arrived as 13.247.245.82, then 15.240.64.77,
- * both Vercel machines, with the real address absent from x-forwarded-for.
+ * The SPA reaches this API through Vercel's rewrite of /api/*, and req.ip does
+ * not survive it. Measured against production on 2026-08-21: a request from
+ * 154.163.174.227 arrived with x-forwarded-for holding Vercel's egress and
+ * Railway's edge, and Express derives req.ip from that header. (The real
+ * address does arrive, in x-vercel-forwarded-for; Railway's edge overwrites
+ * x-forwarded-for instead of appending. It is spoofable on the direct path,
+ * so it is not used here, and the account is the better key regardless.)
  *
  * So an IP-keyed limiter on this route counted the whole platform into a
  * handful of buckets: "10 per 15 minutes" was near enough 10 for everybody,

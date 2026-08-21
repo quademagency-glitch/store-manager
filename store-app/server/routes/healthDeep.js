@@ -153,6 +153,22 @@ async function healthDeepHandler(req, res) {
       xfProto: req.get('x-forwarded-proto') ?? null,
       remoteAddress: req.socket?.remoteAddress ?? null,
       trustProxySetting: req.app.get('trust proxy'),
+      // Every header a CDN might use to pass the original caller along.
+      //
+      // `xff` above is not sufficient on its own: measured on 2026-08-21, a
+      // request through app.quaderp.app arrived with x-forwarded-for holding
+      // only Vercel's egress address and Railway's edge, the real caller
+      // nowhere in it. Whether that address is genuinely lost or merely
+      // arriving under a different name decides whether IP-based limiting can
+      // work here at all, and that question cannot be answered from xff.
+      //
+      // Values are addresses, not secrets, and they are the caller's own.
+      clientIpHeaders: Object.fromEntries(
+        ['x-vercel-forwarded-for', 'x-vercel-ip-country', 'x-real-ip',
+         'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'forwarded']
+          .map((h) => [h, req.get(h) ?? null])
+          .filter(([, v]) => v !== null)
+      ),
     },
   });
 }

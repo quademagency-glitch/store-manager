@@ -45,9 +45,48 @@ function planSlug(name) {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * The account being attempted, lowercased, as the throttling key.
+ *
+ * WHY NOT req.ip: the SPA reaches this API through Vercel's rewrite of
+ * /api/*, and that rewrite does not carry the visitor's address. Measured
+ * against production on 2026-08-21, a request from 154.163.174.227 arrived as
+ * 13.247.245.82, and as 15.240.64.77 on the retry: both Vercel's own machines,
+ * with the real address absent from x-forwarded-for entirely. So req.ip on
+ * this route is not a person, it is whichever Vercel node relayed the call,
+ * and a handful of those serve everybody.
+ *
+ * "10 per IP per 15 minutes" was therefore close to 10 for the whole platform.
+ * On a busy morning the eleventh person to sign in got "Too many login
+ * attempts", blaming them for ten strangers' logins. This is the same
+ * platform-wide-bucket bug that `app.set('trust proxy')` was added to fix,
+ * reintroduced further upstream by the routing rather than by the server.
+ *
+ * Keying on the email restores what the limit is for: bounding guesses against
+ * one account. Twenty cashiers signing in get twenty budgets. Someone spraying
+ * many different accounts is not bounded here and never was, that is the
+ * general /api limiter's job.
+ *
+ * Normalised, or the same account under a different case would be a fresh
+ * budget. Falls back to the address when there is no usable email, which means
+ * a malformed body, since a real login always carries one.
+ */
+function loginKey(req) {
+  const email = req.body?.email;
+  return typeof email === 'string' && email.trim()
+    ? `email:${email.trim().toLowerCase()}`
+    : rateLimit.ipKeyGenerator(req.ip);
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 requests per window
+  max: 10, // 10 failed attempts per account per window
+  keyGenerator: loginKey,
+  // Only failures count. Signing in successfully is not the thing worth
+  // rationing, and counting it means a shared till that legitimately logs in
+  // and out all morning throttles itself. A wrong password returns 401 and a
+  // suspended account 403, so both still count.
+  skipSuccessfulRequests: true,
   message: { error: 'Too many login attempts, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,

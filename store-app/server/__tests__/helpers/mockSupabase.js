@@ -2,7 +2,7 @@
  * Creates a chainable Supabase query mock.
  * Usage: supabaseAdmin.from('table').select(...).eq(...).single() → resolves to { data, error }
  */
-function makeQueryMock(result = { data: [], error: null, count: 0 }) {
+function makeQueryMock(result = { data: [], error: null, count: 0 }, onMutate = null) {
   // The chain is itself a thenable so `await chain` resolves to result.
   // All chainable methods return the same chain so filters applied after range() still work.
   const chain = new Proxy(
@@ -25,8 +25,15 @@ function makeQueryMock(result = { data: [], error: null, count: 0 }) {
         }
         if (prop === 'single') return () => Promise.resolve(result.single ?? result);
         if (prop === 'maybeSingle') return () => Promise.resolve(result.single ?? result);
+        /* Writes are reported to the caller so a test can assert what a route
+           actually sent, not merely that it touched the table. Without this
+           the row a handler builds is invisible to the suite, which is how a
+           column can be added to a route and quietly never populated. */
         if (['insert', 'update', 'upsert', 'delete'].includes(prop)) {
-          return () => chain;
+          return (payload) => {
+            if (onMutate) onMutate(prop, payload);
+            return chain;
+          };
         }
         return () => chain;
       },
@@ -79,7 +86,12 @@ function buildMockSupabase(overrides = {}) {
     user_locations: [],
   };
 
+  /* Every insert/update/upsert/delete the route performs, in order, as
+     `{ table, op, payload }`. Read it to assert the shape of a written row. */
+  const mutations = [];
+
   return {
+    mutations,
     auth: {
       getUser: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
       signInWithPassword: jest.fn().mockResolvedValue({
@@ -101,7 +113,10 @@ function buildMockSupabase(overrides = {}) {
         ? { data: defaultUser, error: null }
         : { data: [], error: null, count: 0 };
       const tableResult = resultFor(table, fallback);
-      return makeQueryMock({ ...tableResult, single: tableResult });
+      return makeQueryMock(
+        { ...tableResult, single: tableResult },
+        (op, payload) => mutations.push({ table, op, payload }),
+      );
     }),
     rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
     channel: jest.fn(() => ({ on: jest.fn().mockReturnThis(), subscribe: jest.fn() })),

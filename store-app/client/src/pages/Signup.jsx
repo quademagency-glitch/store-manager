@@ -43,6 +43,23 @@ const PLANS = {
 };
 const DEFAULT_PLAN = 'single-branch';
 
+/**
+ * What the marketing site forwards about where a visitor came from.
+ *
+ * Kept as a closed list, mirroring the Zod schema in server/routes/auth.js,
+ * so a query string cannot smuggle arbitrary keys into the payload. The
+ * server whitelists and caps these again; this copy exists so we do not send
+ * junk in the first place, not as the check that matters.
+ *
+ * `lp` is the landing page, `cta` the control that was clicked, `ref` the
+ * referring hostname when the visit carried no campaign tags.
+ */
+const ATTRIBUTION_KEYS = [
+  'lp', 'cta', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'ref',
+];
+
+const ATTRIBUTION_KEY = 'qerp_attr';
+
 export default function Signup() {
   const { isAuthenticated, isDemo, signOut, loading } = useAuthContext();
   const [searchParams] = useSearchParams();
@@ -53,6 +70,41 @@ export default function Signup() {
      called "Object". */
   const planKey = searchParams.get('plan');
   const plan = planKey && Object.hasOwn(PLANS, planKey) ? PLANS[planKey] : PLANS[DEFAULT_PLAN];
+
+  /* Where this visitor came from, put on the href by the marketing site.
+     Read once on mount and kept in sessionStorage, because the params only
+     exist on the URL we were opened with: the demo sign-out effect below
+     navigates, and any bounce through /login would drop them. The server
+     caps and whitelists these again, so this is convenience, not a
+     boundary. */
+  const attribution = useMemo(() => {
+    const stored = (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem(ATTRIBUTION_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    })();
+
+    const fromUrl = {};
+    for (const key of ATTRIBUTION_KEYS) {
+      const value = searchParams.get(key);
+      if (value) fromUrl[key] = value.slice(0, 120);
+    }
+
+    /* The URL wins when it says anything. Landing on /signup a second time
+       with fresh campaign tags should not report the first visit's source. */
+    const resolved = Object.keys(fromUrl).length > 0 ? fromUrl : stored;
+    if (resolved && Object.keys(resolved).length > 0) {
+      try {
+        sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(resolved));
+      } catch {
+        /* Private mode, or storage full. Attribution is not worth a crash. */
+      }
+      return resolved;
+    }
+    return null;
+  }, [searchParams]);
 
   const [form, setForm] = useState({
     business_name: '',
@@ -127,6 +179,9 @@ export default function Signup() {
         // fell back to a tier that exists, and sending anything else would let
         // the label and the plan actually attached disagree.
         plan: plan.name,
+        // Omitted entirely when there is nothing to say, so the server can
+        // tell "arrived with no source" apart from "arrived with an empty one".
+        ...(attribution ? { attribution } : {}),
       });
       setResult(data);
     } catch (err) {

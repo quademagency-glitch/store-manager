@@ -287,6 +287,71 @@ describe('POST /api/auth/signup, plan selection', () => {
   });
 });
 
+/**
+ * Where a signup came from, forwarded by the marketing site on the signup
+ * href (quaderp-landing/src/config/site.ts builds it, Signup.jsx reads it).
+ *
+ * The rule these all serve: attribution is decoration on somebody's signup.
+ * It must never be the reason an account cannot be created, so nothing here
+ * rejects, and anything unrecognised is dropped rather than argued with.
+ */
+describe('POST /api/auth/signup, attribution', () => {
+  const businessRow = () =>
+    mockSupabase.mutations.find((m) => m.table === 'businesses' && m.op === 'insert').payload;
+
+  it('persists what the marketing site sent', async () => {
+    const attribution = {
+      lp: '/',
+      cta: 'pricing',
+      utm_source: 'facebook',
+      utm_medium: 'paid',
+      utm_campaign: 'accra-jan',
+    };
+
+    const res = await postSignup({ ...VALID_BODY, attribution });
+
+    expect(res.status).toBe(201);
+    expect(businessRow().signup_attribution).toEqual(attribution);
+  });
+
+  it('succeeds, and stores null, when the visitor arrived with no source', async () => {
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(201);
+    expect(businessRow().signup_attribution).toBeNull();
+  });
+
+  it('stores null rather than an empty object', async () => {
+    // {} would make a direct arrival read as attributed in a report, which is
+    // worse than knowing nothing, because it is indistinguishable from a real
+    // source that happened to send no fields.
+    const res = await postSignup({ ...VALID_BODY, attribution: {} });
+
+    expect(res.status).toBe(201);
+    expect(businessRow().signup_attribution).toBeNull();
+  });
+
+  it('drops keys that are not on the whitelist', async () => {
+    const res = await postSignup({
+      ...VALID_BODY,
+      attribution: { cta: 'hero', note: 'anything at all', business_id: 'someone-elses-uuid' },
+    });
+
+    expect(res.status).toBe(201);
+    expect(businessRow().signup_attribution).toEqual({ cta: 'hero' });
+  });
+
+  it('truncates an over-long value instead of refusing the signup', async () => {
+    const res = await postSignup({
+      ...VALID_BODY,
+      attribution: { utm_campaign: 'x'.repeat(400) },
+    });
+
+    expect(res.status).toBe(201);
+    expect(businessRow().signup_attribution.utm_campaign).toHaveLength(120);
+  });
+});
+
 describe('POST /api/auth/signup, rate limiting', () => {
   // Runs last and does not reset mid-way, so it spends the real budget.
   // Only the limiter is under test here, the first five may legitimately

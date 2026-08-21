@@ -2,9 +2,9 @@
 /**
  * Verifies that the inline-script hashes in the CSP still match the built app.
  *
- * WHY: index.html contains two inline <script> blocks, one resolves the
+ * WHY: index.html contains one inline <script> block, which resolves the
  * light/dark theme before first paint and must stay inline to avoid a flash of
- * unstyled content. The CSP allows them by SHA-256 hash. Change index.html by
+ * unstyled content. The CSP allows it by SHA-256 hash. Change index.html by
  * even one character and the hash no longer matches; once the policy is
  * enforcing (rather than Report-Only) the browser refuses to run the theme
  * script and the app renders as a blank white page.

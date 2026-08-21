@@ -277,6 +277,23 @@
   text-decoration: none;
 }
 
+.signup-success-sandbox {
+  margin: var(--space-lg) 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.signup-success-sandbox a {
+  color: var(--color-accent-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-success-sandbox a:hover {
+  text-decoration: underline;
+}
+
 /* --- Footer --------------------------------------------------- */
 
 .signup-footer p {

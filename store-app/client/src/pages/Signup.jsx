@@ -224,9 +224,18 @@ export default function Signup() {
                 </svg>
               </div>
               <h1 className="login-title">Check your email</h1>
+              {/* What the link actually does: the server generates it with
+                  redirectTo pointing at this app's /login, supabase.js is
+                  configured with detectSessionInUrl, and Login.jsx sends an
+                  authenticated visitor to the dashboard. So it verifies and
+                  signs in, in one click. The old copy sent them looking for a
+                  sign-in form they would never be shown, and the second
+                  sentence is there for the case where the redirect target is
+                  not on Supabase's allow list and they do land on one. */}
               <p className="login-subtitle">
-                We&rsquo;ve sent a confirmation link to <strong>{form.email.trim()}</strong>. Open it to verify
-                your address, then sign in with the password you just chose.
+                We&rsquo;ve sent a confirmation link to <strong>{form.email.trim()}</strong>. Opening it
+                verifies your address and signs you straight in. If you are asked to sign in, use the
+                password you just chose.
               </p>
 
               <dl className="signup-summary">
@@ -270,6 +279,15 @@ export default function Signup() {
               <Link to="/login" className="login-button signup-success-action">
                 Go to sign in
               </Link>
+
+              {/* The wait for an email was a dead end, on the one screen where
+                  interest is highest. The sandbox is already built and needs no
+                  account, so it costs nothing to offer here. */}
+              <p className="signup-success-sandbox">
+                Rather not wait? <Link to="/login?demo=1">Open the sandbox</Link>, a full copy of
+                QuadERP with a shop&rsquo;s worth of data already in it. Nothing you do there touches
+                the business you just created.
+              </p>
             </div>
           </div>
         </div>

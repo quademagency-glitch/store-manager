@@ -240,6 +240,21 @@ async function teardown(businessId) {
   // nothing to do with the demo failed to start at all.
   const { Client } = require('pg');
 
+  // Checked rather than passed straight through, because `pg` treats a missing
+  // connection string as "use the defaults" and quietly dials localhost:5432.
+  // On Railway, where DIRECT_URL was never set, that produced an
+  // ECONNREFUSED AggregateError whose .message is the empty string, so the
+  // nightly failure logged as `teardown:` and nothing else. The demo tenant
+  // sat frozen from 2026-08-13 to 2026-08-21 and no log said why.
+  if (!process.env.DIRECT_URL) {
+    throw new Error(
+      'DIRECT_URL is not set, so the demo tenant cannot be torn down. It must ' +
+      'be a direct Postgres connection string (the Supabase session pooler on ' +
+      'port 5432 works and is IPv4). Set it in the Railway service variables. ' +
+      'Without it this job fails every night and the demo is never rebuilt.'
+    );
+  }
+
   const client = new Client({
     connectionString: process.env.DIRECT_URL,
     ssl: { rejectUnauthorized: false },
@@ -259,7 +274,13 @@ async function teardown(businessId) {
     logger.info({ businessId, tables: order.length }, '[demo] app data removed');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    throw new Error(`teardown: ${err.message}`);
+    // `err.message` alone is not enough to rely on. An AggregateError from a
+    // failed connection carries an empty message and puts everything useful in
+    // .code and .errors, so interpolating the message alone throws away the
+    // entire diagnosis. Fall back through the fields that are actually
+    // populated, and keep the original as `cause`.
+    const detail = err.message || err.code || err.name || 'unknown error';
+    throw new Error(`teardown: ${detail}`, { cause: err });
   } finally {
     await client.end();
   }

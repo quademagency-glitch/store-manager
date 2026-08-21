@@ -624,6 +624,31 @@ async function reseedDemo({ ifEmpty = false } = {}) {
   }
 
   if (existing) {
+    // Tearing down a demo that already exists means recreating its auth
+    // account, and config/demo.js falls back to a built-in password when
+    // DEMO_ACCOUNT_PASSWORD is unset. If the running app was deployed with a
+    // different one, and production was, the rebuild succeeds, reports every
+    // count correctly, and leaves /api/auth/demo-login unable to sign in to
+    // the demo it just built. Nothing in the output would say so.
+    //
+    // The cron on Railway has the variable, so this never fires there. It
+    // fires for someone running the seeder by hand from a checkout whose .env
+    // does not carry it, which is exactly the case that would break the live
+    // demo without anyone noticing until a prospect tried it.
+    //
+    // Only guards the destructive path. A first run against an empty
+    // environment has nothing to contradict, so the defaults are fine there.
+    if (!process.env.DEMO_ACCOUNT_PASSWORD && !process.argv.includes('--accept-default-credentials')) {
+      throw new Error(
+        'Refusing to rebuild the demo: DEMO_ACCOUNT_PASSWORD is not set here, so ' +
+        'the demo account would be recreated with the built-in default. If the ' +
+        'deployed app uses a different password, its demo login breaks silently.\n\n' +
+        'Supply the deployed values, e.g.\n' +
+        '  DEMO_ACCOUNT_EMAIL=... DEMO_ACCOUNT_PASSWORD=... node scripts/seed-demo-data.js\n\n' +
+        'or pass --accept-default-credentials if this environment has no deployed app.'
+      );
+    }
+
     logger.info({ businessId: existing.id }, '[demo] tearing down previous demo business');
     await teardown(existing.id);
   } else {

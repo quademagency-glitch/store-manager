@@ -59,3 +59,38 @@ describe('demo teardown, missing DIRECT_URL', () => {
     expect(`teardown: ${detail}`).toBe('teardown: ECONNREFUSED');
   });
 });
+
+/**
+ * A rebuild recreates the demo's auth account, and config/demo.js supplies a
+ * built-in password when DEMO_ACCOUNT_PASSWORD is unset. Production is deployed
+ * with a different one, so a rebuild run from a checkout that lacks the
+ * variable would finish cleanly, report all its counts, and leave the live
+ * demo login unable to sign in. Nothing in the output would mention it.
+ *
+ * Caught on 2026-08-21 by comparing the deployed value against the default
+ * before running a rebuild by hand. It was luck, so it is a guard now.
+ */
+describe('demo rebuild, missing DEMO_ACCOUNT_PASSWORD', () => {
+  const SEEDER = require('path').join(__dirname, '..', 'scripts', 'seed-demo-data.js');
+  const src = require('fs').readFileSync(SEEDER, 'utf8');
+
+  it('refuses the destructive path rather than silently using the default', () => {
+    expect(src).toMatch(/Refusing to rebuild the demo/);
+    expect(src).toMatch(/!process\.env\.DEMO_ACCOUNT_PASSWORD/);
+  });
+
+  it('guards only the teardown branch, so a first run still works', () => {
+    // An empty environment has no deployed password to contradict, and making
+    // the very first seed require a variable would be friction for nothing.
+    const guardAt = src.indexOf('Refusing to rebuild the demo');
+    const teardownAt = src.indexOf('tearing down previous demo business');
+    const elseAt = src.indexOf('a previous run may still have left auth accounts');
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(guardAt).toBeLessThan(teardownAt);
+    expect(teardownAt).toBeLessThan(elseAt);
+  });
+
+  it('offers an explicit way through for environments with no deployed app', () => {
+    expect(src).toMatch(/--accept-default-credentials/);
+  });
+});

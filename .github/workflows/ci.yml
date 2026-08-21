@@ -25,22 +25,32 @@ jobs:
   #
   # Checks the mode recorded in the index, not on the runner's disk, because
   # the index is what a clone gets.
-  executable-hooks:
+  # Extended beyond .githooks/ on 2026-08-21: backup-scheduled.sh had been
+  # committed 100644 and is invoked as ./scripts/backup-scheduled.sh by the
+  # nightly job, so in any fresh clone it would have failed with "permission
+  # denied" the first time it mattered. Same bug, different file.
+  #
+  # Scoped to .sh and .githooks deliberately. Plenty of tracked .js and .py
+  # files carry a shebang too, but everything runs those through `node` or
+  # `python3`, so requiring the bit on them would flip fifteen files to prevent
+  # nothing. A shell script with a shebang is meant to be run by path.
+  executable-scripts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fail if any hook is not marked executable in git
+      - name: Fail if any hook or shell script is not marked executable in git
         run: |
-          bad=$(git ls-files -s .githooks | awk '$1 != "100755" { print $4 }')
+          bad=$(git ls-files -s .githooks '*.sh' | awk '$1 != "100755" { print $4 }')
           if [ -n "$bad" ]; then
-            echo "::error::Hooks not executable in the index:"
+            echo "::error::Not executable in the index:"
             echo "$bad"
             echo ""
-            echo "Fix with:"
+            echo "This volume has core.fileMode=false, so chmod on disk changes"
+            echo "nothing that git records. Set it in the index instead:"
             for f in $bad; do echo "  git update-index --chmod=+x $f"; done
             exit 1
           fi
-          echo "All hooks are executable."
+          echo "All hooks and shell scripts are executable."
 
   no-stale-root-dirs:
     runs-on: ubuntu-latest

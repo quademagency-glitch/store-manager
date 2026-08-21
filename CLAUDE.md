@@ -108,5 +108,9 @@ explicitly:
 git update-index --chmod=+x .githooks/<hook>
 ```
 
-CI's `executable-hooks` job fails the build if any hook in `.githooks/` is not
-`100755` in the index.
+CI's `executable-scripts` job fails the build if any hook in `.githooks/`, or
+any tracked `*.sh`, is not `100755` in the index. It covered only `.githooks/`
+until 2026-08-21, when `backup-scheduled.sh` turned up committed `100644`, and
+the nightly backup job invokes it by path. Tracked `.js` and `.py` files carry
+shebangs too but are always run through an interpreter, so they are out of
+scope on purpose.

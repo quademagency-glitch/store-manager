@@ -41,7 +41,6 @@ const PLANS = {
     detail: 'Up to 5 locations with unlimited POS terminals, loss-prevention alerts and cross-branch transfers.',
   },
 };
-const DEFAULT_PLAN = 'single-branch';
 
 /**
  * What the marketing site forwards about where a visitor came from.
@@ -64,12 +63,25 @@ export default function Signup() {
   const { isAuthenticated, isDemo, signOut, loading } = useAuthContext();
   const [searchParams] = useSearchParams();
 
-  /* An unrecognised or missing `?plan` falls back rather than erroring: the
-     worst outcome for a mistyped link is the cheaper plan, never a dead form.
-     hasOwn rather than a bare lookup, or `?plan=constructor` renders a tier
-     called "Object". */
+  /* The tier the link named, when we recognise it. hasOwn rather than a bare
+     lookup, or `?plan=constructor` renders a tier called "Object".
+
+     A missing or unrecognised plan resolves to null now, where it used to
+     fall back to the cheapest tier. Nav, the mobile drawer and the hero all
+     link here deliberately without one, because a visitor who has not opened
+     the pricing table has not chosen anything, and the fallback was telling
+     every one of them they had picked Single Branch, five-branch prospects
+     included. Null means "not chosen yet", and the chooser below asks. */
   const planKey = searchParams.get('plan');
-  const plan = planKey && Object.hasOwn(PLANS, planKey) ? PLANS[planKey] : PLANS[DEFAULT_PLAN];
+  const linkedPlanKey = planKey && Object.hasOwn(PLANS, planKey) ? planKey : null;
+
+  /* Seeded from the link, then owned by the visitor.
+     Deliberately not written back to the URL when they change it: the query
+     string is the record of where they arrived from and what they were first
+     shown, which is what attribution reads. The payload below sends this
+     state, never the param, so the two cannot disagree. */
+  const [chosenPlanKey, setChosenPlanKey] = useState(linkedPlanKey);
+  const plan = chosenPlanKey ? PLANS[chosenPlanKey] : null;
 
   /* Where this visitor came from, put on the href by the marketing site.
      Read once on mount and kept in sessionStorage, because the params only
@@ -158,6 +170,10 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
+    if (!plan) {
+      setError('Please choose a plan to start your trial.');
+      return;
+    }
     if (!form.business_name.trim() || !form.name.trim() || !form.email.trim() || !form.password) {
       setError('Please fill in your business name, your name, email and a password.');
       return;
@@ -175,9 +191,9 @@ export default function Signup() {
         email: form.email.trim(),
         password: form.password,
         phone: form.phone.trim(),
-        // The resolved name, not the raw query param: the card above already
-        // fell back to a tier that exists, and sending anything else would let
-        // the label and the plan actually attached disagree.
+        // What the card above actually shows, not the raw query param, so the
+        // label and the plan attached can never disagree. Non-null by the
+        // check at the top of this function.
         plan: plan.name,
         // Omitted entirely when there is nothing to say, so the server can
         // tell "arrived with no source" apart from "arrived with an empty one".
@@ -293,15 +309,59 @@ export default function Signup() {
             <p className="login-subtitle">Set up Quad<span className="brand-erp">ERP</span> for your business in under a minute.</p>
           </div>
 
-          <div className="signup-plan-card">
-            <div className="signup-plan-head">
-              <span className="signup-plan-name">{plan.name}</span>
-              <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
+          {plan ? (
+            <div className="signup-plan-card">
+              <div className="signup-plan-head">
+                <span className="signup-plan-name">{plan.name}</span>
+                <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
+              </div>
+              <p className="signup-plan-detail">
+                {plan.detail} No card needed. We&rsquo;ll only ask when the trial ends.
+              </p>
+              <button
+                type="button"
+                className="signup-plan-change"
+                onClick={() => setChosenPlanKey(null)}
+              >
+                Choose a different plan
+              </button>
             </div>
-            <p className="signup-plan-detail">
-              {plan.detail} No card needed. We&rsquo;ll only ask when the trial ends.
-            </p>
-          </div>
+          ) : (
+            <fieldset className="signup-plan-choice">
+              <legend className="signup-plan-choice-legend">
+                <span>Choose your plan</span>
+                <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
+              </legend>
+
+              <div className="signup-plan-options">
+                {Object.entries(PLANS).map(([key, option]) => (
+                  <label key={key} className="signup-plan-option">
+                    <input
+                      type="radio"
+                      name="plan"
+                      value={key}
+                      checked={chosenPlanKey === key}
+                      onChange={() => setChosenPlanKey(key)}
+                      className="signup-plan-option-input"
+                    />
+                    <span className="signup-plan-option-body">
+                      <span className="signup-plan-name">{option.name}</span>
+                      <span className="signup-plan-detail">{option.detail}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <p className="signup-plan-choice-note">
+                Either one is {TRIAL_DAYS} days free with no card, and you can move between
+                them later. Running more than five locations?{' '}
+                <a href="mailto:info@quaderp.app?subject=Franchise%20Plan%20Inquiry">
+                  Ask us about Franchise
+                </a>
+                .
+              </p>
+            </fieldset>
+          )}
 
           <form onSubmit={handleSubmit} className="login-form" id="signup-form">
             {error && (

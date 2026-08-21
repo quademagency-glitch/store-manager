@@ -61,6 +61,111 @@
   margin: 0;
 }
 
+/* The card is a confirmation, so it needs a way out of it. A visitor who
+   clicked the wrong tier in the pricing table used to have no route back
+   except editing the query string. */
+.signup-plan-change {
+  margin-top: var(--space-sm);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- Plan chooser, shown when the link named no tier ---------- */
+
+/* Nav, drawer and hero all link here without a plan on purpose: someone who
+   has not opened the pricing table has not chosen. Two real options, neither
+   preselected, rather than a card that quietly says Single Branch. */
+.signup-plan-choice {
+  margin: 0 0 var(--space-lg);
+  padding: 0;
+  border: 0;
+}
+
+/* `width: 100%` and `padding: 0` because a <legend> is laid out by the UA,
+   not by the fieldset's own box, and inherits neither. */
+.signup-plan-choice-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-sm);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.signup-plan-options {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+/* The whole card is the label, so the hit area is the card and not the 20px
+   radio that a11y.css sizes under a coarse pointer. */
+.signup-plan-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.signup-plan-option:hover {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 4%, transparent);
+}
+
+/* A real radio, visible and focusable. Hiding it and drawing the state on the
+   card would need :has() for the focus ring, and the invariant suite reads the
+   focused element's own outline. */
+.signup-plan-option-input {
+  flex: none;
+  margin: 2px 0 0;
+  accent-color: var(--color-accent-primary);
+}
+
+.signup-plan-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.signup-plan-option .signup-plan-name,
+.signup-plan-option .signup-plan-detail {
+  display: block;
+}
+
+.signup-plan-choice-note {
+  margin: var(--space-sm) 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.signup-plan-choice-note a {
+  color: var(--color-accent-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-plan-choice-note a:hover {
+  text-decoration: underline;
+}
+
 /* --- Fields --------------------------------------------------- */
 
 .signup-field-row {

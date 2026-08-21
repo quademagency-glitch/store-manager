@@ -193,7 +193,7 @@ describe('POST /api/auth/signup, rollback', () => {
       ...happyPathOverrides(),
       users: [
         { data: null, error: null },
-        // handle_new_user() filed them under "Pending Assignment" instead, 
+        // handle_new_user() filed them under "Pending Assignment" instead,
         // the exact failure that motivates creating the business first.
         { data: { ...OWNER_PROFILE, business_id: 'some-other-business' }, error: null },
       ],

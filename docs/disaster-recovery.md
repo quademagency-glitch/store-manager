@@ -198,7 +198,7 @@ cut anyone off mid-sale.
 
 **Frontend (Vercel):** Dashboard → Deployments → Promote a previous build.
 
-If a migration is involved, roll the code back **first**, then the database, 
+If a migration is involved, roll the code back **first**, then the database,
 new code against an old schema fails loudly, old code against a new schema
 often fails quietly.
 

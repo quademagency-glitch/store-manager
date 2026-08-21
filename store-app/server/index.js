@@ -81,7 +81,7 @@ const PORT = process.env.PORT || 3001;
 // address it does not trust, so with n=1 you get the RIGHTMOST forwarded entry
 // and with n=2 the one before it. Working that through both paths:
 //
-//   If Railway appends Vercel's egress IP, browser XFF is "client, vercel", 
+//   If Railway appends Vercel's egress IP, browser XFF is "client, vercel",
 //     n=1 yields vercel's IP (every user collapses into a few buckets), n=2
 //     yields the real client. n=2 wins.
 //   If Railway forwards XFF untouched, browser XFF is just "client", n=2 runs
@@ -156,7 +156,7 @@ app.use(helmet({
 
 // CORS, allow the Vite dev server and production frontend
 const allowedOrigins = [
-  'http://localhost:5173', 
+  'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:5178',
   'http://127.0.0.1:5178',
@@ -216,7 +216,7 @@ app.use((req, res, next) => {
 
   if (req.path === '/api/health' || req.path.startsWith('/api/health/')) return next();
 
-  // 308, never 301/302. A 301 would rewrite POST to GET and drop the body, 
+  // 308, never 301/302. A 301 would rewrite POST to GET and drop the body,
   // POST /api/sales would silently become a GET, return a list, and the sale
   // would vanish with the client seeing a success.
   return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`);

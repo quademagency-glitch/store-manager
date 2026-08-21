@@ -102,8 +102,8 @@ function installGracefulShutdown(server, opts = {}) {
     shutdown('uncaughtException');
   });
 
-  // Logged, NOT fatal. This codebase has deliberate fire-and-forget promises, 
-  // touchLastUsed() in apiKeyGuard, the demo reseed timer, the audit logger, 
+  // Logged, NOT fatal. This codebase has deliberate fire-and-forget promises,
+  // touchLastUsed() in apiKeyGuard, the demo reseed timer, the audit logger,
   // and making an unhandled rejection exit the process would turn any of them
   // into a production crash-loop.
   process.on('unhandledRejection', (reason) => {

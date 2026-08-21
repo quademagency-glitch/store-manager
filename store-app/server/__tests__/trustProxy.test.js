@@ -30,7 +30,7 @@ describe('trust proxy', () => {
   });
 
   // 2, not 1. proxy-addr returns the first untrusted address walking
-  // [socket, ...reversed XFF], so n=1 yields the RIGHTMOST forwarded entry, 
+  // [socket, ...reversed XFF], so n=1 yields the RIGHTMOST forwarded entry,
   // which on the browser path (client -> Vercel -> Railway) is Vercel's egress
   // IP, collapsing every user into a handful of buckets. n=2 yields the real
   // client, and still resolves correctly on the single-hop webhook path where

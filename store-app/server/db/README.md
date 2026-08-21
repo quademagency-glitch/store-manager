@@ -66,7 +66,7 @@ rather than `pg_dump`, because pg_dump refuses to read a server newer than
 itself (production is 17.x, local binaries are 16.x).
 
 Needs `initdb` and `pg_ctl` on PATH, or a `SHADOW_DATABASE_URL`.
-`shadow-bootstrap.sql` fabricates the Supabase surface the migrations expect, 
+`shadow-bootstrap.sql` fabricates the Supabase surface the migrations expect,
 the `anon` / `authenticated` / `service_role` roles, `auth.users`, the `storage`
 schema, and Supabase's default grant posture. **It is a test scaffold and must
 never run against production.**

@@ -35,7 +35,7 @@ router.get('/', authGuard, permissionCheck('manage_business'), async (req, res) 
       .range(offset, offset + limit - 1);
 
     // Platform admins can see across tenants; everyone else is pinned to their
-    // own business. This mirrors the RLS policy rather than relying on it, 
+    // own business. This mirrors the RLS policy rather than relying on it,
     // these queries run as service_role, which bypasses RLS entirely, so the
     // scoping HAS to be enforced here.
     if (req.user.role !== 'Platform Admin') {

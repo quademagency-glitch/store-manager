@@ -42,6 +42,32 @@
 
 set -e
 
+# ── Trailing whitespace, on the lines being added ───────────────────────────
+#
+# Warns rather than blocks, and only about lines this commit introduces. The
+# repo already carries about 1,200 trailing spaces from before anyone was
+# looking, so blocking would fail every commit until someone did a mass
+# reformat, and mass-reformatting is not free here: db/migrations/ files are
+# checksum-guarded, and editing one after it has been applied makes
+# `npm run migrate:status` report drift.
+#
+# The em dash sweep introduced 14 of these in one commit, because replacing
+# " - " with ", " leaves the space that used to follow the dash. That is
+# exactly the kind of thing worth catching at the moment it is written.
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  ws=$(git diff --cached --check 2>/dev/null | grep 'trailing whitespace' || true)
+  if [ -n "$ws" ]; then
+    n=$(printf '%s\n' "$ws" | wc -l | tr -d ' ')
+    echo "" >&2
+    echo "  note: $n line(s) in this commit end in trailing whitespace." >&2
+    printf '%s\n' "$ws" | sed 's/^/      /' >&2
+    echo "" >&2
+    echo "  Strip them with:" >&2
+    echo "      git diff --cached --name-only | xargs sed -i '' -E 's/[[:space:]]+\$//'" >&2
+    echo "" >&2
+  fi
+fi
+
 # Nothing staged, or the very first commit: nothing to compare against.
 git rev-parse --verify HEAD >/dev/null 2>&1 || exit 0
 

@@ -96,7 +96,7 @@ export default function Overview() {
       URL.revokeObjectURL(url);
       toast.success('Export downloaded.');
     } catch (err) {
-      // 429 is the once-an-hour limit, which deserves its own message, 
+      // 429 is the once-an-hour limit, which deserves its own message,
       // "export failed" would send someone hunting for a fault that isn't there.
       if (err?.status === 429) {
         toast.error('An export can only be generated once per hour. Try again shortly.');
@@ -192,7 +192,7 @@ export default function Overview() {
       </div>
 
       <div className="overview-bento">
-        
+
         {/* Trend Chart */}
         <div className="content-card">
           <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', fontWeight: '600' }}>7-Day Revenue Trend</h2>
@@ -203,7 +203,7 @@ export default function Overview() {
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(value) => `${currencySymbol}${value}`} />
-                <Tooltip 
+                <Tooltip
                   formatter={(value) => [fmt(value), 'Revenue']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
@@ -219,9 +219,9 @@ export default function Overview() {
             <div className="flex flex-col gap-md">
               {recentActivity.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px' }}>
-                  <div style={{ 
+                  <div style={{
                     width: '10px', height: '10px', borderRadius: '50%', marginTop: '6px',
-                    background: item.status === 'success' ? 'var(--color-success)' : item.status === 'error' ? 'var(--color-error)' : 'var(--color-warning)' 
+                    background: item.status === 'success' ? 'var(--color-success)' : item.status === 'error' ? 'var(--color-error)' : 'var(--color-warning)'
                   }}></div>
                   <div className="flex-1">
                     <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>{item.title}</p>

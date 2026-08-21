@@ -8,7 +8,7 @@
 #
 # Because it runs somewhere else. A check that runs on Railway cannot tell you
 # Railway is down, and a check that runs on the laptop tells you nothing while
-# the laptop is shut. This is free, needs no account, no card and no secrets, 
+# the laptop is shut. This is free, needs no account, no card and no secrets,
 # the health endpoint is public and deliberately returns no timings or error
 # strings to an unauthenticated caller.
 #
@@ -20,7 +20,7 @@
 # will miss "down for four minutes". That is a large improvement on nothing and
 # a poor substitute for a real monitor.
 #
-# When there is a budget, point UptimeRobot or Better Stack at the same URL, 
+# When there is a budget, point UptimeRobot or Better Stack at the same URL,
 # both have free tiers, both check every 1-5 minutes from multiple regions, and
 # both can wake a phone. Then delete this file rather than running both.
 #

@@ -72,9 +72,16 @@ if (cluster.isPrimary) {
 
   logger.info({ pid: process.pid, workers: WORKER_COUNT }, '🚀 Primary process started');
 
-  // Fork workers
+  // Fork workers.
+  //
+  // WORKER_COUNT is handed to each worker rather than recomputed there. A
+  // worker could derive the same number from os.availableParallelism(), but
+  // then the two could disagree (WEB_CONCURRENCY is read here and not there),
+  // and anything dividing a limit across workers would divide by the wrong
+  // number without saying so. See utils/clusterLimits.js.
+  const forkEnv = { WORKER_COUNT: String(WORKER_COUNT) };
   for (let i = 0; i < WORKER_COUNT; i++) {
-    cluster.fork();
+    cluster.fork(forkEnv);
   }
 
   // Auto-restart crashed workers, but ONLY genuine crashes.
@@ -103,7 +110,7 @@ if (cluster.isPrimary) {
       '⚠️  Worker died, restarting'
     );
     setTimeout(() => {
-      if (!shuttingDown) cluster.fork();
+      if (!shuttingDown) cluster.fork(forkEnv);
     }, delay).unref();
   });
 

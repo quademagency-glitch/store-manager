@@ -14,6 +14,7 @@ const { DEMO_EMAIL, DEMO_PASSWORD, isDemoEnabled } = require('../config/demo');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { clientAddress } = require('../utils/clientAddress');
+const { perWorker } = require('../utils/clusterLimits');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 // How long a self-service free trial lasts. Deliberately not read from the
@@ -133,6 +134,14 @@ const loginLimiter = rateLimit({
 // it: this application has taken zero real signups to date, so any number
 // derived from current volume would be noise. They exist to bound a runaway,
 // not to shape demand. Raise them from the environment if a launch needs it.
+//
+// They go through perWorker() because express-rate-limit counts inside one
+// process and this API runs 8 of them, so a ceiling of 100 written plainly
+// would be 800. The per-visitor and per-account limits above are NOT divided,
+// and are therefore effectively multiplied by the worker count. That is
+// deliberate and is explained in utils/clusterLimits.js: dividing a limit of
+// 5 or 10 by 8 gives 1, and one unlucky routing would lock out a customer who
+// mistyped their password twice.
 const GLOBAL = 'all';
 
 // Signup creates a business, an auth user and a mailbox hit, so it is far
@@ -148,7 +157,7 @@ const signupLimiter = rateLimit({
 
 const signupCeiling = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: Number(process.env.SIGNUP_CEILING_PER_HOUR ?? 100),
+  max: perWorker(Number(process.env.SIGNUP_CEILING_PER_HOUR ?? 100)),
   keyGenerator: () => GLOBAL,
   message: { error: 'Signups are temporarily rate limited. Please try again shortly.' },
   standardHeaders: false,
@@ -168,7 +177,7 @@ const demoLoginLimiter = rateLimit({
 
 const demoLoginCeiling = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: Number(process.env.DEMO_CEILING_PER_HOUR ?? 300),
+  max: perWorker(Number(process.env.DEMO_CEILING_PER_HOUR ?? 300)),
   keyGenerator: () => GLOBAL,
   message: { error: 'The demo is busy right now. Please try again shortly.' },
   standardHeaders: false,

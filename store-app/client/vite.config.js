@@ -27,6 +27,22 @@ export default defineConfig({
     react(), 
     tailwindcss(),
     VitePWA({
+      /* autoUpdate already reloads the page after a deployment, from the
+         `activated` handler in vite-plugin-pwa's register client, which fires
+         only when `isUpdate` or `isExternal` is set.
+
+         index.html used to carry a hand-written listener that did the same
+         thing without those guards:
+
+           navigator.serviceWorker.addEventListener('controllerchange',
+             () => window.location.reload())
+
+         controllerchange fires the first time any worker takes control, and
+         `clientsClaim` below makes a freshly installed worker do exactly that.
+         So every first-time visitor got a full page reload once precaching
+         finished, 14 to 20 seconds in, with no update to apply. It landed
+         mid-session and threw away the rendered app and every API response.
+         Do not add that listener back. */
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {

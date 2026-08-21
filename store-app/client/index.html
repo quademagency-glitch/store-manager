@@ -37,14 +37,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        // Reload once when the new service worker takes control so users
-        // always get the latest JS bundle after a deployment.
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
-        });
-      }
-    </script>
   </body>
 </html>

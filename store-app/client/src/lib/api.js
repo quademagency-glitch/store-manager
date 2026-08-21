@@ -59,7 +59,7 @@ async function fetchWithAuth(endpoint, options = {}) {
   // Fixture short-circuit for the visual harness. Compiled out unless
   // VITE_USE_MOCKS is set, see src/lib/mockMode.js.
   if (IS_MOCK) {
-    const { hit, data } = resolveMock(endpoint);
+    const { hit, data } = resolveMock(endpoint, options.method || 'GET');
     if (hit) return data;
   }
 

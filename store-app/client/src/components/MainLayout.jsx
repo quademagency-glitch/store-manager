@@ -3,6 +3,8 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useTheme } from '../lib/ThemeContext';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { RouteErrorBoundary } from './ErrorBoundary';
+import NotificationBell from './NotificationBell';
+import { ALERTS_PERMISSIONS } from '../constants/permissions';
 import { api } from '../lib/api';
 import OfflineStatus from './OfflineStatus';
 import DemoBanner from './DemoBanner';
@@ -155,6 +157,10 @@ export default function MainLayout() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
+  // Either permission opens the alerts page and the notification bell. See
+  // See constants/permissions.js for why it is a pair rather than one.
+  const canSeeAlerts = ALERTS_PERMISSIONS.some((p) => hasPermission(p));
+
   // Dismiss the sidebar dropdowns on Escape or a click elsewhere.
   //
   // Neither had any way out but selecting an item or clicking the trigger
@@ -291,7 +297,7 @@ export default function MainLayout() {
         { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: hasPermission('view_purchases') },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: hasPermission('manage_returns') },
-        { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: hasPermission('view_alerts') },
+        { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: canSeeAlerts },
       ].filter(i => i.visible)
     };
     if (storeOps.items.length > 0) groups.push(storeOps);
@@ -382,7 +388,7 @@ export default function MainLayout() {
     });
 
     return groups;
-  }, [hasPermission]);
+  }, [hasPermission, canSeeAlerts]);
 
   /* The account menu hangs off the chip in the sidebar footer, which sits at
      the *bottom* of a 100dvh sidebar, so it has to open upward.
@@ -662,6 +668,11 @@ export default function MainLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          {/* Above the theme toggle, below the nav. There is no desktop top
+              bar to hang this off: .mobile-sidebar-topbar is display:none
+              above 768px. */}
+          <NotificationBell enabled={canSeeAlerts} />
+
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '0 16px' }}>
             <button 
               onClick={toggleTheme}

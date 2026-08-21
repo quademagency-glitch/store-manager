@@ -45,6 +45,7 @@ import ReloadPrompt from './components/ReloadPrompt';
 const AppShell = lazy(() => import('./components/AppShell'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ALERTS_PERMISSIONS } from './constants/permissions';
 
 // Accounting Pages
 const AccountingTemplates = lazy(() => import('./pages/AccountingTemplates'));
@@ -174,7 +175,7 @@ export default function App() {
                       <ProtectedRoute requiredPermission="view_inventory"><Inventory /></ProtectedRoute>
                     } />
                     <Route path="/alerts" element={
-                      <ProtectedRoute requiredPermission="view_alerts"><Alerts /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission={ALERTS_PERMISSIONS}><Alerts /></ProtectedRoute>
                     } />
                     <Route path="/suppliers" element={
                       <ProtectedRoute requiredPermission="manage_suppliers"><Suppliers /></ProtectedRoute>

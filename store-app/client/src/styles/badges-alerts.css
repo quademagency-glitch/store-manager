@@ -118,3 +118,132 @@ button.offline-status-pill:disabled {
   border-color: var(--color-error);
   color: var(--color-error);
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Notification bell (sidebar footer)
+
+   Loss prevention alerts: voids, discounts, cash overrides, shrinkage. The
+   panel opens upwards because it lives at the bottom of the sidebar, and is
+   capped so a busy day cannot push it off the top of the window.
+   ────────────────────────────────────────────────────────────────────── */
+.notification-bell {
+  position: relative;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+.notification-bell-trigger {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.notification-bell-trigger:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+.notification-bell-label { flex: 1; text-align: left; }
+.notification-bell-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--color-error, #ef4444);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 16px;
+  right: 16px;
+  z-index: 120;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  /* Never taller than the window can show. */
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.notification-panel-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+}
+.notification-panel-empty {
+  margin: 0;
+  padding: 16px 14px;
+  color: var(--color-text-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.notification-list { list-style: none; margin: 0; padding: 0; }
+.notification-list li {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.notification-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.notification-type {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--color-bg-tertiary, rgb(255 255 255 / 0.06));
+  color: var(--color-text-secondary);
+}
+.notification-type--void { color: #f87171; }
+.notification-type--shrinkage { color: #fbbf24; }
+.notification-type--cash_override { color: #fb923c; }
+.notification-type--discount { color: #60a5fa; }
+.notification-time { font-size: 0.7rem; color: var(--color-text-tertiary); }
+.notification-note {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  /* A long note must not stretch the sidebar. */
+  overflow-wrap: anywhere;
+}
+.notification-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.notification-who { font-size: 0.75rem; color: var(--color-text-tertiary); }
+.notification-panel-all {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-accent-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}

@@ -156,16 +156,30 @@ const FIXTURES = {
     { id: 's2', name: 'Tema Distributors', contact_person: 'Efua Sarpong',
       phone: '+233303987654', email: 'orders@temadist.com', balance: 0 },
   ],
+  /* Loss prevention alerts, not stock alerts. The real table stores `type` as
+     one of VOID / DISCOUNT / SHRINKAGE / CASH_OVERRIDE, the text in `note`,
+     and joins the staff member who triggered it as `user`.
+
+     The previous fixture used lowercase types like 'low_stock', put the text
+     in `message` and joined a `product`. None of those exist. Alerts.jsx maps
+     UPPERCASE types to badges and reads `note` and `user`, so in mock mode
+     every row rendered a raw type string, no description at all, and "System"
+     as the person responsible. `severity` is real and was the only field the
+     old fixture got right. */
   '/alerts': [
-    { id: 'a1', type: 'low_stock', severity: 'warning', status: 'pending',
-      message: 'Gino Tomato Paste 400g is below its reorder threshold', created_at: T0,
-      product: { name: 'Gino Tomato Paste 400g', sku: 'DEMO-009' } },
-    { id: 'a2', type: 'shrinkage', severity: 'critical', status: 'pending',
-      message: 'Stock count variance on Perfumed Rice 5kg, 3 units unaccounted for', created_at: T0,
-      product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005' } },
-    { id: 'a3', type: 'shrinkage', severity: 'warning', status: 'resolved',
-      message: 'Two units of Milo Tin 400g missing after the evening count', created_at: T0,
-      product: { name: 'Milo Tin 400g', sku: 'DEMO-002' } },
+    { id: 'a1', type: 'VOID', severity: 'high', status: 'pending', created_at: T0,
+      note: 'Sale voided within a minute of being rung up.',
+      user: { id: 'u2', name: 'Kwame Boateng', email: 'kwame@demo.test' } },
+    { id: 'a2', type: 'CASH_OVERRIDE', severity: 'critical', status: 'pending', created_at: T0,
+      note: 'Till drawer opened without an accompanying sale.',
+      user: { id: 'u2', name: 'Kwame Boateng', email: 'kwame@demo.test' } },
+    { id: 'a3', type: 'SHRINKAGE', severity: 'medium', status: 'pending', created_at: T0,
+      note: 'Stock count variance on Perfumed Rice 5kg, 3 units unaccounted for.',
+      user: { id: 'u3', name: 'Yaa Asantewaa', email: 'yaa@demo.test' } },
+    { id: 'a4', type: 'DISCOUNT', severity: 'low', status: 'resolved', created_at: T0,
+      note: 'Repeat discount to the same customer in one shift.',
+      user: { id: 'u2', name: 'Kwame Boateng', email: 'kwame@demo.test' },
+      resolved_by_user: { id: 'u1', name: 'Ama Mensah', email: 'ama@demo.test' } },
   ],
   '/purchase-orders': {
     data: [
@@ -453,8 +467,26 @@ const MISS = { hit: false, data: undefined };
  * In 'empty' mode every known collection resolves to `[]` so empty states can
  * be exercised across the app without hand-building scenarios.
  */
-export function resolveMock(endpoint) {
+export function resolveMock(endpoint, method = 'GET') {
   const path = String(endpoint).split('?')[0].replace(/\/+$/, '') || '/';
+
+  /* A write with no fixture is acknowledged rather than left to fall through.
+     The harness has no Supabase session, so anything reaching the real network
+     throws "No authentication token found" and the component treats it as a
+     failed save. That is not a useful signal here: these fixtures exist to
+     render pages, and every write path is against a dynamic URL like
+     /alerts/<id>/resolve that an exact-path table can never match.
+
+     It surfaced on the notification bell, whose Resolve button removes the row
+     optimistically and rolls back on error. Against the harness it rolled back
+     every time, so the button looked broken while the code was correct.
+
+     GET is deliberately excluded: a read with no fixture is a genuine gap and
+     must keep warning below, or a page quietly renders an empty state instead
+     of its data and the baseline records the wrong thing. */
+  if (method !== 'GET' && !Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
+    return { hit: true, data: { ok: true, mocked: true } };
+  }
 
   if (!Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
     /* A miss falls through to the real network path in api.js, which has no

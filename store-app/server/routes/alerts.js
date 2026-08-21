@@ -6,6 +6,13 @@ const permissionCheck = require('../middleware/permissionCheck');
 
 const router = express.Router();
 
+// Either permission. `view_alerts` is what the role editor offers and what the
+// client route and sidebar check; `view_analytics` is what these routes have
+// always checked. No built-in role has `view_alerts`, so requiring only it
+// would lock out every Manager, and requiring only `view_analytics` leaves a
+// custom role granted `view_alerts` able to reach the page and then be refused
+// by the API. permissionCheck treats several as OR.
+
 function applyLocationFilter(query, req) {
   if (req.user.active_location_id) {
     return query.eq('location_id', req.user.active_location_id);
@@ -23,7 +30,7 @@ function applyLocationFilter(query, req) {
  * GET /api/alerts
  * Fetch all alerts for the current location/business
  */
-router.get('/', authGuard, permissionCheck('view_analytics'), async (req, res) => {
+router.get('/', authGuard, permissionCheck('view_alerts', 'view_analytics'), async (req, res) => {
   try {
     const { status } = req.query;
 
@@ -59,7 +66,7 @@ router.get('/', authGuard, permissionCheck('view_analytics'), async (req, res) =
  * PUT /api/alerts/:id/resolve
  * Mark an alert as resolved
  */
-router.put('/:id/resolve', authGuard, permissionCheck('view_analytics'), async (req, res) => {
+router.put('/:id/resolve', authGuard, permissionCheck('view_alerts', 'view_analytics'), async (req, res) => {
   try {
     const alertId = req.params.id;
 

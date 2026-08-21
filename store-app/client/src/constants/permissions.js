@@ -1,3 +1,22 @@
+/**
+ * Who may read loss prevention alerts.
+ *
+ * Both, because the two ends of the app disagreed. `view_alerts` is the
+ * permission the role editor offers below ("View System Alerts &
+ * Notifications") and the one the route and the sidebar demanded, but no
+ * built-in role carries it, so Managers were shut out of a page
+ * GET /api/alerts would happily have served them. Meanwhile a custom role
+ * granted `view_alerts` in the editor got through the route and then a 403
+ * from the API, which checked `view_analytics`.
+ *
+ * Accepting either fixes both directions without taking access from anyone.
+ * routes/alerts.js accepts the same pair.
+ *
+ * Defined here rather than in App.jsx: App imports MainLayout through
+ * AppShell, so a constant living in App and imported back is a cycle.
+ */
+export const ALERTS_PERMISSIONS = ['view_alerts', 'view_analytics'];
+
 export const PERMISSION_TREE = [
   {
     id: 'module_store_ops',

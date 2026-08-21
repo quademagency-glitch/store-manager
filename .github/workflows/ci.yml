@@ -59,6 +59,37 @@ jobs:
           fi
           echo "No stale root directories."
 
+  # THIS REPOSITORY IS PUBLIC, and scripts/backup-db.js writes every customer
+  # name, phone number and order to backups/<...>.ndjson, defaulting to a path
+  # inside the working tree.
+  #
+  # .gitignore covers those paths and .githooks/pre-commit blocks them, but
+  # both are bypassable: `git add -f` ignores the first and `--no-verify`
+  # ignores the second. This job is the copy that cannot be waved through,
+  # which matters because publishing a customer list is the one mistake here
+  # that no later commit can undo. Deleting it removes it from this repo and
+  # from nowhere else: forks, mirrors and caches keep what they took.
+  #
+  # Scans the whole tree rather than the diff, so a snapshot that slipped in on
+  # an earlier commit is caught too, not just one added today.
+  no-snapshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if any database snapshot is tracked
+        run: |
+          found=$(git ls-files | grep -E '(^|/)backups/|\.ndjson(\.gz)?$' || true)
+          if [ -n "$found" ]; then
+            echo "::error::Database snapshots are tracked in this PUBLIC repository:"
+            echo "$found"
+            echo ""
+            echo "These contain customer PII. Remove them from the index and from"
+            echo "the history, then rotate anything they exposed. Write snapshots"
+            echo "outside the repo: backup-db.js --out ~/QuadERP-Backups"
+            exit 1
+          fi
+          echo "No snapshots tracked."
+
   server:
     runs-on: ubuntu-latest
     defaults:

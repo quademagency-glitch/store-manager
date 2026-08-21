@@ -42,6 +42,45 @@
 
 set -e
 
+# ── Database snapshots must never enter this repository ─────────────────────
+#
+# THIS REPOSITORY IS PUBLIC. scripts/backup-db.js writes
+# backups/backup-<stamp>/<table>.ndjson, every customer name, phone number and
+# order in the database, and it defaults to ./backups, so it lands inside the
+# working tree unless told otherwise.
+#
+# This blocks rather than warns, and it is the one check here worth keeping
+# strict: every other mistake in this repo can be undone by another commit.
+# Publishing a customer list cannot. A public repo is mirrored, forked and
+# indexed within minutes, and rewriting the history afterwards removes it from
+# your copy and nobody else's.
+#
+# The .gitignore entry is not enough on its own, `git add -f` ignores it, and
+# so does an editor's "stage all". CI re-checks the same rule so that
+# --no-verify cannot land it either.
+snapshots=$(git diff --cached --name-only --diff-filter=AM | grep -E '(^|/)backups/|\.ndjson(\.gz)?$' || true)
+if [ -n "$snapshots" ]; then
+  cat >&2 <<MSG
+
+  COMMIT BLOCKED: this stages database snapshot files.
+
+$(printf '%s\n' "$snapshots" | sed 's/^/      /')
+
+  This repository is PUBLIC. These files contain customer names, phone
+  numbers and order history for every business on the platform. Committing
+  them publishes that, permanently and irreversibly.
+
+  Unstage them and move the snapshot outside the repo:
+
+      git restore --staged $(printf '%s ' $snapshots)
+      node scripts/backup-db.js --out ~/QuadERP-Backups
+
+  There is no legitimate reason to override this one.
+
+MSG
+  exit 1
+fi
+
 # ── Trailing whitespace, on the lines being added ───────────────────────────
 #
 # Warns rather than blocks, and only about lines this commit introduces. The

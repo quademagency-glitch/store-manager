@@ -32,3 +32,17 @@ store-app/server/load-test/reports/
 __pycache__/
 *.pyc
 
+# Database snapshots. THIS REPOSITORY IS PUBLIC.
+#
+# `node scripts/backup-db.js` defaults to ./backups, so running it from
+# store-app/server/ drops a directory of customer names, phone numbers and
+# order history into the working tree, where `git add -A` will happily take it.
+# Publishing that is not a mistake you can take back: a public repo cannot be
+# un-published, the blob survives a history rewrite on GitHub's side, and any
+# fork keeps a copy.
+#
+# .githooks/pre-commit and CI's no-snapshots job block these paths as well,
+# because a gitignore is only advice, `git add -f` walks straight past it.
+backups/
+*.ndjson
+*.ndjson.gz

@@ -13,6 +13,7 @@ const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl } = require('../servic
 const { DEMO_EMAIL, DEMO_PASSWORD, isDemoEnabled } = require('../config/demo');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+const { clientAddress } = require('../utils/clientAddress');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 // How long a self-service free trial lasts. Deliberately not read from the
@@ -60,11 +61,11 @@ function planSlug(name) {
  * Vercel does pass it, as `x-vercel-forwarded-for: 154.163.174.227` and in the
  * RFC 7239 `forwarded` header; Railway's edge simply rewrites x-forwarded-for
  * rather than appending to it, so Express never sees it. That is worth knowing
- * because signupLimiter below still keys on req.ip and has the same problem,
- * and it can only be fixed by reading one of those headers. Worth being
- * careful about for the same reason: the Railway host is publicly reachable,
- * so anyone calling it directly can put whatever they like in them, and a
- * limiter that trusts them unconditionally is weaker than one that does not.
+ * because signup and demo login cannot key on an account, so they read that
+ * header instead, via utils/clientAddress. Worth being careful about for the
+ * same reason: the Railway host is publicly reachable, so anyone calling it
+ * directly can put whatever they like in those headers, which is why both of
+ * those sit behind a ceiling that keys on nothing at all.
  *
  * None of which changes the key here. Even with a trustworthy address, the
  * account is the better thing to count for a login.
@@ -105,13 +106,52 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ── Signup and demo login: per visitor, behind a ceiling ────────────────────
+//
+// These two cannot key on the account the way loginLimiter does. The email is
+// chosen by whoever is calling, so keying on it hands out a fresh allowance per
+// made-up address, which is not a limit at all.
+//
+// They key on utils/clientAddress instead, which recovers the real caller from
+// x-vercel-forwarded-for. Read that file before changing anything here: the
+// value is a CLAIM. The Railway host is publicly reachable, so a caller who
+// skips Vercel can put anything in that header and mint themselves a new
+// bucket per request.
+//
+// Hence the pair. The per-visitor limiter is what genuine visitors meet, and
+// it is generous because it now applies to one person instead of to everybody
+// at once. The ceiling underneath keys on nothing, so rotating the header does
+// not move it, and it is the only part an attacker actually has to get past.
+//
+// Both are needed. The ceiling alone is what was effectively in place before
+// (5 signups an hour for the entire platform, since every browser request
+// arrived as the same few Vercel addresses) and it throttled real customers
+// long before it inconvenienced anyone. The per-visitor limit alone would be
+// walked past in a line of shell.
+//
+// The ceilings are deliberately far above real traffic rather than tuned to
+// it: this application has taken zero real signups to date, so any number
+// derived from current volume would be noise. They exist to bound a runaway,
+// not to shape demand. Raise them from the environment if a launch needs it.
+const GLOBAL = 'all';
+
 // Signup creates a business, an auth user and a mailbox hit, so it is far
 // more expensive than a login attempt and correspondingly tighter.
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
+  keyGenerator: clientAddress,
   message: { error: 'Too many signup attempts from this address. Please try again in an hour.' },
   standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const signupCeiling = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: Number(process.env.SIGNUP_CEILING_PER_HOUR ?? 100),
+  keyGenerator: () => GLOBAL,
+  message: { error: 'Signups are temporarily rate limited. Please try again shortly.' },
+  standardHeaders: false,
   legacyHeaders: false,
 });
 
@@ -120,8 +160,18 @@ const signupLimiter = rateLimit({
 const demoLoginLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20,
+  keyGenerator: clientAddress,
   message: { error: 'Too many demo sessions from this address. Please try again later.' },
   standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const demoLoginCeiling = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: Number(process.env.DEMO_CEILING_PER_HOUR ?? 300),
+  keyGenerator: () => GLOBAL,
+  message: { error: 'The demo is busy right now. Please try again shortly.' },
+  standardHeaders: false,
   legacyHeaders: false,
 });
 
@@ -195,7 +245,7 @@ const loginSchema = z.object({
  *
  * Access: Public, rate-limited to 5/hour per IP.
  */
-router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, res) => {
+router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema), async (req, res) => {
   const { name, email, password, business_name, phone, plan: requestedPlan, attribution } = req.body;
 
   // An empty object is the same as none: storing {} would make a row look
@@ -410,7 +460,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
  *
  * Access: Public, rate-limited to 20/hour per IP.
  */
-router.post('/demo-login', demoLoginLimiter, async (req, res) => {
+router.post('/demo-login', demoLoginCeiling, demoLoginLimiter, async (req, res) => {
   try {
     if (!isDemoEnabled()) {
       return res.status(404).json({

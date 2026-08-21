@@ -45,12 +45,38 @@ reconstructing a day of takings by hand from paper receipts.
 
 | What | Where | How you find out it broke |
 |---|---|---|
-| Nightly snapshot, 02:00 | launchd on the operator's machine, `docs/ops/app.quaderp.backup.plist` | `backup.log` in `BACKUP_DIR`; the job exits non-zero |
-| Snapshot integrity check | Runs inside the same job, immediately after | Same log, a bad snapshot fails the run |
+| Nightly snapshot, 02:00 | launchd on the operator's machine, via `scripts/backup-runner.sh` | `BACKUP-IS-FAILING.txt` appears in `BACKUP_DIR` |
+| Snapshot integrity check | Runs inside the same job, immediately after | Same file, a bad snapshot fails the run |
 | API uptime probe, every 5 min | GitHub Actions, `.github/workflows/uptime.yml` | GitHub emails the repo owner on failure |
 
-Set up the nightly snapshot by following the instructions at the top of the
-plist. **Until that is installed, nothing is backing anything up.**
+Install the nightly snapshot with:
+
+```sh
+cd store-app/server && ./scripts/backup-runner.sh --install
+launchctl start app.quaderp.backup      # once now, rather than waiting for 02:00
+```
+
+**Until that is installed, nothing is backing anything up.** Confirm it took
+with `launchctl list | grep quaderp`.
+
+### How you actually find out it broke
+
+Not from a log. `BACKUP_DIR` is an iCloud folder, so the runner writes its
+status into that folder, next to the snapshots, where it syncs to your phone:
+
+- `LAST-SUCCESS.txt`, rewritten after every good run. **The date in this file
+  is the age of your newest backup**, and it is the only number here worth
+  memorising.
+- `BACKUP-IS-FAILING.txt`, written on a failure and deleted automatically by
+  the next success. While it exists, there is no current backup.
+
+The two failures worth naming, because both are silent otherwise:
+
+1. **The USB drive holding the checkout is unplugged.** The runner is installed
+   on the internal disk precisely so it still runs, notices, and says so.
+2. **The machine was off.** Nothing can raise an alert from a laptop that is
+   not running, so there is no clever fix for this. `LAST-SUCCESS.txt` simply
+   goes stale, which is the honest signal. Look at it after any trip.
 
 Both of these run somewhere other than production, on purpose. A check that
 runs on Railway cannot tell you Railway is down.
@@ -233,6 +259,10 @@ Fixed by `072_reassert_security_hardening.sql`, which asserts the end state
 idempotently and verifies it before committing. The two security queries in §6
 are there so a future gap is caught by the checklist rather than by luck.
 
+First snapshot taken 2026-08-21: 3 businesses, 170 sales, 50 products, 30
+customers, 887 rows, verified. Before that date no backup of this database had
+ever been taken, by anything.
+
 **Still open:**
 
 1. **No PITR.** Free plan. Worst-case data loss is a full day. Fixing this is a
@@ -242,7 +272,12 @@ are there so a future gap is caught by the checklist rather than by luck.
    empty database. Doing it properly needs a spare Postgres; the free
    organisation is at its 2-project limit.
 3. **The nightly snapshot only runs while the machine is awake.** It is a
-   laptop. A week away is a week without backups, and nothing will say so.
+   laptop, and the checkout is on a USB drive, so a trip away or an unplugged
+   drive means no backup that night. Two of the three ways this fails now
+   announce themselves (see §1), but the third cannot: a machine that is off
+   raises no alarms. `LAST-SUCCESS.txt` going stale is the only signal, and it
+   is a pull signal, you have to look. Moving the job to something always-on is
+   the real fix and has not been done.
 4. **`/api/health/deep` answers unauthenticated callers in full**, including
    container hostname, pid and the proxy chain. Set `HEALTH_CHECK_TOKEN` in
    Railway to reduce it to a bare status for anonymous callers. Minor, but free.

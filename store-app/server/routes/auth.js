@@ -80,6 +80,13 @@ const registerSchema = z.object({
   role_id: z.string().uuid('Invalid role ID'),
 });
 
+/* One attribution field. Truncates instead of rejecting, deliberately.
+   These values are decoration on somebody's signup, and a marketing team
+   pasting a 200-character campaign tag must never be the reason a real
+   customer cannot create an account. Rejecting would turn a reporting
+   nicety into an outage for whoever clicked that ad. */
+const attributionValue = z.string().trim().transform((value) => value.slice(0, 120));
+
 const signupSchema = z.object({
   name: z.string().trim().min(1, 'Your name is required').max(120),
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
@@ -89,6 +96,25 @@ const signupSchema = z.object({
   // The tier chosen on the pricing table. Never trusted as-is, see the
   // resolution step in the handler, so an unknown value is not a 400.
   plan: z.string().trim().max(60).optional().or(z.literal('')),
+  /* Where the visitor came from, forwarded by the marketing site on the
+     signup href. Every field is optional and every field is capped, because
+     this arrives from a query string that anyone can edit. Zod strips keys
+     that are not listed, so a crafted ?something=... cannot reach the
+     database. A bad value must never cost someone their signup, so nothing
+     here is required and nothing here rejects. */
+  attribution: z
+    .object({
+      lp: attributionValue,
+      cta: attributionValue,
+      utm_source: attributionValue,
+      utm_medium: attributionValue,
+      utm_campaign: attributionValue,
+      utm_content: attributionValue,
+      utm_term: attributionValue,
+      ref: attributionValue,
+    })
+    .partial()
+    .optional(),
 });
 
 const loginSchema = z.object({
@@ -118,7 +144,12 @@ const loginSchema = z.object({
  * Access: Public, rate-limited to 5/hour per IP.
  */
 router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, res) => {
-  const { name, email, password, business_name, phone, plan: requestedPlan } = req.body;
+  const { name, email, password, business_name, phone, plan: requestedPlan, attribution } = req.body;
+
+  // An empty object is the same as none: storing {} would make a row look
+  // attributed in a report when nothing was actually known about the visit.
+  const signupAttribution =
+    attribution && Object.keys(attribution).length > 0 ? attribution : null;
 
   // Tracked so the catch-all can undo a half-finished signup. A business with
   // no owner is worse than no business at all: it holds the slug, shows up in
@@ -196,6 +227,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
         subscription_plan_id: plan ? plan.id : null,
         contact_email: email,
         phone: phone || null,
+        signup_attribution: signupAttribution,
       })
       .select('id, name, slug, status, trial_ends_at, subscription_plan_id')
       .single();
@@ -291,6 +323,7 @@ router.post('/signup', signupLimiter, validateBody(signupSchema), async (req, re
       business_name: business.name,
       slug: business.slug,
       plan: plan ? plan.name : null,
+      attribution: signupAttribution,
     });
 
     return res.status(201).json({

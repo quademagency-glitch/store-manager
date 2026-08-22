@@ -57,7 +57,23 @@ launchctl start app.quaderp.backup      # once now, rather than waiting for 02:0
 ```
 
 **Until that is installed, nothing is backing anything up.** Confirm it took
-with `launchctl list | grep quaderp`.
+with `launchctl list | grep quaderp`, and then confirm it actually *ran* by
+looking for `LAST-SUCCESS.txt`. Installed and working are different things:
+the first install here ran on schedule and failed every time.
+
+**On macOS, one extra grant is needed while the checkout lives on the USB
+drive.** macOS refuses a scheduled job read access to removable volumes, so the
+job finds the files and cannot open them. Metadata still works, which is why
+this fails as a bare `Operation not permitted` rather than anything legible:
+
+```
+System Settings > Privacy & Security > Full Disk Access > +
+Cmd+Shift+G, enter /bin/bash, add it, switch it on
+launchctl kickstart -k gui/$(id -u)/app.quaderp.backup
+```
+
+Moving the checkout to the internal disk avoids the grant entirely, and is the
+better answer if you are willing to move it.
 
 ### How you actually find out it broke
 

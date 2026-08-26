@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useAppTheme } from '@/lib/theme-context';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { PostHogProvider } from 'posthog-react-native';
 
 function RootLayoutNav() {
   const { theme, scheme } = useAppTheme();
@@ -36,8 +37,12 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootLayoutNav />
-    </ThemeProvider>
+    <PostHogProvider apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY} options={{
+      host: process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    }}>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
+    </PostHogProvider>
   );
 }

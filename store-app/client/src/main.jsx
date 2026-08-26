@@ -5,6 +5,16 @@ import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { initErrorReporting } from './lib/errorReporting'
 import 'virtual:pwa-register'
+import posthog from 'posthog-js'
+import { PostHogProvider } from 'posthog-js/react'
+
+if (import.meta.env.VITE_POSTHOG_KEY) {
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+    api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    capture_pageview: false, // We handle this with React Router in App.jsx
+  })
+}
 
 // Lets the Playwright harness prove it is talking to the dev server *it*
 // started. A leftover server from an earlier run serves pre-edit modules, and
@@ -25,8 +35,10 @@ initErrorReporting();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <PostHogProvider client={posthog}>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </PostHogProvider>
   </StrictMode>,
 )

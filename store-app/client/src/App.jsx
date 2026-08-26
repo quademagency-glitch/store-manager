@@ -4,6 +4,7 @@ import { AuthProvider } from './lib/AuthContext';
 import { ThemeProvider } from './lib/ThemeContext';
 import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
+import PostHogPageView from './components/PostHogPageView';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 /* Eager, like Login. Both are entry points for people arriving from
@@ -90,6 +91,7 @@ export default function App() {
       <ToastProvider>
         <ConfirmProvider>
           <BrowserRouter>
+            <PostHogPageView />
             <AuthProvider>
               <ErrorBoundary>
                 {/* Routes are code-split, so a first visit to one has to wait

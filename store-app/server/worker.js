@@ -41,7 +41,10 @@ server.headersTimeout = 66000;
 // Crons live in the primary, so there is nothing worker-side to stop here.
 installGracefulShutdown(server, {
   name: 'worker',
-  // Flush anything Sentry has buffered before the process goes away, otherwise
-  // the errors from the shutdown window are the ones you never see.
-  onShutdown: async () => { await sentry.close(2000); },
+  // Flush anything Sentry and PostHog have buffered before the process goes away.
+  onShutdown: async () => {
+    const posthog = require('./utils/posthog');
+    if (posthog) await posthog.shutdown();
+    await sentry.close(2000);
+  },
 });

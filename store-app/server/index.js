@@ -642,6 +642,8 @@ if (require.main === module) {
     name: 'standalone',
     onShutdown: async () => {
       cronTasks.forEach((task) => task?.stop?.());
+      const posthog = require('./utils/posthog');
+      if (posthog) await posthog.shutdown();
     },
   });
 }

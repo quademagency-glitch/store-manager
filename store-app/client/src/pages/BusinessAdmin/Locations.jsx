@@ -223,6 +223,9 @@ export default function Locations() {
               value={formData.tax_rate} 
               onChange={e => setFormData({...formData, tax_rate: parseFloat(e.target.value)})} 
             />
+            {/* Same as the business-level rate in Organization.jsx: stored,
+                shown back in the table above, and read by nothing. */}
+            <p className="org-form-hint">Kept for reference. Sales are not taxed automatically.</p>
           </div>
           <div className="form-group">
             <label>Receipt Header Text</label>

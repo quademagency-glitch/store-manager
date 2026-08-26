@@ -244,7 +244,16 @@ export default function Organization() {
                     value={business.tax_rate || 0}
                     onChange={e => updateField('tax_rate', parseFloat(e.target.value) || 0)}
                   />
-                  <p className="org-form-hint">Applied to all sales unless overridden per product.</p>
+                  {/* This rate is stored and never read. Both paths that create a
+                      sale write the tax line as zero (Sales.jsx, useSales.js),
+                      and there is no per-product tax anywhere in the schema, so
+                      the old hint, "Applied to all sales unless overridden per
+                      product", was wrong in both halves. Someone setting 12.5
+                      or 15 here would have believed VAT was being charged. */}
+                  <p className="org-form-hint">
+                    Kept with your business details. Sales are not taxed automatically, so this
+                    does not change what a customer is charged.
+                  </p>
                 </div>
                 <div className="form-group">
                   <label htmlFor="org-currency">Operating Currency</label>

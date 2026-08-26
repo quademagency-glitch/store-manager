@@ -95,6 +95,53 @@ if [ "${1:-}" = "--install" ]; then
   fi
   echo "Using node at: $NODE_BIN"
 
+  # ── Make the job self-contained on the internal disk ──────────────────────
+  #
+  # Everything above this line was about reporting the failure well. This is
+  # about not having it.
+  #
+  # macOS will not let a launchd agent read a removable volume, and the
+  # checkout is on a USB drive, so the scheduled job could see the scripts and
+  # not open them. The documented fix is to grant /bin/bash Full Disk Access,
+  # which is a broad permission to hand a shell, and five nights after being
+  # asked for it nobody had. A backup that depends on someone doing a thing
+  # they are not going to do is not a backup.
+  #
+  # So the install copies what the job needs onto the internal disk, where none
+  # of this applies. It runs from the shell you are typing in, which does have
+  # access to the drive. Two things fall out of it for free: the nightly backup
+  # now works with the drive unplugged, which was the other open gap in the
+  # runbook, and it no longer matters where the checkout lives.
+  #
+  # Re-run --install after changing any of these scripts. The copy is a copy.
+  LIB="$INSTALL_DIR/lib"
+  mkdir -p "$LIB"
+  SRC="$(cd "$(dirname "$0")" && pwd)"
+  cp "$SRC/backup-db.js" "$SRC/restore-db.js" "$SRC/backup-scheduled.sh" "$LIB/"
+  chmod +x "$LIB/backup-scheduled.sh"
+
+  # pg and dotenv, resolved from $INSTALL_DIR/node_modules because node walks
+  # up from lib/. Only these two: backup-db.js and restore-db.js require
+  # nothing else outside node's standard library.
+  if [ ! -d "$INSTALL_DIR/node_modules/pg" ] || [ ! -d "$INSTALL_DIR/node_modules/dotenv" ]; then
+    echo "Installing pg and dotenv into $INSTALL_DIR (one time, needs network)..."
+    (cd "$INSTALL_DIR" && npm install --no-audit --no-fund --loglevel=error pg dotenv >/dev/null)
+  fi
+
+  # Only DIRECT_URL, not the whole .env. The job needs one line of it, and the
+  # rest is service-role keys and gateway secrets that have no business being
+  # copied to a second location to sit there unread.
+  if [ -f "$REPO/store-app/server/.env" ]; then
+    grep '^DIRECT_URL=' "$REPO/store-app/server/.env" > "$INSTALL_DIR/.env" || true
+    chmod 600 "$INSTALL_DIR/.env"
+  fi
+  if [ ! -s "$INSTALL_DIR/.env" ]; then
+    echo "Could not read DIRECT_URL from $REPO/store-app/server/.env" >&2
+    echo "The scheduled job has no database credentials without it." >&2
+    exit 1
+  fi
+  echo "Self-contained copy ready at: $LIB"
+
   cat > "$PLIST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
@@ -108,6 +155,9 @@ if [ "${1:-}" = "--install" ]; then
     <key>BACKUP_DIR</key><string>$BACKUP_DIR</string>
     <key>KEEP_DAYS</key><string>$KEEP_DAYS</string>
     <key>NODE_BIN</key><string>$NODE_BIN</string>
+    <key>QUADERP_SCRIPT_DIR</key><string>$INSTALL_DIR/lib</string>
+    <key>QUADERP_WORK_DIR</key><string>$INSTALL_DIR</string>
+    <key>QUADERP_LOG</key><string>$INSTALL_DIR/backup.log</string>
     <key>PATH</key><string>$(dirname "$NODE_BIN"):/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>StartCalendarInterval</key>
@@ -137,67 +187,10 @@ fi
 # StartCalendarInterval makes launchd run a missed job once the machine wakes,
 # so this can fire at any hour. That is deliberate, see the plist comments.
 
-# Preflight, in the order the failures actually happen. Each case gets its own
-# message, because "backup failed" plus a stack trace is what made the last two
-# outages take an afternoon each to explain.
-
-if [ ! -d "$REPO" ]; then
-  alarm "the drive holding the code is not mounted" \
-        "Expected the checkout at:
-    $REPO
-
-Plug the drive in, or set QUADERP_REPO in $PLIST if the checkout moved.
-No backup was taken tonight."
-  exit 1
-fi
-
-# The one that actually bit, on 2026-08-22.
-#
-# macOS TCC blocks a launchd agent from reading removable volumes, and the
-# checkout lives on a USB drive. The tell is that metadata still works while
-# every read fails: `stat` on the script returned its mode quite happily, and
-# `ls`, `cat` and exec all came back "Operation not permitted". So a `-d` or
-# `-f` test passes and tells you nothing, which is exactly why the first
-# version of this preflight waved the job straight through into a bare
-# "exited 126".
-#
-# Hence a real read rather than a stat. Reading one byte is the cheapest
-# question that distinguishes "the drive is there" from "the drive is there and
-# this process is allowed to look at it".
-if ! head -c 1 "$REPO/store-app/server/scripts/backup-db.js" >/dev/null 2>&1; then
-  alarm "macOS is blocking this job from reading the drive" \
-        "The drive is mounted and the files are there, but this background job
-cannot read them. macOS requires explicit permission for scheduled jobs to
-touch removable volumes, and a launchd agent has none by default.
-
-Metadata is allowed and reads are not, so the files look present and are
-unreadable, which is why this needs saying rather than showing you an
-'Operation not permitted' from somewhere deep in the script.
-
-Grant it once:
-  System Settings > Privacy & Security > Full Disk Access > +
-  press Cmd+Shift+G, enter  /bin/bash , add it, and switch it on.
-
-Then run:  launchctl kickstart -k gui/\$(id -u)/app.quaderp.backup
-
-If you would rather not grant that, the alternative is to keep the checkout on
-the internal disk, where none of this applies.
-
-No backup was taken tonight."
-  exit 1
-fi
-
-cd "$REPO/store-app/server" || { alarm "checkout is present but incomplete" "Could not enter $REPO/store-app/server"; exit 1; }
-
-if ! head -c 1 .env >/dev/null 2>&1; then
-  alarm "no readable .env, so there are no database credentials" \
-        "Expected $REPO/store-app/server/.env containing DIRECT_URL."
-  exit 1
-fi
-
-# node is resolved at install time and passed in, but the plist outlives the
-# node install: an nvm upgrade moves the binary and leaves this pointing at a
-# version-numbered path that no longer exists.
+# node first, because both paths below need it. Resolved at install time and
+# passed in, but re-checked because the plist outlives the node install: an nvm
+# upgrade moves the binary and leaves this pointing at a version-numbered path
+# that no longer exists.
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
   alarm "node is missing from where the scheduled job was told to look" \
@@ -216,8 +209,73 @@ fi
 PATH="$(dirname "$NODE_BIN"):$PATH"
 export PATH
 
-out=$(BACKUP_DIR="$BACKUP_DIR" KEEP_DAYS="$KEEP_DAYS" ./scripts/backup-scheduled.sh 2>&1)
-status=$?
+# The self-contained copy on the internal disk, written by --install. Preferred
+# over the checkout, and the reason this job survives both a macOS privacy
+# restriction on the removable volume and the drive being unplugged.
+LIB="$INSTALL_DIR/lib"
+if [ -r "$LIB/backup-scheduled.sh" ] && [ -r "$LIB/backup-db.js" ]; then
+  if [ ! -s "$INSTALL_DIR/.env" ]; then
+    alarm "the installed copy has no database credentials" \
+          "Expected DIRECT_URL in $INSTALL_DIR/.env
+
+Re-run the install from the checkout to rewrite it:
+  cd \"$REPO/store-app/server\" && ./scripts/backup-runner.sh --install"
+    exit 1
+  fi
+  out=$(QUADERP_SCRIPT_DIR="$LIB" QUADERP_WORK_DIR="$INSTALL_DIR" \
+        BACKUP_DIR="$BACKUP_DIR" KEEP_DAYS="$KEEP_DAYS" \
+        "$LIB/backup-scheduled.sh" 2>&1)
+  status=$?
+else
+  # Fallback: run straight out of the checkout. This is what happens before
+  # --install has been re-run since this change, and it is the path that hits
+  # the macOS restriction described below.
+
+  if [ ! -d "$REPO" ]; then
+    alarm "the drive holding the code is not mounted" \
+          "Expected the checkout at:
+    $REPO
+
+Plug the drive in, or re-run --install so the job stops needing the drive at
+all. No backup was taken tonight."
+    exit 1
+  fi
+
+  # macOS TCC blocks a launchd agent from reading removable volumes. The tell is
+  # that metadata still works while every read fails: `stat` returns the mode
+  # quite happily, and `ls`, `cat` and exec all come back "Operation not
+  # permitted". So a `-d` or `-f` test passes and tells you nothing, which is
+  # why an earlier version of this preflight waved the job through into a bare
+  # "exited 126". Reading one byte is the cheapest question that actually
+  # distinguishes the two.
+  if ! head -c 1 "$REPO/store-app/server/scripts/backup-db.js" >/dev/null 2>&1; then
+    alarm "macOS is blocking this job from reading the drive" \
+          "The drive is mounted and the files are there, but this background job
+cannot read them. macOS requires explicit permission for scheduled jobs to
+touch removable volumes, and a launchd agent has none by default.
+
+The fix no longer needs a permission grant. Re-run the install and the job
+copies what it needs onto the internal disk:
+
+  cd \"$REPO/store-app/server\" && ./scripts/backup-runner.sh --install
+
+No backup was taken tonight."
+    exit 1
+  fi
+
+  cd "$REPO/store-app/server" || { alarm "checkout is present but incomplete" "Could not enter $REPO/store-app/server"; exit 1; }
+
+  if ! head -c 1 .env >/dev/null 2>&1; then
+    alarm "no readable .env, so there are no database credentials" \
+          "Expected $REPO/store-app/server/.env containing DIRECT_URL."
+    exit 1
+  fi
+
+
+  out=$(BACKUP_DIR="$BACKUP_DIR" KEEP_DAYS="$KEEP_DAYS" ./scripts/backup-scheduled.sh 2>&1)
+  status=$?
+fi
+
 
 if [ $status -ne 0 ]; then
   alarm "backup-scheduled.sh exited $status" "$(printf '%s\n' "$out" | tail -25)"

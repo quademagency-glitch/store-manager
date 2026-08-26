@@ -61,19 +61,46 @@ with `launchctl list | grep quaderp`, and then confirm it actually *ran* by
 looking for `LAST-SUCCESS.txt`. Installed and working are different things:
 the first install here ran on schedule and failed every time.
 
-**On macOS, one extra grant is needed while the checkout lives on the USB
-drive.** macOS refuses a scheduled job read access to removable volumes, so the
-job finds the files and cannot open them. Metadata still works, which is why
-this fails as a bare `Operation not permitted` rather than anything legible:
+`--install` copies `backup-db.js`, `restore-db.js` and `backup-scheduled.sh`,
+plus `pg` and `dotenv`, into `~/Library/Application Support/QuadERP/`, and
+writes a one-line `.env` holding only `DIRECT_URL`. **Re-run it after changing
+any of those scripts**, because the scheduled job runs the copies, not the
+checkout.
 
-```
-System Settings > Privacy & Security > Full Disk Access > +
-Cmd+Shift+G, enter /bin/bash, add it, switch it on
-launchctl kickstart -k gui/$(id -u)/app.quaderp.backup
-```
+The copying is not tidiness. macOS refuses a scheduled job any access to files
+another process created, and to removable volumes generally, which between them
+broke the first five nights of this job in three separate ways. Running from
+the internal disk sidesteps all of it, needs no Full Disk Access grant, and has
+the side benefit that **the nightly backup now works with the USB drive
+unplugged**.
 
-Moving the checkout to the internal disk avoids the grant entirely, and is the
-better answer if you are willing to move it.
+### The macOS rule that governs all of this
+
+A launchd agent may only touch files it created itself. Measured 2026-08-26,
+under launchd, against the same iCloud folder:
+
+| | |
+|---|---|
+| create a new file or directory | allowed |
+| append to a file it created | allowed |
+| append to, truncate, **or delete** a file the Terminal created | `Operation not permitted` |
+| `opendir` a directory the Terminal created | `Operation not permitted` |
+| anything at all on the USB volume | `Operation not permitted` |
+| anything under `~/Library/Application Support` | allowed |
+
+`stat` keeps working throughout, which is what makes this so slow to diagnose:
+`[ -f "$file" ]` says yes and every attempt to open it says no.
+
+Two consequences worth remembering:
+
+- **Do not run `backup-scheduled.sh` by hand into `BACKUP_DIR`.** The snapshot
+  it writes belongs to your shell, and the nightly job can then neither verify
+  nor prune it, permanently. Existing hand-made snapshots live in
+  `archive-manual/`, out of the job's way. Use `backup-db.js --out` somewhere
+  else for ad-hoc backups.
+- The scheduled job keeps its log on the internal disk
+  (`~/Library/Application Support/QuadERP/backup.log`) rather than beside the
+  snapshots, for exactly this reason.
 
 ### How you actually find out it broke
 

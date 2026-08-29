@@ -59,7 +59,15 @@ async function fetchWithAuth(endpoint, options = {}) {
   // Fixture short-circuit for the visual harness. Compiled out unless
   // VITE_USE_MOCKS is set, see src/lib/mockMode.js.
   if (IS_MOCK) {
-    const { hit, data } = resolveMock(endpoint, options.method || 'GET');
+    /* The parsed body goes with it so a write fixture can echo back what was
+       submitted, and a record created in the harness carries the name that was
+       actually typed. postFile sends FormData, which has no JSON body and is
+       passed as undefined. */
+    let mockBody;
+    if (typeof options.body === 'string') {
+      try { mockBody = JSON.parse(options.body); } catch { mockBody = undefined; }
+    }
+    const { hit, data } = resolveMock(endpoint, options.method || 'GET', mockBody);
     if (hit) return data;
   }
 
@@ -150,6 +158,12 @@ export const api = {
   get: (endpoint) => dedupedGet(endpoint),
   post: (endpoint, body) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   put: (endpoint, body) => fetchWithAuth(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+  /* PATCH was missing while useHR called api.patch for both
+     PATCH /hr/schedules/:id and PATCH /hr/commission-rules/:id, which the
+     server does implement. Editing a shift or a commission rule threw
+     "api.patch is not a function" inside the hook's try, so it surfaced as a
+     save failure rather than as a missing method. */
+  patch: (endpoint, body) => fetchWithAuth(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (endpoint) => fetchWithAuth(endpoint, { method: 'DELETE' }),
   // For multipart uploads, pass a FormData instance, never JSON.stringify it.
   postFile: (endpoint, formData) => fetchWithAuth(endpoint, { method: 'POST', body: formData }),

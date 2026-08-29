@@ -9,6 +9,21 @@ import { MOCK_MODE } from './mockMode';
  */
 const T0 = '2026-07-31T12:00:00.000Z';
 
+/* Declared out here because three fixtures have to agree about them: the
+   paginated list, the search the Customers page actually uses, and the write
+   fixtures below that add to them.
+
+   The fields are the real columns. They used to be first_name / last_name /
+   total_spent, none of which exist: the server selects `*` from `customers`,
+   which is id, business_id, name, phone, email, created_at, is_verified,
+   customer_code. Every page reads `customer.name`, so the harness rendered
+   nameless rows and nothing failed, because a blank cell is still a cell. */
+const CUSTOMERS = [
+  { id: 'c1', name: 'Adwoa Nyarko', phone: '0203334455', email: 'adwoa.nyarko@gmail.com', customer_code: 'CUST-0001', is_verified: true, created_at: T0 },
+  { id: 'c2', name: 'Yaw Owusu', phone: '0553332211', email: 'yaw.owusu@gmail.com', customer_code: 'CUST-0002', is_verified: true, created_at: T0 },
+  { id: 'c3', name: 'Esi Quartey', phone: '0205556677', email: 'esi.quartey@gmail.com', customer_code: 'CUST-0003', is_verified: false, created_at: T0 },
+];
+
 const FIXTURES = {
   '/analytics/summary': { todaySalesTotal: 14382.5, totalProducts: 154, lowStockCount: 3, theftAlertsCount: 2 },
   '/analytics/sales-trend': [
@@ -47,11 +62,16 @@ const FIXTURES = {
     { id: '2', type: 'stock', title: 'Stock Adjusted', time: '2026-07-31T11:00:00.000Z', amount: '15 items', status: 'warning' },
     { id: '3', type: 'sale', title: 'New Sale Completed', time: '2026-07-31T10:00:00.000Z', amount: 'GH₵96.00', status: 'success' },
   ],
-  '/customers': [
-    { id: 'c1', first_name: 'Adwoa', last_name: 'Nyarko', email: 'adwoa.nyarko@gmail.com', phone: '0203334455', total_spent: 2480, created_at: T0 },
-    { id: 'c2', first_name: 'Yaw', last_name: 'Owusu', email: 'yaw.owusu@gmail.com', phone: '0553332211', total_spent: 1165, created_at: T0 },
-    { id: 'c3', first_name: 'Esi', last_name: 'Quartey', email: 'esi.quartey@gmail.com', phone: '0205556677', total_spent: 640, created_at: T0 },
-  ],
+  /* GET /customers is paginated: the server returns { data, total, page,
+     totalPages }, and useCustomers reads data.data. This was a bare array, so
+     data.data was undefined and the list was empty in every mock run.
+     AccountsReceivable's customer selector reads res?.data and was empty for
+     the same reason. */
+  '/customers': { data: CUSTOMERS, total: CUSTOMERS.length, page: 1, totalPages: 1 },
+  /* The Customers page is search-first and calls this on every lookup. With no
+     fixture it fell through to the real network, which has no session under
+     the harness, so searching produced "No authentication token found". */
+  '/customers/search': CUSTOMERS,
   // `product_inventory` mirrors what the real endpoint selects:
   //   product_inventory(location_id, quantity, low_stock_threshold)
   //
@@ -458,6 +478,76 @@ const FIXTURES = {
 const MISS = { hit: false, data: undefined };
 
 /**
+ * Fixtures for writes, keyed "METHOD /path". A `:name` segment matches
+ * anything and is handed to the factory as a param.
+ *
+ * WHY THIS EXISTS: resolveMock used to look at the path alone. POST /customers
+ * therefore matched the GET fixture for /customers and returned the *list*,
+ * so useCustomers read `data.customer` off an array, got undefined, pushed it
+ * into state and called .sort((a, b) => a.name.localeCompare(b.name)) on it.
+ * That threw "Cannot read properties of undefined (reading 'name')" and took
+ * the whole page down with it. Adding a customer in mock mode crashed the app.
+ *
+ * The generic { ok: true, mocked: true } acknowledgement below is fine for a
+ * write nobody reads the answer to, but any caller that puts the response into
+ * state needs the real shape. These are the shapes the server actually sends;
+ * check routes/customers.js before changing one.
+ */
+const WRITE_FIXTURES = {
+  'POST /customers': (body) => ({
+    message: 'Customer created successfully and OTP sent',
+    customer: {
+      // Derived from the submitted phone rather than random, so a screenshot
+      // taken after this call is still byte-stable across runs.
+      id: `c-new-${String(body.phone || 'x').slice(-4)}`,
+      name: body.name || 'New Customer',
+      phone: body.phone || '',
+      email: body.email || null,
+      customer_code: `CUST-${String(CUSTOMERS.length + 1).padStart(4, '0')}`,
+      is_verified: false,
+      created_at: T0,
+    },
+  }),
+  'PUT /customers/:id': (body, params) => ({
+    message: 'Customer updated successfully',
+    customer: {
+      ...(CUSTOMERS.find((c) => c.id === params.id) || {}),
+      ...body,
+      id: params.id,
+    },
+  }),
+};
+
+/** Match "METHOD /a/b" against the WRITE_FIXTURES patterns, capturing params. */
+function matchWriteFixture(method, path) {
+  const exact = `${method} ${path}`;
+  if (Object.prototype.hasOwnProperty.call(WRITE_FIXTURES, exact)) {
+    return { make: WRITE_FIXTURES[exact], params: {} };
+  }
+
+  const parts = path.split('/');
+  for (const [pattern, make] of Object.entries(WRITE_FIXTURES)) {
+    const [patMethod, patPath] = pattern.split(' ');
+    if (patMethod !== method) continue;
+    const patParts = patPath.split('/');
+    if (patParts.length !== parts.length) continue;
+
+    const params = {};
+    let matched = true;
+    for (let i = 0; i < patParts.length; i += 1) {
+      if (patParts[i].startsWith(':')) {
+        params[patParts[i].slice(1)] = parts[i];
+      } else if (patParts[i] !== parts[i]) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) return { make, params };
+  }
+  return null;
+}
+
+/**
  * Resolve an endpoint against the fixtures.
  *
  * Matching is on the exact pathname (query string stripped), NOT a substring
@@ -467,7 +557,7 @@ const MISS = { hit: false, data: undefined };
  * In 'empty' mode every known collection resolves to `[]` so empty states can
  * be exercised across the app without hand-building scenarios.
  */
-export function resolveMock(endpoint, method = 'GET') {
+export function resolveMock(endpoint, method = 'GET', body = undefined) {
   const path = String(endpoint).split('?')[0].replace(/\/+$/, '') || '/';
 
   /* A write with no fixture is acknowledged rather than left to fall through.
@@ -484,7 +574,15 @@ export function resolveMock(endpoint, method = 'GET') {
      GET is deliberately excluded: a read with no fixture is a genuine gap and
      must keep warning below, or a page quietly renders an empty state instead
      of its data and the baseline records the wrong thing. */
-  if (method !== 'GET' && !Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
+  if (method !== 'GET') {
+    const write = matchWriteFixture(method, path);
+    if (write) {
+      return { hit: true, data: write.make(body || {}, write.params) };
+    }
+    /* Unconditional, where this used to fall through to the GET fixture when
+       the path happened to have one. Returning a list to a create is worse
+       than returning nothing: the caller reads a field off it, gets undefined
+       and puts that in state, which fails later and somewhere else. */
     return { hit: true, data: { ok: true, mocked: true } };
   }
 

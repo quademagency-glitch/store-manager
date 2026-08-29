@@ -29,6 +29,15 @@ router.get('/pnl', authGuard, permissionCheck('manage_business'), async (req, re
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('total_amount, tax_amount, sale_items:sale_items(quantity, unit_price, product:products!product_id(cost_price))')
+    /* Sales that count as money taken: completed, plus void_pending, which is
+       a finished sale whose void a manager has not yet approved. The cash is in
+       the drawer until they do, and it flips to 'voided' if they approve.
+       Excluded: 'voided', and 'pending', which is a sale created at the till
+       and never paid for, because the RPC writes the row before the payment
+       screen. */
+    salesQuery = salesQuery.in('status', ['completed', 'void_pending']);
+
+    salesQuery = salesQuery
       .eq('business_id', businessId)
       .gte('created_at', startDate)
       .lte('created_at', endDate);

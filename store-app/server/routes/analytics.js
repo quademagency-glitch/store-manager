@@ -35,7 +35,16 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
       .from('sales')
       .select('total_amount', { count: 'exact' })
       .gte('created_at', today.toISOString())
-      .neq('status', 'voided');
+      /* Money actually taken: completed, plus void_pending, which is a
+         finished sale whose void a manager has not yet approved. The cash is
+         in the drawer until they decide, and the row becomes 'voided' if they
+         approve it.
+
+         'pending' was being counted and should not be. The RPC writes the
+         sale before the payment screen, so a customer who changes their mind
+         at the till leaves a pending row behind, and it was landing in Today's
+         Sales, the trend, the top-products list and every cashier's total. */
+      .in('status', ['completed', 'void_pending']);
     
     // 2. Total Products
     let productsQuery = supabaseAdmin
@@ -119,7 +128,7 @@ router.get('/sales-trend', authGuard, apiCache(60), async (req, res) => {
       .from('sales')
       .select('total_amount, created_at')
       .gte('created_at', sevenDaysAgo.toISOString())
-      .neq('status', 'voided');
+      .in('status', ['completed', 'void_pending']);
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
@@ -458,7 +467,7 @@ router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
       .from('sales')
       .select('id')
       .gte('created_at', thirtyDaysAgo.toISOString())
-      .neq('status', 'voided');
+      .in('status', ['completed', 'void_pending']);
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
@@ -559,7 +568,7 @@ router.get('/staff-performance', authGuard, apiCache(60), async (req, res) => {
       .from('sales')
       .select('salesperson_id, total_amount')
       .gte('created_at', weekStart.toISOString())
-      .neq('status', 'voided');
+      .in('status', ['completed', 'void_pending']);
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);

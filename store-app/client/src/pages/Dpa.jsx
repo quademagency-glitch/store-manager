@@ -1,5 +1,14 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
 import { ENTITY, DPA_VERSION, EFFECTIVE_DATE, postalLine } from '../legal/entity';
+import { analyticsAllowed } from '../lib/analyticsGate';
+
+/* Clause 5.2 names sub-processors that actually process. Derived from the same
+   setting the software runs on, so the list cannot claim a processor that is
+   switched off, or omit one that is running. */
+const ANALYTICS_LIVE = analyticsAllowed(
+  import.meta.env.VITE_POSTHOG_KEY,
+  import.meta.env.VITE_POSTHOG_START,
+);
 
 /**
  * NOTE FOR THE OPERATOR
@@ -139,10 +148,10 @@ export default function Dpa() {
         </Sub>
         <Sub n="5.2">
           Our current sub-processors are Supabase (database, authentication and file storage),
-          Railway (application hosting), Vercel (web application hosting and delivery), Resend
-          (transactional email) and PostHog (product analytics, in the United States, which records
-          which screens are opened and not what is on them). Paystack processes your own billing
-          data but does not process the data covered by this agreement.
+          Railway (application hosting), Vercel (web application hosting and delivery)
+          {ANALYTICS_LIVE ? ', Resend (transactional email) and PostHog (product analytics, in the United States, which records which screens are opened and not what is on them)' : ' and Resend (transactional email)'}.
+          Paystack processes your own billing data but does not process the data covered by this
+          agreement.
         </Sub>
         <Sub n="5.3">
           We will give you at least 30 days’ notice by email before adding or replacing a

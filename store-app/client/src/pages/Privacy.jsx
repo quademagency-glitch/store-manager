@@ -1,5 +1,23 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
 import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../legal/entity';
+import { analyticsAllowed } from '../lib/analyticsGate';
+
+/* Read from the same switch the software reads, so this page cannot describe
+   analytics differently from how the app behaves.
+
+   It used to be a promise that a person would remember: the header said the
+   PostHog row "has to change on the same day" a key is set. That is exactly
+   the kind of promise that gets broken, and it was broken within two hours of
+   being written, in the other direction, when the pages were updated before
+   the key landed and spent an afternoon claiming a collection that was not
+   happening.
+
+   Vite inlines these at build time, so what a visitor reads is what the build
+   they are running actually does. */
+const ANALYTICS_LIVE = analyticsAllowed(
+  import.meta.env.VITE_POSTHOG_KEY,
+  import.meta.env.VITE_POSTHOG_START,
+);
 
 /**
  * NOTE FOR THE OPERATOR
@@ -269,8 +287,18 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>PostHog</td>
-                  <td>Product analytics: which screens are opened and how often, with the approximate location taken from your IP address and your browser and device type. Page addresses are included and some contain the identifier of a record. It does not receive your customer records, your products, your prices or anything you type: click tracking and session recording are switched off.</td>
-                  <td>United States</td>
+                  <td>
+                    Product analytics: which screens are opened and how often, with the approximate
+                    location taken from your IP address and your browser and device type. Page
+                    addresses are included and some contain the identifier of a record. It does not
+                    receive your customer records, your products, your prices or anything you type:
+                    click tracking and session recording are switched off.
+                    {!ANALYTICS_LIVE && (
+                      <> <strong>Not currently in use</strong>: the integration is present but is
+                      not switched on, and nothing is sent to it.</>
+                    )}
+                  </td>
+                  <td>{ANALYTICS_LIVE ? 'United States' : 'None'}</td>
                 </tr>
               </tbody>
             </table>
@@ -420,12 +448,23 @@ export default function Privacy() {
           working when the connection drops. These are first-party and strictly functional.
         </Sub>
         <Sub n="14.2">
-          <strong>We use no advertising cookies and no third-party tracking cookies.</strong> We do
-          use product analytics, PostHog, listed in clause 7. It stores an identifier in your
-          browser so that repeated visits from the same browser are counted once rather than many
-          times, and it records which screens are opened, not what is on them: click tracking and
-          session recording are switched off, and no profile of you is built. Clearing browser
-          storage signs you out, discards unsynchronised offline data, and resets that identifier.
+          <strong>We use no advertising cookies and no third-party tracking cookies.</strong>{' '}
+          {ANALYTICS_LIVE ? (
+            <>
+              We do use product analytics, PostHog, listed in clause 7. It stores an identifier in
+              your browser so that repeated visits from the same browser are counted once rather
+              than many times, and it records which screens are opened, not what is on them: click
+              tracking and session recording are switched off, and no profile of you is built.
+              Clearing browser storage signs you out, discards unsynchronised offline data, and
+              resets that identifier.
+            </>
+          ) : (
+            <>
+              A product analytics integration is present in the application but is switched off and
+              sends nothing; it is listed in clause 7. Clearing browser storage signs you out and
+              discards unsynchronised offline data.
+            </>
+          )}
         </Sub>
       </Clause>
 

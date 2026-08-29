@@ -20,6 +20,10 @@ const createSaleSchema = z.object({
   items: z.array(z.object({
     product_id: z.string().uuid(),
     quantity: z.number().int().positive(),
+    /* Declared, because Zod strips what it does not declare. The till has
+       always sent this and it was always thrown away here, so every sale_items
+       row ever written holds a unit_price of 0. */
+    unit_price: z.number().min(0).optional(),
     unit_ids: z.array(z.string().uuid()).optional(),
     scans: z.array(z.object({
       pack_code: z.string().optional(),
@@ -225,7 +229,13 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
 
     if (items && Array.isArray(items)) {
       for (const item of items) {
-        if (item.unit_price == null) item.unit_price = 0;
+        if (item.unit_price == null) {
+          /* Should not happen now the schema keeps the field. Loud rather than
+             silent: a zero here writes a line item worth nothing, which is
+             what made top-products revenue read zero for every product. */
+          logger.warn({ productId: item.product_id }, 'Sale line arrived with no unit_price');
+          item.unit_price = 0;
+        }
       }
     }
 

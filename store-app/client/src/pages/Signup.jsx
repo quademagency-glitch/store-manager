@@ -227,14 +227,24 @@ export default function Signup() {
               {/* What the link actually does: the server generates it with
                   redirectTo pointing at this app's /login, supabase.js is
                   configured with detectSessionInUrl, and Login.jsx sends an
-                  authenticated visitor to the dashboard. So it verifies and
-                  signs in, in one click. The old copy sent them looking for a
-                  sign-in form they would never be shown, and the second
-                  sentence is there for the case where the redirect target is
-                  not on Supabase's allow list and they do land on one. */}
+                  authenticated visitor to the dashboard. So it signs them in
+                  in one click. The old copy sent them looking for a sign-in
+                  form they would never be shown, and the second sentence is
+                  there for the case where the redirect target is not on
+                  Supabase's allow list and they do land on one.
+
+                  It does NOT verify the address, whatever the word
+                  "confirmation" suggests. The project has mailer_autoconfirm
+                  on, so the account is already confirmed before the email is
+                  sent: measured confirmation timestamps land 3 to 50
+                  milliseconds after account creation, which is nobody
+                  clicking anything. Saying "verifies your address" was
+                  telling the owner a check had happened that had not. The
+                  wording below is true whether or not that setting changes,
+                  so flipping it does not silently make this a lie again. */}
               <p className="login-subtitle">
-                We&rsquo;ve sent a confirmation link to <strong>{form.email.trim()}</strong>. Opening it
-                verifies your address and signs you straight in. If you are asked to sign in, use the
+                We&rsquo;ve sent a sign-in link to <strong>{form.email.trim()}</strong>. Opening it
+                takes you straight to your dashboard. If you are asked to sign in, use the
                 password you just chose.
               </p>
 

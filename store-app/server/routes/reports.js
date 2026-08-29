@@ -28,7 +28,7 @@ router.get('/pnl', authGuard, permissionCheck('manage_business'), async (req, re
     // 1. Revenue, sum of finalized sales
     let salesQuery = supabaseAdmin
       .from('sales')
-      .select('total_amount, sale_items:sale_items(quantity, unit_price, product:products!product_id(cost_price))')
+      .select('total_amount, tax_amount, sale_items:sale_items(quantity, unit_price, product:products!product_id(cost_price))')
       .eq('business_id', businessId)
       .gte('created_at', startDate)
       .lte('created_at', endDate);
@@ -42,7 +42,11 @@ router.get('/pnl', authGuard, permissionCheck('manage_business'), async (req, re
     let cogs = 0;
 
     (sales || []).forEach(sale => {
-      revenue += Number(sale.total_amount || 0);
+      /* Net of tax. Tax collected is money held for the tax authority, not
+         turnover, and counting it would inflate revenue and every margin
+         derived from it. Sales written before migration 074 have tax_amount 0,
+         so their revenue is unchanged. */
+      revenue += Number(sale.total_amount || 0) - Number(sale.tax_amount || 0);
       (sale.sale_items || []).forEach(item => {
         const costPrice = Number(item.product?.cost_price || 0);
         const qty = Number(item.quantity || 0);

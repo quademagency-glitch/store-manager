@@ -10,6 +10,7 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const crypto = require('crypto');
+const { computeTax } = require('../utils/tax');
 const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
@@ -253,11 +254,27 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
     // Fetch business settings to know QR tracking mode
     const { data: business } = await supabaseAdmin
       .from('businesses')
-      .select('qr_tracking_mode, max_discount_percent')
+      .select('qr_tracking_mode, max_discount_percent, tax_enabled, tax_rate, tax_inclusive, tax_label')
       .eq('id', req.user.business_id)
       .single();
 
     const isDoubleMode = business?.qr_tracking_mode === 'double';
+
+    /* Tax is derived from the business's own settings, and the `tax` field in
+       the request body is ignored. It has been accepted by the schema and
+       silently dropped since the beginning; now that the number reaches a
+       receipt and a report, a value chosen by the browser is not one to write
+       down.
+
+       Under exclusive pricing this changes the amount charged, so `taxed.total`
+       is what goes to the RPC rather than the total the till posted. The till
+       shows the same figure because it applies the same rule for display. */
+    const taxed = computeTax({
+      total: total_amount || 0,
+      rate: business?.tax_rate,
+      enabled: business?.tax_enabled === true,
+      inclusive: business?.tax_inclusive !== false,
+    });
 
     const receipt_number = 'RCPT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
@@ -428,12 +445,18 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       p_location_id: location_id,
       p_salesperson_id: req.user.id,
       p_customer_id: customer_id || null,
-      p_total_amount: total_amount || 0,
+      p_total_amount: taxed.total,
       p_discount_amount: discount || 0,
       p_payment_method: payment_method,
       p_receipt_number: receipt_number,
       p_items: items,
-      p_unit_ids: allUnitIds
+      p_unit_ids: allUnitIds,
+      p_subtotal: taxed.subtotal,
+      p_tax_amount: taxed.tax,
+      /* Snapshotted, so a rate change next month does not restate this sale. */
+      p_tax_rate_applied: taxed.tax > 0 ? Number(business?.tax_rate) : null,
+      p_tax_inclusive_applied: taxed.tax > 0 ? business?.tax_inclusive !== false : null,
+      p_tax_label_applied: taxed.tax > 0 ? (business?.tax_label || 'VAT') : null
     });
 
     if (rpcError) {
@@ -539,7 +562,10 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
           .maybeSingle();
 
         if (loyaltyRules && loyaltyRules.points_per_currency_unit > 0) {
-          const saleTotal = Number(total_amount) || 0;
+          /* Net of tax. Tax collected is not the shop's money, so it should
+             not buy the customer loyalty points. Identical to the old figure
+             for every business with tax switched off. */
+          const saleTotal = taxed.subtotal;
           const pointsEarned = Math.floor(saleTotal * Number(loyaltyRules.points_per_currency_unit));
 
           if (pointsEarned > 0) {
@@ -576,7 +602,20 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
 
     return res.status(201).json({
       message: 'Sale recorded successfully',
-      sale: { id: saleId, ...req.body },
+      /* The body is echoed for the fields the till already knows, but the
+         money comes from what was actually written. Echoing req.body alone
+         printed the till's pre-tax total on the receipt under exclusive
+         pricing, and its hardcoded `tax: 0` under either. */
+      sale: {
+        id: saleId,
+        ...req.body,
+        subtotal: taxed.subtotal,
+        tax: taxed.tax,
+        total_amount: taxed.total,
+        tax_rate_applied: taxed.tax > 0 ? Number(business?.tax_rate) : null,
+        tax_inclusive_applied: taxed.tax > 0 ? business?.tax_inclusive !== false : null,
+        tax_label_applied: taxed.tax > 0 ? (business?.tax_label || 'VAT') : null,
+      },
     });
   } catch (err) {
     logger.error({ err: err }, 'POST /sales error:');

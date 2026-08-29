@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useCustomers } from '../hooks/useCustomers';
@@ -138,6 +138,31 @@ export default function Sales() {
      two differ, and asking the cashier for the pre-tax figure would collect
      less than the sale records. Identical while tax is off. */
   const netAmountDue = Math.max(0, taxLine.total - rewardsApplied);
+
+  /* Backing out of the payment screen puts the goods back.
+     The sale row is written, and the stock taken down, before this screen
+     opens: that is deliberate, it reserves the items while the customer is
+     standing at the counter. It also means closing this screen used to leave a
+     pending sale behind for good, holding stock off the shelf that nothing
+     would ever reclaim.
+
+     The modal closes first so the till stays responsive, and the request goes
+     after it. If it fails, the server's sweeper reverses the sale within the
+     hour, so there is nothing here worth blocking a queue for. An offline sale
+     has no row on the server yet, so there is nothing to cancel. */
+  const abandonPendingSale = useCallback(async () => {
+    const sale = pendingSale;
+    setShowPaymentModal(false);
+    setPendingSale(null);
+    setAmountPaid('');
+    setSaleError('');
+    if (!sale || sale._isOffline) return;
+    try {
+      await api.post(`/sales/${sale.id}/cancel`);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Could not cancel abandoned sale:', err);
+    }
+  }, [pendingSale]);
 
   // Fetch the selected customer's reward balances so they can be redeemed at checkout
   useEffect(() => {
@@ -492,7 +517,7 @@ export default function Sales() {
         if (showShortcutHelp) return setShowShortcutHelp(false);
         if (showScanner) return setShowScanner(false);
         if (showReceipt) return closeReceipt();
-        if (showPaymentModal) return setShowPaymentModal(false);
+        if (showPaymentModal) return abandonPendingSale();
         if (showNewCustomerModal) return setShowNewCustomerModal(false);
         if (showVerifyModal) return setShowVerifyModal(false);
         if (showCustomerDrawer) return setShowCustomerDrawer(false);
@@ -739,7 +764,7 @@ export default function Sales() {
 
       <PaymentModal
         isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
+        onClose={abandonPendingSale}
         pendingSale={pendingSale}
         fmt={fmt}
         currencySymbol={currencySymbol}

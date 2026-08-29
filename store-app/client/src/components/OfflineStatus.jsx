@@ -86,7 +86,31 @@ export default function OfflineStatus() {
               saleId = res.sale?.id || res.id;
               await updateOfflineQueueItem(item.id, { remoteSaleId: saleId });
             }
-            await api.post(`/sales/${saleId}/finalize`, stage2);
+            try {
+              await api.post(`/sales/${saleId}/finalize`, stage2);
+            } catch (finalizeErr) {
+              /* Stage one wrote a pending sale and this device then went away
+                 for long enough that the server's sweeper reversed it and put
+                 the stock back. The sale is real and still unsynced, so it has
+                 to be created again rather than dead-lettered.
+
+                 The status is checked rather than assumed, because the other
+                 reason finalize fails on a non-pending sale is that it already
+                 succeeded and only the response was lost. Re-posting that one
+                 would charge the customer twice, which is the exact failure
+                 remoteSaleId exists to prevent. */
+              const existing = await api.get(`/sales/${saleId}`).catch(() => null);
+              if (existing?.status === 'completed') {
+                // Finalised on an earlier attempt; nothing left to do.
+              } else if (existing?.status === 'voided') {
+                const res = await api.post('/sales', stage1);
+                saleId = res.sale?.id || res.id;
+                await updateOfflineQueueItem(item.id, { remoteSaleId: saleId });
+                await api.post(`/sales/${saleId}/finalize`, stage2);
+              } else {
+                throw finalizeErr;
+              }
+            }
           } else {
             await api[item.method.toLowerCase()](item.endpoint, item.payload);
           }

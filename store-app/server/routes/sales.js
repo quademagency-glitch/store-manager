@@ -11,6 +11,7 @@ const { validateBody } = require('../middleware/validate');
 const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const crypto = require('crypto');
 const { computeTax } = require('../utils/tax');
+const { reversePendingSale } = require('../services/pendingSales');
 const { runChecks } = require('../services/lossPreventionEngine');
 
 const router = express.Router();
@@ -1051,10 +1052,11 @@ router.post('/:id/cancel', authGuard, permissionCheck('create_sales'), async (re
   try {
     const saleId = req.params.id;
 
-    // Verify ownership
+    /* Ownership is checked here rather than in the service, because the
+       sweeper has no request and no user to check against. */
     const { data: sale, error: fetchError } = await supabaseAdmin
       .from('sales')
-      .select('business_id, status, location_id, sale_items(product_id, quantity)')
+      .select('business_id, status')
       .eq('id', saleId)
       .single();
 
@@ -1063,45 +1065,18 @@ router.post('/:id/cancel', authGuard, permissionCheck('create_sales'), async (re
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    if (sale.status !== 'pending') {
-      return res.status(400).json({ error: 'Only pending sales can be cancelled' });
+    const result = await reversePendingSale(saleId, { reason: 'cancelled at the till' });
+
+    /* Already reversed, or finalised while the request was in flight. Neither
+       is an error worth showing a cashier who has moved on. */
+    if (!result.reversed && result.skipped !== 'not-found') {
+      return res.json({ message: 'Sale is no longer pending', status: result.skipped });
     }
 
-    // 1. Restore product inventory
-    for (const item of sale.sale_items) {
-      const { data: inv } = await supabaseAdmin
-        .from('product_inventory')
-        .select('quantity')
-        .eq('product_id', item.product_id)
-        .eq('location_id', sale.location_id)
-        .single();
-        
-      if (inv) {
-        await supabaseAdmin
-          .from('product_inventory')
-          .update({ quantity: inv.quantity + item.quantity })
-          .eq('product_id', item.product_id)
-          .eq('location_id', sale.location_id);
-      }
-    }
-
-    // 2. Restore inventory units
-    await supabaseAdmin
-      .from('inventory_units')
-      .update({ status: 'in_stock', sold_in_sale_id: null })
-      .eq('sold_in_sale_id', saleId);
-
-    // 3. Mark sale as voided
-    const { error: voidError } = await supabaseAdmin
-      .from('sales')
-      .update({ status: 'void_pending' }) // or 'voided', but per schema constraints void_pending fits
-      .eq('id', saleId);
-
-    if (voidError) throw voidError;
-
+    invalidateCachePrefix('/api/sales');
     res.json({ message: 'Sale cancelled and inventory restored' });
   } catch (err) {
-    logger.error({ err: err }, 'Error cancelling sale:');
+    logger.error({ err }, 'Error cancelling sale:');
     res.status(500).json({ error: 'Failed to cancel sale' });
   }
 });

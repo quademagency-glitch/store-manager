@@ -46,7 +46,6 @@ export default function Organization() {
         address_line1: business.address_line1,
         city: business.city,
         region: business.region,
-        tax_rate: business.tax_rate,
         return_policy: business.return_policy,
         currency: business.currency,
         qr_tracking_mode: business.qr_tracking_mode,
@@ -226,35 +225,12 @@ export default function Organization() {
             <div className="org-section-header">
               <div className="org-section-icon" aria-hidden="true">{Icons.clipboard}</div>
               <div>
-                <h2 className="org-section-title">Store Policies & Compliance</h2>
-                <p className="org-section-subtitle">Tax configuration and return policy for your business</p>
+                <h2 className="org-section-title">Store Policies</h2>
+                <p className="org-section-subtitle">Currency, returns, and how units are tracked</p>
               </div>
             </div>
             <div className="org-section-body">
               <div className="org-form-grid">
-                <div className="form-group">
-                  <label htmlFor="org-tax">Default Tax Rate (%)</label>
-                  <input
-                    id="org-tax"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="form-input"
-                    placeholder="e.g. 12.5"
-                    value={business.tax_rate || 0}
-                    onChange={e => updateField('tax_rate', parseFloat(e.target.value) || 0)}
-                  />
-                  {/* This rate is stored and never read. Both paths that create a
-                      sale write the tax line as zero (Sales.jsx, useSales.js),
-                      and there is no per-product tax anywhere in the schema, so
-                      the old hint, "Applied to all sales unless overridden per
-                      product", was wrong in both halves. Someone setting 12.5
-                      or 15 here would have believed VAT was being charged. */}
-                  <p className="org-form-hint">
-                    Kept with your business details. Sales are not taxed automatically, so this
-                    does not change what a customer is charged.
-                  </p>
-                </div>
                 <div className="form-group">
                   <label htmlFor="org-currency">Operating Currency</label>
                   <select

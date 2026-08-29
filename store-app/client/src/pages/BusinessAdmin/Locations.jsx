@@ -18,7 +18,7 @@ export default function Locations() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    id: null, name: '', address: '', tax_rate: 0, receipt_header: '', currency: '',
+    id: null, name: '', address: '', receipt_header: '', currency: '',
     latitude: '', longitude: '', geofence_radius_m: 200,
     clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
   });
@@ -55,7 +55,7 @@ export default function Locations() {
       });
     } else {
       setFormData({
-        id: null, name: '', address: '', tax_rate: 0, receipt_header: '', currency: '',
+        id: null, name: '', address: '', receipt_header: '', currency: '',
         latitude: '', longitude: '', geofence_radius_m: 200,
         clock_in_start: '', clock_in_end: '', clock_out_start: '', clock_out_end: '',
       });
@@ -69,7 +69,6 @@ export default function Locations() {
       const payload = {
         name: formData.name,
         address: formData.address,
-        tax_rate: formData.tax_rate,
         receipt_header: formData.receipt_header,
         currency: formData.currency || null,
       };
@@ -155,7 +154,6 @@ export default function Locations() {
                 <tr>
                   <th>Location Name</th>
                   <th>Address</th>
-                  <th>Tax Rate</th>
                   <th>Currency</th>
                   <th>Geofence</th>
                   <th className="text-right">Actions</th>
@@ -166,7 +164,6 @@ export default function Locations() {
                   <tr key={loc.id}>
                     <td className="font-medium">{loc.name}</td>
                     <td className="text-muted">{loc.address || '-'}</td>
-                    <td>{loc.tax_rate}%</td>
                     <td className="text-muted">{loc.currency || 'Business default'}</td>
                     <td>
                       {loc.latitude && loc.longitude ? (
@@ -212,20 +209,6 @@ export default function Locations() {
               value={formData.address} 
               onChange={e => setFormData({...formData, address: e.target.value})} 
             />
-          </div>
-          <div className="form-group">
-            <label>Tax Rate (%)</label>
-            <input 
-              type="number" 
-              step="0.01" 
-              min="0"
-              className="form-input" 
-              value={formData.tax_rate} 
-              onChange={e => setFormData({...formData, tax_rate: parseFloat(e.target.value)})} 
-            />
-            {/* Same as the business-level rate in Organization.jsx: stored,
-                shown back in the table above, and read by nothing. */}
-            <p className="org-form-hint">Kept for reference. Sales are not taxed automatically.</p>
           </div>
           <div className="form-group">
             <label>Receipt Header Text</label>

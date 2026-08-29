@@ -100,6 +100,24 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
 
           <div style={{ borderBottom: '2px dashed #cbd5e1', margin: '16px 0' }}></div>
 
+          {/* Subtotal and tax, only when there is tax to show. A receipt that
+              prints "VAT 0.00" on every sale in a shop that does not charge it
+              is noise, and on an 80mm roll it is a line of paper per sale.
+              tax_amount comes from the sale record, not from today's settings,
+              so a reprint of an older sale shows what that sale was charged. */}
+          {Number(receiptData.tax_amount) > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.95rem', color: '#475569' }}>
+                <span>Subtotal:</span>
+                <span>{fmt(receiptData.subtotal ?? (receiptData.total_amount - receiptData.tax_amount))}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.95rem', color: '#475569' }}>
+                <span>{receiptData.tax_label_applied || 'Tax'}{receiptData.tax_rate_applied ? ` (${Number(receiptData.tax_rate_applied)}%)` : ''}:</span>
+                <span>{fmt(receiptData.tax_amount)}</span>
+              </div>
+            </>
+          )}
+
           {/* Total */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.4rem', color: '#0f172a' }}>
             <span>TOTAL:</span>

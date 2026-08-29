@@ -81,7 +81,23 @@ router.get('/me', authGuard, async (req, res) => {
  */
 router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
   try {
-    const { name, contact_email, logo_url, tax_rate, return_policy, phone, address_line1, city, region, letterhead, currency, qr_tracking_mode } = req.body;
+    const { name, contact_email, logo_url, tax_rate, tax_enabled, tax_inclusive, tax_label, return_policy, phone, address_line1, city, region, letterhead, currency, qr_tracking_mode } = req.body;
+
+    if (tax_rate !== undefined && tax_rate !== null) {
+      const rate = Number(tax_rate);
+      if (!Number.isFinite(rate) || rate < 0 || rate >= 100) {
+        return res.status(400).json({
+          error: 'Bad request',
+          message: 'Tax rate must be a percentage between 0 and 100.',
+        });
+      }
+    }
+    if (tax_label !== undefined && String(tax_label).trim().length === 0) {
+      return res.status(400).json({
+        error: 'Bad request',
+        message: 'Tax name cannot be empty. It prints on every receipt.',
+      });
+    }
 
     // Verify tenant isolation
     if (req.user.role !== 'Platform Admin' && req.user.business_id !== req.params.id) {
@@ -94,6 +110,12 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
     if (contact_email !== undefined) updatePayload.contact_email = contact_email;
     if (logo_url !== undefined) updatePayload.logo_url = logo_url;
     if (tax_rate !== undefined) updatePayload.tax_rate = tax_rate;
+    /* Validated here as well as by the CHECK constraints in migration 074,
+       because a 400 naming the field is a better answer than a 500 carrying a
+       Postgres constraint name. */
+    if (tax_enabled !== undefined) updatePayload.tax_enabled = tax_enabled === true;
+    if (tax_inclusive !== undefined) updatePayload.tax_inclusive = tax_inclusive === true;
+    if (tax_label !== undefined) updatePayload.tax_label = String(tax_label).trim().slice(0, 16);
     if (return_policy !== undefined) updatePayload.return_policy = return_policy;
     if (phone !== undefined) updatePayload.phone = phone;
     if (address_line1 !== undefined) updatePayload.address_line1 = address_line1;

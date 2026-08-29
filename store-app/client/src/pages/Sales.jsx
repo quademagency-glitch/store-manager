@@ -17,6 +17,7 @@ import { useToast } from '../hooks/useToast';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
+import { computeTax } from '../lib/tax';
 import { useCurrency } from '../hooks/useCurrency';
 import { PageHeader } from '../components/ui';
 
@@ -124,9 +125,19 @@ export default function Sales() {
 
   const totalAmount = wizardItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
+  /* Shown before payment, not sprung on the receipt. The API recomputes this
+     from the business's settings and ignores anything the till sends, so this
+     is the same rule applied twice on purpose, once to inform and once to
+     record. Loyalty rewards are treated as tender rather than as a discount,
+     so they reduce what is collected without changing the taxable sale. */
+  const taxLine = computeTax(totalAmount, business);
+
   const pointValue = Number(loyalty.rules?.point_value || 0);
   const rewardsApplied = (Number(appliedStoreCredit) || 0) + (Number(appliedPoints) || 0) * pointValue;
-  const netAmountDue = Math.max(0, totalAmount - rewardsApplied);
+  /* Off the taxed total, not the cart subtotal. Under exclusive pricing the
+     two differ, and asking the cashier for the pre-tax figure would collect
+     less than the sale records. Identical while tax is off. */
+  const netAmountDue = Math.max(0, taxLine.total - rewardsApplied);
 
   // Fetch the selected customer's reward balances so they can be redeemed at checkout
   useEffect(() => {
@@ -254,7 +265,7 @@ export default function Sales() {
         toast.warning('You are offline. Proceeding to payment locally. The transaction will be synced later.');
         setPendingSale({
           id: `offline-${crypto.randomUUID()}`,
-          total_amount: totalAmount,
+          total_amount: taxLine.total,
           status: 'pending',
           _isOffline: true,
           _payload: payload
@@ -315,7 +326,12 @@ export default function Sales() {
         fullReceipt = {
           ...pendingSale,
           payment_method: paymentMethod,
-          total_amount: totalAmount,
+          /* What was charged, so the printed receipt reconciles with the
+             drawer. Under exclusive pricing this is above the cart subtotal. */
+          total_amount: taxLine.total,
+          subtotal: taxLine.subtotal,
+          tax_amount: taxLine.tax,
+          tax_label_applied: taxLine.applies ? taxLine.label : null,
           amount_paid: tendered + rewardsApplied,
           rewards_applied: rewardsApplied,
           receipt_number: `OFFLINE-${pendingSale.id.split('-')[1]}`,
@@ -332,7 +348,12 @@ export default function Sales() {
         fullReceipt = {
           ...pendingSale,
           payment_method: paymentMethod,
-          total_amount: totalAmount,
+          /* What was charged, so the printed receipt reconciles with the
+             drawer. Under exclusive pricing this is above the cart subtotal. */
+          total_amount: taxLine.total,
+          subtotal: taxLine.subtotal,
+          tax_amount: taxLine.tax,
+          tax_label_applied: taxLine.applies ? taxLine.label : null,
           amount_paid: tendered + rewardsApplied,
           rewards_applied: rewardsApplied,
           sale_items: wizardItems.map(item => ({
@@ -630,9 +651,21 @@ export default function Sales() {
 
         <div className="cart-checkout">
            <div className="cart-summary">
+             {taxLine.applies && (
+               <>
+                 <div className="cart-summary-row">
+                   <span className="cart-summary-label">Subtotal</span>
+                   <span className="cart-summary-value">{fmt(taxLine.subtotal)}</span>
+                 </div>
+                 <div className="cart-summary-row">
+                   <span className="cart-summary-label">{taxLine.label}</span>
+                   <span className="cart-summary-value">{fmt(taxLine.tax)}</span>
+                 </div>
+               </>
+             )}
              <div className="cart-summary-total">
                <span className="cart-summary-label">Total</span>
-               <span className="cart-summary-value">{fmt(totalAmount)}</span>
+               <span className="cart-summary-value">{fmt(taxLine.total)}</span>
              </div>
            </div>
            

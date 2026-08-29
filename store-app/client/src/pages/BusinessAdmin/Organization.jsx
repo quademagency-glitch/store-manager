@@ -46,6 +46,10 @@ export default function Organization() {
         address_line1: business.address_line1,
         city: business.city,
         region: business.region,
+        tax_rate: business.tax_rate,
+        tax_enabled: business.tax_enabled,
+        tax_inclusive: business.tax_inclusive,
+        tax_label: business.tax_label,
         return_policy: business.return_policy,
         currency: business.currency,
         qr_tracking_mode: business.qr_tracking_mode,
@@ -226,11 +230,86 @@ export default function Organization() {
               <div className="org-section-icon" aria-hidden="true">{Icons.clipboard}</div>
               <div>
                 <h2 className="org-section-title">Store Policies</h2>
-                <p className="org-section-subtitle">Currency, returns, and how units are tracked</p>
+                <p className="org-section-subtitle">Tax, currency, returns, and how units are tracked</p>
               </div>
             </div>
             <div className="org-section-body">
               <div className="org-form-grid">
+                {/* This field stored a number and changed nothing for about a
+                    year: no sale read it, and there was nowhere to write the
+                    answer. Migration 074 wired it. It is off by default and
+                    stays off until someone chooses here, because a rate typed
+                    into the old dead box is not a decision to start charging
+                    it. */}
+                <div className="form-group">
+                  <label htmlFor="org-tax-enabled">Sales Tax</label>
+                  <select
+                    id="org-tax-enabled"
+                    className="form-input"
+                    value={business.tax_enabled ? 'on' : 'off'}
+                    onChange={e => updateField('tax_enabled', e.target.value === 'on')}
+                  >
+                    <option value="off">Not charged</option>
+                    <option value="on">Charged on every sale</option>
+                  </select>
+                  <p className="org-form-hint">
+                    Nothing is charged until you switch this on. Use the single total percentage
+                    you charge; your accountant can tell you what that should be.
+                  </p>
+                </div>
+
+                {business.tax_enabled && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="org-tax">Tax Rate (%)</label>
+                      <input
+                        id="org-tax"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="99.99"
+                        className="form-input"
+                        placeholder="e.g. 15"
+                        value={business.tax_rate ?? ''}
+                        onChange={e => updateField('tax_rate', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                      />
+                      <p className="org-form-hint">Applied to every sale from the moment you save.</p>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="org-tax-inclusive">Your Marked Prices</label>
+                      <select
+                        id="org-tax-inclusive"
+                        className="form-input"
+                        value={business.tax_inclusive === false ? 'exclusive' : 'inclusive'}
+                        onChange={e => updateField('tax_inclusive', e.target.value === 'inclusive')}
+                      >
+                        <option value="inclusive">Already include the tax</option>
+                        <option value="exclusive">Do not include it, add it at the till</option>
+                      </select>
+                      <p className="org-form-hint">
+                        Most shops here mark prices with the tax already in them. Choose the second
+                        option only if your shelf price is the amount before tax, because it changes
+                        what the customer pays at the till.
+                      </p>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="org-tax-label">What to Call It</label>
+                      <input
+                        id="org-tax-label"
+                        type="text"
+                        maxLength={16}
+                        className="form-input"
+                        placeholder="VAT"
+                        value={business.tax_label ?? 'VAT'}
+                        onChange={e => updateField('tax_label', e.target.value)}
+                      />
+                      <p className="org-form-hint">Prints on receipts as the name of the tax line.</p>
+                    </div>
+                  </>
+                )}
+
                 <div className="form-group">
                   <label htmlFor="org-currency">Operating Currency</label>
                   <select

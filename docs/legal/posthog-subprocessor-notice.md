@@ -1,30 +1,41 @@
 # Adding PostHog as a sub-processor
 
-PostHog is installed in the web app and the scanner app and is **switched off**.
-Turning it on is not a configuration change. It is a change to two published
-legal pages and it triggers a contractual obligation to every paying customer.
+> **Status, 2026-08-29.** Analytics is **live**. `VITE_POSTHOG_KEY`,
+> `VITE_POSTHOG_HOST` and `VITE_POSTHOG_START=2026-08-29` are set in Vercel
+> production and preview, verified by `POST https://us.i.posthog.com/e/`
+> returning `200 {"status":"Ok"}`. The region decision in step 1 was settled:
+> **United States**, disclosed rather than moved to the EU host.
+>
+> **The notice below has NOT been sent.** It was written to be sent 30 days
+> *before* switching analytics on. That did not happen, so the wording has been
+> corrected to describe what actually occurred. Send the version in
+> [section 2](#2-the-notice-as-it-now-has-to-read), not the original.
 
-This is the order. Doing it in a different order breaks a promise.
+The rest of this file is the order the work should have gone in, kept because
+it is the right order next time.
 
 ---
 
-## 1. Decide where the data goes, before you send anything
+## 1. Decide where the data goes — DECIDED: United States
 
 The notice has to name a country, so this is decided first.
 
-The code currently points at `https://us.i.posthog.com`. PostHog also runs an
-EU region. Clause 8 of the Privacy Policy tells customers their data is held in
-the European Union, in Stockholm, and the Supabase region was chosen
-deliberately for that reason. Sending usage data to the United States is
-defensible if disclosed, but it sits awkwardly next to what is already
-published, and a Ghanaian owner who asks where their data goes now gets two
-different answers.
+The code points at `https://us.i.posthog.com`. PostHog also runs an EU region.
+Clause 8 of the Privacy Policy tells customers their data is held in the
+European Union, in Stockholm, and the Supabase region was chosen deliberately
+for that reason.
 
-Choosing the EU host means changing `VITE_POSTHOG_HOST`,
-`EXPO_PUBLIC_POSTHOG_HOST`, and the `connect-src` entry in the root
-`vercel.json`, which currently allows `https://us.i.posthog.com` only.
+**Resolved by disclosure, not relocation.** Privacy clause 8.1 and DPA clause
+6.1 now both say that product analytics goes to the United States while the
+database and uploaded files stay in Stockholm. Both sentences are conditional
+on the same `analyticsAllowed()` switch the rest of the pages read, so they
+disappear again if analytics is ever switched off.
 
-## 2. Send the notice, and write down the date you sent it
+Choosing the EU host later would mean changing `VITE_POSTHOG_HOST`,
+`EXPO_PUBLIC_POSTHOG_HOST`, the `connect-src` entry in the root `vercel.json`,
+and those two clauses.
+
+## 2. The notice, as it now has to read
 
 Clause 5.3 of the Data Processing Agreement:
 
@@ -34,104 +45,156 @@ Clause 5.3 of the Data Processing Agreement:
 > terminate the affected Subscription and we will refund fees paid for the
 > unused remainder of the Subscription Period.
 
-Send it from **Platform Admin → Communications**, audience **All Businesses**,
-type **Email**. That route sends to every business that is not banned, using
-each one's `contact_email`.
+That notice period was not given. The email therefore cannot say "we intend to
+start using", which is what the original draft said — analytics was already
+running when it would have gone out. It says what happened instead. Concealing
+the sequence would be a second, worse problem than the late notice.
+
+### Who it goes to
+
+As at 2026-08-29 there are three businesses, and **none of them is a real
+paying customer**:
+
+| Business | `contact_email` | What it is |
+|---|---|---|
+| QuadERP Platform | `quadem.agency@gmail.com` | the owner's own platform account |
+| John Dow | `fofig41476@luhupo.com` | a test signup; `luhupo.com` is a disposable mail domain |
+| Adom Superstore (Demo) | `demo@quaderp.app` | the demo tenant |
+
+So the practical exposure is nil. The obligation matters going forward: anyone
+signing up **after** 2026-08-29 receives a DPA that already lists PostHog in
+clause 5.2, so it is an existing sub-processor to them and clause 5.3 never
+applies. Send it anyway, for the dated record.
+
+### How to send it
+
+**Platform Admin → Communications**, audience **All Businesses**, type
+**Email**. That route sends to every business that is not banned, using each
+one's `contact_email`.
+
+Safe to use as of `54cc340`. Before that, `sendCustomEmail` passed the whole
+recipient array as Resend's `to`, which puts every recipient's address in the
+To header of every copy — one broadcast would have disclosed the entire
+customer list to the entire customer list. It now sends one message per
+recipient via Resend's batch endpoint.
+
+Set the reply-to, or send from, `quadem.agency@gmail.com`: that is
+`ENTITY.email.privacy`, the address the Privacy Policy tells people to write
+to, and the notice invites a reply.
 
 ### Subject
 
-    A new sub-processor for QuadERP, from <effective date>
+    PostHog has been added as a sub-processor for QuadERP
 
 ### Body
 
     Hello,
 
-    We are writing to give you advance notice, as clause 5.3 of our Data
-    Processing Agreement requires, that we intend to start using a new
-    sub-processor from <effective date>.
+    This is the notice our Data Processing Agreement requires when we add a
+    sub-processor.
 
-    Who: PostHog, a product analytics service.
+    WHAT HAS CHANGED
+    On 29 August 2026 we started using PostHog, a product analytics service, as
+    a sub-processor.
 
-    What it will receive: which screens in QuadERP are opened and how often,
-    along with the technical details any web request carries, which are your
-    approximate location from your IP address and your browser and device type.
-    Page addresses are included, and some of those contain the identifier of a
-    record, such as a sale.
+    WE SHOULD HAVE TOLD YOU FIRST
+    Clause 5.3 of the Data Processing Agreement commits us to at least 30 days'
+    notice by email before a new sub-processor begins processing. That did not
+    happen: analytics was switched on before this notice went out. Your right to
+    object is unaffected and is set out below.
 
-    What it will not receive: your customer records, your products, your
-    prices, your sales figures, or anything typed into the app. Click tracking
-    and session recording are switched off, so the text on your screens is not
-    collected.
+    WHAT POSTHOG RECEIVES
+    Which screens in QuadERP are opened and how often, together with the
+    technical details any web request carries: your approximate location from
+    your IP address, and your browser and device type. Page addresses are
+    included, and some of those contain the identifier of a record, such as a
+    sale.
 
-    Where: <United States / European Union>.
+    WHAT IT DOES NOT RECEIVE
+    Your customer records, your products, your prices, your sales figures, or
+    anything typed into the app. Click tracking, heatmaps and session recording
+    are switched off, so the text on your screens is not collected. No profile
+    is built against your name.
 
-    Why we are doing it: so we can see which parts of QuadERP are actually
-    used, and stop guessing when we decide what to build and what to fix.
+    WHERE
+    The United States. Your database and uploaded files stay in the European
+    Union, in Stockholm.
 
-    If you object on data protection grounds, reply to this email before
-    <effective date> and we will discuss it with you. If we cannot resolve it,
-    you may end the affected subscription and we will refund the fees you have
-    paid for the unused remainder of your subscription period.
+    WHY
+    So we can see which parts of QuadERP are actually used, rather than guessing
+    when we decide what to build and what to fix.
 
-    You do not need to do anything if you are happy for this to go ahead.
+    IF YOU OBJECT
+    Reply to this email. If we cannot resolve an objection made on data
+    protection grounds, you may end the affected subscription and we will refund
+    the fees you have paid for the unused remainder of your subscription period.
 
-    <sender name>
+    You do not need to do anything if you are happy for this to continue.
+
     Quadem Digital Enterprise
-    info@quaderp.app
+    quadem.agency@gmail.com
 
-## 3. Wait. The code will not let you skip this
+Write the date it was actually sent here when it goes: **sent on ____________**
+
+## 3. The start-date gate — DONE
 
 `VITE_POSTHOG_START` and `EXPO_PUBLIC_POSTHOG_START` hold the effective date.
 Analytics does not initialise until that date arrives, **even if the key is
-set**, and with it off the PostHog provider is not mounted at all, so nothing
-can capture by accident. Set it to the date in the notice, which is at least 30
-days after the day you send it.
+set**, and with it off the PostHog provider is not mounted at all.
 
-That gate exists because setting an environment variable does not feel like
-publishing a legal change, and the person doing it months from now will not
-have read this file.
+It is set to `2026-08-29`. The gate did its job — it is the reason the key
+could sit in `store-app/client/.env` for days without anything being sent — but
+it only enforces a date someone chooses, and the date chosen was today rather
+than 30 days out.
 
-## 4. On the effective date, change the two legal pages first
+## 4. The two legal pages — DONE, and now automatic
 
-Both currently say PostHog is not in use. They stop being true the moment
-analytics starts, so they are edited on the day, not afterwards.
+Both pages used to need hand-editing on the day, which is exactly the kind of
+promise that gets broken: the first version of this change said analytics was
+live two hours before it actually was.
 
-**`store-app/client/src/pages/Privacy.jsx`**
+Since `563bee1` they read the switch instead. `Privacy.jsx` and `Dpa.jsx` call
+the same `analyticsAllowed()` the app uses, so clause 7's provider row, clause
+14.2, DPA clause 5.2's sub-processor list, and now the two data-location
+clauses all follow the key automatically. There is nothing left to remember.
 
-- Clause 7, the provider table: the PostHog row says
-  "**Not currently in use**: the integration exists in the web app and the
-  scanner app but has no key configured, so nothing is sent to it." Replace
-  that with what it does, and put the real region in the Where column instead
-  of "None".
-- Clause 14.2: it currently says a product analytics integration "is built into
-  the application but is switched off and sends nothing". That sentence goes.
-  The bolded promise before it, that there is no third-party analytics that
-  profiles you, needs care: with `person_profiles: 'identified_only'` and no
-  `identify()` call anywhere in the app, no profile is built, so the sentence
-  can stand. **If anyone ever calls `posthog.identify()`, it becomes false.**
-- The header comment lists the facts that were checked rather than assumed.
-  Update the PostHog bullet.
+**One thing still has to be watched by hand.** Clause 14.2's promise that no
+third party builds a profile of you holds because `person_profiles` is
+`'identified_only'` and nothing calls `posthog.identify()`. **The day anyone
+adds an `identify()` call, that clause becomes false.**
 
-**`store-app/client/src/pages/Dpa.jsx`**
+## 5. Set the key — DONE
 
-- Clause 5.2 lists the sub-processors that actually process. Add PostHog with
-  what it does. Sentry is deliberately absent from this list because it is not
-  in use; PostHog belongs here only once it is.
+Vercel: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_POSTHOG_START`, all
+three non-sensitive on purpose — a `VITE_` variable is compiled into a public
+browser bundle, so marking it Sensitive hides it from nobody and only makes it
+unreadable to you later.
 
-## 5. Then set the key
+Two things that were wrong on the day and are worth knowing:
 
-Vercel: `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`, `VITE_POSTHOG_START`.
+- **`autocapture: false` does not switch off click tracking.** Heatmaps, dead
+  clicks, exception autocapture and surveys are four more config keys, each
+  defaulting to whatever the PostHog *dashboard* says, and that project had all
+  four on. They ran in production for about 25 minutes while `/privacy` told
+  customers click tracking was off. Pinned off in `main.jsx` in `fb5a406`.
+- **`us-assets.i.posthog.com` needs to be in `script-src`**, not just
+  `us.i.posthog.com` in `connect-src`. posthog-js fetches its remote config and
+  feature bundles from the assets host. Missing it filed four CSP violations
+  per pageview into `csp_violations`; Report-Only, so nothing broke, but
+  enforcing the policy later would have killed analytics silently.
 
-Confirm afterwards that events arrive, and that `connect-src` in the root
-`vercel.json` names the host you chose. The CSP is Report-Only, so a wrong host
-would still work while filling `csp_violations` with one row per pageview, and
-would then break silently the day the policy is enforced.
+To see what is really running, load the app with `?__posthog_debug=true` and
+read the console. Note that PostHog **silently discards every event from an
+automated browser** — Playwright trips all three of its bot signals, including
+`navigator.webdriver`, which is set even in headed mode — so a test harness can
+never confirm analytics works.
 
 ---
 
-## If you decide not to do it
+## If you decide to undo it
 
-Nothing needs undoing. The integration is inert, the legal pages are accurate
-as they stand, and no notice has gone out. Removing `posthog-js` and
+Clear `VITE_POSTHOG_KEY` (or move `VITE_POSTHOG_START` to a future date) and
+redeploy. The provider stops being mounted, and both legal pages revert to
+saying PostHog is not in use on their own. Removing `posthog-js` and
 `posthog-react-native` would be tidier, and the pages would then need the
-PostHog rows taken out.
+PostHog rows taken out by hand.

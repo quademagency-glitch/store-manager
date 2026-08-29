@@ -32,6 +32,25 @@ if (analyticsOn) {
        version of the same mistake. */
     autocapture: false,
     disable_session_recording: true,
+    /* The four below are NOT covered by `autocapture: false`. Each is its own
+       switch, each defaults to whatever PostHog's project settings say, and on
+       2026-08-29 the project said yes to all of them: a debug trace of the
+       live app logged "[Heatmaps] starting", "[Dead Clicks] starting" and
+       "[ExceptionAutocapture] enabled" within a second of load.
+
+       Heatmaps and dead clicks are click tracking — the exact thing the
+       privacy notice tells customers is switched off, and dead clicks carry
+       the text of the element clicked, which in an ERP is a customer or
+       product name. Exception autocapture ships error messages and stack
+       traces, which quote whatever the user was working on.
+
+       They are pinned here rather than in the PostHog dashboard for the same
+       reason the start date is: a checkbox in someone's dashboard should not
+       be able to silently make our published privacy notice untrue. */
+    capture_heatmaps: false,
+    capture_dead_clicks: false,
+    capture_exceptions: false,
+    disable_surveys: true,
   })
 }
 
@@ -59,9 +78,15 @@ const appTree = (
 )
 
 /* The provider is mounted only when analytics is allowed to run, rather than
-   mounted always and told to stay quiet. With it absent, usePostHog() returns
-   undefined and PostHogPageView's existing guard means nothing is captured,
-   so there is no path from "key set early" to "data sent". */
+   mounted always and told to stay quiet, so there is no path from "key set
+   early" to "data sent".
+
+   Note the mechanism is NOT that usePostHog() goes undefined without a
+   provider: posthog-js/react's context default returns the global instance,
+   so the hook always hands back an object and PostHogPageView's `if (posthog)`
+   guard always passes. What actually stops it is that posthog.init() never
+   runs, leaving __loaded false, and capture() returns at its own first guard.
+   The property holds; this comment used to give the wrong reason for it. */
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     {analyticsOn ? <PostHogProvider client={posthog}>{appTree}</PostHogProvider> : appTree}

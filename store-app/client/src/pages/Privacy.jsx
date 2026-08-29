@@ -20,6 +20,12 @@ import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../lega
  *   • Error reporting is wired but has no DSN configured, so nothing is sent.
  *     Clause 7 lists it as not in use rather than quietly omitting it. If a DSN
  *     is ever set, that row has to change on the same day.
+ *   • Product analytics (PostHog) is the same: installed in the client and the
+ *     scanner app, no key configured, nothing sent. Clause 7 and clause 14.2
+ *     both say so. Setting VITE_POSTHOG_KEY or EXPO_PUBLIC_POSTHOG_KEY makes
+ *     both of those statements false on the day it is set, and clause 5.3 of
+ *     the DPA requires 30 days' notice to business customers before a new
+ *     sub-processor starts processing. Enabling it is not a config change.
  *
  * It is not legal advice and no lawyer has reviewed it. The cheapest thing you
  * can do to make it stronger is register as a data controller with the Data
@@ -257,6 +263,11 @@ export default function Privacy() {
                   <td>Error reporting. <strong>Not currently in use</strong>: the integration exists but is not enabled, and no data is sent to it. If we enable it we will update this table first.</td>
                   <td>None</td>
                 </tr>
+                <tr>
+                  <td>PostHog</td>
+                  <td>Product analytics: which screens are opened and how often. <strong>Not currently in use</strong>: the integration exists in the web app and the scanner app but has no key configured, so nothing is sent to it. If we enable it we will update this table first, and give business customers the notice clause 5 of the Data Processing Agreement requires.</td>
+                  <td>None</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -406,8 +417,10 @@ export default function Privacy() {
         </Sub>
         <Sub n="14.2">
           <strong>We use no advertising or third-party tracking cookies, and no analytics that
-          profile you.</strong> Clearing browser storage signs you out and discards unsynchronised
-          offline data.
+          profile you.</strong> A product analytics integration is built into the application but is
+          switched off and sends nothing. It is listed in clause 7, and we will update this page
+          before it is ever enabled. Clearing browser storage signs you out and discards
+          unsynchronised offline data.
         </Sub>
       </Clause>
 

@@ -166,6 +166,13 @@ export default function Dpa() {
         <Sub n="6.1">
           The database and uploaded files are held in the European Union, in Supabase’s Stockholm
           region. Application hosting and email are also outside Ghana.
+          {ANALYTICS_LIVE && (
+            <>
+              {' '}
+              The usage data listed against PostHog in clause 5.2 is held in the United States
+              rather than the European Union.
+            </>
+          )}
         </Sub>
         <Sub n="6.2">
           You should assume, and tell your own customers and staff where you are required to, that

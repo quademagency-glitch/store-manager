@@ -675,21 +675,51 @@ async function sendCustomEmail(recipients, subject, htmlContent, gateway = null)
     return { success: true, simulated: true };
   }
 
-  try {
-    const { data, error } = await withRetry(
-      () => activeClient.emails.send({ from: fromEmail, to: recipients, subject, html: htmlContent }),
-      { label: `custom email "${subject}"` },
-    );
+  /* One message per recipient. This used to pass the whole array as `to`,
+     which puts every recipient's address in the To header of every copy, so a
+     single "All Businesses" broadcast would have disclosed the entire customer
+     list to the entire customer list. That is a personal-data breach under the
+     Data Protection Act, and the first send would have been the one that did
+     it, with no way to take it back.
 
-    if (error) {
-      logger.error({ err: error, subject }, 'Custom email failed');
-      return { success: false, error: error.message };
+     Resend's batch endpoint accepts up to 100 separate messages per call, so
+     this stays one request per 100 recipients rather than one per recipient. */
+  const BATCH_LIMIT = 100;
+  const sent = [];
+  const failed = [];
+
+  for (let i = 0; i < recipients.length; i += BATCH_LIMIT) {
+    const chunk = recipients.slice(i, i + BATCH_LIMIT);
+    try {
+      const { error } = await withRetry(
+        () => activeClient.batch.send(
+          chunk.map((to) => ({ from: fromEmail, to: [to], subject, html: htmlContent })),
+        ),
+        { label: `custom email "${subject}" (${chunk.length} recipients)` },
+      );
+
+      if (error) {
+        logger.error({ err: error, subject, count: chunk.length }, 'Custom email batch failed');
+        failed.push(...chunk);
+        continue;
+      }
+      sent.push(...chunk);
+    } catch (err) {
+      logger.error({ err, subject, count: chunk.length }, 'Custom email batch failed after retries');
+      failed.push(...chunk);
     }
-    return { success: true, messageId: data?.id, recipients };
-  } catch (err) {
-    logger.error({ err, subject }, 'Custom email failed after retries');
-    return { success: false, error: err.message };
   }
+
+  if (sent.length === 0) {
+    return { success: false, error: 'All recipients failed', sentCount: 0, failedCount: failed.length };
+  }
+  return {
+    success: true,
+    sentCount: sent.length,
+    failedCount: failed.length,
+    recipients: sent,
+    ...(failed.length ? { failedRecipients: failed } : {}),
+  };
 }
 
 /**

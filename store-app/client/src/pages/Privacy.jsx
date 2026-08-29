@@ -316,6 +316,14 @@ export default function Privacy() {
           <strong>Your data is not stored in Ghana.</strong> The database and uploaded files are
           held in Supabase’s European region, in Stockholm, Sweden. The application servers and
           email provider also operate outside Ghana.
+          {ANALYTICS_LIVE && (
+            <>
+              {' '}
+              <strong>Product analytics is the exception, and it is not in Europe.</strong> The
+              usage data described in the PostHog row of clause 7 is sent to the United States.
+              Your records themselves — customers, products, prices, sales — stay in Stockholm.
+            </>
+          )}
         </Sub>
         <Sub n="8.2">
           We say this plainly because it is the sort of thing people assume the other way round.

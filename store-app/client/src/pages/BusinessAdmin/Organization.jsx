@@ -241,6 +241,12 @@ export default function Organization() {
                     stays off until someone chooses here, because a rate typed
                     into the old dead box is not a decision to start charging
                     it. */}
+                {/* Hidden until the database has the columns. /businesses/me
+                    selects *, so the key is simply absent before migration 074
+                    is applied, and saving a setting that has nowhere to go
+                    would fail with a message about a column rather than
+                    anything a shop owner could act on. */}
+                {'tax_enabled' in (business || {}) && (
                 <div className="form-group">
                   <label htmlFor="org-tax-enabled">Sales Tax</label>
                   <select
@@ -257,6 +263,7 @@ export default function Organization() {
                     you charge; your accountant can tell you what that should be.
                   </p>
                 </div>
+                )}
 
                 {business.tax_enabled && (
                   <>

@@ -251,12 +251,36 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       }
     }
 
-    // Fetch business settings to know QR tracking mode
-    const { data: business } = await supabaseAdmin
-      .from('businesses')
-      .select('qr_tracking_mode, max_discount_percent, tax_enabled, tax_rate, tax_inclusive, tax_label')
-      .eq('id', req.user.business_id)
-      .single();
+    /* Fetch business settings to know QR tracking mode, and the tax settings
+       if this database has them.
+
+       Asked for in one round trip, with a fallback to the pre-074 column set.
+       Code deploys before a migration is applied, and if the tax columns are
+       missing PostgREST fails the whole select rather than returning the rest:
+       `business` would come back null and qr_tracking_mode with it, which
+       silently disables the serial-scanning enforcement that exists to stop
+       stock walking out. A failed sale is loud. That would have been quiet. */
+    let business = null;
+    let taxSettings = null;
+    {
+      const withTax = await supabaseAdmin
+        .from('businesses')
+        .select('qr_tracking_mode, max_discount_percent, tax_enabled, tax_rate, tax_inclusive, tax_label')
+        .eq('id', req.user.business_id)
+        .single();
+
+      if (!withTax.error) {
+        business = withTax.data;
+        taxSettings = withTax.data;
+      } else {
+        const basic = await supabaseAdmin
+          .from('businesses')
+          .select('qr_tracking_mode, max_discount_percent')
+          .eq('id', req.user.business_id)
+          .single();
+        business = basic.data;
+      }
+    }
 
     const isDoubleMode = business?.qr_tracking_mode === 'double';
 
@@ -271,9 +295,9 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
        shows the same figure because it applies the same rule for display. */
     const taxed = computeTax({
       total: total_amount || 0,
-      rate: business?.tax_rate,
-      enabled: business?.tax_enabled === true,
-      inclusive: business?.tax_inclusive !== false,
+      rate: taxSettings?.tax_rate,
+      enabled: taxSettings?.tax_enabled === true,
+      inclusive: taxSettings?.tax_inclusive !== false,
     });
 
     const receipt_number = 'RCPT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -451,12 +475,19 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       p_receipt_number: receipt_number,
       p_items: items,
       p_unit_ids: allUnitIds,
-      p_subtotal: taxed.subtotal,
-      p_tax_amount: taxed.tax,
-      /* Snapshotted, so a rate change next month does not restate this sale. */
-      p_tax_rate_applied: taxed.tax > 0 ? Number(business?.tax_rate) : null,
-      p_tax_inclusive_applied: taxed.tax > 0 ? business?.tax_inclusive !== false : null,
-      p_tax_label_applied: taxed.tax > 0 ? (business?.tax_label || 'VAT') : null
+      /* Only sent when there is tax to record. Tax can only be switched on
+         where the columns exist, so a database still on the ten-parameter
+         function is never handed the five it does not have. */
+      ...(taxed.tax > 0
+        ? {
+            p_subtotal: taxed.subtotal,
+            p_tax_amount: taxed.tax,
+            /* Snapshotted, so a rate change next month does not restate this sale. */
+            p_tax_rate_applied: Number(taxSettings?.tax_rate),
+            p_tax_inclusive_applied: taxSettings?.tax_inclusive !== false,
+            p_tax_label_applied: taxSettings?.tax_label || 'VAT',
+          }
+        : {}),
     });
 
     if (rpcError) {
@@ -612,9 +643,9 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
         subtotal: taxed.subtotal,
         tax: taxed.tax,
         total_amount: taxed.total,
-        tax_rate_applied: taxed.tax > 0 ? Number(business?.tax_rate) : null,
-        tax_inclusive_applied: taxed.tax > 0 ? business?.tax_inclusive !== false : null,
-        tax_label_applied: taxed.tax > 0 ? (business?.tax_label || 'VAT') : null,
+        tax_rate_applied: taxed.tax > 0 ? Number(taxSettings?.tax_rate) : null,
+        tax_inclusive_applied: taxed.tax > 0 ? taxSettings?.tax_inclusive !== false : null,
+        tax_label_applied: taxed.tax > 0 ? (taxSettings?.tax_label || 'VAT') : null,
       },
     });
   } catch (err) {

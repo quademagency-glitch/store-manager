@@ -139,9 +139,10 @@ export default function Dpa() {
         </Sub>
         <Sub n="5.2">
           Our current sub-processors are Supabase (database, authentication and file storage),
-          Railway (application hosting), Vercel (web application hosting and delivery) and Resend
-          (transactional email). Paystack processes your own billing data but does not process the
-          data covered by this agreement.
+          Railway (application hosting), Vercel (web application hosting and delivery), Resend
+          (transactional email) and PostHog (product analytics, in the United States, which records
+          which screens are opened and not what is on them). Paystack processes your own billing
+          data but does not process the data covered by this agreement.
         </Sub>
         <Sub n="5.3">
           We will give you at least 30 days’ notice by email before adding or replacing a

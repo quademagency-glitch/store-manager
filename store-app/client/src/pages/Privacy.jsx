@@ -20,16 +20,16 @@ import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../lega
  *   • Error reporting is wired but has no DSN configured, so nothing is sent.
  *     Clause 7 lists it as not in use rather than quietly omitting it. If a DSN
  *     is ever set, that row has to change on the same day.
- *   • Product analytics (PostHog) is the same: installed in the client and the
- *     scanner app, no key configured, nothing sent. Clause 7 and clause 14.2
- *     both say so, and clause 5.2 of the DPA leaves it out of the list of
- *     sub-processors that actually process. All three become wrong on the day
- *     it is switched on, and clause 5.3 of the DPA owes every business customer
- *     30 days' notice by email first. Enabling it is not a config change.
+ *   • Product analytics (PostHog) went live in production on 2026-08-29, by the
+ *     owner's decision. Clause 7, clause 14.2 and clause 5.2 of the DPA were
+ *     rewritten in the same deploy that switched it on, so no version of these
+ *     pages has ever described it wrongly.
  *
- *     It cannot be switched on by accident: analytics needs VITE_POSTHOG_START
- *     as well as a key, and does not start until that date arrives. The order
- *     of operations is written down in docs/legal/posthog-subprocessor-notice.md.
+ *     Two things it does NOT do, and clause 14.2 leans on both: autocapture is
+ *     disabled, so the text of clicked elements, which in this app is customer
+ *     and staff names, is never collected; and person_profiles is
+ *     'identified_only' with no identify() call anywhere, so no profile is
+ *     built. Adding posthog.identify() makes clause 14.2 false the same day.
  *
  * It is not legal advice and no lawyer has reviewed it. The cheapest thing you
  * can do to make it stronger is register as a data controller with the Data
@@ -269,8 +269,8 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>PostHog</td>
-                  <td>Product analytics: which screens are opened and how often. <strong>Not currently in use</strong>: the integration exists in the web app and the scanner app but has no key configured, so nothing is sent to it. If we enable it we will update this table first, and give business customers the notice clause 5 of the Data Processing Agreement requires.</td>
-                  <td>None</td>
+                  <td>Product analytics: which screens are opened and how often, with the approximate location taken from your IP address and your browser and device type. Page addresses are included and some contain the identifier of a record. It does not receive your customer records, your products, your prices or anything you type: click tracking and session recording are switched off.</td>
+                  <td>United States</td>
                 </tr>
               </tbody>
             </table>
@@ -420,11 +420,12 @@ export default function Privacy() {
           working when the connection drops. These are first-party and strictly functional.
         </Sub>
         <Sub n="14.2">
-          <strong>We use no advertising or third-party tracking cookies, and no analytics that
-          profile you.</strong> A product analytics integration is built into the application but is
-          switched off and sends nothing. It is listed in clause 7, and we will update this page
-          before it is ever enabled. Clearing browser storage signs you out and discards
-          unsynchronised offline data.
+          <strong>We use no advertising cookies and no third-party tracking cookies.</strong> We do
+          use product analytics, PostHog, listed in clause 7. It stores an identifier in your
+          browser so that repeated visits from the same browser are counted once rather than many
+          times, and it records which screens are opened, not what is on them: click tracking and
+          session recording are switched off, and no profile of you is built. Clearing browser
+          storage signs you out, discards unsynchronised offline data, and resets that identifier.
         </Sub>
       </Clause>
 

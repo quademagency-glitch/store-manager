@@ -22,10 +22,14 @@ import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../lega
  *     is ever set, that row has to change on the same day.
  *   • Product analytics (PostHog) is the same: installed in the client and the
  *     scanner app, no key configured, nothing sent. Clause 7 and clause 14.2
- *     both say so. Setting VITE_POSTHOG_KEY or EXPO_PUBLIC_POSTHOG_KEY makes
- *     both of those statements false on the day it is set, and clause 5.3 of
- *     the DPA requires 30 days' notice to business customers before a new
- *     sub-processor starts processing. Enabling it is not a config change.
+ *     both say so, and clause 5.2 of the DPA leaves it out of the list of
+ *     sub-processors that actually process. All three become wrong on the day
+ *     it is switched on, and clause 5.3 of the DPA owes every business customer
+ *     30 days' notice by email first. Enabling it is not a config change.
+ *
+ *     It cannot be switched on by accident: analytics needs VITE_POSTHOG_START
+ *     as well as a key, and does not start until that date arrives. The order
+ *     of operations is written down in docs/legal/posthog-subprocessor-notice.md.
  *
  * It is not legal advice and no lawyer has reviewed it. The cheapest thing you
  * can do to make it stronger is register as a data controller with the Data

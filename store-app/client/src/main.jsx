@@ -7,12 +7,31 @@ import { initErrorReporting } from './lib/errorReporting'
 import 'virtual:pwa-register'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
+import { analyticsAllowed } from './lib/analyticsGate'
 
-if (import.meta.env.VITE_POSTHOG_KEY) {
+/* Two conditions, not one. The key says analytics is configured; the start
+   date says the 30 days' notice the DPA owes every business customer has
+   actually elapsed. See lib/analyticsGate.js: enabling this is a legal change,
+   and a key pasted into a dashboard should not be able to make it. */
+const analyticsOn = analyticsAllowed(
+  import.meta.env.VITE_POSTHOG_KEY,
+  import.meta.env.VITE_POSTHOG_START,
+)
+
+if (analyticsOn) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
     api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
     person_profiles: 'identified_only',
     capture_pageview: false, // We handle this with React Router in App.jsx
+    /* Autocapture is on by default and records clicks along with the text of
+       the element clicked. This is an ERP: that text is customer names, staff
+       names, product lines and amounts, and it would be sent to a processor in
+       another country without anyone choosing to send it. Screens opened is
+       what the analytics is for, and it is all the notice to customers claims.
+       Session recording is off for the same reason, and is the more obvious
+       version of the same mistake. */
+    autocapture: false,
+    disable_session_recording: true,
   })
 }
 
@@ -33,12 +52,18 @@ if (import.meta.env.VITE_TEST_NONCE) {
 // crash's appearance depended on which one caught it. There is now one.
 initErrorReporting();
 
+const appTree = (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)
+
+/* The provider is mounted only when analytics is allowed to run, rather than
+   mounted always and told to stay quiet. With it absent, usePostHog() returns
+   undefined and PostHogPageView's existing guard means nothing is captured,
+   so there is no path from "key set early" to "data sent". */
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <PostHogProvider client={posthog}>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </PostHogProvider>
+    {analyticsOn ? <PostHogProvider client={posthog}>{appTree}</PostHogProvider> : appTree}
   </StrictMode>,
 )

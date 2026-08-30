@@ -24,6 +24,57 @@ const CUSTOMERS = [
   { id: 'c3', name: 'Esi Quartey', phone: '0205556677', email: 'esi.quartey@gmail.com', customer_code: 'CUST-0003', is_verified: false, created_at: T0 },
 ];
 
+/* Per-customer data for the customer detail page. Sales carry customer_id so
+   /sales?customer_id=<id> can be filtered, and sale_items so the "N item(s)"
+   column is not always zero. */
+const CUSTOMER_SALES = [
+  { id: 'sale1', receipt_number: 'DEMO-00412', customer_id: 'c1', total_amount: 248.5, payment_method: 'cash', status: 'completed', created_at: T0,
+    sale_items: [
+      { id: 'si1', quantity: 2, unit_price: 98, product: { id: 'p1', name: 'Perfumed Rice 5kg', sku: 'RICE-5KG' } },
+      { id: 'si2', quantity: 1, unit_price: 52.5, product: { id: 'p2', name: 'Frytol Cooking Oil 2L', sku: 'OIL-2L' } },
+    ] },
+  { id: 'sale4', receipt_number: 'DEMO-00409', customer_id: 'c1', total_amount: 461.5, payment_method: 'mobile', status: 'completed', created_at: '2026-07-30T09:15:00.000Z',
+    sale_items: [
+      { id: 'si3', quantity: 5, unit_price: 62, product: { id: 'p3', name: 'Milo Tin 400g', sku: 'MILO-400' } },
+      { id: 'si4', quantity: 3, unit_price: 50.5, product: { id: 'p4', name: 'Indomie Chicken (40 pack)', sku: 'INDO-40' } },
+    ] },
+  { id: 'sale2', receipt_number: 'DEMO-00411', customer_id: 'c2', total_amount: 96, payment_method: 'mobile', status: 'completed', created_at: T0,
+    sale_items: [
+      { id: 'si5', quantity: 6, unit_price: 16, product: { id: 'p5', name: 'Voltic Water 1.5L', sku: 'H2O-15' } },
+    ] },
+];
+
+/* Deposits and loyalty are MUTABLE, unlike every other fixture here.
+
+   A deposit or a withdrawal that leaves the balance where it was makes the
+   button look broken, which is the same failure the notification bell had:
+   correct code, harness making it look wrong. These write through so the
+   demo behaves like the product. State resets on reload, which is what a
+   fixture should do, and 'empty' mode still empties it on the way out. */
+const STORE_CREDIT = {
+  c1: { balance: 320, ledger: [
+    { id: 'sc1', type: 'issue', amount: 500, balance_after: 500, note: 'Cash deposit', created_at: '2026-07-28T10:00:00.000Z' },
+    { id: 'sc2', type: 'spend', amount: -180, balance_after: 320, note: 'Applied to DEMO-00412', created_at: T0 },
+  ] },
+  c2: { balance: 0, ledger: [] },
+  c3: { balance: 75.5, ledger: [
+    { id: 'sc3', type: 'issue', amount: 75.5, balance_after: 75.5, note: 'Refund to deposit', created_at: '2026-07-29T14:20:00.000Z' },
+  ] },
+};
+
+const LOYALTY = {
+  c1: { points: 248, ledger: [
+    { id: 'lp1', type: 'earn', points: 462, balance_after: 462, note: 'Sale DEMO-00409', created_at: '2026-07-30T09:15:00.000Z' },
+    { id: 'lp2', type: 'redeem', points: -214, balance_after: 248, note: 'Redeemed against DEMO-00412', created_at: T0 },
+  ] },
+  c2: { points: 96, ledger: [
+    { id: 'lp3', type: 'earn', points: 96, balance_after: 96, note: 'Sale DEMO-00411', created_at: T0 },
+  ] },
+  c3: { points: 0, ledger: [] },
+};
+
+const paged = (rows) => ({ data: rows, total: rows.length, page: 1, totalPages: 1 });
+
 const FIXTURES = {
   '/analytics/summary': { todaySalesTotal: 14382.5, totalProducts: 154, lowStockCount: 3, theftAlertsCount: 2 },
   '/analytics/sales-trend': [
@@ -493,7 +544,63 @@ const MISS = { hit: false, data: undefined };
  * state needs the real shape. These are the shapes the server actually sends;
  * check routes/customers.js before changing one.
  */
-const WRITE_FIXTURES = {
+/* Write a movement into the mutable deposit ledger and return the new state,
+   so the balance card and the ledger both change the moment the modal closes. */
+function applyStoreCredit(customerId, delta, note, type) {
+  const acct = STORE_CREDIT[customerId] || (STORE_CREDIT[customerId] = { balance: 0, ledger: [] });
+  acct.balance = Math.round((acct.balance + delta) * 100) / 100;
+  const entry = {
+    id: `sc-${acct.ledger.length + 1}-${customerId}`,
+    type,
+    amount: delta,
+    balance_after: acct.balance,
+    note,
+    created_at: T0,
+  };
+  acct.ledger = [entry, ...acct.ledger];
+  return { message: 'Store credit updated', balance: acct.balance, entry };
+}
+
+const ROUTE_FIXTURES = {
+  // ── Customer detail (routes/customers.js, routes/sales.js, routes/loyalty.js) ──
+  'GET /customers/:id': (_body, params) => CUSTOMERS.find((c) => c.id === params.id) || null,
+
+  /* The customer page asks for /sales?customer_id=<id>. Filtering on it is the
+     difference between a purchase history and a list of everyone's sales. */
+  'GET /sales': (_body, _params, query) => paged(
+    query.customer_id
+      ? CUSTOMER_SALES.filter((sale) => sale.customer_id === query.customer_id)
+      : CUSTOMER_SALES,
+  ),
+
+  'GET /loyalty/balance/:customerId': (_b, p) => ({
+    customer_id: p.customerId,
+    points: (LOYALTY[p.customerId] || { points: 0 }).points,
+  }),
+  'GET /loyalty/ledger/:customerId': (_b, p) => paged((LOYALTY[p.customerId] || { ledger: [] }).ledger),
+
+  'GET /loyalty/store-credit/:customerId': (_b, p) => ({
+    customer_id: p.customerId,
+    balance: (STORE_CREDIT[p.customerId] || { balance: 0 }).balance,
+  }),
+  'GET /loyalty/store-credit/:customerId/ledger': (_b, p) =>
+    paged((STORE_CREDIT[p.customerId] || { ledger: [] }).ledger),
+
+  /* The harness has no SMS, so any 4-digit code is accepted here. The real
+     endpoint checks it against verification_code and its expiry; what is
+     mocked is the outcome, not the check. */
+  'POST /customers/:id/send-verification': () => ({ message: 'Verification code sent successfully' }),
+  'POST /customers/:id/verify': (_body, params) => {
+    const customer = CUSTOMERS.find((c) => c.id === params.id);
+    if (customer) customer.is_verified = true;
+    return { message: 'Customer verified successfully' };
+  },
+
+  'POST /loyalty/store-credit': (body) =>
+    applyStoreCredit(body.customer_id, Math.abs(Number(body.amount) || 0), body.note || 'Cash deposit', 'issue'),
+  'POST /loyalty/store-credit/withdraw': (body) =>
+    applyStoreCredit(body.customer_id, -Math.abs(Number(body.amount) || 0), body.note || 'Cash withdrawal', 'withdraw'),
+
   'POST /customers': (body) => ({
     message: 'Customer created successfully and OTP sent',
     customer: {
@@ -518,15 +625,15 @@ const WRITE_FIXTURES = {
   }),
 };
 
-/** Match "METHOD /a/b" against the WRITE_FIXTURES patterns, capturing params. */
-function matchWriteFixture(method, path) {
+/** Match "METHOD /a/b" against the ROUTE_FIXTURES patterns, capturing params. */
+function matchRouteFixture(method, path) {
   const exact = `${method} ${path}`;
-  if (Object.prototype.hasOwnProperty.call(WRITE_FIXTURES, exact)) {
-    return { make: WRITE_FIXTURES[exact], params: {} };
+  if (Object.prototype.hasOwnProperty.call(ROUTE_FIXTURES, exact)) {
+    return { make: ROUTE_FIXTURES[exact], params: {} };
   }
 
   const parts = path.split('/');
-  for (const [pattern, make] of Object.entries(WRITE_FIXTURES)) {
+  for (const [pattern, make] of Object.entries(ROUTE_FIXTURES)) {
     const [patMethod, patPath] = pattern.split(' ');
     if (patMethod !== method) continue;
     const patParts = patPath.split('/');
@@ -558,7 +665,13 @@ function matchWriteFixture(method, path) {
  * be exercised across the app without hand-building scenarios.
  */
 export function resolveMock(endpoint, method = 'GET', body = undefined) {
-  const path = String(endpoint).split('?')[0].replace(/\/+$/, '') || '/';
+  const raw = String(endpoint);
+  const path = raw.split('?')[0].replace(/\/+$/, '') || '/';
+  /* The query is stripped from the path for matching but handed to the
+     factory, because some fixtures genuinely depend on it: the customer page
+     asks for /sales?customer_id=<id>, and a purchase history that ignored it
+     would list other people's sales. */
+  const query = Object.fromEntries(new URLSearchParams(raw.split('?')[1] || ''));
 
   /* A write with no fixture is acknowledged rather than left to fall through.
      The harness has no Supabase session, so anything reaching the real network
@@ -574,11 +687,27 @@ export function resolveMock(endpoint, method = 'GET', body = undefined) {
      GET is deliberately excluded: a read with no fixture is a genuine gap and
      must keep warning below, or a page quietly renders an empty state instead
      of its data and the baseline records the wrong thing. */
+  /* Exact reads win over patterns, deliberately. /customers/search and
+     /customers/<id> are the same shape, so a `GET /customers/:id` pattern
+     would otherwise swallow the search endpoint and answer it with a single
+     customer. Precedence here means a pattern can never shadow a real
+     fixture, whatever order the tables happen to be written in. */
+  if (method === 'GET' && Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
+    const exact = FIXTURES[path];
+    return { hit: true, data: MOCK_MODE === 'empty' ? emptyLike(exact) : exact };
+  }
+
+  /* Patterns answer for reads as well as writes. FIXTURES is an exact-path
+     table, so it could never answer /customers/<id>, /loyalty/balance/<id> or
+     the other per-record reads the customer page makes: all six missed, and
+     the page rendered "Customer not found". */
+  const route = matchRouteFixture(method, path);
+  if (route) {
+    const data = route.make(body || {}, route.params, query);
+    return { hit: true, data: MOCK_MODE === 'empty' ? emptyLike(data) : data };
+  }
+
   if (method !== 'GET') {
-    const write = matchWriteFixture(method, path);
-    if (write) {
-      return { hit: true, data: write.make(body || {}, write.params) };
-    }
     /* Unconditional, where this used to fall through to the GET fixture when
        the path happened to have one. Returning a list to a create is worse
        than returning nothing: the caller reads a field off it, gets undefined
@@ -586,20 +715,13 @@ export function resolveMock(endpoint, method = 'GET', body = undefined) {
     return { hit: true, data: { ok: true, mocked: true } };
   }
 
-  if (!Object.prototype.hasOwnProperty.call(FIXTURES, path)) {
-    /* A miss falls through to the real network path in api.js, which has no
-       session under the harness and throws "No authentication token found", so the page screenshots its *error* state and the baseline records a red
-       banner instead of the UI. That is silent today: the thrown error names
-       no endpoint. Name it here so a gap is obvious rather than mysterious. */
-    console.warn(`[mock] no fixture for ${path}, page will render its error state`);
-    return MISS;
-  }
-
-  const data = FIXTURES[path];
-  if (MOCK_MODE === 'empty') {
-    return { hit: true, data: emptyLike(data) };
-  }
-  return { hit: true, data };
+  /* A miss falls through to the real network path in api.js, which has no
+     session under the harness and throws "No authentication token found", so
+     the page screenshots its *error* state and the baseline records a red
+     banner instead of the UI. That is silent today: the thrown error names no
+     endpoint. Name it here so a gap is obvious rather than mysterious. */
+  console.warn(`[mock] no fixture for ${path}, page will render its error state`);
+  return MISS;
 }
 
 /**

@@ -56,6 +56,11 @@ export default function CustomerDetail() {
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', note: '', code: '', location_id: '' });
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
 
+  const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+  const [verifyStep, setVerifyStep] = useState(1);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
+
   const [locations, setLocations] = useState([]);
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
@@ -224,6 +229,42 @@ export default function CustomerDetail() {
     }
   };
 
+  /* Verification had no route in from this page. is_verified was rendered only
+     when true, so an unverified customer looked identical to one whose badge
+     had failed to render, and the only caller of send-verification was the
+     withdrawal flow: a customer could not be verified without withdrawing
+     money. Same two-step code exchange, on its own. */
+  const handleSendVerification = async () => {
+    setIsSubmittingVerify(true);
+    try {
+      await api.post(`/customers/${id}/send-verification`);
+      setVerifyStep(2);
+      toast.success('Verification code sent.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to send verification code');
+    } finally {
+      setIsSubmittingVerify(false);
+    }
+  };
+
+  const handleConfirmVerification = async (e) => {
+    e.preventDefault();
+    if (!verifyCode) return;
+    setIsSubmittingVerify(true);
+    try {
+      await api.post(`/customers/${id}/verify`, { code: verifyCode });
+      await loadCustomer();
+      setIsVerifyOpen(false);
+      setVerifyStep(1);
+      setVerifyCode('');
+      toast.success('Customer verified.');
+    } catch (err) {
+      toast.error(err.message || 'Could not verify. Check the code and try again.');
+    } finally {
+      setIsSubmittingVerify(false);
+    }
+  };
+
   const handleRecordPayment = async (payload) => {
     setIsSubmittingPayment(true);
     const res = await ar.recordPayment(paymentTarget.id, payload);
@@ -264,8 +305,10 @@ export default function CustomerDetail() {
 
       <PageHeader
         title={customer.name}
-        badge={customer.is_verified && (
+        badge={customer.is_verified ? (
           <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Verified ✓</span>
+        ) : (
+          <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>Unverified</span>
         )}
         subtitle={
           <>
@@ -275,6 +318,11 @@ export default function CustomerDetail() {
         }
         actions={canEdit && (
           <>
+            {!customer.is_verified && (
+              <button className="btn btn-primary" onClick={() => { setVerifyStep(1); setVerifyCode(''); setIsVerifyOpen(true); }}>
+                Verify Customer
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={openEditModal}>Edit</button>
             <button className="btn btn-outline text-error" onClick={handleDelete}>Delete</button>
           </>
@@ -555,6 +603,53 @@ export default function CustomerDetail() {
             <button type="submit" className="btn btn-primary">Save</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isVerifyOpen}
+        onClose={() => { setIsVerifyOpen(false); setVerifyStep(1); }}
+        title="Verify Customer"
+      >
+        {verifyStep === 1 ? (
+          <div>
+            <p className="text-muted mb-lg">
+              We will send a 4-digit code by SMS to {customer.phone}. Ask the customer to read it
+              back to you, then enter it on the next step.
+            </p>
+            <div className="modal-actions mt-xl flex justify-end gap-md">
+              <button type="button" className="btn btn-outline" onClick={() => setIsVerifyOpen(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleSendVerification} disabled={isSubmittingVerify}>
+                {isSubmittingVerify ? 'Sending SMS...' : 'Send Code'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleConfirmVerification}>
+            <div className="alert alert-info mb-lg">
+              An SMS with a 4-digit code has been sent to {customer.phone}.
+            </div>
+            <div className="form-group">
+              <label>Verification Code *</label>
+              <input
+                type="text"
+                maxLength="4"
+                className="input"
+                style={{ fontSize: '1.5rem', letterSpacing: '0.5em', textAlign: 'center', fontFamily: 'monospace' }}
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value)}
+                required
+                autoFocus
+                placeholder="0000"
+              />
+            </div>
+            <div className="modal-actions mt-xl flex justify-end gap-md">
+              <button type="button" className="btn btn-outline" onClick={() => setVerifyStep(1)}>Back</button>
+              <button type="submit" className="btn btn-primary" disabled={isSubmittingVerify || verifyCode.length !== 4}>
+                {isSubmittingVerify ? 'Verifying...' : 'Confirm'}
+              </button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       <Modal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} title="Deposit Funds">

@@ -45,12 +45,24 @@ export const APP_ROUTES: Route[] = [
        which is also the shortest real path a cashier takes. */
     prepare: async (page) => {
       const tiles = page.locator('.product-card');
+      /* Wait for the catalogue before counting it. count() on a grid that has
+         not rendered returns 0, so taps became 0, every click was skipped and
+         the screenshot captured an empty cart, which is the picture this
+         prepare step exists to avoid. It depended on whether the fixture had
+         painted yet, so the same test disagreed with itself between attempts
+         by 72,000 pixels and no baseline could ever be stable. */
+      await tiles.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const taps = Math.min(await tiles.count(), 3);
       for (let i = 0; i < taps; i++) {
         await tiles.nth(i).click();
         // Each click appends a scan row; let React commit before the next.
         await page.waitForTimeout(120);
       }
+
+      /* Fail loudly rather than recording the empty state a second time: the
+         cart's empty placeholder must be gone once items are in it. */
+      await page.locator('.cart-empty').waitFor({ state: 'detached', timeout: 10000 });
     },
   },
   { path: '/sales-record', name: '04-sales-record' },

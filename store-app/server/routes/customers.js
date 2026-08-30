@@ -230,7 +230,7 @@ router.put('/:id', authGuard, async (req, res) => {
     }
 
     const customerId = req.params.id;
-    const { name, phone } = req.body;
+    const { name, phone, email, credit_limit } = req.body;
 
     // Verify ownership
     const { data: existing, error: fetchError } = await supabaseAdmin
@@ -257,15 +257,55 @@ router.put('/:id', authGuard, async (req, res) => {
       }
     }
 
-    const updatePayload = { name };
+    /* Only what was sent. This built `{ name }` unconditionally, so a caller
+       updating one field would have blanked the name with undefined. Nothing
+       does that today because the form always posts both, which is the kind of
+       thing that stays true right up until it doesn't. */
+    const updatePayload = {};
+    if (name !== undefined) updatePayload.name = name;
     if (normalizedPhone) updatePayload.phone = normalizedPhone;
+    if (email !== undefined) updatePayload.email = email === '' ? null : email;
 
-    const { data, error } = await supabaseAdmin
+    /* NULL clears the limit back to "no limit set", which is not the same as a
+       limit of 0. The form sends '' for cleared and a number otherwise. */
+    if (credit_limit !== undefined) {
+      if (credit_limit === '' || credit_limit === null) {
+        updatePayload.credit_limit = null;
+      } else {
+        const limit = Number(credit_limit);
+        if (!Number.isFinite(limit) || limit < 0) {
+          return res.status(400).json({ error: 'Credit limit must be a number of 0 or more, or left blank for no limit.' });
+        }
+        updatePayload.credit_limit = limit;
+      }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update.' });
+    }
+
+    let { data, error } = await supabaseAdmin
       .from('customers')
       .update(updatePayload)
       .eq('id', customerId)
       .select()
       .single();
+
+    /* Migration 075 adds credit_limit. Until it has run, PostgREST rejects the
+       whole update because of that one key, so an edit of the name would fail
+       for a reason the user cannot act on. Drop the column and retry rather
+       than 500. Deploying code that needs an unapplied migration has taken
+       sales down here before; this is the compatibility that was missing. */
+    if (error && (error.code === 'PGRST204' || error.code === '42703') && 'credit_limit' in updatePayload) {
+      logger.warn('credit_limit column missing, migration 075 has not run; saving the rest');
+      delete updatePayload.credit_limit;
+      ({ data, error } = await supabaseAdmin
+        .from('customers')
+        .update(updatePayload)
+        .eq('id', customerId)
+        .select()
+        .single());
+    }
 
     if (error) {
       if (error.code === '23505') {
@@ -450,6 +490,238 @@ router.post('/:id/verify', authGuard, async (req, res) => {
   } catch (err) {
     logger.error({ err: err }, 'Error verifying customer:');
     res.status(500).json({ error: 'Failed to verify customer' });
+  }
+});
+
+/* Ownership check shared by the routes below. Every handler in this file
+   repeats this; these are the new ones, so they share it. Returns the customer
+   row on success, or null after having already answered the request. */
+async function loadOwnedCustomer(req, res, columns = 'id, business_id, name') {
+  const { data, error } = await supabaseAdmin
+    .from('customers')
+    .select(columns)
+    .eq('id', req.params.id)
+    .single();
+
+  if (error || !data) {
+    res.status(404).json({ error: 'Customer not found' });
+    return null;
+  }
+  if (req.user.role !== 'Platform Admin' && data.business_id !== req.user.business_id) {
+    res.status(403).json({ error: 'Unauthorized' });
+    return null;
+  }
+  return data;
+}
+
+/* Migration 075 creates customer_notes. Until it runs, PostgREST answers with
+   42P01 (undefined_table). Notes then read as empty and writing one says so,
+   rather than the page showing a 500 nobody can act on. */
+const MISSING_TABLE = (error) => error && (error.code === '42P01' || error.code === 'PGRST205');
+
+/**
+ * GET /api/customers/:id/notes
+ * Staff notes against a customer, newest first.
+ */
+router.get('/:id/notes', authGuard, async (req, res) => {
+  try {
+    const customer = await loadOwnedCustomer(req, res);
+    if (!customer) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('customer_notes')
+      .select('id, body, created_at, author:users!author_user_id(id, name)')
+      .eq('customer_id', req.params.id)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (MISSING_TABLE(error)) return res.json({ data: [], pending_migration: true });
+    if (error) throw error;
+
+    res.json({ data: data || [] });
+  } catch (err) {
+    logger.error({ err }, 'Error fetching customer notes:');
+    res.status(500).json({ error: 'Failed to load notes' });
+  }
+});
+
+/**
+ * POST /api/customers/:id/notes
+ * Add a note. The author and the tenant come from the session, never the body.
+ */
+router.post('/:id/notes', authGuard, async (req, res) => {
+  try {
+    const customer = await loadOwnedCustomer(req, res);
+    if (!customer) return;
+
+    const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    if (!body) return res.status(400).json({ error: 'A note cannot be empty.' });
+    if (body.length > 2000) return res.status(400).json({ error: 'A note cannot be longer than 2000 characters.' });
+
+    const { data, error } = await supabaseAdmin
+      .from('customer_notes')
+      .insert([{
+        business_id: customer.business_id,
+        customer_id: req.params.id,
+        author_user_id: req.user.id,
+        body,
+      }])
+      .select('id, body, created_at, author:users!author_user_id(id, name)')
+      .single();
+
+    if (MISSING_TABLE(error)) {
+      return res.status(503).json({ error: 'Notes are not available yet. Migration 075 has not been applied.' });
+    }
+    if (error) throw error;
+
+    res.status(201).json({ message: 'Note added', note: data });
+  } catch (err) {
+    logger.error({ err }, 'Error adding customer note:');
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+/**
+ * DELETE /api/customers/:id/notes/:noteId
+ * Business Admins only. There is deliberately no update: a note is a record of
+ * what was agreed, and one that can be reworded later is not.
+ */
+router.delete('/:id/notes/:noteId', authGuard, async (req, res) => {
+  try {
+    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
+      return res.status(403).json({ error: 'Only Business Admins can delete notes.' });
+    }
+    const customer = await loadOwnedCustomer(req, res);
+    if (!customer) return;
+
+    const { error } = await supabaseAdmin
+      .from('customer_notes')
+      .delete()
+      .eq('id', req.params.noteId)
+      .eq('customer_id', req.params.id);
+
+    if (MISSING_TABLE(error)) return res.status(503).json({ error: 'Notes are not available yet.' });
+    if (error) throw error;
+
+    res.json({ message: 'Note deleted' });
+  } catch (err) {
+    logger.error({ err }, 'Error deleting customer note:');
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
+/**
+ * GET /api/customers/:id/statement?from=YYYY-MM-DD&to=YYYY-MM-DD
+ *
+ * The money relationship with one customer over a period: what they bought,
+ * what they have on deposit with the shop, and what they still owe on credit.
+ *
+ * Purchases count completed and void_pending, matching the reports. A void
+ * that is still awaiting approval is revenue until somebody approves it, and a
+ * statement that disagreed with the sales report would be the more confusing
+ * of the two documents.
+ */
+router.get('/:id/statement', authGuard, async (req, res) => {
+  try {
+    /* `*` rather than a column list on purpose: credit_limit only exists once
+       migration 075 has run, and naming a missing column fails the whole
+       select in PostgREST rather than omitting it. */
+    const customer = await loadOwnedCustomer(req, res, '*');
+    if (!customer) return;
+
+    /* Defaults to the last 90 days. `to` is inclusive of the whole day, so it
+       is pushed to the next midnight rather than compared against a date at
+       00:00, which would silently drop everything that happened on the last
+       day of the period. */
+    const to = req.query.to ? new Date(req.query.to) : new Date();
+    const from = req.query.from
+      ? new Date(req.query.from)
+      : new Date(to.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      return res.status(400).json({ error: 'Invalid from or to date.' });
+    }
+    if (from > to) {
+      return res.status(400).json({ error: 'The start of the period is after its end.' });
+    }
+    const toExclusive = new Date(to.getTime());
+    toExclusive.setHours(23, 59, 59, 999);
+
+    const range = (q) => q.gte('created_at', from.toISOString()).lte('created_at', toExclusive.toISOString());
+
+    const [purchasesR, depositsR, invoicesR] = await Promise.all([
+      range(supabaseAdmin
+        .from('sales')
+        .select('id, receipt_number, total_amount, payment_method, status, created_at')
+        .eq('customer_id', req.params.id)
+        .in('status', ['completed', 'void_pending']))
+        .order('created_at', { ascending: false }),
+      range(supabaseAdmin
+        .from('store_credit_ledger')
+        .select('id, type, amount, balance_after, note, created_at')
+        .eq('customer_id', req.params.id))
+        .order('created_at', { ascending: false }),
+      /* Deliberately NOT period-filtered. Purchases and deposits above are
+         movements within the window; the receivables section is the balance as
+         it stands, which is the number anyone reads a statement to find. An
+         invoice raised last year and still unpaid belongs on today's statement,
+         and filtering it out would show a customer as owing nothing. The
+         response labels this `asAtDate` so the two are not confused. */
+      supabaseAdmin
+        .from('ar_invoices')
+        .select('id, invoice_number, description, total_amount, amount_paid, status, issued_date, due_date, created_at')
+        .eq('customer_id', req.params.id)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (purchasesR.error) throw purchasesR.error;
+    if (depositsR.error) throw depositsR.error;
+    if (invoicesR.error) throw invoicesR.error;
+
+    const purchases = purchasesR.data || [];
+    const deposits = depositsR.data || [];
+    const invoices = (invoicesR.data || []).filter((inv) => inv.status !== 'void');
+
+    const sum = (rows, pick) => rows.reduce((acc, row) => acc + (Number(pick(row)) || 0), 0);
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    /* The deposit balance is taken from the latest ledger row's balance_after,
+       not by summing the movements in the period: the period is a window, and
+       summing inside it would report the change rather than the balance. */
+    const latestDeposit = deposits[0];
+    const depositBalance = latestDeposit ? Number(latestDeposit.balance_after) || 0 : null;
+
+    const arOutstanding = round2(sum(invoices, (i) => i.total_amount) - sum(invoices, (i) => i.amount_paid));
+
+    res.json({
+      customer,
+      period: {
+        from: from.toISOString(),
+        to: toExclusive.toISOString(),
+        // Purchases and deposits are movements in [from, to]. Receivables and
+        // the deposit balance are as at now, whatever the window says.
+        asAtDate: new Date().toISOString(),
+      },
+      summary: {
+        purchaseCount: purchases.length,
+        purchaseTotal: round2(sum(purchases, (p) => p.total_amount)),
+        depositsIn: round2(sum(deposits.filter((d) => Number(d.amount) > 0), (d) => d.amount)),
+        depositsOut: round2(Math.abs(sum(deposits.filter((d) => Number(d.amount) < 0), (d) => d.amount))),
+        /* null, not 0: no ledger row at all means this customer has never had
+           a deposit account, which is not the same as one holding nothing. */
+        depositBalance,
+        creditLimit: customer.credit_limit ?? null,
+        arInvoiced: round2(sum(invoices, (i) => i.total_amount)),
+        arPaid: round2(sum(invoices, (i) => i.amount_paid)),
+        arOutstanding,
+      },
+      purchases,
+      deposits,
+      receivables: invoices,
+    });
+  } catch (err) {
+    logger.error({ err }, 'Error building customer statement:');
+    res.status(500).json({ error: 'Failed to build statement' });
   }
 });
 

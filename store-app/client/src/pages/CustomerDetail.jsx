@@ -18,6 +18,7 @@ const TABS = [
   { key: 'credit', label: 'Credit (AR)', permission: 'manage_financials' },
   { key: 'store_credit', label: 'Deposits' },
   { key: 'loyalty', label: 'Loyalty Points' },
+  { key: 'notes', label: 'Notes' },
 ];
 
 export default function CustomerDetail() {
@@ -28,7 +29,7 @@ export default function CustomerDetail() {
   const confirm = useConfirm();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
 
-  const { business } = usePrintDocument();
+  const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
 
   const { fetchCustomer, updateCustomer, deleteCustomer } = useCustomers();
@@ -44,8 +45,14 @@ export default function CustomerDetail() {
 
   const [storeCreditLedger, setStoreCreditLedger] = useState([]);
 
+  const [notes, setNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesPending, setNotesPending] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', phone: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', credit_limit: '' });
 
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [depositForm, setDepositForm] = useState({ amount: '', note: '' });
@@ -60,6 +67,11 @@ export default function CustomerDetail() {
   const [verifyStep, setVerifyStep] = useState(1);
   const [verifyCode, setVerifyCode] = useState('');
   const [isSubmittingVerify, setIsSubmittingVerify] = useState(false);
+
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
+  const [statement, setStatement] = useState(null);
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementRange, setStatementRange] = useState({ from: '', to: '' });
 
   const [locations, setLocations] = useState([]);
   const [paymentTarget, setPaymentTarget] = useState(null);
@@ -97,10 +109,27 @@ export default function CustomerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const loadNotes = useCallback(async () => {
+    setNotesLoading(true);
+    try {
+      const data = await api.get(`/customers/${id}/notes`);
+      setNotes(data.data || []);
+      /* The server says so explicitly rather than us inferring it from an
+         empty list, which would show the same thing for "no notes yet". */
+      setNotesPending(!!data.pending_migration);
+    } catch {
+      setNotes([]);
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => { loadCustomer(); }, [loadCustomer]);
   useEffect(() => { loadSales(); }, [loadSales]);
   useEffect(() => { loadStoreCredit(); }, [loadStoreCredit]);
   useEffect(() => { loyalty.fetchBalance(id); loyalty.fetchLedger(id); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (activeTab === 'notes') loadNotes(); }, [activeTab, loadNotes]);
 
   useEffect(() => {
     if (activeTab === 'credit' && hasPermission('manage_financials')) {
@@ -135,7 +164,17 @@ export default function CustomerDetail() {
   }, [locations]);
 
   const openEditModal = () => {
-    setEditForm({ name: customer.name, phone: customer.phone });
+    setEditForm({
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email || '',
+      /* '' is "no limit", which is not 0. The server reads a blank as NULL and
+         a 0 as "this customer pays cash", so the two must stay distinguishable
+         all the way through the form. */
+      credit_limit: customer.credit_limit === null || customer.credit_limit === undefined
+        ? ''
+        : String(customer.credit_limit),
+    });
     setIsEditOpen(true);
   };
 
@@ -143,7 +182,11 @@ export default function CustomerDetail() {
     e.preventDefault();
     const res = await updateCustomer(id, editForm);
     if (res.success) {
-      setCustomer(prev => ({ ...prev, ...editForm }));
+      setCustomer(prev => ({
+        ...prev,
+        ...editForm,
+        credit_limit: editForm.credit_limit === '' ? null : Number(editForm.credit_limit),
+      }));
       setIsEditOpen(false);
       toast.success('Customer updated.');
     } else {
@@ -265,6 +308,61 @@ export default function CustomerDetail() {
     }
   };
 
+  const handleAddNote = async (e) => {
+    e.preventDefault();
+    const body = noteDraft.trim();
+    if (!body) return;
+    setIsSavingNote(true);
+    try {
+      await api.post(`/customers/${id}/notes`, { body });
+      setNoteDraft('');
+      await loadNotes();
+      toast.success('Note added.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to add note');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    const ok = await confirm({
+      title: 'Delete this note?',
+      message: 'Notes are a record of what was agreed with the customer. This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/customers/${id}/notes/${noteId}`);
+      await loadNotes();
+      toast.success('Note deleted.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete note');
+    }
+  };
+
+  const loadStatement = async (range = statementRange) => {
+    setStatementLoading(true);
+    try {
+      const qs = new URLSearchParams();
+      if (range.from) qs.set('from', range.from);
+      if (range.to) qs.set('to', range.to);
+      const suffix = qs.toString() ? `?${qs}` : '';
+      setStatement(await api.get(`/customers/${id}/statement${suffix}`));
+    } catch (err) {
+      toast.error(err.message || 'Failed to build the statement');
+      setStatement(null);
+    } finally {
+      setStatementLoading(false);
+    }
+  };
+
+  const openStatement = () => {
+    setIsStatementOpen(true);
+    loadStatement();
+  };
+
   const handleRecordPayment = async (payload) => {
     setIsSubmittingPayment(true);
     const res = await ar.recordPayment(paymentTarget.id, payload);
@@ -298,6 +396,8 @@ export default function CustomerDetail() {
 
   const totalSpent = sales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
   const arOutstanding = ar.documents.reduce((sum, d) => sum + (Number(d.total_amount) - Number(d.amount_paid)), 0);
+  const hasCreditLimit = customer.credit_limit !== null && customer.credit_limit !== undefined;
+  const overLimit = hasCreditLimit && arOutstanding > Number(customer.credit_limit);
 
   return (
     <div>
@@ -316,17 +416,25 @@ export default function CustomerDetail() {
             {new Date(customer.created_at).toLocaleDateString()}
           </>
         }
-        actions={canEdit && (
+        actions={
           <>
-            {!customer.is_verified && (
-              <button className="btn btn-primary" onClick={() => { setVerifyStep(1); setVerifyCode(''); setIsVerifyOpen(true); }}>
-                Verify Customer
-              </button>
+            {/* Printing a statement is a read. Gating it behind canEdit meant
+                a cashier could see every figure on this page and not be able
+                to hand the customer a copy of them. */}
+            <button className="btn btn-secondary" onClick={openStatement}>Statement</button>
+            {canEdit && (
+              <>
+                {!customer.is_verified && (
+                  <button className="btn btn-primary" onClick={() => { setVerifyStep(1); setVerifyCode(''); setIsVerifyOpen(true); }}>
+                    Verify Customer
+                  </button>
+                )}
+                <button className="btn btn-secondary" onClick={openEditModal}>Edit</button>
+                <button className="btn btn-outline text-error" onClick={handleDelete}>Delete</button>
+              </>
             )}
-            <button className="btn btn-secondary" onClick={openEditModal}>Edit</button>
-            <button className="btn btn-outline text-error" onClick={handleDelete}>Delete</button>
           </>
-        )}
+        }
       />
 
       <div className="stats-grid mt-xl mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-lg)' }}>
@@ -349,7 +457,18 @@ export default function CustomerDetail() {
         {hasPermission('manage_financials') && (
           <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
             <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Outstanding Credit (AR)</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(arOutstanding)}</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px', color: overLimit ? 'var(--color-error)' : undefined }}>
+              {fmt(arOutstanding)}
+            </div>
+            {/* A limit of 0 is a real setting and has to render, so this tests
+                for null rather than falsiness. */}
+            {hasCreditLimit ? (
+              <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                {overLimit ? 'over' : 'of'} {fmt(customer.credit_limit)} limit
+              </div>
+            ) : (
+              <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>No credit limit set</div>
+            )}
           </div>
         )}
       </div>
@@ -588,6 +707,192 @@ export default function CustomerDetail() {
         </div>
       </TabPanel>
 
+      <TabPanel idPrefix="customer" id="notes" value={activeTab}>
+        <div className="glass-panel">
+          {notesPending ? (
+            <p className="text-muted" style={{ padding: 'var(--space-lg)' }}>
+              Notes need migration 075, which has not been applied to this database yet.
+            </p>
+          ) : (
+            <>
+              <form onSubmit={handleAddNote} style={{ padding: 'var(--space-lg)', borderBottom: '1px solid var(--color-border)' }}>
+                <div className="form-group">
+                  <label htmlFor="customer-note">Add a note</label>
+                  <textarea
+                    id="customer-note"
+                    className="input"
+                    rows={3}
+                    maxLength={2000}
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    placeholder="What was agreed, what to follow up, anything the next person at the counter should know."
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={isSavingNote || !noteDraft.trim()}>
+                    {isSavingNote ? 'Saving...' : 'Add Note'}
+                  </button>
+                </div>
+              </form>
+
+              {notesLoading ? (
+                <p className="text-muted" style={{ padding: 'var(--space-lg)' }}>Loading notes...</p>
+              ) : notes.length === 0 ? (
+                <p className="text-muted" style={{ padding: 'var(--space-lg)' }}>No notes yet.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {notes.map(note => (
+                    <li key={note.id} style={{ padding: 'var(--space-lg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-md)' }}>
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{note.body}</div>
+                        {canEdit && (
+                          <button
+                            className="btn btn-sm btn-outline text-error"
+                            onClick={() => handleDeleteNote(note.id)}
+                            aria-label="Delete note"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '6px' }}>
+                        {/* The author is null once that user is deleted; the note is still true. */}
+                        {note.author?.name || 'Removed user'} · {new Date(note.created_at).toLocaleString()}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </TabPanel>
+
+      <Modal
+        isOpen={isStatementOpen}
+        onClose={() => setIsStatementOpen(false)}
+        title="Statement of Account"
+        size="lg"
+      >
+        <div className="flex gap-md items-end mb-lg no-print" style={{ flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label htmlFor="stmt-from">From</label>
+            <input id="stmt-from" type="date" className="input" value={statementRange.from}
+              onChange={(e) => setStatementRange({ ...statementRange, from: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label htmlFor="stmt-to">To</label>
+            <input id="stmt-to" type="date" className="input" value={statementRange.to}
+              onChange={(e) => setStatementRange({ ...statementRange, to: e.target.value })} />
+          </div>
+          <button className="btn btn-secondary" onClick={() => loadStatement()} disabled={statementLoading}>
+            {statementLoading ? 'Building...' : 'Apply'}
+          </button>
+          <button className="btn btn-primary" onClick={() => printElement('customer-statement', 'a4')} disabled={!statement}>
+            Print
+          </button>
+        </div>
+
+        {statementLoading && <p className="text-muted">Building statement...</p>}
+
+        {statement && (
+          <div id="customer-statement">
+            <h3 style={{ marginBottom: '2px' }}>{business?.name || 'Statement of Account'}</h3>
+            <p className="text-muted" style={{ marginTop: 0 }}>
+              Statement for {statement.customer.name}
+              {statement.customer.customer_code ? ` (${statement.customer.customer_code})` : ''}
+              {statement.customer.phone ? ` · ${statement.customer.phone}` : ''}
+            </p>
+            <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+              Purchases and deposits from {new Date(statement.period.from).toLocaleDateString()} to{' '}
+              {new Date(statement.period.to).toLocaleDateString()}. Balances are as at{' '}
+              {new Date(statement.period.asAtDate).toLocaleString()}.
+            </p>
+
+            <table className="glass-table" style={{ marginTop: 'var(--space-lg)' }}>
+              <tbody>
+                <tr><td>Purchases in period ({statement.summary.purchaseCount})</td>
+                    <td className="font-bold text-right">{fmt(statement.summary.purchaseTotal)}</td></tr>
+                <tr><td>Deposits paid in</td>
+                    <td className="text-right">{fmt(statement.summary.depositsIn)}</td></tr>
+                <tr><td>Deposits withdrawn or spent</td>
+                    <td className="text-right">{fmt(statement.summary.depositsOut)}</td></tr>
+                <tr><td>Deposit balance held</td>
+                    <td className="font-bold text-right">
+                      {statement.summary.depositBalance === null ? 'No deposit account' : fmt(statement.summary.depositBalance)}
+                    </td></tr>
+                <tr><td>Outstanding on credit</td>
+                    <td className="font-bold text-right">{fmt(statement.summary.arOutstanding)}</td></tr>
+                {statement.summary.creditLimit !== null && (
+                  <tr><td>Credit limit</td>
+                      <td className="text-right">{fmt(statement.summary.creditLimit)}</td></tr>
+                )}
+              </tbody>
+            </table>
+
+            {statement.purchases.length > 0 && (
+              <>
+                <h4 style={{ marginTop: 'var(--space-xl)' }}>Purchases</h4>
+                <table className="glass-table">
+                  <thead><tr><th>Date</th><th>Receipt</th><th>Payment</th><th className="text-right">Amount</th></tr></thead>
+                  <tbody>
+                    {statement.purchases.map(row => (
+                      <tr key={row.id}>
+                        <td>{new Date(row.created_at).toLocaleDateString()}</td>
+                        <td>{row.receipt_number}</td>
+                        <td className="capitalize">{row.payment_method}</td>
+                        <td className="text-right">{fmt(row.total_amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {statement.deposits.length > 0 && (
+              <>
+                <h4 style={{ marginTop: 'var(--space-xl)' }}>Deposit account</h4>
+                <table className="glass-table">
+                  <thead><tr><th>Date</th><th>Type</th><th>Note</th><th className="text-right">Amount</th><th className="text-right">Balance</th></tr></thead>
+                  <tbody>
+                    {statement.deposits.map(row => (
+                      <tr key={row.id}>
+                        <td>{new Date(row.created_at).toLocaleDateString()}</td>
+                        <td className="capitalize">{row.type}</td>
+                        <td>{row.note}</td>
+                        <td className="text-right">{fmt(row.amount)}</td>
+                        <td className="text-right">{fmt(row.balance_after)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {statement.receivables.length > 0 && (
+              <>
+                <h4 style={{ marginTop: 'var(--space-xl)' }}>Credit (all open invoices, not only this period)</h4>
+                <table className="glass-table">
+                  <thead><tr><th>Invoice</th><th>Issued</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Paid</th><th className="text-right">Owing</th></tr></thead>
+                  <tbody>
+                    {statement.receivables.map(row => (
+                      <tr key={row.id}>
+                        <td>{row.invoice_number}</td>
+                        <td>{row.issued_date ? new Date(row.issued_date).toLocaleDateString() : '—'}</td>
+                        <td>{row.due_date ? new Date(row.due_date).toLocaleDateString() : '—'}</td>
+                        <td className="text-right">{fmt(row.total_amount)}</td>
+                        <td className="text-right">{fmt(row.amount_paid)}</td>
+                        <td className="text-right font-bold">{fmt(Number(row.total_amount) - Number(row.amount_paid))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Customer">
         <form onSubmit={handleEditSubmit}>
           <div className="form-group">
@@ -597,6 +902,32 @@ export default function CustomerDetail() {
           <div className="form-group">
             <label>Phone Number</label>
             <input type="tel" className="input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              className="input"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="form-group">
+            <label>Credit Limit</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="input"
+              value={editForm.credit_limit}
+              onChange={(e) => setEditForm({ ...editForm, credit_limit: e.target.value })}
+              placeholder="Leave blank for no limit"
+            />
+            <small className="text-muted">
+              The most this customer may owe on credit at any one time. Leave blank for no limit;
+              enter 0 to stop credit sales to them entirely.
+            </small>
           </div>
           <div className="modal-actions mt-xl flex justify-end gap-md">
             <button type="button" className="btn btn-outline" onClick={() => setIsEditOpen(false)}>Cancel</button>

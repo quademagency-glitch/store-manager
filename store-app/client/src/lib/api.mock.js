@@ -19,8 +19,10 @@ const T0 = '2026-07-31T12:00:00.000Z';
    customer_code. Every page reads `customer.name`, so the harness rendered
    nameless rows and nothing failed, because a blank cell is still a cell. */
 const CUSTOMERS = [
-  { id: 'c1', name: 'Adwoa Nyarko', phone: '0203334455', email: 'adwoa.nyarko@gmail.com', customer_code: 'CUST-0001', is_verified: true, created_at: T0 },
-  { id: 'c2', name: 'Yaw Owusu', phone: '0553332211', email: 'yaw.owusu@gmail.com', customer_code: 'CUST-0002', is_verified: true, created_at: T0 },
+  { id: 'c1', name: 'Adwoa Nyarko', phone: '0203334455', email: 'adwoa.nyarko@gmail.com', customer_code: 'CUST-0001', is_verified: true, credit_limit: 2000, created_at: T0 },
+  { id: 'c2', name: 'Yaw Owusu', phone: '0553332211', email: 'yaw.owusu@gmail.com', customer_code: 'CUST-0002', is_verified: true, credit_limit: 0, created_at: T0 },
+  /* credit_limit deliberately absent: NULL is 'no limit set', and the page has
+     to tell that apart from c2's real limit of 0. */
   { id: 'c3', name: 'Esi Quartey', phone: '0205556677', email: 'esi.quartey@gmail.com', customer_code: 'CUST-0003', is_verified: false, created_at: T0 },
 ];
 
@@ -71,6 +73,17 @@ const LOYALTY = {
     { id: 'lp3', type: 'earn', points: 96, balance_after: 96, note: 'Sale DEMO-00411', created_at: T0 },
   ] },
   c3: { points: 0, ledger: [] },
+};
+
+const CUSTOMER_NOTES = {
+  c1: [
+    { id: 'n1', body: 'Prefers a call before the monthly delivery. Husband collects on Saturdays.',
+      created_at: '2026-07-29T11:00:00.000Z', author: { id: 'u1', name: 'Ama Mensah' } },
+    { id: 'n2', body: 'Agreed to settle the outstanding invoice by month end.',
+      created_at: T0, author: { id: 'u2', name: 'Kofi Boateng' } },
+  ],
+  c2: [],
+  c3: [],
 };
 
 const paged = (rows) => ({ data: rows, total: rows.length, page: 1, totalPages: 1 });
@@ -589,6 +602,48 @@ const ROUTE_FIXTURES = {
   /* The harness has no SMS, so any 4-digit code is accepted here. The real
      endpoint checks it against verification_code and its expiry; what is
      mocked is the outcome, not the check. */
+  'GET /customers/:id/notes': (_b, p) => ({ data: CUSTOMER_NOTES[p.id] || [] }),
+  'POST /customers/:id/notes': (body, p) => {
+    const note = {
+      id: `n-${Date.now()}`,
+      body: body.body,
+      created_at: T0,
+      author: { id: 'u1', name: 'Ama Mensah' },
+    };
+    CUSTOMER_NOTES[p.id] = [note, ...(CUSTOMER_NOTES[p.id] || [])];
+    return { message: 'Note added', note };
+  },
+  'DELETE /customers/:id/notes/:noteId': (_b, p) => {
+    CUSTOMER_NOTES[p.id] = (CUSTOMER_NOTES[p.id] || []).filter((n) => n.id !== p.noteId);
+    return { message: 'Note deleted' };
+  },
+
+  'GET /customers/:id/statement': (_b, p) => {
+    const customer = CUSTOMERS.find((c) => c.id === p.id) || null;
+    const purchases = CUSTOMER_SALES.filter((sale) => sale.customer_id === p.id);
+    const acct = STORE_CREDIT[p.id] || { balance: 0, ledger: [] };
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const sum = (rows, pick) => rows.reduce((acc, r) => acc + (Number(pick(r)) || 0), 0);
+    return {
+      customer,
+      period: { from: '2026-06-01T00:00:00.000Z', to: T0, asAtDate: T0 },
+      summary: {
+        purchaseCount: purchases.length,
+        purchaseTotal: round2(sum(purchases, (r) => r.total_amount)),
+        depositsIn: round2(sum(acct.ledger.filter((e) => Number(e.amount) > 0), (e) => e.amount)),
+        depositsOut: round2(Math.abs(sum(acct.ledger.filter((e) => Number(e.amount) < 0), (e) => e.amount))),
+        depositBalance: acct.ledger.length ? acct.balance : null,
+        creditLimit: customer && customer.credit_limit !== undefined ? customer.credit_limit : null,
+        arInvoiced: 0,
+        arPaid: 0,
+        arOutstanding: 0,
+      },
+      purchases,
+      deposits: acct.ledger,
+      receivables: [],
+    };
+  },
+
   'POST /customers/:id/send-verification': () => ({ message: 'Verification code sent successfully' }),
   'POST /customers/:id/verify': (_body, params) => {
     const customer = CUSTOMERS.find((c) => c.id === params.id);

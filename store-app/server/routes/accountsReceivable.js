@@ -1,6 +1,7 @@
 const express = require('express');
 const { z } = require('zod');
 const logger = require('../utils/logger');
+const { checkCreditLimit } = require('../utils/credit');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
@@ -157,12 +158,50 @@ router.post('/invoices', authGuard, permissionCheck('manage_financials'), valida
   try {
     const { customer_id, description, total_amount, due_date, is_opening_balance, as_of_date } = req.body;
 
-    let custQuery = supabaseAdmin.from('customers').select('id, business_id').eq('id', customer_id);
+    /* `*` rather than a column list: credit_limit only exists once migration
+       075 has run, and naming a column PostgREST does not know fails the whole
+       select, which would turn "this customer has no limit" into "invoicing is
+       broken". */
+    let custQuery = supabaseAdmin.from('customers').select('*').eq('id', customer_id);
     if (req.user.role !== 'Platform Admin') custQuery = custQuery.eq('business_id', req.user.business_id);
     const { data: customer, error: custErr } = await custQuery.single();
     if (custErr || !customer) return res.status(404).json({ error: 'Customer not found' });
 
     const business_id = req.user.role === 'Platform Admin' ? customer.business_id : req.user.business_id;
+
+    /* Credit limit. null or absent means no limit was ever set, which is the
+       behaviour before migration 075 and stays the default; 0 is a real
+       decision meaning this customer pays cash.
+
+       Checked against what they already owe plus this invoice, not against
+       this invoice alone, or a limit of 500 would permit ten invoices of 500.
+       An opening balance is exempt: it records debt that already exists, and
+       refusing to write down what a customer owes because it exceeds the limit
+       you just set them would leave the books wrong to protect a number. */
+    if (customer.credit_limit !== null && customer.credit_limit !== undefined && !is_opening_balance) {
+      const { data: openInvoices, error: openErr } = await supabaseAdmin
+        .from('ar_invoices')
+        .select('total_amount, amount_paid, status')
+        .eq('customer_id', customer_id);
+      if (openErr) throw openErr;
+
+      const verdict = checkCreditLimit({
+        limit: customer.credit_limit,
+        invoices: openInvoices,
+        amount: total_amount,
+        isOpeningBalance: is_opening_balance,
+      });
+
+      if (!verdict.allowed) {
+        return res.status(400).json({
+          error: `This would put ${customer.name} at ${verdict.projected.toFixed(2)} against a credit limit of ${verdict.limit.toFixed(2)}. They currently owe ${verdict.outstanding.toFixed(2)}.`,
+          code: 'CREDIT_LIMIT_EXCEEDED',
+          credit_limit: verdict.limit,
+          outstanding: verdict.outstanding,
+          projected: verdict.projected,
+        });
+      }
+    }
 
     const { data: invoiceNumber, error: numErr } = await supabaseAdmin.rpc('generate_ar_invoice_number', { p_business_id: business_id });
     if (numErr) throw numErr;

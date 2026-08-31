@@ -643,7 +643,7 @@ async function sendSuspensionNotice(business) {
 /**
  * Send custom email for platform communications
  */
-async function sendCustomEmail(recipients, subject, htmlContent, gateway = null) {
+async function sendCustomEmail(recipients, subject, htmlContent, gateway = null, options = {}) {
   if (!recipients || recipients.length === 0) return { success: false, error: 'No recipients' };
 
   let activeClient = getResendClient();
@@ -691,9 +691,24 @@ async function sendCustomEmail(recipients, subject, htmlContent, gateway = null)
   for (let i = 0; i < recipients.length; i += BATCH_LIMIT) {
     const chunk = recipients.slice(i, i + BATCH_LIMIT);
     try {
+      /* An idempotency key makes a re-run safe: Resend returns the original
+         result instead of sending again. Keyed per chunk, because two chunks
+         are different payloads and reusing one key across them would make the
+         second look like a retry of the first and silently send nothing. */
+      const sendOptions = options.idempotencyKey
+        ? { idempotencyKey: `${options.idempotencyKey}-${i / BATCH_LIMIT}` }
+        : undefined;
+
       const { error } = await withRetry(
         () => activeClient.batch.send(
-          chunk.map((to) => ({ from: fromEmail, to: [to], subject, html: htmlContent })),
+          chunk.map((to) => ({
+            from: fromEmail,
+            to: [to],
+            subject,
+            html: htmlContent,
+            ...(options.replyTo ? { replyTo: options.replyTo } : {}),
+          })),
+          sendOptions,
         ),
         { label: `custom email "${subject}" (${chunk.length} recipients)` },
       );

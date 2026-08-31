@@ -68,9 +68,23 @@ applies. Send it anyway, for the dated record.
 
 ### How to send it
 
-**Platform Admin → Communications**, audience **All Businesses**, type
-**Email**. That route sends to every business that is not banned, using each
-one's `contact_email`.
+```sh
+cd store-app/server
+node scripts/send-subprocessor-notice.js          # dry run: prints the
+                                                  # recipients and the message,
+                                                  # sends nothing
+node scripts/send-subprocessor-notice.js --send   # send it
+```
+
+Safe to re-run. The Resend idempotency key is derived from `NOTICE.id`, so a
+second `--send` returns the first run's result rather than emailing everyone
+twice. The wording lives in the script, not in this file: a script that read
+its legal text out of a markdown document at send time would one day send a
+half-edited draft. Change both together.
+
+The alternative, **Platform Admin → Communications**, audience **All
+Businesses**, type **Email**, reaches the same audience but needs the wording
+pasted in by hand.
 
 Safe to use as of `54cc340`. Before that, `sendCustomEmail` passed the whole
 recipient array as Resend's `to`, which puts every recipient's address in the

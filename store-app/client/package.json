@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:realtime && npm run check:legal && npm run check:privacy && vite build",
+    "build": "npm run check:realtime && npm run check:legal && npm run check:privacy && vite build && npm run check:csp",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:visual": "VITE_USE_MOCKS=true playwright test --project=visual",

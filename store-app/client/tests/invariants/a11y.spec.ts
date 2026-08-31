@@ -408,9 +408,13 @@ test('sidebar dropdowns close on Escape', async ({ page }) => {
 });
 
 test('a destructive confirmation does not open with the destructive button focused', async ({ page }) => {
-  // Accounting templates rather than customers: the customer fixture is empty
-  // in mock mode, so there is no row to delete and the dialog never opens.
-  // A test that cannot reach the thing it tests passes for the wrong reason.
+  // Needs a row to delete, and empty mode removes every row by design, so the
+  // dialog never opens there. A test that cannot reach the thing it tests
+  // fails for a reason that is not a defect.
+  test.skip(
+    process.env.VITE_USE_MOCKS === 'empty',
+    'needs a deletable row; empty mode has none',
+  );
   await gotoApp(page, '/accounting-settings');
 
   const del = page.getByRole('button', { name: /^delete /i }).first();

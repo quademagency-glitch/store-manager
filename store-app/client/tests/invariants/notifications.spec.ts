@@ -8,7 +8,16 @@ import { gotoApp } from '../helpers';
  * existed, already had a page and already had an API. Nothing surfaced them,
  * so an owner found out about a voided sale by going to look for one.
  */
+/* Empty mode blanks every collection, alerts included, so these three assert
+   on data it has removed on purpose and could never pass there. They were
+   failing continuously, which is worse than not running: four permanent reds
+   train you to skim the result, and the run stops meaning anything. Empty
+   states have their own coverage; this file is about the populated one. */
+const EMPTY_MODE = process.env.VITE_USE_MOCKS === 'empty';
+
 test.describe('notification bell', () => {
+  test.skip(EMPTY_MODE, 'asserts on fixture alerts, which empty mode removes by design');
+
   test('shows the pending count and not the resolved ones', async ({ page }) => {
     await gotoApp(page, '/dashboard');
 

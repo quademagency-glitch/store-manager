@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:realtime && npm run check:legal && vite build",
+    "build": "npm run check:realtime && npm run check:legal && npm run check:privacy && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:visual": "VITE_USE_MOCKS=true playwright test --project=visual",
@@ -19,7 +19,8 @@
     "test:e2e": "playwright test --project=e2e",
     "check:csp": "node scripts/check-csp-hashes.mjs",
     "check:realtime": "node scripts/check-realtime-stub.mjs",
-    "check:legal": "node scripts/check-legal-entity.mjs"
+    "check:legal": "node scripts/check-legal-entity.mjs",
+    "check:privacy": "node scripts/check-privacy-claims.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.70.0",
@@ -38,6 +39,7 @@
     "vite-plugin-pwa": "^1.3.0"
   },
   "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.65.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@sentry/vite-plugin": "^5.4.0",

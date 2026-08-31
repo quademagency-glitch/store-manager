@@ -90,9 +90,90 @@ function checkJwks() {
   }
 }
 
+/**
+ * Which commit is actually serving.
+ *
+ * Answering "is my push live yet" meant polling process uptime and inferring a
+ * restart from it, twice in one day, which tells you a deploy happened but not
+ * which one. Railway injects RAILWAY_GIT_COMMIT_SHA; the fallbacks cover other
+ * hosts and local runs. No dependency call, so this cannot fail.
+ */
+function checkRelease() {
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA
+    || process.env.GIT_COMMIT_SHA
+    || process.env.SOURCE_VERSION
+    || null;
+
+  return {
+    commit: sha ? sha.slice(0, 7) : 'unknown',
+    branch: process.env.RAILWAY_GIT_BRANCH || null,
+    deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || null,
+    // When this process started, which is when the running code was last swapped.
+    bootedAt: new Date(Date.now() - process.uptime() * 1000).toISOString(),
+  };
+}
+
+/* How stale a job's last run may be before it is worth saying so. Slightly
+   over the interval, so a job that has simply not come round again yet does
+   not report as broken. */
+const CRON_JOBS = {
+  'subscription-checks': 26 * 60 * 60 * 1000,
+  'demo-reset': 26 * 60 * 60 * 1000,
+  'webhook-retry-sweep': 15 * 60 * 1000,
+  'pending-sale-sweep': 15 * 60 * 1000,
+};
+
+/**
+ * Last run of each scheduled job, from the cron_runs claim table.
+ *
+ * Deliberately does NOT affect the overall status. A stale sweep is worth
+ * seeing, but pulling the instance out of rotation over it would turn a late
+ * job into an outage, which is the same reasoning that keeps Resend out of the
+ * 503 decision below.
+ */
+async function checkCron() {
+  const startedAt = Date.now();
+  try {
+    const { data, error } = await withTimeout(
+      supabaseAdmin
+        .from('cron_runs')
+        .select('job_name, started_at')
+        .order('started_at', { ascending: false })
+        .limit(200),
+      SUPABASE_TIMEOUT_MS,
+      'cron_runs',
+    );
+    if (error) throw error;
+
+    const latest = new Map();
+    for (const row of data || []) {
+      if (!latest.has(row.job_name)) latest.set(row.job_name, row.started_at);
+    }
+
+    const jobs = {};
+    for (const [job, maxAgeMs] of Object.entries(CRON_JOBS)) {
+      const last = latest.get(job) || null;
+      if (!last) {
+        jobs[job] = { status: 'never-run', lastRunAt: null };
+        continue;
+      }
+      const ageMs = Date.now() - new Date(last).getTime();
+      jobs[job] = {
+        status: ageMs > maxAgeMs ? 'overdue' : 'ok',
+        lastRunAt: last,
+        ageMinutes: Math.round(ageMs / 60000),
+      };
+    }
+
+    return { status: 'ok', ms: Date.now() - startedAt, jobs };
+  } catch (err) {
+    return { status: 'unknown', ms: Date.now() - startedAt, error: err.message };
+  }
+}
+
 async function buildReport() {
   const startedAt = Date.now();
-  const [supabase, resend, jwks] = [await checkSupabase(), checkResend(), checkJwks()];
+  const [supabase, resend, jwks, cron] = [await checkSupabase(), checkResend(), checkJwks(), await checkCron()];
 
   // 503 ONLY for Supabase. Nothing works without it, so it is genuinely
   // unhealthy. A missing Resend key is degraded-but-serving: pulling the
@@ -107,7 +188,8 @@ async function buildReport() {
     pid: process.pid,
     hostname: os.hostname(),
     totalMs: Date.now() - startedAt,
-    checks: { supabase, resend, jwks },
+    release: checkRelease(),
+    checks: { supabase, resend, jwks, cron },
   };
 }
 

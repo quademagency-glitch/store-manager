@@ -26,6 +26,35 @@ describe('GET /api/health/deep', () => {
     expect(res.body.checks).toHaveProperty('jwks');
   });
 
+  /* "Is my push live yet" used to be answered by watching process uptime and
+     inferring a restart, which says a deploy happened but not which one. */
+  it('names the commit that is serving', async () => {
+    process.env.RAILWAY_GIT_COMMIT_SHA = 'abcdef1234567890';
+    _resetCache();
+    const res = await request(app).get('/api/health/deep');
+    expect(res.body.release.commit).toBe('abcdef1');
+    expect(typeof res.body.release.bootedAt).toBe('string');
+    delete process.env.RAILWAY_GIT_COMMIT_SHA;
+  });
+
+  it('says unknown rather than failing when no commit is injected', async () => {
+    delete process.env.RAILWAY_GIT_COMMIT_SHA;
+    delete process.env.GIT_COMMIT_SHA;
+    delete process.env.SOURCE_VERSION;
+    _resetCache();
+    const res = await request(app).get('/api/health/deep');
+    expect(res.status).toBe(200);
+    expect(res.body.release.commit).toBe('unknown');
+  });
+
+  it('reports the scheduled jobs without letting a late one fail the check', async () => {
+    const res = await request(app).get('/api/health/deep');
+    expect(res.body.checks.cron).toBeDefined();
+    // A cron problem must never take the instance out of rotation.
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+  });
+
   it('includes the proxy diagnostic block for choosing TRUST_PROXY_HOPS', async () => {
     const res = await request(app)
       .get('/api/health/deep')

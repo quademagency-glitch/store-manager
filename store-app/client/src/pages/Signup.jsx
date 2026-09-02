@@ -233,18 +233,24 @@ export default function Signup() {
                   there for the case where the redirect target is not on
                   Supabase's allow list and they do land on one.
 
-                  It does NOT verify the address, whatever the word
-                  "confirmation" suggests. The project has mailer_autoconfirm
-                  on, so the account is already confirmed before the email is
-                  sent: measured confirmation timestamps land 3 to 50
-                  milliseconds after account creation, which is nobody
-                  clicking anything. Saying "verifies your address" was
-                  telling the owner a check had happened that had not. The
-                  wording below is true whether or not that setting changes,
-                  so flipping it does not silently make this a lie again. */}
+                  It DOES verify the address, and an earlier version of this
+                  comment claimed the opposite on the strength of a bad
+                  measurement. The reasoning was: every confirmed user in the
+                  database was confirmed 3 to 50 milliseconds after creation,
+                  nobody clicks a link that fast, therefore signups are
+                  auto-confirmed. The numbers were right and the population
+                  was wrong. Six of the seven users were made by
+                  admin.createUser with email_confirm true, from /register,
+                  routes/users.js and the demo seed, and those are supposed to
+                  land already confirmed. The seventh, the only account that
+                  came through this form, is not confirmed at all.
+
+                  This route calls generateLink type signup, which creates an
+                  unconfirmed user and hands back the link. Opening it verifies
+                  and signs in, in one click, which is what the copy says. */}
               <p className="login-subtitle">
-                We&rsquo;ve sent a sign-in link to <strong>{form.email.trim()}</strong>. Opening it
-                takes you straight to your dashboard. If you are asked to sign in, use the
+                We&rsquo;ve sent a confirmation link to <strong>{form.email.trim()}</strong>. Opening it
+                verifies your address and signs you straight in. If you are asked to sign in, use the
                 password you just chose.
               </p>
 

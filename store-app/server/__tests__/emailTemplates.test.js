@@ -12,6 +12,17 @@
  *     demote the sentence the customer needs to read
  *   - no `undefined` or unresolved `${...}` leaks into the body
  */
+/* emailService requires db/supabase at import, which calls createClient() at
+   module scope. On Node 20 — which is what CI runs, and what package.json
+   declares as the floor — that constructs a RealtimeClient and throws
+   "Node.js 20 detected without native WebSocket support". Node 22+ has a
+   native WebSocket, so this suite passed locally and failed in CI. The
+   builders are pure string functions and touch no database, so the client is
+   mocked away entirely, matching health.test.js and the other suites. */
+jest.mock('../db/supabase', () => ({
+  supabaseAdmin: require('./helpers/mockSupabase').buildMockSupabase(),
+}));
+
 const {
   LOGO_URL,
   senderAddress,

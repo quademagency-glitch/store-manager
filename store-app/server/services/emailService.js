@@ -31,6 +31,46 @@ const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL || '';
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@quaderp.app';
 const APP_URL = process.env.APP_URL || 'https://app.quaderp.app';
 
+/* The QuadERP mark for email headers. Hosted on the landing site, which is
+   public and already serves it over https.
+
+   PNG rather than the app's logo.svg, because Gmail strips SVG <img> entirely
+   and an SVG logo is a broken image for most of the audience. Laid out as a
+   table rather than flex, because Outlook renders through Word's engine and
+   ignores display:flex, which would stack the mark above the wordmark. The
+   88px source is shown at 44 (or 28) so it stays sharp on retina. alt is empty
+   on purpose: the wordmark beside it is real text, so blocking images degrades
+   to "QuadERP" once rather than twice. */
+const LOGO_URL = 'https://www.quaderp.app/images/email-logo.png';
+
+/**
+ * The branded bar that sits at the top of a template's coloured header cell.
+ *
+ * `compact` is for the warning and suspension templates, whose own headings
+ * carry the urgency ("Subscription Expiring Soon"). There the mark goes above
+ * that heading at a smaller size, so branding the email does not demote the
+ * sentence the customer needs to read. `right` takes the invoice status badge.
+ */
+function brandBar({ subtitle = '', right = '', compact = false } = {}) {
+  const px = compact ? 28 : 44;
+  const radius = compact ? 7 : 10;
+  const img = `<img src="${LOGO_URL}" width="${px}" height="${px}" alt=""`
+    + ` style="display:block;width:${px}px;height:${px}px;border:0;border-radius:${radius}px;">`;
+  const name = compact
+    ? `<span style="color:#ffffff;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${PLATFORM_NAME}</span>`
+    : `<h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">${PLATFORM_NAME}</h1>`
+      + (subtitle ? `<p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">${subtitle}</p>` : '');
+
+  return `<table width="100%" cellpadding="0" cellspacing="0" role="presentation"`
+    + `${compact ? ' style="margin:0 0 14px;"' : ''}>
+                <tr>
+                  <td width="${px}" style="padding:0 12px 0 0;vertical-align:middle;">${img}</td>
+                  <td style="vertical-align:middle;">${name}</td>
+                  ${right ? `<td align="right" style="vertical-align:middle;">${right}</td>` : ''}
+                </tr>
+              </table>`;
+}
+
 /**
  * Every business gets its own branded URL at <slug>.<app-host>
  * (e.g. https://acme.app.quaderp.app). Derived from APP_URL so there is a single
@@ -112,19 +152,10 @@ function buildInvoiceHtml(invoice, business, planName) {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 40px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td>
-                    <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">${PLATFORM_NAME}</h1>
-                    <p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Subscription Invoice</p>
-                  </td>
-                  <td align="right">
-                    <span style="display:inline-block;background:rgba(255,255,255,0.2);color:#ffffff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;text-transform:uppercase;">
-                      ${invoice.status}
-                    </span>
-                  </td>
-                </tr>
-              </table>
+              ${brandBar({
+    subtitle: 'Subscription Invoice',
+    right: `<span style="display:inline-block;background:rgba(255,255,255,0.2);color:#ffffff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;text-transform:uppercase;">${invoice.status}</span>`,
+  })}
             </td>
           </tr>
 
@@ -266,6 +297,7 @@ function buildExpirationWarningHtml(business, subscription, daysLeft) {
         <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#f59e0b,#ef4444);padding:32px 40px;">
+              ${brandBar({ compact: true })}
               <h1 style="margin:0;color:#ffffff;font-size:22px;">⚠️ Subscription Expiring Soon</h1>
             </td>
           </tr>
@@ -320,6 +352,7 @@ function buildSuspensionNoticeHtml(business) {
         <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#ef4444,#dc2626);padding:32px 40px;">
+              ${brandBar({ compact: true })}
               <h1 style="margin:0;color:#ffffff;font-size:22px;">🚫 Account Suspended</h1>
             </td>
           </tr>
@@ -412,8 +445,7 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:36px 40px;">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">${PLATFORM_NAME}</h1>
-              <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Welcome 👋</p>
+              ${brandBar({ subtitle: 'Welcome 👋' })}
             </td>
           </tr>
 
@@ -809,7 +841,15 @@ function senderAddress() {
 }
 
 module.exports = {
+  LOGO_URL,
   senderAddress,
+  /* The four builders are pure string functions. Exported so they can be
+     rendered and asserted on — until now nothing could reach them, so the
+     customer-facing templates had no test covering them at all. */
+  buildInvoiceHtml,
+  buildExpirationWarningHtml,
+  buildSuspensionNoticeHtml,
+  buildWelcomeHtml,
   sendInvoiceEmail,
   sendExpirationWarning,
   sendSuspensionNotice,

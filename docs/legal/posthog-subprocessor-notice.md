@@ -6,10 +6,12 @@
 > returning `200 {"status":"Ok"}`. The region decision in step 1 was settled:
 > **United States**, disclosed rather than moved to the EU host.
 >
-> **The notice below has NOT been sent.** It was written to be sent 30 days
-> *before* switching analytics on. That did not happen, so the wording has been
-> corrected to describe what actually occurred. Send the version in
-> [section 2](#2-the-notice-as-it-now-has-to-read), not the original.
+> **The notice was SENT on 2 September 2026**, by
+> `store-app/server/scripts/send-subprocessor-notice.js --send`, from
+> `QuadERP <info@quaderp.app>`, reply-to `info@quaderp.app`. It was written to
+> be sent 30 days *before* switching analytics on. That did not happen, so the
+> wording was corrected to describe what actually occurred before it went. See
+> the delivery record below.
 
 The rest of this file is the order the work should have gone in, kept because
 it is the right order next time.
@@ -148,7 +150,25 @@ to, and the notice invites a reply.
     Quadem Digital Enterprise
     quadem.agency@gmail.com
 
-Write the date it was actually sent here when it goes: **sent on ____________**
+**Sent on 2 September 2026.**
+
+Three recipients, being every business in `businesses` not `banned`:
+
+| Recipient | Business | Result |
+|---|---|---|
+| `quadem.agency@gmail.com` | QuadERP Platform | delivered |
+| `fofig41476@luhupo.com` | John Dow (trialing) | delivered |
+| `demo@quaderp.app` | Adom Superstore (Demo) | **bounced** |
+
+The bounce is `550 5.1.1 User does not exist`. `demo@quaderp.app` is the
+contact address on the demo tenant, which `scripts/seed-demo-data.js` creates;
+it is not a mailbox and there is no person behind it, so no one was missed.
+Clause 5.3 is satisfied for both real accounts. Worth knowing anyway: hard
+bounces count against sender reputation, so the demo tenant should not be in
+the recipient list of a future notice.
+
+Sent from `QuadERP <info@quaderp.app>`, reply-to `info@quaderp.app`. Resend
+message ids are in the account log for 2026-09-02 01:47:59Z.
 
 ## 3. The start-date gate — DONE
 

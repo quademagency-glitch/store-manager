@@ -81,12 +81,10 @@ function renderText(notice) {
   return `${body}\n\n${notice.signature}\n${notice.replyTo}\n`;
 }
 
-/* Hosted on the landing site, which is public and already serves it over https.
-   PNG, not the app's logo.svg: Gmail strips SVG <img> entirely, so an SVG logo
-   is a broken image for most of the audience. 88px source shown at 44 so it
-   stays sharp on retina. alt is empty on purpose — the wordmark beside it is
-   real text, so blocking images degrades to "QuadERP" once, not twice. */
-const LOGO_URL = 'https://www.quaderp.app/images/email-logo.png';
+/* Same mark the transactional templates use. Imported rather than repeated so
+   the notice cannot end up branded differently from every other email; see
+   emailService for why it is a PNG in a table and not an SVG in a flex box. */
+const LOGO_URL = emailService.LOGO_URL;
 
 function renderHtml(notice) {
   const body = notice.paragraphs

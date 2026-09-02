@@ -799,7 +799,17 @@ async function sendBusinessWelcomeEmail(business, admin, opts = {}) {
   }
 }
 
+/**
+ * The From header these functions actually send with, so a caller can show it
+ * before sending rather than reimplementing the env lookup and drifting from
+ * it. Does not reflect a custom gateway's sender_id, which is resolved per send.
+ */
+function senderAddress() {
+  return `${PLATFORM_NAME} <${FROM_EMAIL}>`;
+}
+
 module.exports = {
+  senderAddress,
   sendInvoiceEmail,
   sendExpirationWarning,
   sendSuspensionNotice,

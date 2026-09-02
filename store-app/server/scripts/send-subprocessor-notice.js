@@ -30,12 +30,19 @@
  * emailing everyone twice. Change NOTICE.id only when the notice itself is a
  * genuinely new one.
  *
+ * --to takes a separate, per-run key, so a test send neither consumes the real
+ * one nor is itself deduplicated against an earlier test.
+ *
  * Recipients come from the businesses table, every business that is not
  * banned, which is the same audience as Platform Admin -> Communications ->
  * All Businesses, and each gets their own message. See 54cc340: this used to
  * put every recipient in one To header.
  */
 require('dotenv').config({ quiet: true });
+
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const { supabaseAdmin } = require('../db/supabase');
 const emailService = require('../services/emailService');
@@ -45,7 +52,7 @@ const NOTICE = {
      send as a retry and deliver nothing, which is the point. */
   id: 'posthog-2026-08-29',
   subject: 'PostHog has been added as a sub-processor for QuadERP',
-  replyTo: 'quadem.agency@gmail.com',
+  replyTo: 'info@quaderp.app',
   paragraphs: [
     ['', 'Hello,'],
     ['', 'This is the notice our Data Processing Agreement requires when we add a sub-processor.'],
@@ -74,6 +81,13 @@ function renderText(notice) {
   return `${body}\n\n${notice.signature}\n${notice.replyTo}\n`;
 }
 
+/* Hosted on the landing site, which is public and already serves it over https.
+   PNG, not the app's logo.svg: Gmail strips SVG <img> entirely, so an SVG logo
+   is a broken image for most of the audience. 88px source shown at 44 so it
+   stays sharp on retina. alt is empty on purpose — the wordmark beside it is
+   real text, so blocking images degrades to "QuadERP" once, not twice. */
+const LOGO_URL = 'https://www.quaderp.app/images/email-logo.png';
+
 function renderHtml(notice) {
   const body = notice.paragraphs
     .map(([heading, text]) => (heading
@@ -81,8 +95,20 @@ function renderHtml(notice) {
       : `<p style="margin:0 0 14px">${text}</p>`))
     .join('');
 
+  /* Tables, not flex: Outlook renders through Word's engine and ignores
+     display:flex, which would stack the mark above the wordmark. */
+  const header = '<table role="presentation" cellpadding="0" cellspacing="0" border="0"'
+    + ' style="border-collapse:collapse;margin:0 0 26px"><tr>'
+    + `<td style="padding:0 12px 0 0;vertical-align:middle"><img src="${LOGO_URL}"`
+    + ' width="44" height="44" alt=""'
+    + ' style="display:block;width:44px;height:44px;border:0;border-radius:10px"></td>'
+    + '<td style="vertical-align:middle;font-size:19px;font-weight:700;color:#1a1a1a;'
+    + 'letter-spacing:-0.2px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif">'
+    + 'QuadERP</td></tr></table>';
+
   return '<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;'
     + 'font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px">'
+    + header
     + body
     + `<p style="margin:24px 0 0;color:#555">${notice.signature}<br>`
     + `<a href="mailto:${notice.replyTo}" style="color:#555">${notice.replyTo}</a></p>`
@@ -112,7 +138,10 @@ async function main() {
     : await loadRecipients();
 
   console.log(`\nNotice:  ${NOTICE.id}`);
+  console.log(`From:    ${emailService.senderAddress()}`);
+  console.log(`Reply-to: ${NOTICE.replyTo}`);
   console.log(`Subject: ${NOTICE.subject}\n`);
+  if (override) console.log('TEST SEND: one address, separate idempotency key.\n');
   console.log(`Recipients (${withEmail.length}):`);
   for (const b of withEmail) {
     console.log(`  ${b.contact_email.padEnd(34)} ${b.name} [${b.status}]`);
@@ -127,7 +156,14 @@ async function main() {
     console.log('\n' + '-'.repeat(72));
     console.log(renderText(NOTICE));
     console.log('-'.repeat(72));
-    console.log('\nDry run. Nothing was sent. Re-run with --send to send it.\n');
+
+    /* The plain-text render cannot show the logo, the spacing or a broken image
+       URL, which is most of what goes wrong in an HTML email. Write the real
+       HTML out so it can be opened in a browser before sending. */
+    const preview = path.join(os.tmpdir(), `subprocessor-notice-${NOTICE.id}.html`);
+    fs.writeFileSync(preview, renderHtml(NOTICE), 'utf8');
+    console.log(`\nHTML preview: ${preview}`);
+    console.log('Dry run. Nothing was sent. Re-run with --send to send it.\n');
     return;
   }
 
@@ -136,12 +172,22 @@ async function main() {
     return;
   }
 
+  /* A --to test run must NOT reuse the real idempotency key. Resend keys the
+     first payload it sees against the key; a one-recipient test would either
+     make the real three-recipient send return the test's result and deliver
+     nothing, or fail it outright as a changed payload. Either way the notice
+     silently never goes out, and the run that broke it looks like a success.
+     So a test send gets its own key, unique per run so it can be repeated. */
+  const idempotencyKey = override
+    ? `subprocessor-notice-${NOTICE.id}-test-${Date.now()}`
+    : `subprocessor-notice-${NOTICE.id}`;
+
   const result = await emailService.sendCustomEmail(
     withEmail.map((b) => b.contact_email),
     NOTICE.subject,
     renderHtml(NOTICE),
     null,
-    { idempotencyKey: `subprocessor-notice-${NOTICE.id}`, replyTo: NOTICE.replyTo },
+    { idempotencyKey, replyTo: NOTICE.replyTo },
   );
 
   console.log('\nResult:', JSON.stringify(result, null, 2));

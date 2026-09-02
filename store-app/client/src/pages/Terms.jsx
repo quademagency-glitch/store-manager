@@ -609,10 +609,24 @@ export default function Terms() {
           {postalLine()}.
         </Sub>
         <Sub n="26.2">
-          Email{' '}
-          <a href={`mailto:${ENTITY.email.general}`}>{ENTITY.email.general}</a> for questions about
-          these terms, or{' '}
-          <a href={`mailto:${ENTITY.email.billing}`}>{ENTITY.email.billing}</a> for billing.
+          {/* Naming the same mailbox twice reads as an error in a contract, so
+              the sentence collapses when general and billing coincide. They do
+              today; the two-address form returns by itself if entity.js is
+              ever given separate role addresses. */}
+          {ENTITY.email.general === ENTITY.email.billing ? (
+            <>
+              Email{' '}
+              <a href={`mailto:${ENTITY.email.general}`}>{ENTITY.email.general}</a> for questions
+              about these terms or about billing.
+            </>
+          ) : (
+            <>
+              Email{' '}
+              <a href={`mailto:${ENTITY.email.general}`}>{ENTITY.email.general}</a> for questions
+              about these terms, or{' '}
+              <a href={`mailto:${ENTITY.email.billing}`}>{ENTITY.email.billing}</a> for billing.
+            </>
+          )}
         </Sub>
       </Clause>
     </LegalLayout>

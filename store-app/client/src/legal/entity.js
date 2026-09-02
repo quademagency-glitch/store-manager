@@ -83,9 +83,15 @@ export const ENTITY = {
   /** Registration under the Data Protection Act, 2012 (Act 843). Optional. */
   dataControllerRegistration: null,
 
+  /* All three are the same mailbox today. They stay separate keys because the
+     documents use them for different jobs — 23.2 makes `general` the address
+     contractual notices are served to, and Privacy 1.2 makes `privacy` the one
+     for data-subject requests — so splitting them into role addresses later is
+     a one-line change per key rather than a hunt through the prose. Clause
+     26.2 already collapses itself when two of them coincide. */
   email: {
-    general: 'quadem.agency@gmail.com',
-    privacy: 'quadem.agency@gmail.com',
+    general: 'info@quaderp.app',
+    privacy: 'info@quaderp.app',
     billing: 'info@quaderp.app',
   },
 };

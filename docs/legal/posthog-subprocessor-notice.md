@@ -94,9 +94,12 @@ To header of every copy — one broadcast would have disclosed the entire
 customer list to the entire customer list. It now sends one message per
 recipient via Resend's batch endpoint.
 
-Set the reply-to, or send from, `quadem.agency@gmail.com`: that is
-`ENTITY.email.privacy`, the address the Privacy Policy tells people to write
-to, and the notice invites a reply.
+Set the reply-to, or send from, `ENTITY.email.privacy` — the address the
+Privacy Policy tells people to write to — because the notice invites a reply.
+That is `info@quaderp.app` as of 2026-09-02; it was a personal Gmail address
+until then, on the legal pages as well as here. Read the value out of
+`src/legal/entity.js` rather than copying it, so the notice cannot end up
+inviting replies to an address the Privacy Policy no longer names.
 
 ### Subject
 

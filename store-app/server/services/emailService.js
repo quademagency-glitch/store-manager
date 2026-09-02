@@ -19,7 +19,12 @@ function getResendClient() {
 }
 
 const PLATFORM_NAME = 'QuadERP';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'billing@quaderp.com'; // Use verified domain in production
+/* quaderp.app is the verified Resend domain. The previous default was
+   billing@quaderp.com — a .com that is not registered to anyone, so the
+   fallback addressed mail from a domain we do not own. Any default here is
+   a fallback for a missing FROM_EMAIL, so it has to be an address that is
+   actually ours. */
+const FROM_EMAIL = process.env.FROM_EMAIL || 'info@quaderp.app';
 const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL || '';
 // Public-facing support address shown to customers (distinct from the internal
 // PLATFORM_ADMIN_EMAIL used for invoice/alert notifications).

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import LetterheadRenderer from '../components/LetterheadRenderer';
+import { ENTITY } from '../legal/entity';
 
 export default function InvoiceView() {
   const { id } = useParams();
@@ -157,8 +158,8 @@ export default function InvoiceView() {
             </div>
             <div className="text-right">
               <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-text-secondary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>From:</h3>
-              <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>Quadem Digital Enterprise</p>
-              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>billing@quaderp.com</p>
+              <p style={{ margin: '0 0 0.25rem 0', fontWeight: 700, fontSize: '1.2rem' }}>{ENTITY.legalName}</p>
+              <p style={{ margin: '0 0 0.25rem 0', color: 'var(--color-text-secondary)' }}>{ENTITY.email.billing}</p>
             </div>
           </div>
 

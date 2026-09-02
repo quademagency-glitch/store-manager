@@ -86,7 +86,7 @@ export const ENTITY = {
   email: {
     general: 'quadem.agency@gmail.com',
     privacy: 'quadem.agency@gmail.com',
-    billing: 'billing@quaderp.com',
+    billing: 'info@quaderp.app',
   },
 };
 

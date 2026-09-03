@@ -4,6 +4,29 @@ import { useAuthContext } from '../lib/AuthContext';
 import { postPublic } from '../lib/api';
 
 /**
+ * How long to disable the resend button after a successful request, in
+ * seconds. This mirrors the server's own cooldown rather than picking a
+ * comfortable number, and the difference matters.
+ *
+ * The endpoint stamps users.confirmation_sent_at on a successful send and
+ * then returns the same neutral 200 for fifteen minutes without sending
+ * anything, deliberately: a 429 there would announce that the address has an
+ * unconfirmed account, and could be triggered at will. So a second click
+ * inside that window looks identical to the first and delivers no second
+ * email. A shorter button cooldown would re-enable into that window and let
+ * the screen promise an email that is never sent.
+ */
+const RESEND_COOLDOWN_SECONDS = 15 * 60;
+
+/** "14m 58s" reads better than "898s" on a fifteen-minute wait. */
+function formatCooldown(total) {
+  if (total < 60) return `${total}s`;
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return sec === 0 ? `${m}m` : `${m}m ${sec}s`;
+}
+
+/**
  * Mirror of the server's slug rule (public.slugify, migration 058) so the
  * preview under the business-name field matches what the account will
  * actually get. The server stays authoritative, it also has to de-duplicate
@@ -131,6 +154,52 @@ export default function Signup() {
   const [result, setResult] = useState(null);
 
   const slugPreview = useMemo(() => slugify(form.business_name), [form.business_name]);
+
+  /* The resend control on the success screen. `status` drives what is shown:
+     idle, sending, sent, mailer_down. `cooldown` counts down in seconds and
+     disables the button while it is above zero.
+
+     Deliberately says the same thing whether or not the address has an
+     account. The endpoint answers 200 either way so it cannot be used to work
+     out who has signed up, and a screen that reported "no such account" would
+     hand back the oracle the endpoint is careful not to give. */
+  const [resend, setResend] = useState({ status: 'idle', cooldown: 0, error: '' });
+
+  useEffect(() => {
+    if (resend.cooldown <= 0) return undefined;
+    const t = setTimeout(() => setResend((r) => ({ ...r, cooldown: r.cooldown - 1 })), 1000);
+    return () => clearTimeout(t);
+  }, [resend.cooldown]);
+
+  const handleResend = async () => {
+    if (resend.status === 'sending' || resend.cooldown > 0) return;
+    setResend({ status: 'sending', cooldown: 0, error: '' });
+    try {
+      await postPublic('/auth/resend-confirmation', { email: form.email.trim() });
+      setResend({ status: 'sent', cooldown: RESEND_COOLDOWN_SECONDS, error: '' });
+    } catch (err) {
+      /* 429 carries the server's own retryAfter and that is authoritative:
+         honour it rather than our default, or the button re-enables into a
+         wall. Everything else is a failure this visitor genuinely needs to
+         know about, because they are the one person who cannot proceed
+         without the email. The 502 message is written for users and carries
+         no detail about why, so it is safe to show as sent. */
+      if (err.status === 429) {
+        const wait = Number(err.body?.retryAfter);
+        setResend({
+          status: 'idle',
+          cooldown: Number.isFinite(wait) && wait > 0 ? Math.ceil(wait) : RESEND_COOLDOWN_SECONDS,
+          error: '',
+        });
+      } else {
+        setResend({
+          status: 'failed',
+          cooldown: 0,
+          error: err.userMessage || 'Something went wrong on our side. Please try again shortly.',
+        });
+      }
+    }
+  };
 
   /* Someone arriving here from inside the sandbox is signed in, and the
      redirect below would bounce them straight back to the demo, making
@@ -291,6 +360,41 @@ export default function Signup() {
                 Nothing in your inbox after a few minutes? Check your spam folder. The message comes from
                 QuadERP.
               </p>
+
+              {/* The link in that email is the only way to verify the address,
+                  and the send is best-effort on the server: it is wrapped so a
+                  failure can never fail the signup, which also means a failure
+                  is invisible. One account has already been stranded that way,
+                  trial running, no way in. This is the recourse. */}
+              <div className="signup-success-resend">
+                <button
+                  type="button"
+                  className="signup-success-resend-btn"
+                  onClick={handleResend}
+                  disabled={resend.status === 'sending' || resend.cooldown > 0}
+                >
+                  {resend.status === 'sending'
+                    ? 'Sending…'
+                    : resend.cooldown > 0
+                      ? `Send it again in ${formatCooldown(resend.cooldown)}`
+                      : 'Send it again'}
+                </button>
+                {resend.status === 'sent' && (
+                  /* Says the same thing whether or not the address has an
+                     account, because the endpoint answers the same way. A
+                     screen that said "no such account" would hand back the
+                     oracle the endpoint is careful not to give. */
+                  <p className="signup-success-resend-msg" role="status">
+                    If that address has an account waiting to be confirmed, the link is on its way.
+                    Opening it confirms your address and signs you in.
+                  </p>
+                )}
+                {resend.status === 'failed' && (
+                  <p className="signup-success-resend-msg is-error" role="status">
+                    {resend.error} You can also reach us on WhatsApp and we will confirm you by hand.
+                  </p>
+                )}
+              </div>
 
               <Link to="/login" className="login-button signup-success-action">
                 Go to sign in

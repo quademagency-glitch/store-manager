@@ -29,11 +29,17 @@ const HTTP_MESSAGES = {
  * "[Target: http://localhost:3001/api/...] Network Error ... Is the backend
  * running?" on screen.
  */
-function apiError(message, { endpoint, status, cause } = {}) {
+function apiError(message, { endpoint, status, cause, body } = {}) {
   const err = new Error(message, cause ? { cause } : undefined);
   err.userMessage = message;
   err.endpoint = endpoint;
   err.status = status;
+  /* The parsed error body, when there was one. `message` is the part a user
+     reads; some responses also carry a field the caller needs to act on, and
+     until now those were parsed and thrown away. The resend-confirmation
+     button reads `retryAfter` off a 429 to disable itself for the right
+     number of seconds instead of guessing. */
+  err.body = body;
 
   // Every API failure in the app funnels through here, which makes this the one
   // place worth reporting from, far better than patching ~70 call sites.
@@ -240,8 +246,10 @@ export async function postPublic(endpoint, body) {
 
   if (!response.ok) {
     let errorMessage = HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`;
+    let errorBody;
     try {
       const errorData = await response.json();
+      errorBody = errorData;
       // Zod validation errors come back as a details[] rather than a message.
       if (Array.isArray(errorData.details) && errorData.details.length > 0) {
         errorMessage = errorData.details.map(d => d.message).join(' ');
@@ -251,7 +259,7 @@ export async function postPublic(endpoint, body) {
     } catch {
       // Not JSON
     }
-    throw apiError(errorMessage, { endpoint, status: response.status });
+    throw apiError(errorMessage, { endpoint, status: response.status, body: errorBody });
   }
 
   return response.status === 204 ? null : response.json();

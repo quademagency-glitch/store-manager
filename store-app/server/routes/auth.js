@@ -184,6 +184,72 @@ const demoLoginCeiling = rateLimit({
   legacyHeaders: false,
 });
 
+// ── Resend confirmation: three layers, for three different abuses ───────────
+//
+// This endpoint is unauthenticated by necessity — it exists for someone who
+// cannot get in — and it sends mail to an address the caller chooses. That is
+// three separate things worth rationing, so there are three limiters:
+//
+//   per address   one victim cannot be mail-bombed from many IPs.
+//   per visitor   one caller cannot walk a list of addresses.
+//   ceiling       bounds a runaway, and keys on nothing, so rotating
+//                 x-vercel-forwarded-for does not mint a fresh bucket.
+//
+// The per-address limiter is the one /signup deliberately does NOT have, and
+// the reasoning above is not contradicted: keying on a caller-chosen email is
+// not a limit on the CALLER, who just picks another address. It is a limit on
+// what can be done TO one address, which is the abuse that matters here and
+// does not exist at signup.
+const resendConfirmationKey = (req) => `email:${String(req.body?.email || '').trim().toLowerCase()}`;
+
+/* The contract promises retryAfter in seconds so the caller can disable its
+   button rather than let someone hold it down. express-rate-limit only sets
+   the RateLimit-Reset header, so the body is assembled here. */
+const retryAfterHandler = (message) => (req, res) => {
+  const resetTime = req.rateLimit?.resetTime;
+  const retryAfter = resetTime
+    ? Math.max(1, Math.ceil((new Date(resetTime).getTime() - Date.now()) / 1000))
+    : 3600;
+  res.set('Retry-After', String(retryAfter));
+  return res.status(429).json({ error: message, retryAfter });
+};
+
+const resendConfirmationEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  keyGenerator: resendConfirmationKey,
+  handler: retryAfterHandler('Too many requests for that address. Please try again later.'),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const resendConfirmationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  keyGenerator: clientAddress,
+  handler: retryAfterHandler('Too many requests from this address. Please try again in an hour.'),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const resendConfirmationCeiling = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: perWorker(Number(process.env.RESEND_CONFIRMATION_CEILING_PER_HOUR ?? 100)),
+  keyGenerator: () => GLOBAL,
+  handler: retryAfterHandler('Confirmation emails are temporarily rate limited. Please try again shortly.'),
+  standardHeaders: false,
+  legacyHeaders: false,
+});
+
+const resendConfirmationSchema = z.object({
+  /* trim() before email(): someone copying an address out of a mail client
+     brings a trailing space with it, and this is the form for a person who is
+     already locked out. Rejecting them for whitespace they cannot see is the
+     wrong failure. The route lowercases separately, so the rate-limit key and
+     the lookup agree. */
+  email: z.string().trim().email('Invalid email address'),
+});
+
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
@@ -756,8 +822,124 @@ router.get('/me', authGuard, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/resend-confirmation   { email }
+ *
+ * Re-sends the confirmation link to a signup that never confirmed.
+ *
+ * WHY IT EXISTS: the verification link has exactly one carrier, the welcome
+ * email, and step 5 of /signup is best-effort by design — it must not fail a
+ * signup. So a send failure there leaves someone holding an account, a slug
+ * and a running trial with no way to verify and nothing to click. That is not
+ * hypothetical; it happened on 2026-08-20 while the Resend key pointed at an
+ * account with no quaderp.app verified.
+ *
+ * magiclink, not recovery. Both were tested against the live project on
+ * 2026-09-03 and both set email_confirmed_at, but recovery lands the user on a
+ * password reset, and a self-service signup already chose a password. The
+ * magic link confirms them and signs them in, which is what the original
+ * confirmation link would have done.
+ *
+ * ALWAYS 200 when nothing was sent, whether the address has no account or is
+ * already confirmed. The caller renders one neutral sentence either way, so
+ * this cannot be used to ask whether an address is registered.
+ *
+ * The exception is a send failure, which returns 502 at the owner's decision:
+ * on this call the user IS the error handler, and telling them nothing when
+ * the resend silently failed reproduces the bug the endpoint exists to fix.
+ * The cost is that a 502 only ever occurs for an address that does have an
+ * unconfirmed account, so under mail failure the response does distinguish
+ * real addresses from invented ones. The rate limiters above are what keeps
+ * that from being a usable oracle; they are load-bearing, not hygiene.
+ */
+router.post(
+  '/resend-confirmation',
+  resendConfirmationCeiling,
+  resendConfirmationLimiter,
+  validateBody(resendConfirmationSchema),
+  resendConfirmationEmailLimiter,
+  async (req, res) => {
+    const email = String(req.body.email).trim().toLowerCase();
+    // Every path that sends nothing returns this, and they are deliberately
+    // indistinguishable from each other.
+    const quiet = () => res.json({ ok: true });
+
+    try {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('users')
+        .select('id, name, business_id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        logger.error({ err: profileError }, 'Resend confirmation: profile lookup failed');
+        return quiet();
+      }
+      if (!profile) return quiet();
+
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+      if (authError || !authUser?.user) {
+        logger.error({ err: authError, userId: profile.id }, 'Resend confirmation: auth lookup failed');
+        return quiet();
+      }
+      if (authUser.user.email_confirmed_at) return quiet();
+
+      const { data: business } = await supabaseAdmin
+        .from('businesses')
+        .select('id, name, slug, status, trial_ends_at')
+        .eq('id', profile.business_id)
+        .maybeSingle();
+
+      const loginUrl = resolveBusinessLoginUrl(business);
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+        options: { redirectTo: `${loginUrl}/login` },
+      });
+
+      if (linkError || !linkData?.properties?.action_link) {
+        logger.error({ err: linkError, email }, 'Resend confirmation: could not mint a link');
+        return res.status(502).json({
+          error: 'Could not send the confirmation email',
+          message: 'Something went wrong on our side. Please try again shortly.',
+        });
+      }
+
+      const result = await sendBusinessWelcomeEmail(
+        business || { name: 'your account' },
+        { name: profile.name, email },
+        {
+          setPasswordUrl: linkData.properties.action_link,
+          ctaMode: 'verify-email',
+          trialEndsAt: business?.trial_ends_at || null,
+        },
+      );
+
+      if (!result?.success) {
+        logger.error({ email, error: result?.error }, 'Resend confirmation: send failed');
+        return res.status(502).json({
+          error: 'Could not send the confirmation email',
+          message: 'Something went wrong on our side. Please try again shortly.',
+        });
+      }
+
+      logger.info({ email, businessId: profile.business_id }, 'Resend confirmation: sent');
+      return res.json({ ok: true });
+    } catch (err) {
+      logger.error({ err, email }, 'Resend confirmation failed');
+      return res.status(502).json({
+        error: 'Could not send the confirmation email',
+        message: 'Something went wrong on our side. Please try again shortly.',
+      });
+    }
+  },
+);
+
 module.exports = router;
 // Exposed so tests can clear the per-IP counter between cases. The app is not
 // behind `trust proxy`, so every request in a test run shares one key and the
 // suite would otherwise spend its whole 5/hour budget on the first few cases, // which is not a reason to weaken the limit for real traffic.
 module.exports.signupLimiter = signupLimiter;
+module.exports.resendConfirmationLimiter = resendConfirmationLimiter;
+module.exports.resendConfirmationEmailLimiter = resendConfirmationEmailLimiter;
+module.exports.resendConfirmationCeiling = resendConfirmationCeiling;

@@ -100,6 +100,11 @@ function buildMockSupabase(overrides = {}) {
       }),
       admin: {
         createUser: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
+        /* Defaults to an UNCONFIRMED user: authUser carries no
+           email_confirmed_at unless a test supplies one via _authUser.
+           Routes that branch on confirmation therefore take the
+           not-yet-confirmed path by default, which is the interesting one. */
+        getUserById: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
         deleteUser: jest.fn().mockResolvedValue({ data: {}, error: null }),
         updateUserById: jest.fn().mockResolvedValue({ data: { user: authUser }, error: null }),
         generateLink: jest.fn().mockResolvedValue({

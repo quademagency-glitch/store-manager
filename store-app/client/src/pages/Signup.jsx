@@ -175,8 +175,22 @@ export default function Signup() {
     if (resend.status === 'sending' || resend.cooldown > 0) return;
     setResend({ status: 'sending', cooldown: 0, error: '' });
     try {
-      await postPublic('/auth/resend-confirmation', { email: form.email.trim() });
-      setResend({ status: 'sent', cooldown: RESEND_COOLDOWN_SECONDS, error: '' });
+      const res = await postPublic('/auth/resend-confirmation', { email: form.email.trim() });
+      /* Prefer a cooldown the server states over the one hardcoded here. The
+         window currently lives in two places, RESEND_CONFIRMATION_COOLDOWN_MS
+         in routes/auth.js and the constant above, and if they ever drift the
+         failure is silent and ugly: the button re-enables inside the server's
+         window and the screen promises a second email that is never sent, on
+         the one screen where somebody is already waiting for an email that
+         never came. The response does not carry this field today. It is read
+         here so that adding it server-side is enough on its own to fix the
+         coupling, with no matching change needed in the client. */
+      const stated = Number(res?.cooldownSeconds);
+      setResend({
+        status: 'sent',
+        cooldown: Number.isFinite(stated) && stated > 0 ? Math.ceil(stated) : RESEND_COOLDOWN_SECONDS,
+        error: '',
+      });
     } catch (err) {
       /* 429 carries the server's own retryAfter and that is authoritative:
          honour it rather than our default, or the button re-enables into a

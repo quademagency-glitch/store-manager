@@ -219,6 +219,77 @@ describe('failures are surfaced, not swallowed', () => {
   });
 });
 
+describe('the per-address cooldown', () => {
+  // The in-process limiters cannot do this job: they count per worker and
+  // production runs 8, so the 3/hour they advertise behaves as 24. The
+  // cooldown lives on users.confirmation_sent_at, which every worker shares.
+  it('sends nothing when a confirmation went out recently', async () => {
+    useMock({
+      users: { data: { ...PROFILE, confirmation_sent_at: new Date().toISOString() }, error: null },
+      businesses: { data: BUSINESS, error: null },
+    });
+    const res = await post({ email: UNCONFIRMED.email });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+    expect(mockSendWelcome).not.toHaveBeenCalled();
+  });
+
+  it('sends again once the cooldown has passed', async () => {
+    const old = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    useMock({
+      users: { data: { ...PROFILE, confirmation_sent_at: old }, error: null },
+      businesses: { data: BUSINESS, error: null },
+    });
+    const res = await post({ email: UNCONFIRMED.email });
+    expect(res.status).toBe(200);
+    expect(mockSendWelcome).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers a cooled-down address exactly as it answers an unknown one', async () => {
+    useMock({
+      users: { data: { ...PROFILE, confirmation_sent_at: new Date().toISOString() }, error: null },
+      businesses: { data: BUSINESS, error: null },
+    });
+    const cooling = await post({ email: UNCONFIRMED.email });
+
+    await resetLimits('nobody@acme.test');
+    useMock({ users: { data: null, error: null } });
+    const unknown = await post({ email: 'nobody@acme.test' });
+
+    expect([cooling.status, cooling.body]).toEqual([unknown.status, unknown.body]);
+  });
+
+  it('stamps the send so the next request is inside the cooldown', async () => {
+    await post({ email: UNCONFIRMED.email });
+    const stamp = mockSupabase.mutations.find((m) => m.table === 'users' && m.op === 'update');
+    expect(stamp).toBeDefined();
+    expect(typeof stamp.payload.confirmation_sent_at).toBe('string');
+  });
+
+  it('does not stamp when the send failed, so a bad hour cannot lock someone out', async () => {
+    mockSendWelcome.mockResolvedValue({ success: false, error: 'nope' });
+    const res = await post({ email: UNCONFIRMED.email });
+    expect(res.status).toBe(502);
+    expect(mockSupabase.mutations.find((m) => m.table === 'users' && m.op === 'update')).toBeUndefined();
+  });
+
+  it('still sends when the column does not exist yet', async () => {
+    // Deploy order is not guaranteed: the code can land before migration 077.
+    // PostgREST fails the whole select on an unknown column, so without the
+    // fallback the endpoint would be dead rather than merely uncooled.
+    useMock({
+      users: [
+        { data: null, error: { code: '42703', message: 'column users.confirmation_sent_at does not exist' } },
+        { data: PROFILE, error: null },
+      ],
+      businesses: { data: BUSINESS, error: null },
+    });
+    const res = await post({ email: UNCONFIRMED.email });
+    expect(res.status).toBe(200);
+    expect(mockSendWelcome).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('rate limiting', () => {
   it('caps repeats for one address and reports retryAfter in seconds', async () => {
     // Deliberately no reset: three succeed, the fourth is refused. This is

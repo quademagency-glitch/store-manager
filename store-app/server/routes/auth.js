@@ -241,6 +241,17 @@ const resendConfirmationCeiling = rateLimit({
   legacyHeaders: false,
 });
 
+/* How long after an actual send before another is worth making. The
+   per-address rate limiter above cannot enforce this: express-rate-limit
+   counts inside one process and this API runs 8, so its 3/hour is up to
+   24/hour in production. Measured on the deployed endpoint 2026-09-03, six
+   consecutive requests all passed and ratelimit-remaining came back 2 of 3,
+   a different worker each time. users.confirmation_sent_at (migration 077) is
+   shared by every worker and survives a restart, so the cooldown is real
+   rather than nominal. The limiters stay: they bound total load and per-caller
+   abuse, which a per-address timestamp does not. */
+const RESEND_CONFIRMATION_COOLDOWN_MS = 15 * 60 * 1000;
+
 const resendConfirmationSchema = z.object({
   /* trim() before email(): someone copying an address out of a mail client
      brings a trailing space with it, and this is the form for a person who is
@@ -849,8 +860,11 @@ router.get('/me', authGuard, async (req, res) => {
  * the resend silently failed reproduces the bug the endpoint exists to fix.
  * The cost is that a 502 only ever occurs for an address that does have an
  * unconfirmed account, so under mail failure the response does distinguish
- * real addresses from invented ones. The rate limiters above are what keeps
- * that from being a usable oracle; they are load-bearing, not hygiene.
+ * real addresses from invented ones. A per-address cooldown on
+ * users.confirmation_sent_at is what keeps that from being a usable oracle.
+ * The in-process limiters alone would NOT: they count per worker and this API
+ * runs 8, so the 3/hour reads as 3 and behaves as 24. Measured against the
+ * deployed endpoint on 2026-09-03, not inferred.
  */
 router.post(
   '/resend-confirmation',
@@ -865,11 +879,25 @@ router.post(
     const quiet = () => res.json({ ok: true });
 
     try {
-      const { data: profile, error: profileError } = await supabaseAdmin
+      /* Selecting a column that does not exist fails the WHOLE select in
+         PostgREST rather than returning it as null, so a deploy landing before
+         migration 077 would break the endpoint entirely. Ask for it, and fall
+         back to the narrower select on 42703/PGRST204. */
+      let { data: profile, error: profileError } = await supabaseAdmin
         .from('users')
-        .select('id, name, business_id')
+        .select('id, name, business_id, confirmation_sent_at')
         .eq('email', email)
         .maybeSingle();
+
+      if (profileError && /confirmation_sent_at|PGRST204|42703/.test(
+        `${profileError.code} ${profileError.message}`)) {
+        logger.warn('Resend confirmation: users.confirmation_sent_at is missing; migration 077 not applied');
+        ({ data: profile, error: profileError } = await supabaseAdmin
+          .from('users')
+          .select('id, name, business_id')
+          .eq('email', email)
+          .maybeSingle());
+      }
 
       if (profileError) {
         logger.error({ err: profileError }, 'Resend confirmation: profile lookup failed');
@@ -883,6 +911,18 @@ router.post(
         return quiet();
       }
       if (authUser.user.email_confirmed_at) return quiet();
+
+      /* Within the cooldown the earlier mail is already on its way, so the
+         honest answer and the safe answer are the same one: the neutral 200.
+         A 429 here would say "this address has an unconfirmed account" and
+         could be triggered at will, which is a sharper oracle than the 502
+         this is meant to blunt. */
+      const lastSent = profile.confirmation_sent_at
+        ? new Date(profile.confirmation_sent_at).getTime() : 0;
+      if (lastSent && Date.now() - lastSent < RESEND_CONFIRMATION_COOLDOWN_MS) {
+        logger.info({ email }, 'Resend confirmation: within cooldown, not resending');
+        return quiet();
+      }
 
       const { data: business } = await supabaseAdmin
         .from('businesses')
@@ -921,6 +961,18 @@ router.post(
           error: 'Could not send the confirmation email',
           message: 'Something went wrong on our side. Please try again shortly.',
         });
+      }
+
+      /* Stamped only after a successful send: a failed attempt must not start
+         a cooldown, or a transient outage would lock someone out of the one
+         thing that could rescue them. Best-effort, and deliberately not
+         allowed to turn a delivered email into a 502 for the caller. */
+      const { error: stampError } = await supabaseAdmin
+        .from('users')
+        .update({ confirmation_sent_at: new Date().toISOString() })
+        .eq('id', profile.id);
+      if (stampError) {
+        logger.warn({ err: stampError, email }, 'Resend confirmation: sent but could not stamp the cooldown');
       }
 
       logger.info({ email, businessId: profile.business_id }, 'Resend confirmation: sent');

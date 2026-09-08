@@ -1,18 +1,18 @@
 # 6. Email Drip Sequence (5 Emails)
 
 ### Context
-This 5-email sequence is sent automatically to new trial signups over their first 14 days. The goal is to guide them from "I just signed up" to "I can't run my shop without this." Each email focuses on one action or insight. Tone is helpful and respectful — never pushy. Each email should take under 60 seconds to read.
+This 5-email sequence is sent automatically to new trial signups over their first 14 days. The goal is to guide them from "I just signed up" to "I can't run my shop without this." Each email focuses on one action or insight. Tone is helpful and respectful, never pushy. Each email should take under 60 seconds to read.
 
 **Email service:** Use with any ESP (Mailchimp, Brevo, Arkesel Email, etc.). All copy is HTML-ready with simple formatting.
 
 ---
 
-## Email 1 — Welcome + First Steps
+## Email 1. Welcome + First Steps
 **Send:** Day 0 (immediately after signup)
 
 ---
 
-**Subject Line:** Welcome to QuadERP — let's set up your shop 🏪
+**Subject Line:** Welcome to QuadERP. Let's set up your shop 🏪
 
 **Alternative Subject Line:** You're in! Here's how to get started in 5 minutes
 
@@ -24,7 +24,7 @@ This 5-email sequence is sent automatically to new trial signups over their firs
 
 Hi [First Name],
 
-Welcome to QuadERP! 🎉 Your 30-day free trial is now active — full access, no limits.
+Welcome to QuadERP! 🎉 Your 30-day free trial is now active. Full access, no limits.
 
 Let's get you set up. It takes about 10 minutes, and once you're done, you'll have a working system ready to process your first sale.
 
@@ -39,24 +39,24 @@ Start with your top 20 best-sellers. You can add the rest later. For each produc
 💡 **Pro tip:** You can scan barcodes with your phone camera to speed this up. Or if you have your products in an Excel sheet, you can import them in bulk.
 
 **Step 3: Invite your staff** (1 minute)
-Add your cashier and manager accounts. Each person gets their own login with role-based permissions — so your cashier can process sales but can't change prices or access reports.
+Add your cashier and manager accounts. Each person gets their own login with role-based permissions, so your cashier can process sales but can't change prices or access reports.
 
 **[Get Started →]** (Links to: https://app.quaderp.app/setup)
 
 If you get stuck on anything, reply to this email or message us on WhatsApp at [Number]. We'll help you through it.
 
-You've just taken the most important step — deciding to run your shop with real data instead of guesswork. Let's make these 30 days count.
+You've just taken the most important step. Deciding to run your shop with real data instead of guesswork. Let's make these 30 days count.
 
 Welcome aboard,
 The QuadERP Team
 
-P.S. — Need hands-on help? We offer free setup assistance. Reply "SETUP" and we'll arrange for someone to help you load your products and train your staff.
+P.S.. Need hands-on help? We offer free setup assistance. Reply "SETUP" and we'll arrange for someone to help you load your products and train your staff.
 
 ---
 
 ---
 
-## Email 2 — Process Your First Sale
+## Email 2. Process Your First Sale
 **Send:** Day 2
 
 ---
@@ -73,24 +73,24 @@ P.S. — Need hands-on help? We offer free setup assistance. Reply "SETUP" and w
 
 Hi [First Name],
 
-By now you should have your products loaded and your account set up. If you haven't, no worries — reply to this email and we'll help you get there.
+By now you should have your products loaded and your account set up. If you haven't, no worries. Reply to this email and we'll help you get there.
 
 If you're ready, let's process your first sale. It's easier than you think.
 
 **Here's how:**
 
 1. **Open QuadERP** on your phone, tablet, or computer
-2. **Tap "New Sale"** — you're now on the POS screen
-3. **Search for a product** — start typing the name and it appears
-4. **Tap to add it** — it goes straight to the cart
-5. **Tap "Checkout"** — choose Cash, Card, or Mobile Money
-6. **Confirm the payment** — receipt generates automatically ✅
+2. **Tap "New Sale"**. You're now on the POS screen
+3. **Search for a product**. Start typing the name and it appears
+4. **Tap to add it**. It goes straight to the cart
+5. **Tap "Checkout"**. Choose Cash, Card, or Mobile Money
+6. **Confirm the payment**. Receipt generates automatically ✅
 
 That's it. Under 30 seconds.
 
 **Here's what happens behind the scenes that your paper book can't do:**
 
-✅ Your stock count adjusts automatically — that item just went from 24 to 23
+✅ Your stock count adjusts automatically. That item just went from 24 to 23
 ✅ Your daily sales total updates in real time on your dashboard
 ✅ The transaction is logged with the exact time, cashier name, and payment method
 ✅ If this is a credit sale, the customer's balance updates automatically
@@ -108,7 +108,7 @@ The QuadERP Team
 
 ---
 
-## Email 3 — Loss Prevention Spotlight
+## Email 3. Loss Prevention Spotlight
 **Send:** Day 5
 
 ---
@@ -129,7 +129,7 @@ Quick question: how confident are you that every cedi in your shop is accounted 
 
 If you're like most shop owners we talk to, the honest answer is: "I'm not 100% sure."
 
-Here's the reality. Across retail shops in Ghana, **2-5% of revenue is lost to shrinkage** — that's stock that disappears due to theft, errors, or untracked giveaways. For a shop doing GHS 40,000/month in sales, that's **GHS 800-2,000 walking out the door every month.**
+Here's the reality. Across retail shops in Ghana, **2-5% of revenue is lost to shrinkage**. That's stock that disappears due to theft, errors, or untracked giveaways. For a shop doing GHS 40,000/month in sales, that's **GHS 800-2,000 walking out the door every month.**
 
 Most POS systems just record your sales. They don't watch for problems.
 
@@ -137,13 +137,13 @@ Most POS systems just record your sales. They don't watch for problems.
 
 Our **Loss Prevention** system runs in the background and automatically flags:
 
-🚩 **Suspicious void patterns** — a cashier voiding 3 sales in the last hour of the shift? You'll get an alert.
+🚩 **Suspicious void patterns**, a cashier voiding 3 sales in the last hour of the shift? You'll get an alert.
 
-🚩 **After-hours transactions** — a sale processed at 11 PM when the shop closes at 9 PM? Flagged.
+🚩 **After-hours transactions**, a sale processed at 11 PM when the shop closes at 9 PM? Flagged.
 
-🚩 **Stock discrepancies** — your system says you should have 30 units, but your stocktake shows 24? QuadERP highlights the gap.
+🚩 **Stock discrepancies**. Your system says you should have 30 units, but your stocktake shows 24? QuadERP highlights the gap.
 
-🚩 **Cash drawer irregularities** — expected cash doesn't match actual cash? You'll know before the end of the day, not the end of the month.
+🚩 **Cash drawer irregularities**. Expected cash doesn't match actual cash? You'll know before the end of the day, not the end of the month.
 
 **This feature alone has saved some of our customers more than GHS 2,000/month.** It's the reason many shop owners say QuadERP pays for itself.
 
@@ -155,18 +155,18 @@ You may not have a problem. But wouldn't you rather know for sure?
 
 The QuadERP Team
 
-P.S. — One pharmacy owner in Accra caught a cashier voiding GHS 800/month in sales within the first 2 weeks. The system cost her GHS 250/month. You do the math.
+P.S. A cashier quietly voiding GHS 800 of sales a month is exactly the pattern the alerts are built to surface, and Single Branch costs GHS 250 a month. You do the math.
 
 ---
 
 ---
 
-## Email 4 — Social Proof + Urgency
+## Email 4. Social Proof + Urgency
 **Send:** Day 10
 
 ---
 
-**Subject Line:** "My only regret is not starting sooner" — hear from shop owners like you
+**Subject Line:** "My only regret is not starting sooner". Hear from shop owners like you
 
 **Alternative Subject Line:** What other shop owners are saying about QuadERP
 
@@ -178,7 +178,7 @@ P.S. — One pharmacy owner in Accra caught a cashier voiding GHS 800/month in s
 
 Hi [First Name],
 
-Your free trial is at the halfway mark — 20 days left. We hope you're finding QuadERP useful!
+Your free trial is at the halfway mark, 20 days left. We hope you're finding QuadERP useful!
 
 We wanted to share what other shop owners are experiencing:
 
@@ -200,7 +200,7 @@ We wanted to share what other shop owners are experiencing:
 
 These are shop owners just like you. They had the same doubts. They tried the free trial. They saw the difference.
 
-**Have you processed your first 20 sales yet?** That's when most owners say QuadERP "clicks" — when they start seeing the patterns in their dashboard and realize how much they were missing.
+**Have you processed your first 20 sales yet?** That's when most owners say QuadERP "clicks". When they start seeing the patterns in their dashboard and realize how much they were missing.
 
 If you haven't been using the system actively, there's still time. Open it today, process a few sales, and check your dashboard tomorrow morning. That "aha" moment is worth it.
 
@@ -215,12 +215,12 @@ The QuadERP Team
 
 ---
 
-## Email 5 — Trial Ending — Convert to Paid
+## Email 5. Trial Ending. Convert to Paid
 **Send:** Day 13 (1 day before trial ends)
 
 ---
 
-**Subject Line:** Your free trial ends tomorrow — here's what you'll lose ⏰
+**Subject Line:** Your free trial ends tomorrow. Here's what you'll lose ⏰
 
 **Alternative Subject Line:** [First Name], your QuadERP trial expires in 24 hours
 
@@ -240,39 +240,39 @@ If you subscribe, **nothing changes.** Your data stays. Your products stay. Your
 
 If you don't subscribe, here's what you'll lose access to:
 
-❌ **Real-time sales tracking** — no more seeing your daily sales on your phone
-❌ **Inventory management** — no more low-stock alerts or stocktake tools
-❌ **Loss prevention alerts** — no more automatic theft detection
-❌ **Accounts receivable** — no more tracking who owes you and how much
-❌ **Customer profiles & loyalty** — no more purchase history or reward points
-❌ **Dashboard & reports** — back to the notebook and calculator
+❌ **Real-time sales tracking**: no more seeing your daily sales on your phone
+❌ **Inventory management**: no more low-stock alerts or stocktake tools
+❌ **Loss prevention alerts**: no more automatic theft detection
+❌ **Accounts receivable**: no more tracking who owes you and how much
+❌ **Customer profiles & loyalty**: no more purchase history or reward points
+❌ **Dashboard & reports**. Back to the notebook and calculator
 
-We've seen what happens when shop owners go back to manual tracking after using QuadERP. The frustration is real. As one owner told us: "I tried to go back to my book after the trial. I lasted 3 days."
+Going back to the notebook after a month of the system is the part people find hardest. Not because the notebook got worse, but because you have spent a month being able to answer questions it cannot answer.
 
 **The investment:**
 
 | Plan | Monthly | Daily Cost |
 |---|---|---|
 | **Single Branch** | GHS 250/mo | Less than GHS 9/day |
-| **Multi-Branch** | GHS 600/mo | Less than GHS 20/day |
+| **Multi-Branch** | GHS 450/mo | Less than GHS 16/day |
 
 Most of our customers save **more than this amount** in their first month just from catching stock issues and recovering unpaid credit.
 
 **[Subscribe Now →]** (Links to: https://app.quaderp.app/billing/subscribe)
 
-**Not sure yet?** That's okay. Reply to this email and let us know what's holding you back. We'll do our best to help — whether that's answering questions, extending your trial, or setting up a call.
+**Not sure yet?** That's okay. Reply to this email and let us know what's holding you back. We'll do our best to help, whether that's answering questions, extending your trial, or setting up a call.
 
 Your business is too important to go back to guessing. Let's keep the momentum going.
 
 The QuadERP Team
 
-P.S. — If you subscribe today, we'll waive the setup fee entirely. That's GHS 1,000 saved. Just use code **STAYWITHUS** at checkout.
+P.S. If you subscribe today, we'll do the guided setup for you at no charge. That's the GHS 1,000 you would otherwise pay only if you wanted the help. Just use code **STAYWITHUS** at checkout.
 
 ---
 
 ## Usage Notes
 
-- **ESP setup:** Create an automation workflow triggered by the "Trial Signup" event. Use the email delays specified (Day 0, 2, 5, 10, 13). Ensure the sequence stops if the user subscribes before the final email — don't send Email 5 to paying customers.
+- **ESP setup:** Create an automation workflow triggered by the "Trial Signup" event. Use the email delays specified (Day 0, 2, 5, 10, 13). Ensure the sequence stops if the user subscribes before the final email. Don't send Email 5 to paying customers.
 - **Personalization:** Beyond [First Name], personalize based on behavior where possible:
   - Email 2: If they've already processed a sale, change the subject to "You made your first sale! Here's what happened behind the scenes."
   - Email 5: If they've been highly active (50+ transactions), lead with "You've processed [X] sales in your trial. Imagine losing access to all that data."

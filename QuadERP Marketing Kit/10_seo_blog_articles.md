@@ -1,7 +1,7 @@
 # 10. SEO Blog Articles (5 Articles)
 
 ### Context
-These articles are published on the QuadERP blog (quaderp.app/blog) and shared across social media. They target search terms that Ghanaian retail business owners are likely searching on Google. The primary goal is organic traffic → free trial signups. Each article should be helpful independently — even if the reader never tries QuadERP, they should leave the article having learned something valuable. The QuadERP mentions should feel natural, not forced.
+These articles are published on the QuadERP blog (quaderp.app/blog) and shared across social media. They target search terms that Ghanaian retail business owners are likely searching on Google. The primary goal is organic traffic → free trial signups. Each article should be helpful independently, even if the reader never tries QuadERP, they should leave the article having learned something valuable. The QuadERP mentions should feel natural, not forced.
 
 ---
 
@@ -9,25 +9,25 @@ These articles are published on the QuadERP blog (quaderp.app/blog) and shared a
 
 **Target keyword:** how to reduce stock theft in retail shop / how to stop staff stealing Ghana
 **Word count:** ~1,050
-**Meta description:** Stock theft costs Ghanaian shop owners thousands of cedis every year. Learn 7 proven strategies to catch and prevent retail theft in your shop — from stocktakes to smart technology.
+**Meta description:** Stock theft costs Ghanaian shop owners thousands of cedis every year. Learn 7 proven strategies to catch and prevent retail theft in your shop, from stocktakes to smart technology.
 
 ---
 
 Every retail shop owner in Ghana has the same quiet worry: *"Are my staff stealing from me?"*
 
-The answer, statistically, is uncomfortable. Research shows that 75% of employees steal from their employer at least once, and retail is one of the hardest-hit sectors. In Ghana, where most shops rely on paper records and manual stock counting, the opportunities for theft are endless — and the ability to detect it is almost nonexistent.
+The answer, statistically, is uncomfortable. Research shows that 75% of employees steal from their employer at least once, and retail is one of the hardest-hit sectors. In Ghana, where most shops rely on paper records and manual stock counting, the opportunities for theft are endless, and the ability to detect it is almost nonexistent.
 
 The good news? You don't have to live with this. Here are 7 proven strategies to reduce stock theft in your retail shop.
 
 ### 1. Accept That It's Probably Happening
 
-The first step is the hardest: accepting that theft might be occurring in your shop right now. Many shop owners resist this idea because they trust their workers — and that trust is admirable. But trust without verification is just hope.
+The first step is the hardest: accepting that theft might be occurring in your shop right now. Many shop owners resist this idea because they trust their workers, and that trust is admirable. But trust without verification is just hope.
 
 You don't have to suspect anyone specifically. Just acknowledge that without a tracking system, you have no way to know for sure. That acknowledgment opens the door to fixing it.
 
 ### 2. Conduct Random Stocktakes
 
-Most shop owners do a full stocktake once a month — if at all. By that time, any discrepancies are old news and impossible to investigate.
+Most shop owners do a full stocktake once a month. If at all. By that time, any discrepancies are old news and impossible to investigate.
 
 Instead, do mini-stocktakes. Pick 10-15 high-value items randomly each week. Count what's on the shelf. Compare it to what your records say should be there. If there's a gap, investigate immediately while the trail is still fresh.
 
@@ -35,17 +35,17 @@ The key word is *random*. If your staff know you count stock every Monday mornin
 
 ### 3. Reconcile Your Cash Drawer Daily
 
-At the end of every shift (not just every day — every shift), count the cash in the drawer and compare it to the sales records. If your records say you should have GHS 5,430 in cash and you only have GHS 5,200, that GHS 230 gap needs explaining.
+At the end of every shift (not just every day, every shift), count the cash in the drawer and compare it to the sales records. If your records say you should have GHS 5,430 in cash and you only have GHS 5,200, that GHS 230 gap needs explaining.
 
-Small discrepancies add up. A GHS 50 daily gap is GHS 1,500 per month — that's real money.
+Small discrepancies add up. A GHS 50 daily gap is GHS 1,500 per month. That's real money.
 
 ### 4. Install a System That Tracks Transactions Automatically
 
 Paper records are easy to manipulate. A cashier can process a sale, pocket the cash, and erase the entry in the book. There's no audit trail.
 
-Digital point-of-sale systems create an immutable record of every transaction. Every sale, every void, every refund — logged with the time, the cashier's name, and the payment method. You can't erase a digital record.
+Digital point-of-sale systems create an immutable record of every transaction. Every sale, every void, every refund. Logged with the time, the cashier's name, and the payment method. You can't erase a digital record.
 
-Better systems go further. [QuadERP](https://quaderp.app), for example, includes a loss prevention module that automatically flags suspicious patterns — like multiple voids by the same cashier near closing time, or transactions processed after business hours. This kind of automated detection catches things that manual checks miss.
+Better systems go further. [QuadERP](https://quaderp.app), for example, includes a loss prevention module that automatically flags suspicious patterns, like multiple voids by the same cashier near closing time, or transactions processed after business hours. This kind of automated detection catches things that manual checks miss.
 
 ### 5. Use Cameras Strategically
 
@@ -59,19 +59,19 @@ Not every employee should have the same access. Your cashier needs to process sa
 
 Modern retail management systems let you set specific permissions for each role. The fewer people who can void sales, delete products, or open the cash drawer manually, the fewer opportunities for theft.
 
-### 7. Address Issues Immediately — With Data, Not Emotion
+### 7. Address Issues Immediately, With Data, Not Emotion
 
 When you find a discrepancy, don't accuse. Present the data. "The system shows 5 voids at closing time on Thursday. Can you explain what happened?" This approach is professional, non-confrontational, and gives the employee a chance to explain.
 
-If the explanation doesn't add up, you have the data to support your next steps. If it does add up, you've demonstrated that you're paying attention — which is a powerful deterrent on its own.
+If the explanation doesn't add up, you have the data to support your next steps. If it does add up, you've demonstrated that you're paying attention, which is a powerful deterrent on its own.
 
 ### The Bottom Line
 
-Stock theft is a reality of retail — but it doesn't have to be a cost you silently absorb. Combining regular stocktakes, daily cash reconciliation, and a smart tracking system can reduce shrinkage by 60-70%.
+Stock theft is a reality of retail, but it doesn't have to be a cost you silently absorb. Combining regular stocktakes, daily cash reconciliation, and a smart tracking system can reduce shrinkage by 60-70%.
 
 If you're losing GHS 1,000-2,000 per month to theft and errors you can't see, that's GHS 12,000-24,000 per year. A system like QuadERP costs GHS 3,000 per year and pays for itself many times over.
 
-**Ready to take control?** [Start your free 30-day trial of QuadERP](https://quaderp.app) — no credit card needed. See what your shop has been missing.
+**Ready to take control?** [Start your free 30-day trial of QuadERP](https://quaderp.app), no credit card needed. See what your shop has been missing.
 
 ---
 
@@ -95,19 +95,19 @@ Let's do an honest comparison.
 
 Let's give credit where it's due. The paper ledger has kept millions of Ghanaian businesses running for decades. It's simple. Anyone can use it. It's portable. And there's no subscription fee.
 
-For a very small business — one person, a handful of products, a few sales per day — a well-maintained ledger can work. If you're meticulous about recording every sale, every expense, and every stock movement, and you never miss an entry, the book does the job.
+For a very small business, one person, a handful of products, a few sales per day, a well-maintained ledger can work. If you're meticulous about recording every sale, every expense, and every stock movement, and you never miss an entry, the book does the job.
 
 ### Where the Paper Ledger Breaks Down
 
 But here's what the book can't do:
 
-**It can't calculate for you.** Every total, every daily sum, every monthly profit — you have to calculate manually. Human error is inevitable. A single addition mistake compounds through your entire month-end numbers.
+**It can't calculate for you.** Every total, every daily sum, every monthly profit. You have to calculate manually. Human error is inevitable. A single addition mistake compounds through your entire month-end numbers.
 
-**It can't alert you.** When stock runs low, when a cashier voids a sale suspiciously, when a customer's credit balance exceeds a threshold — the book just sits there. You have to discover problems yourself, usually too late.
+**It can't alert you.** When stock runs low, when a cashier voids a sale suspiciously, when a customer's credit balance exceeds a threshold, the book just sits there. You have to discover problems yourself, usually too late.
 
 **It can't be in two places at once.** If you have two branches, you need two books. And you have no way to see what's in Book B without physically being at Branch B.
 
-**It can't be backed up.** If the book is lost, stolen, water-damaged, or destroyed in a fire — your entire business record is gone. Forever.
+**It can't be backed up.** If the book is lost, stolen, water-damaged, or destroyed in a fire. Your entire business record is gone. Forever.
 
 **It can be manipulated.** Entries can be erased, rewritten, or simply not recorded. There's no audit trail. If a staff member handles the book, you're trusting them completely.
 
@@ -126,13 +126,13 @@ A modern point-of-sale system addresses every limitation above:
 | Audit trail | No | Every action logged |
 | Time to close the day | 30-60 minutes | 2 minutes |
 
-The efficiency gain alone is significant. Shop owners who switch from paper to a POS system report saving 6-8 hours per week on record-keeping. That's almost a full working day — every week — that you can spend growing your business instead of counting it.
+The efficiency gain alone is significant. Shop owners who switch from paper to a POS system report saving 6-8 hours per week on record-keeping. That's almost a full working day, every week. That you can spend growing your business instead of counting it.
 
 ### "But POS Systems Are Complicated and Expensive"
 
-This used to be true. Traditional POS systems required dedicated hardware — special terminals, receipt printers, cash drawers — and cost GHS 5,000-15,000 upfront. Plus ongoing fees.
+This used to be true. Traditional POS systems required dedicated hardware. Special terminals, receipt printers, cash drawers, and cost GHS 5,000-15,000 upfront. Plus ongoing fees.
 
-Modern cloud-based systems like [QuadERP](https://quaderp.app) have changed this completely. They run on your existing phone, tablet, or laptop. No special hardware. No installation. You sign up, add your products, and start selling. The cost is GHS 250/month — about GHS 8/day — with a free 30-day trial to make sure it works before you pay anything.
+Modern cloud-based systems like [QuadERP](https://quaderp.app) have changed this completely. They run on your existing phone, tablet, or laptop. No special hardware. No installation. You sign up, add your products, and start selling. The cost is GHS 250/month, about GHS 8/day, with a free 30-day trial to make sure it works before you pay anything.
 
 ### The Hybrid Approach
 
@@ -140,15 +140,15 @@ Some shop owners keep their ledger as a backup while they transition to digital.
 
 ### Who Should Stay With the Book?
 
-Honestly? If your business has fewer than 20 products, makes fewer than 10 sales per day, and you're the only person who touches the cash — a well-maintained ledger might be sufficient. The cost-benefit of a POS system scales with complexity.
+Honestly? If your business has fewer than 20 products, makes fewer than 10 sales per day, and you're the only person who touches the cash, a well-maintained ledger might be sufficient. The cost-benefit of a POS system scales with complexity.
 
-But if any of these are true — you have staff handling sales, you have more than one location, you can't tell which products are profitable, you suspect stock is going missing — then the book is no longer enough. You need a system.
+But if any of these are true. You have staff handling sales, you have more than one location, you can't tell which products are profitable, you suspect stock is going missing, then the book is no longer enough. You need a system.
 
 ### The Verdict
 
-The paper ledger isn't wrong. It's just limited. For a growing business in Ghana — especially one with staff, multiple products, or more than one location — a cloud-based POS system isn't an upgrade. It's the minimum requirement for knowing what's really happening in your business.
+The paper ledger isn't wrong. It's just limited. For a growing business in Ghana, especially one with staff, multiple products, or more than one location, a cloud-based POS system isn't an upgrade. It's the minimum requirement for knowing what's really happening in your business.
 
-**Try QuadERP free for 30 days** and see the difference for yourself. Your ledger will be there if you want to go back — but we don't think you will. [Start your free trial →](https://quaderp.app)
+**Try QuadERP free for 30 days** and see the difference for yourself. Your ledger will be there if you want to go back, but we don't think you will. [Start your free trial →](https://quaderp.app)
 
 ---
 
@@ -158,19 +158,19 @@ The paper ledger isn't wrong. It's just limited. For a growing business in Ghana
 
 **Target keyword:** manage inventory multiple stores Ghana / multi-branch stock management
 **Word count:** ~1,000
-**Meta description:** Struggling to track stock across your shop branches in Ghana? Learn practical strategies for multi-location inventory management — from manual methods to smart software solutions.
+**Meta description:** Struggling to track stock across your shop branches in Ghana? Learn practical strategies for multi-location inventory management, from manual methods to smart software solutions.
 
 ---
 
 Opening a second (or third) branch is exciting. It means your business is growing. But it also introduces a challenge that catches many Ghanaian shop owners off guard: *how do you keep track of stock when it's spread across multiple locations?*
 
-If you're managing a single shop, stock management is straightforward — you can see the shelves, you know what sold today, you know what needs ordering. But the moment stock lives in two places, visibility drops dramatically. And with it, so does your control.
+If you're managing a single shop, stock management is straightforward. You can see the shelves, you know what sold today, you know what needs ordering. But the moment stock lives in two places, visibility drops dramatically. And with it, so does your control.
 
 ### The Multi-Branch Inventory Problem
 
 Here's what typically goes wrong:
 
-**Over-ordering at one branch, stockouts at another.** Branch A has 60 units of a product that's barely moving. Branch B — where customers are asking for it every day — has been out of stock for a week. You don't know because you haven't visited Branch B this week.
+**Over-ordering at one branch, stockouts at another.** Branch A has 60 units of a product that's barely moving. Branch B. Where customers are asking for it every day. Has been out of stock for a week. You don't know because you haven't visited Branch B this week.
 
 **No visibility without physical presence.** You can't see Branch B's stock levels unless you drive there and count. For shop owners with locations spread across Accra, or worse, across cities like Accra and Kumasi, this "trust tax" eats into time and money.
 
@@ -185,7 +185,7 @@ Before any technology, establish clear processes:
 - Every branch records goods received on the same form/template
 - Stock transfers require a written (or digital) transfer note signed by both locations
 - Weekly counts of top 20 products at each branch, reported to you directly
-- Consistent product naming — "Nivea Lotion 400ml" is the same at every location, not "Nivea big bottle" at one and "body lotion Nivea" at another
+- Consistent product naming, "Nivea Lotion 400ml" is the same at every location, not "Nivea big bottle" at one and "body lotion Nivea" at another
 
 ### Strategy 2: Centralize Purchasing
 
@@ -193,9 +193,9 @@ Don't let each branch order independently. When branch managers order based on t
 
 ### Strategy 3: Implement a Shared Inventory System
 
-This is where technology becomes essential. A shared inventory management system gives you one view of stock across all locations. You can see that Branch A has surplus and Branch B has a shortage — and initiate a transfer from your phone.
+This is where technology becomes essential. A shared inventory management system gives you one view of stock across all locations. You can see that Branch A has surplus and Branch B has a shortage, and initiate a transfer from your phone.
 
-[QuadERP's multi-location module](https://quaderp.app) is designed specifically for this scenario. Every product, every location, one dashboard. You see real-time stock levels, process cross-branch transfers with tracking, and get alerts when any branch's stock drops below reorder level. One Kumasi-based cosmetics chain owner told us she saved GHS 600/month in transport alone by managing branches from her phone instead of driving between locations.
+[QuadERP's multi-location module](https://quaderp.app) is designed specifically for this scenario. Every product, every location, one dashboard. You see real-time stock levels, process cross-branch transfers with tracking, and get alerts when any branch's stock drops below reorder level. An owner driving to three branches twice a week to check stock is spending real money on transport before a single item has been counted, and that trip is the one a shared dashboard removes.
 
 ### Strategy 4: Set Reorder Points Per Location
 
@@ -219,9 +219,9 @@ That's GHS 80,000+ per year in preventable losses. A system that provides cross-
 
 ### Start Today
 
-Whether you use a system or not, start with this: call each branch manager right now and ask them to count your top 10 products. Compare the numbers to what you expect. If they match perfectly, congratulations — you're one of the rare ones. If they don't, it's time to implement a system.
+Whether you use a system or not, start with this: call each branch manager right now and ask them to count your top 10 products. Compare the numbers to what you expect. If they match perfectly, congratulations. You're one of the rare ones. If they don't, it's time to implement a system.
 
-**QuadERP's Multi-Branch plan is GHS 600/month** for up to 5 locations — GHS 4/day per branch. [Start your free 30-day trial](https://quaderp.app) and see all your branches on one screen for the first time.
+**QuadERP's Multi-Branch plan is GHS 450/month** for up to 5 locations, GHS 3/day per branch. [Start your free 30-day trial](https://quaderp.app) and see all your branches on one screen for the first time.
 
 ---
 
@@ -235,9 +235,9 @@ Whether you use a system or not, start with this: call each branch manager right
 
 ---
 
-Mobile Money has transformed how Ghanaians pay for everything — from taxi rides to school fees. If your retail shop doesn't accept MoMo, you're turning away customers who simply don't carry cash.
+Mobile Money has transformed how Ghanaians pay for everything, from taxi rides to school fees. If your retail shop doesn't accept MoMo, you're turning away customers who simply don't carry cash.
 
-But accepting MoMo isn't just about having a merchant number. It's about integrating it into your sales process smoothly and — critically — tracking it properly so you don't lose visibility on your money.
+But accepting MoMo isn't just about having a merchant number. It's about integrating it into your sales process smoothly and. Critically. Tracking it properly so you don't lose visibility on your money.
 
 ### Why Your Shop Needs to Accept MoMo
 
@@ -269,7 +269,7 @@ Here's where most shop owners stumble. They accept MoMo payments successfully, b
 
 Common scenarios:
 - A customer pays GHS 150 via MoMo. The cashier confirms receipt. But was the sale recorded in the book? Often, MoMo payments get "forgotten" in the paper records because there's no cash to remind you.
-- At the end of the day, the cash drawer is reconciled — but MoMo payments aren't. You know you had GHS 3,000 in cash sales but have no idea how much came via MoMo.
+- At the end of the day, the cash drawer is reconciled, but MoMo payments aren't. You know you had GHS 3,000 in cash sales but have no idea how much came via MoMo.
 - Staff accept MoMo to their personal number instead of the business merchant account. The money is still in the staff member's wallet.
 
 ### Best Practices for MoMo in Your Shop
@@ -280,11 +280,11 @@ Common scenarios:
 
 **3. Never accept MoMo to personal numbers.** All business payments should go to the merchant account. This is non-negotiable.
 
-**4. Use a POS system that integrates MoMo.** The most effective approach is a point-of-sale system that handles all payment types — cash, card, and MoMo — in one place. When a sale is processed as MoMo, the system automatically records it as a MoMo transaction, includes it in the daily total, and tracks it separately for reconciliation.
+**4. Use a POS system that integrates MoMo.** The most effective approach is a point-of-sale system that handles all payment types. Cash, card, and MoMo, in one place. When a sale is processed as MoMo, the system automatically records it as a MoMo transaction, includes it in the daily total, and tracks it separately for reconciliation.
 
-[QuadERP](https://quaderp.app) integrates with all Ghanaian Mobile Money providers. When your cashier processes a sale and selects "Mobile Money," the entire transaction is logged — amount, customer (if registered), timestamp, and payment type. Your end-of-day report shows exactly how much was cash, how much was MoMo, and how much was card. No mental arithmetic. No missed transactions.
+[QuadERP](https://quaderp.app) integrates with all Ghanaian Mobile Money providers. When your cashier processes a sale and selects "Mobile Money," the entire transaction is logged. Amount, customer (if registered), timestamp, and payment type. Your end-of-day report shows exactly how much was cash, how much was MoMo, and how much was card. No mental arithmetic. No missed transactions.
 
-**5. Monitor for split-payment abuse.** Watch for cashiers who process a GHS 200 sale as GHS 100 cash + GHS 100 MoMo — but pocket the cash and only send GHS 100 to the MoMo merchant account. A system that tracks split payments makes this visible.
+**5. Monitor for split-payment abuse.** Watch for cashiers who process a GHS 200 sale as GHS 100 cash + GHS 100 MoMo, but pocket the cash and only send GHS 100 to the MoMo merchant account. A system that tracks split payments makes this visible.
 
 ### Transaction Fees: What to Expect
 
@@ -292,11 +292,11 @@ MoMo merchant fees in Ghana are typically:
 - **MTN MoMo Merchant:** 0.5-1% of transaction value
 - **Vodafone Cash:** Similar range
 
-On a GHS 100 sale, you pay about GHS 0.50-1.00 in fees. On a monthly revenue of GHS 40,000, that's GHS 200-400 in MoMo fees. Many shop owners factor this into their pricing or accept it as a cost of doing business — the additional sales from MoMo-paying customers more than offset the fees.
+On a GHS 100 sale, you pay about GHS 0.50-1.00 in fees. On a monthly revenue of GHS 40,000, that's GHS 200-400 in MoMo fees. Many shop owners factor this into their pricing or accept it as a cost of doing business, the additional sales from MoMo-paying customers more than offset the fees.
 
 ### The Bottom Line
 
-If you're not accepting MoMo, start today. If you're accepting MoMo but not tracking it properly, fix that today. Every untracked MoMo transaction is an opportunity for error — or worse.
+If you're not accepting MoMo, start today. If you're accepting MoMo but not tracking it properly, fix that today. Every untracked MoMo transaction is an opportunity for error, or worse.
 
 **QuadERP tracks cash, card, and MoMo payments in one system.** [Start your free trial](https://quaderp.app) and never lose track of a MoMo sale again.
 
@@ -308,13 +308,13 @@ If you're not accepting MoMo, start today. If you're accepting MoMo but not trac
 
 **Target keyword:** how to calculate profit and loss retail business Ghana / profit and loss for shop owners
 **Word count:** ~1,050
-**Meta description:** Not sure if your shop is actually profitable? Learn how to calculate profit and loss properly — step by step — with practical examples for Ghanaian retail businesses.
+**Meta description:** Not sure if your shop is actually profitable? Learn how to calculate profit and loss properly. Step by step, with practical examples for Ghanaian retail businesses.
 
 ---
 
 Here's a question that makes many shop owners uncomfortable: *How much profit did your business make last month?*
 
-If your answer is "I think about GHS 3,000... maybe more," you're not alone. Most retail shop owners in Ghana estimate their profit rather than calculate it. And the estimate is almost always wrong — usually in the optimistic direction.
+If your answer is "I think about GHS 3,000... maybe more," you're not alone. Most retail shop owners in Ghana estimate their profit rather than calculate it. And the estimate is almost always wrong, usually in the optimistic direction.
 
 Understanding your real profit isn't just accounting homework. It's the difference between a business that grows and one that slowly bleeds without the owner realizing it.
 
@@ -328,15 +328,15 @@ Let's break this down with a real example.
 
 ### Step 1: Calculate Your Revenue (Total Sales)
 
-This is the total amount of money that came into your business from sales. All of it — cash, MoMo, card, credit sales.
+This is the total amount of money that came into your business from sales. All of it. Cash, MoMo, card, credit sales.
 
 **Example:** Your shop made GHS 45,000 in sales last month.
 
-**Common mistake:** Only counting the cash you can see. If GHS 5,000 came via MoMo and GHS 3,000 was sold on credit, your revenue is still GHS 45,000 — not the GHS 37,000 in cash.
+**Common mistake:** Only counting the cash you can see. If GHS 5,000 came via MoMo and GHS 3,000 was sold on credit, your revenue is still GHS 45,000, not the GHS 37,000 in cash.
 
 ### Step 2: Calculate Your Cost of Goods Sold (COGS)
 
-This is how much you paid for the products you sold. Not the products you bought — the products you *sold*.
+This is how much you paid for the products you sold. Not the products you bought, the products you *sold*.
 
 **Example:** At the beginning of the month, you had GHS 30,000 in stock. During the month, you purchased GHS 25,000 in new stock. At the end of the month, you have GHS 28,000 in stock remaining.
 
@@ -386,9 +386,9 @@ This is your real profit. The money that's actually yours after everything is pa
 
 **1. Ignoring shrinkage.** If GHS 2,000 worth of stock went missing last month (theft, damage, giveaways), your COGS is actually GHS 29,000, not GHS 27,000. Your real net profit drops to GHS 6,550. That's a 23% difference from what you thought.
 
-**2. Forgetting credit sales.** Revenue of GHS 45,000 means nothing if GHS 5,000 of it hasn't actually been collected. Your cash flow is only GHS 40,000 — and if those credit customers never pay, your actual revenue is lower.
+**2. Forgetting credit sales.** Revenue of GHS 45,000 means nothing if GHS 5,000 of it hasn't actually been collected. Your cash flow is only GHS 40,000, and if those credit customers never pay, your actual revenue is lower.
 
-**3. Not tracking expenses.** Small expenses — a GHS 50 delivery here, a GHS 30 supply purchase there — add up. If you're not recording every expense, your profit calculation is overstated.
+**3. Not tracking expenses.** Small expenses, a GHS 50 delivery here, a GHS 30 supply purchase there. Add up. If you're not recording every expense, your profit calculation is overstated.
 
 **4. Mixing personal and business money.** If you take GHS 500 from the register for personal use, that's a business expense (owner's draw). If you don't record it, your cash reconciliation will be off and you'll wonder where the money went.
 
@@ -396,13 +396,13 @@ This is your real profit. The money that's actually yours after everything is pa
 
 Doing this calculation manually every month is time-consuming and error-prone. Here's how to simplify it:
 
-**Track sales digitally.** Every sale through a system means revenue is calculated automatically — no adding columns of numbers.
+**Track sales digitally.** Every sale through a system means revenue is calculated automatically, no adding columns of numbers.
 
 **Track inventory digitally.** If the system knows your opening stock, your purchases, and your sales, it can calculate COGS for you.
 
 **Record expenses as they happen.** Don't collect receipts in a drawer and add them up at month-end. Record each expense the day it happens.
 
-[QuadERP](https://quaderp.app) does all three automatically. It tracks every sale (with payment method), adjusts inventory in real-time, and lets you record expenses on the spot. Your profit and loss report is generated automatically — no manual calculations, no guesswork.
+[QuadERP](https://quaderp.app) does all three automatically. It tracks every sale (with payment method), adjusts inventory in real-time, and lets you record expenses on the spot. Your profit and loss report is generated automatically, no manual calculations, no guesswork.
 
 ### Start Today
 
@@ -411,7 +411,7 @@ Even if you're not ready for software, start tracking three things today:
 2. Every expense, no matter how small
 3. Credit given and credit received
 
-Do this for one full month. Then calculate your profit using the formula above. The number might surprise you — but at least it'll be real.
+Do this for one full month. Then calculate your profit using the formula above. The number might surprise you, but at least it'll be real.
 
 **Want it calculated automatically?** [Try QuadERP free for 30 days](https://quaderp.app). See your real profit without the manual work.
 
@@ -419,7 +419,7 @@ Do this for one full month. Then calculate your profit using the formula above. 
 
 ## Usage Notes
 
-- **SEO optimization:** Use the target keywords in the page title, H1 tag, first paragraph, one H2, and the meta description. Don't keyword-stuff — write naturally.
+- **SEO optimization:** Use the target keywords in the page title, H1 tag, first paragraph, one H2, and the meta description. Don't keyword-stuff. Write naturally.
 - **Internal linking:** Link between articles where relevant (e.g., the profit article can link to the stock theft article when mentioning shrinkage). Link to relevant product pages (e.g., "loss prevention" links to the feature page).
 - **Featured images:** Each article needs a compelling featured image. Use lifestyle photos of Ghanaian shop owners in real retail settings where possible. Avoid generic stock photos.
 - **Publication schedule:** Publish 1 article per week for 5 weeks. Share each article on Facebook, LinkedIn, and WhatsApp (with a brief intro message, not just the link). Repurpose key points as social media posts and infographics.

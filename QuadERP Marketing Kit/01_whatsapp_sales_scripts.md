@@ -1,7 +1,7 @@
 # 1. WhatsApp Sales Scripts
 
 ### Context
-WhatsApp is the primary sales channel for QuadERP in Ghana. These scripts are for field sales reps who interact with shop owners directly — either after a physical visit, through a referral, or following up after a demo. Each script should be copy-pasted and lightly personalized before sending.
+WhatsApp is the primary sales channel for QuadERP in Ghana. These scripts are for field sales reps who interact with shop owners directly, either after a physical visit, through a referral, or following up after a demo. Each script should be copy-pasted and lightly personalized before sending.
 
 ---
 
@@ -11,68 +11,68 @@ WhatsApp is the primary sales channel for QuadERP in Ghana. These scripts are fo
 
 ---
 
-**Rep — Message 1 (Send within 2 hours of visit):**
+**Rep. Message 1 (Send within 2 hours of visit):**
 
 Hi [Owner Name] 👋
 
-This is [Rep Name] from QuadERP — I came by your shop at [Location] earlier today. Thanks for the few minutes!
+This is [Rep Name] from QuadERP. I came by your shop at [Location] earlier today. Thanks for the few minutes!
 
-You mentioned you're tracking everything in a book right now. I totally understand — most of the shop owners we work with started the same way.
+You mentioned you're tracking everything in a book right now. I totally understand. Most of the shop owners we work with started the same way.
 
-I wanted to show you something quick. We built a system that lets you see your daily sales, track every item in your stock, and even catch when things go missing — all from your phone. No special machine needed.
+I wanted to show you something quick. We built a system that lets you see your daily sales, track every item in your stock, and even catch when things go missing, all from your phone. No special machine needed.
 
 Would you have 15 minutes this week for a quick demo? I can come to you or we do it right here on video call. Completely free, no commitment.
 
 ---
 
-**Owner — Expected Response:**
+**Owner. Expected Response:**
 
 "What does it cost?" or "How does it work?" or "I'm busy this week"
 
 ---
 
-**Rep — Message 2 (If they ask about cost):**
+**Rep. Message 2 (If they ask about cost):**
 
 Great question! 💰
 
-It's GHS 250/month for a single branch — less than GHS 9 a day. And you get the first 30 days completely free. No credit card, no contract. Just try it.
+It's GHS 250/month for a single branch, less than GHS 9 a day. And you get the first 30 days completely free. No credit card, no contract. Just try it.
 
 Most owners tell us they save more than that in the first month just from catching stock issues they didn't even know about.
 
-Can I show you how it works? Even 10 minutes — you'll see why shop owners in Accra and Kumasi are switching.
+Can I show you how it works? Even 10 minutes. You'll see why shop owners in Accra and Kumasi are switching.
 
 ---
 
-**Owner — Expected Response:**
+**Owner. Expected Response:**
 
 "Ok, when can you come?" or "Send me a video first"
 
 ---
 
-**Rep — Message 3 (If they want a video):**
+**Rep. Message 3 (If they want a video):**
 
 Sure! Here's a 2-minute walkthrough 👇
 [Demo Video Link]
 
-Watch when you get a chance — it shows a real sale being processed, the dashboard with your daily numbers, and the alert that fires when something doesn't add up in your stock.
+Watch when you get a chance. It shows a real sale being processed, the dashboard with your daily numbers, and the alert that fires when something doesn't add up in your stock.
 
 After you watch, let me know and I'll set you up with your own free account. Takes 5 minutes. 🙌
 
 ---
 
-**Rep — Message 4 (Booking the demo):**
+**Rep. Message 4 (Booking the demo):**
 
-Perfect! 🗓️ How about [Day] around [Time]? I'll come to your shop — takes about 15 minutes. I'll set it up on your phone right there so you can see it working with your own products.
+Perfect! 🗓️ How about [Day] around [Time]? I'll come to your shop. Takes about 15 minutes. I'll set it up on your phone right there so you can see it working with your own products.
 
 No pressure at all. If it's not for you, no worries. But I think you'll like what you see.
 
 ---
 
-**Rep — Message 5 (Confirmation):**
+**Rep. Message 5 (Confirmation):**
 
 Confirmed! See you [Day] at [Time] at the shop. 
 
-Quick heads up — if you have a list of about 10-20 of your products with prices, I can load them during the demo so you see your actual items in the system. Makes it much more real. ✅
+Quick heads up. If you have a list of about 10-20 of your products with prices, I can load them during the demo so you see your actual items in the system. Makes it much more real. ✅
 
 See you soon!
 
@@ -86,31 +86,31 @@ See you soon!
 
 ---
 
-**Rep — Message 1:**
+**Rep. Message 1:**
 
 Hi Kwame 👋
 
-My name is [Rep Name] from QuadERP. Auntie Abena from [Pharmacy Name] gave me your number — she said you might be interested in what we do.
+My name is [Rep Name] from QuadERP. Auntie Abena from [Pharmacy Name] gave me your number. She said you might be interested in what we do.
 
-She's been using our system for about [X months] now to manage her pharmacy — stock tracking, sales, even catching discrepancies before they become problems. She said it's saved her a lot of headaches 😄
+She's been using our system for about [X months] now to manage her pharmacy. Stock tracking, sales, even catching discrepancies before they become problems. She said it's saved her a lot of headaches 😄
 
-I'd love to show you how it could work for your cosmetics shop. It's a quick 15-minute demo — I can come to you or we do it on a call. Completely free.
+I'd love to show you how it could work for your cosmetics shop. It's a quick 15-minute demo. I can come to you or we do it on a call. Completely free.
 
 Would that be okay?
 
 ---
 
-**Owner — Expected Response:**
+**Owner. Expected Response:**
 
 "Yes, Abena mentioned it" or "What exactly does it do?" or "How much?"
 
 ---
 
-**Rep — Message 2:**
+**Rep. Message 2:**
 
 Glad she mentioned it! 🙌
 
-In short — QuadERP replaces your book, your calculator, and your Excel sheet with one app. You can:
+In short. QuadERP replaces your book, your calculator, and your Excel sheet with one app. You can:
 
 📊 See exactly what sold today, this week, this month
 📦 Know what's in stock and get alerts when things are running low
@@ -119,7 +119,7 @@ In short — QuadERP replaces your book, your calculator, and your Excel sheet w
 
 It works on your phone, tablet, or laptop. No special machine needed.
 
-Auntie Abena caught a staff issue in her first month that was costing her almost GHS 800/month — she didn't even know it was happening. 
+Auntie Abena caught a staff issue in her first month that was costing her almost GHS 800/month. She didn't even know it was happening. 
 
 The system is GHS 250/month for one branch, but you get the first 30 days completely free. No card needed.
 
@@ -127,17 +127,17 @@ When works for a quick demo?
 
 ---
 
-**Rep — Message 3 (Booking):**
+**Rep. Message 3 (Booking):**
 
 Let's do [Day] at [Time]? I'll bring my tablet so you can see it live. I'll even load some of your actual products so it feels real.
 
-And tell Auntie Abena thanks — when you sign up, she gets a month free and so do you through our referral program. Win-win! 🤝
+And tell Auntie Abena thanks. When you sign up, she gets a month free and so do you through our referral program. Win-win! 🤝
 
 ---
 
 ### 🎤 Voice Note Script (30 seconds)
 
-> "Hey Kwame, this is [Rep Name] from QuadERP. Auntie Abena from [Pharmacy Name] said I should reach out to you. She's been using our system to track her pharmacy sales and stock — she says it's saved her plenty headaches. I help shop owners like you see exactly what's selling, what's in stock, and catch problems before they cost you money. Everything works on your phone. I'd love to show you a quick demo — just 15 minutes, completely free. Let me know when you're available and I'll come to your shop. Talk soon!"
+> "Hey Kwame, this is [Rep Name] from QuadERP. Auntie Abena from [Pharmacy Name] said I should reach out to you. She's been using our system to track her pharmacy sales and stock. She says it's saved her plenty headaches. I help shop owners like you see exactly what's selling, what's in stock, and catch problems before they cost you money. Everything works on your phone. I'd love to show you a quick demo, just 15 minutes, completely free. Let me know when you're available and I'll come to your shop. Talk soon!"
 
 ---
 
@@ -149,7 +149,7 @@ And tell Auntie Abena thanks — when you sign up, she gets a month free and so 
 
 ---
 
-**Day 1 — Thank You + Quick Recap:**
+**Day 1. Thank You + Quick Recap:**
 
 Hi [Owner Name] 👋
 
@@ -161,19 +161,19 @@ Just a quick recap of what we covered:
 ✅ The loss prevention alerts that flag suspicious activity
 ✅ Dashboard showing your daily sales and profit
 
-Your free 30-day trial is ready whenever you are — I can have you set up in 5 minutes. Just say the word!
+Your free 30-day trial is ready whenever you are. I can have you set up in 5 minutes. Just say the word!
 
 No rush. Have a good evening 🙏
 
 ---
 
-**Day 3 — Value Reminder (Pain Point Focus):**
+**Day 3. Value Reminder (Pain Point Focus):**
 
-Hi [Owner Name] — hope the week is going well!
+Hi [Owner Name]. Hope the week is going well!
 
-Quick thought 💡 — I was chatting with another shop owner in [Area] yesterday. He told me that before QuadERP, he was losing about GHS 1,200 a month to stock that "just disappeared." He couldn't prove anything.
+Quick thought 💡. I was chatting with another shop owner in [Area] yesterday. He told me that before QuadERP, he was losing about GHS 1,200 a month to stock that "just disappeared." He couldn't prove anything.
 
-Within 3 weeks of using the system, he caught the pattern — specific items going missing during specific shifts. He addressed it quietly and his margins jumped immediately.
+Within 3 weeks of using the system, he caught the pattern. Specific items going missing during specific shifts. He addressed it quietly and his margins jumped immediately.
 
 That loss prevention feature is what makes us different from every other POS system out there. No one else in Ghana is doing this.
 
@@ -182,15 +182,15 @@ https://app.quaderp.app
 
 ---
 
-**Day 5 — Gentle Urgency + Offer:**
+**Day 5. Gentle Urgency + Offer:**
 
 Hi [Owner Name] 🙏
 
-Last message from me on this — I don't want to be that person who keeps messaging! 😄
+Last message from me on this. I don't want to be that person who keeps messaging! 😄
 
 I just wanted to let you know: if you start your free trial this week, I'll personally come to your shop and set everything up for you. Load your products, train your staff, the whole thing. No charge.
 
-That's normally part of the GHS 1,000 setup fee — but since you already saw the demo and know what it does, I want to make it as easy as possible for you.
+Guided setup like that is normally GHS 1,000. Setting it up yourself costs nothing either way, but since you already saw the demo and know what it does, I want to make it as easy as possible for you.
 
 The 30-day trial is completely free. If it's not for you, you just stop. No contract, no hassle.
 

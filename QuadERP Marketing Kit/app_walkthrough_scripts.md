@@ -1,6 +1,6 @@
 # QuadERP App Walkthrough Video Scripts
 
-These scripts are designed to be read alongside screen recordings of the app. The tone is simple, step-by-step, and easy to follow — perfect for someone new to the system.
+These scripts are designed to be read alongside screen recordings of the app. The tone is simple, step-by-step, and easy to follow. Perfect for someone new to the system.
 
 ---
 
@@ -37,13 +37,13 @@ These scripts are designed to be read alongside screen recordings of the app. Th
 **[VOICEOVER]**: Click "Inventory" on the left menu. This is your digital stockroom.
 
 **[VISUAL]**: Scroll through the list of products. Point out the "Stock" column.
-**[VOICEOVER]**: Here, you can see every item in your shop. Look at the numbers on the right—that tells you exactly how many you have left. No more counting by hand!
+**[VOICEOVER]**: Here, you can see every item in your shop. Look at the numbers on the right. That tells you exactly how many you have left. No more counting by hand!
 
 **[VISUAL]**: Show a product with a "Low Stock" warning badge (often in yellow or red).
 **[VOICEOVER]**: See this red badge? The app is warning you that you're running out of this item. It tells you *before* it finishes, so you can order more.
 
 **[VISUAL]**: Click on a product to view its details. Show the history tab if available.
-**[VOICEOVER]**: If you click on an item, you can see its whole story—when you bought it and when you sold it. The app watches your shelves for you!
+**[VOICEOVER]**: If you click on an item, you can see its whole story, when you bought it and when you sold it. The app watches your shelves for you!
 
 ---
 

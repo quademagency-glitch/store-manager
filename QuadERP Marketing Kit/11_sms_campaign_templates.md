@@ -33,7 +33,7 @@ QuadERP update: Barcode scanning is here! Use your phone camera to add products 
 
 ## Template 2: Trial Expiration Reminder
 
-**Purpose:** Alert trial users that their free trial is ending soon — create urgency to convert.
+**Purpose:** Alert trial users that their free trial is ending soon. Create urgency to convert.
 
 **Message:**
 
@@ -133,10 +133,10 @@ Your friend gets a free trial + free setup. You get a FREE month. Refer shop own
 - **Timing:**
   - **Feature announcements:** Tuesday or Wednesday, 10:00 AM
   - **Trial expiration:** 48 hours and 24 hours before expiry, at 9:00 AM
-  - **Payment reminders:** Day 1 overdue (morning), Day 3 overdue (afternoon), Day 7 overdue (morning — final notice)
+  - **Payment reminders:** Day 1 overdue (morning), Day 3 overdue (afternoon), Day 7 overdue (morning. Final notice)
   - **Seasonal promotions:** 2-3 weeks before the season peak
   - **Referral nudges:** Monthly, on the 15th, at 11:00 AM
-- **Compliance:** For promotional messages (Templates 1, 4, 5), include opt-out instructions if required by NCA regulations. Add "Reply STOP to opt out" at the end if needed — this will push some messages over 160 characters, requiring a split into 2 SMS segments.
+- **Compliance:** For promotional messages (Templates 1, 4, 5), include opt-out instructions if required by NCA regulations. Add "Reply STOP to opt out" at the end if needed. This will push some messages over 160 characters, requiring a split into 2 SMS segments.
 - **A/B testing:** Send each alternative version to 50% of the audience. Measure click-through rate (for messages with links) and conversion rate (for trial/payment messages). Roll out the winner to the full list.
 - **Avoid SMS fatigue:** Never send more than 4 SMS per month to any single user. Prioritize transactional messages (payment, trial expiry) over promotional ones.
 - **WhatsApp follow-up:** For trial expiration and payment reminders, follow up with a WhatsApp message 24 hours after the SMS if there's no action. WhatsApp has higher engagement rates in Ghana.

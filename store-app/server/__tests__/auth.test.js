@@ -3,7 +3,10 @@ const { buildMockSupabase } = require('./helpers/mockSupabase');
 
 let mockSupabase = buildMockSupabase();
 
-jest.mock('../db/supabase', () => ({ supabaseAdmin: mockSupabase }));
+/* supabaseSignIn is the same mock here on purpose: these suites assert on
+   the sign-in call itself, not on which client made it. The separation
+   between the two is what supabaseSessionLeak.test.js exists to prove. */
+jest.mock('../db/supabase', () => ({ supabaseAdmin: mockSupabase, supabaseSignIn: mockSupabase }));
 
 const app = require('../index');
 

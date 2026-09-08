@@ -1,7 +1,7 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { z } = require('zod');
-const { supabaseAdmin } = require('../db/supabase');
+const { supabaseAdmin, supabaseSignIn } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
@@ -574,7 +574,7 @@ router.post('/demo-login', demoLoginCeiling, demoLoginLimiter, async (req, res) 
       });
     }
 
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+    const { data, error } = await supabaseSignIn.auth.signInWithPassword({
       email: DEMO_EMAIL,
       password: DEMO_PASSWORD,
     });
@@ -736,7 +736,7 @@ router.post('/login', loginLimiter, validateBody(loginSchema), async (req, res) 
     const { email, password } = req.body;
 
     // Sign in via Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+    const { data, error } = await supabaseSignIn.auth.signInWithPassword({
       email,
       password,
     });

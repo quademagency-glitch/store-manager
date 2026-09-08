@@ -32,3 +32,12 @@ dist-tour
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Raw recordings, narration audio and intermediate cuts from scripts/record-*
+# and scripts/generate-*. 88MB of media, and git history is permanent.
+#
+# Nothing is lost by ignoring it. The two videos that actually ship are
+# committed in the landing repo at public/videos/walkthrough.mp4 and
+# public/videos/theft-prevention.mp4 and served from there, and everything
+# else here is reproducible by re-running the pipeline in scripts/.
+walkthrough-recordings/

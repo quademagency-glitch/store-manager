@@ -23,6 +23,7 @@
     "check:privacy": "node scripts/check-privacy-claims.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.20.0",
     "@sentry/react": "^10.70.0",
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/vite": "^4.3.0",

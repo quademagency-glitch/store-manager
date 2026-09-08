@@ -72,6 +72,37 @@ function brandBar({ subtitle = '', right = '', compact = false } = {}) {
 }
 
 /**
+ * Escape a string that is about to be interpolated into an email body.
+ *
+ * Added for the signup alert, where every field (business name, person's
+ * name, email address) is whatever a stranger typed into a public form and
+ * the message lands in our own inbox. The older templates above interpolate
+ * raw. They are fed by records an admin already created rather than by an
+ * open endpoint, which is a weaker defence than it sounds and is worth
+ * coming back to, but widening that here would bury this change.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * A subject line is a mail header, so a newline in it is header injection.
+ * The business name reaches this straight from the signup form.
+ */
+function headerSafe(value, max = 120) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+/**
  * Every business gets its own branded URL at <slug>.<app-host>
  * (e.g. https://acme.app.quaderp.app). Derived from APP_URL so there is a single
  * source of truth, matching the client's subdomain detection (lib/subdomain.js).
@@ -395,6 +426,112 @@ function buildSuspensionNoticeHtml(business) {
  * Build the branded welcome email for a newly-added business.
  */
 /**
+ * The email that says a stranger just signed up.
+ *
+ * This is the single event the business is actually waiting for, and until
+ * now nothing announced it. The person signing up got a welcome email; we
+ * got silence, and the only way to learn about a signup was to go and read
+ * the database. At the time of writing there had been exactly one public
+ * signup ever and nobody found out about it for weeks.
+ *
+ * Deliberately dense rather than pretty. It is an internal alert, so the
+ * useful thing is that every fact fits on one phone screen without tapping
+ * through to anything: who, what plan, and where they came from.
+ */
+function buildSignupAlertHtml(business, admin, { planName, trialEndsAt, attribution } = {}) {
+  const when = new Date().toLocaleString('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Africa/Accra',
+  });
+
+  const row = (label, value) => `
+              <tr>
+                <td style="padding:9px 0;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:13px;width:120px;vertical-align:top;">${escapeHtml(label)}</td>
+                <td style="padding:9px 0;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:14px;font-weight:600;">${escapeHtml(value)}</td>
+              </tr>`;
+
+  const details = [
+    ['Business', business?.name || 'Unnamed'],
+    ['Person', admin?.name || 'Not given'],
+    ['Email', admin?.email || 'Not given'],
+    ['Plan', planName || 'None chosen'],
+    [
+      'Trial ends',
+      trialEndsAt
+        ? new Date(trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : 'Not set',
+    ],
+    ['Signed up', `${when} (Accra)`],
+  ].map(([l, v]) => row(l, v)).join('');
+
+  /* Whatever the landing page forwarded: utm_*, the page they landed on, the
+     button they pressed. Rendered as-is rather than interpreted, because the
+     allowlist that fills it lives in routes/auth.js and will grow. */
+  const entries = attribution && typeof attribution === 'object' && !Array.isArray(attribution)
+    ? Object.entries(attribution).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+    : [];
+
+  const source = entries.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0">${entries.map(([k, v]) => row(k, v)).join('')}</table>`
+    : `<p style="margin:0;color:#64748b;font-size:14px;line-height:1.6;">
+                Nothing recorded. They reached the signup form without campaign
+                parameters, so this was a direct visit, a bookmark, or a link
+                that dropped them.
+              </p>`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#059669,#10b981);padding:32px 40px;">
+              ${brandBar({ compact: true })}
+              <h1 style="margin:0;color:#ffffff;font-size:22px;">Somebody signed up</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 40px 8px;">
+              <table width="100%" cellpadding="0" cellspacing="0">${details}</table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 8px;">
+              <p style="margin:0 0 10px;color:#0f172a;font-size:15px;font-weight:600;">Where they came from</p>
+              ${source}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 40px 32px;">
+              <div style="text-align:center;margin:24px 0 0;">
+                <a href="${APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:13px 40px;border-radius:12px;font-size:15px;font-weight:600;">
+                  Open Platform Admin
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+                They have not confirmed their email address yet. This fires when the
+                account is created, not when the link is clicked.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
  * @param {'set-password'|'verify-email'} ctaMode
  *   Operator-provisioned businesses (`set-password`) have had a password
  *   generated for them and must choose their own before they can get in.
@@ -678,6 +815,57 @@ async function sendSuspensionNotice(business) {
 }
 
 /**
+ * Tell us that somebody signed up. Best-effort, and never on the caller's
+ * critical path for correctness: a signup that succeeded must not be reported
+ * as failed because our own notification did not send.
+ */
+async function sendSignupAlert(business, admin, opts = {}) {
+  const recipients = [PLATFORM_ADMIN_EMAIL].filter(Boolean);
+
+  /* A warning, not an info line. When a customer-facing email simulates in a
+     dev environment that is expected; when the alert that exists to tell us
+     about a signup goes nowhere, the feature has failed silently, which is
+     the exact thing it was built to stop. */
+  if (recipients.length === 0) {
+    logger.warn(
+      { business: business?.name },
+      'Signup alert not sent: PLATFORM_ADMIN_EMAIL is not set',
+    );
+    return { success: false, error: 'PLATFORM_ADMIN_EMAIL is not set' };
+  }
+
+  const client = getResendClient();
+  if (!client) {
+    logger.warn({ business: business?.name }, 'Signup alert simulated: no Resend client configured');
+    return { success: true, simulated: true };
+  }
+
+  const html = buildSignupAlertHtml(business, admin, opts);
+  const subject = `New QuadERP trial: ${headerSafe(business?.name) || 'a new business'}`;
+
+  try {
+    const { error } = await withRetry(
+      () => client.emails.send({
+        from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
+        to: recipients,
+        subject,
+        html,
+      }),
+      { label: `signup alert ${business?.name}` },
+    );
+
+    if (error) {
+      logger.error({ err: error, business: business?.name }, 'Signup alert failed');
+      return { success: false, error: error.message };
+    }
+    return { success: true, recipients };
+  } catch (err) {
+    logger.error({ err, business: business?.name }, 'Signup alert failed after retries');
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Send custom email for platform communications
  */
 async function sendCustomEmail(recipients, subject, htmlContent, gateway = null, options = {}) {
@@ -843,16 +1031,18 @@ function senderAddress() {
 module.exports = {
   LOGO_URL,
   senderAddress,
-  /* The four builders are pure string functions. Exported so they can be
+  /* The five builders are pure string functions. Exported so they can be
      rendered and asserted on — until now nothing could reach them, so the
      customer-facing templates had no test covering them at all. */
   buildInvoiceHtml,
   buildExpirationWarningHtml,
   buildSuspensionNoticeHtml,
   buildWelcomeHtml,
+  buildSignupAlertHtml,
   sendInvoiceEmail,
   sendExpirationWarning,
   sendSuspensionNotice,
+  sendSignupAlert,
   sendCustomEmail,
   sendBusinessWelcomeEmail,
   generateSetPasswordLink,

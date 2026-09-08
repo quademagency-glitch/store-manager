@@ -6,7 +6,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { seedAccountingTemplates } = require('../services/accountingTemplateSeeder');
-const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl } = require('../services/emailService');
+const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl, sendSignupAlert } = require('../services/emailService');
 // From config/demo.js, not the seeder: importing these from
 // scripts/seed-demo-data.js pulled `pg` into the boot path and the API failed
 // to start in production. See the note in that file.
@@ -513,6 +513,25 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
       plan: plan ? plan.name : null,
       attribution: signupAttribution,
     });
+
+    /* ── 6. Tell us it happened. Best-effort, exactly like step 5 ──
+       Placed after the audit row so the permanent record is written first:
+       if this throws, the signup is still logged and still succeeded. The
+       await costs the signer-up a few hundred milliseconds on an endpoint
+       that already sends one email, and it buys the alert actually being
+       sent rather than left floating on a process that may be recycled. */
+    try {
+      const alert = await sendSignupAlert(business, { name, email }, {
+        planName: plan ? plan.name : null,
+        trialEndsAt,
+        attribution: signupAttribution,
+      });
+      if (!alert.success) {
+        logger.warn({ business: business.name, error: alert.error }, 'Signup alert not sent');
+      }
+    } catch (alertErr) {
+      logger.error({ err: alertErr, business: business.name }, 'Signup alert threw (account still created)');
+    }
 
     return res.status(201).json({
       message: 'Check your email to verify your account',

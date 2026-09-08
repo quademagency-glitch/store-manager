@@ -119,6 +119,7 @@ export function PlatformAdminProvider({ children }) {
 
   // ── Platform Settings & Communications ──
   const [platformSettings, setPlatformSettings] = useState([]);
+  const [activity, setActivity] = useState(null);
   const [templates, setTemplates] = useState([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -175,6 +176,7 @@ export function PlatformAdminProvider({ children }) {
         billingStats: '/billing/stats',
         subscriptions: '/subscriptions',
         platformSettings: '/platform/settings',
+        activity: '/platform/activity',
         templates: '/communications/templates',
         communicationGateways: '/communications/gateways',
       };
@@ -191,6 +193,7 @@ export function PlatformAdminProvider({ children }) {
       setBillingStats(value('billingStats', {}) || {});
       setSubscriptions(value('subscriptions', []) || []);
       setPlatformSettings(value('platformSettings', []) || []);
+      setActivity(value('activity', null));
       setTemplates(value('templates', []) || []);
       setCommunicationGateways(value('communicationGateways', []) || []);
 
@@ -825,6 +828,7 @@ export function PlatformAdminProvider({ children }) {
     assignForm, setAssignForm,
     businessSubscription, setBusinessSubscription,
     platformSettings, setPlatformSettings,
+    activity,
     templates, setTemplates,
     showTemplateModal, setShowTemplateModal,
     editingTemplate, setEditingTemplate,

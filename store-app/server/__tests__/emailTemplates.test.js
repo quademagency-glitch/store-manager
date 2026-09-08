@@ -30,6 +30,7 @@ const {
   buildExpirationWarningHtml,
   buildSuspensionNoticeHtml,
   buildWelcomeHtml,
+  buildSignupAlertHtml,
 } = require('../services/emailService');
 
 const business = { id: 'b1', name: 'Adom Superstore', slug: 'adom', contact_email: 'owner@example.com' };
@@ -54,6 +55,12 @@ const TEMPLATES = {
     setPasswordUrl: 'https://app.quaderp.app/update-password?token=x',
     loginUrl: 'https://adom.app.quaderp.app',
     planName: 'Multi-Branch',
+  }),
+
+  signupAlert: () => buildSignupAlertHtml(business, { name: 'Kofi', email: 'kofi@example.com' }, {
+    planName: 'Multi-Branch',
+    trialEndsAt: '2026-10-08T00:00:00.000Z',
+    attribution: { utm_source: 'whatsapp', lp: '/pos-system-ghana/' },
   }),
 };
 
@@ -91,6 +98,51 @@ describe('email templates', () => {
       expect(html).not.toContain('undefined');
       expect(html).not.toContain('${');
       expect(html).not.toContain('[object Object]');
+    });
+  });
+
+  /* This one is not like the others. Every string in it came off a public
+     form, and it is delivered to us rather than to a customer, so a payload
+     in a business name executes in our own mail client. */
+  describe('signup alert', () => {
+    it('escapes markup in the fields a stranger controls', () => {
+      const html = buildSignupAlertHtml(
+        { name: '<script>alert(1)</script>' },
+        { name: '<img src=x onerror=alert(2)>', email: '"><b>x</b>' },
+        { planName: 'Single Branch' },
+      );
+
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).not.toContain('<img src=x onerror=alert(2)>');
+      expect(html).toContain('&lt;script&gt;');
+      expect(html).toContain('&lt;img src=x onerror=alert(2)&gt;');
+    });
+
+    it('shows where they came from when the landing page said', () => {
+      const html = buildSignupAlertHtml(business, { name: 'Kofi', email: 'k@e.com' }, {
+        attribution: { utm_source: 'whatsapp', lp: '/pos-system-ghana/' },
+      });
+
+      expect(html).toContain('whatsapp');
+      expect(html).toContain('/pos-system-ghana/');
+    });
+
+    it('says so plainly when it does not know where they came from', () => {
+      const html = buildSignupAlertHtml(business, { name: 'Kofi', email: 'k@e.com' }, {});
+      expect(html).toMatch(/Nothing recorded/i);
+    });
+
+    it('survives an attribution value that is not an object', () => {
+      // signup_attribution is JSONB, so a bad row could hold anything at all.
+      for (const bad of [null, undefined, 'utm_source=x', 42, ['a']]) {
+        expect(() => buildSignupAlertHtml(business, { name: 'K' }, { attribution: bad })).not.toThrow();
+      }
+    });
+
+    it('renders with nothing but a business name, which is the least the route can pass', () => {
+      const html = buildSignupAlertHtml({ name: 'Adom' }, {}, {});
+      expect(html).toContain('Adom');
+      expect(html).not.toContain('undefined');
     });
   });
 

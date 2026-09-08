@@ -45,6 +45,12 @@ jest.mock('../db/supabase', () => ({ supabaseAdmin: mockSupabase }));
 jest.mock('../services/emailService', () => ({
   sendBusinessWelcomeEmail: jest.fn().mockResolvedValue({ success: true }),
   resolveBusinessLoginUrl: jest.fn(() => 'https://acme-hardware.app.quaderp.app'),
+  /* Mocked, but present. Leaving it off the mock does not fail anything: the
+     route wraps the call in a try/catch, so an undefined function throws, is
+     swallowed as "alert threw", and 51 tests still pass while the alert never
+     fires. That is the same silent failure the alert exists to end, so it is
+     stubbed here and asserted on below. */
+  sendSignupAlert: jest.fn().mockResolvedValue({ success: true }),
 }));
 
 const app = require('../index');
@@ -154,6 +160,72 @@ describe('POST /api/auth/signup, happy path', () => {
   it('does not roll anything back', async () => {
     await postSignup(VALID_BODY);
     expect(mockSupabase.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/auth/signup, the alert to us', () => {
+  const { sendSignupAlert } = require('../services/emailService');
+
+  /* The suite does not clear mocks globally, so without this the call log
+     carries over from the tests above and every assertion here reads
+     somebody else's signup. */
+  beforeEach(() => sendSignupAlert.mockClear());
+
+  it('reports the signup with the business, the person and the plan', async () => {
+    await postSignup(VALID_BODY);
+
+    expect(sendSignupAlert).toHaveBeenCalledTimes(1);
+    const [business, admin, opts] = sendSignupAlert.mock.calls[0];
+    expect(business).toMatchObject({ id: BUSINESS.id, name: BUSINESS.name });
+    expect(admin).toMatchObject({ email: VALID_BODY.email });
+    expect(opts.planName).toBe('Single Branch');
+    expect(opts.trialEndsAt).toBeTruthy();
+  });
+
+  it('passes on where they came from', async () => {
+    await postSignup({
+      ...VALID_BODY,
+      attribution: { utm_source: 'whatsapp', lp: '/pos-system-ghana/' },
+    });
+
+    const [, , opts] = sendSignupAlert.mock.calls[0];
+    expect(opts.attribution).toMatchObject({
+      utm_source: 'whatsapp',
+      lp: '/pos-system-ghana/',
+    });
+  });
+
+  /* The point of the whole arrangement. Somebody's account must not fail
+     because our own notification did, whichever way it fails. */
+  it('still creates the account when the alert rejects', async () => {
+    sendSignupAlert.mockRejectedValueOnce(new Error('Resend is down'));
+
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(201);
+    expect(res.body.business.slug).toBe('acme-hardware');
+    expect(mockSupabase.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('still creates the account when the alert reports a failure', async () => {
+    sendSignupAlert.mockResolvedValueOnce({ success: false, error: 'No recipients' });
+
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(201);
+    expect(mockSupabase.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('says nothing when the signup itself failed', async () => {
+    useMock({
+      ...happyPathOverrides(),
+      users: [{ data: { id: 'existing' }, error: null }],
+    });
+
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(409);
+    expect(sendSignupAlert).not.toHaveBeenCalled();
   });
 });
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePlatformAdmin } from '../PlatformAdminContext';
 import { Icons } from '../../../components/icons/Icons';
 import { EmptyStateRow, PageHeader } from '../../../components/ui';
+import FrontDoorActivity from './FrontDoorActivity';
 
 export default function OverviewTab() {
   const {
@@ -78,6 +79,9 @@ export default function OverviewTab() {
             </div>
           </div>
         </div>
+
+        {/* ── Demo opens and signups ── */}
+        <FrontDoorActivity />
 
         {/* ── System Health Panel ── */}
         <div className="pa-health-section">

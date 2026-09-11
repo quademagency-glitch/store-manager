@@ -197,12 +197,32 @@ describe('email templates', () => {
     });
   });
 
+  /* Terms 9.2: "When a Subscription lapses or a trial ends without one, we do
+     not lock you out. Your account narrows to sign-in, the billing area and
+     the data export." Two templates said the opposite for months, and the
+     only reason no customer read it is that nobody has paid yet. */
+  describe.each(['invoice', 'expirationWarning', 'suspensionNotice', 'welcome', 'trialEnding'])(
+    'customer-facing template: %s',
+    (name) => {
+      it('does not claim the customer will be locked out', () => {
+        const text = TEMPLATES[name]().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+        expect(text).not.toMatch(/won.t be able to log ?in/i);
+        expect(text).not.toMatch(/can.?not log ?in|can.t log ?in/i);
+        expect(text).not.toMatch(/locked out/i);
+        expect(text).not.toMatch(/account is paused|account will be paused/i);
+      });
+    },
+  );
+
   it('keeps the urgency heading on the alert templates', () => {
     // Branding these must not demote the sentence the customer needs to read,
     // so the mark goes above the heading rather than replacing it.
     expect(buildExpirationWarningHtml(business, subscription, 3))
       .toContain('Subscription Expiring Soon');
-    expect(buildSuspensionNoticeHtml(business)).toContain('Account Suspended');
+    // "Account Suspended" was the old heading and it was wrong: Terms 9.1
+    // reserves suspension for harm, unlawfulness or fraud, while a lapsed
+    // subscription is 9.2, which narrows access rather than withdrawing it.
+    expect(buildSuspensionNoticeHtml(business)).toContain('Your subscription has ended');
   });
 
   it('serves the mark from a host the CSP and the landing site both allow', () => {

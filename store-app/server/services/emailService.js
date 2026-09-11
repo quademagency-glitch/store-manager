@@ -44,6 +44,31 @@ const APP_URL = process.env.APP_URL || 'https://app.quaderp.app';
 const LOGO_URL = 'https://www.quaderp.app/images/email-logo.png';
 
 /**
+ * Splits a customer-facing notice's addresses so the operator is never in the
+ * customer's To header.
+ *
+ * sendInvoiceEmail, sendExpirationWarning and sendSuspensionNotice all built
+ * one list of [customer, PLATFORM_ADMIN_EMAIL] and passed it as `to`, so every
+ * customer who received one would have been shown the operator's personal
+ * address. That address was taken off the published legal pages on 2026-09-02
+ * for exactly that reason, and putting it in the To header of a billing email
+ * puts it back in front of the same people. None of the three has ever fired,
+ * because nobody has paid yet, which is the only reason this was never seen.
+ *
+ * Bcc rather than dropping the copy: the operator still needs to know a
+ * subscription lapsed. It is the disclosure that is wrong, not the copy.
+ *
+ * With no customer address at all the operator copy is the only one worth
+ * sending, and there is nobody to disclose it to, so it goes in To.
+ */
+function customerAndOperator(customerEmails) {
+  const to = [...new Set((customerEmails || []).filter(Boolean))];
+  const operator = [PLATFORM_ADMIN_EMAIL].filter(Boolean);
+  if (to.length === 0) return { to: operator, bcc: [], recipients: operator };
+  return { to, bcc: operator, recipients: [...to, ...operator] };
+}
+
+/**
  * The branded bar that sits at the top of a template's coloured header cell.
  *
  * `compact` is for the warning and suspension templates, whose own headings
@@ -343,8 +368,8 @@ function buildExpirationWarningHtml(business, subscription, daysLeft) {
                 Renewing before then keeps everything running without a break.
               </p>
               <p style="color:#475569;font-size:15px;line-height:1.6;">
-                If it lapses, the account is paused and your team won't be able to log in until it's renewed.
-                Don't worry though, your data stays safe the whole time.
+                If it lapses, the account narrows to sign-in, billing and your data export, so you can
+                always either pay or take your records with you. Nothing is deleted.
               </p>
               <div style="text-align:center;margin:32px 0;">
                 <a href="${APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:12px;font-size:16px;font-weight:600;">
@@ -384,7 +409,7 @@ function buildSuspensionNoticeHtml(business) {
           <tr>
             <td style="background:linear-gradient(135deg,#ef4444,#dc2626);padding:32px 40px;">
               ${brandBar({ compact: true })}
-              <h1 style="margin:0;color:#ffffff;font-size:22px;">🚫 Account Suspended</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:22px;">Your subscription has ended</h1>
             </td>
           </tr>
           <tr>
@@ -393,8 +418,8 @@ function buildSuspensionNoticeHtml(business) {
                 Hi <strong>${business.name}</strong>,
               </p>
               <p style="color:#475569;font-size:15px;line-height:1.6;">
-                Your subscription has run out, so the account is <strong style="color:#ef4444;">paused</strong> for now
-                and your team can't log in at the moment.
+                Your subscription has run out, so the account has <strong style="color:#ef4444;">narrowed</strong> to
+                sign-in, billing and your data export. You can still sign in and take your records with you.
               </p>
               <p style="color:#475569;font-size:15px;line-height:1.6;">
                 Nothing is lost, all your data is still right where you left it. Make a payment to renew and
@@ -696,11 +721,7 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
  */
 async function sendInvoiceEmail(invoice, business, planName, recipientEmails = []) {
   const client = getResendClient();
-  const recipients = [...new Set([
-    ...recipientEmails,
-    business.contact_email,
-    PLATFORM_ADMIN_EMAIL,
-  ].filter(Boolean))];
+  const { to, bcc, recipients } = customerAndOperator([...recipientEmails, business.contact_email]);
 
   if (recipients.length === 0) {
     logger.warn({ invoiceNumber: invoice.invoice_number }, 'No recipients for invoice email');
@@ -718,7 +739,8 @@ async function sendInvoiceEmail(invoice, business, planName, recipientEmails = [
     const { data, error } = await withRetry(
       () => client.emails.send({
         from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
-        to: recipients,
+        to,
+        ...(bcc.length ? { bcc } : {}),
         subject: `Your ${PLATFORM_NAME} invoice ${invoice.invoice_number} (${new Intl.NumberFormat('en-GH', { style: 'currency', currency: invoice.currency || 'GHS' }).format(invoice.amount)})`,
         html,
       }),
@@ -743,7 +765,7 @@ async function sendInvoiceEmail(invoice, business, planName, recipientEmails = [
  */
 async function sendExpirationWarning(business, subscription, daysLeft) {
   const client = getResendClient();
-  const recipients = [business.contact_email, PLATFORM_ADMIN_EMAIL].filter(Boolean);
+  const { to, bcc, recipients } = customerAndOperator([business.contact_email]);
 
   if (recipients.length === 0) return { success: false, error: 'No recipients' };
 
@@ -758,7 +780,8 @@ async function sendExpirationWarning(business, subscription, daysLeft) {
     const { error } = await withRetry(
       () => client.emails.send({
         from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
-        to: recipients,
+        to,
+        ...(bcc.length ? { bcc } : {}),
         subject: `${business.name}, your subscription runs out in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
         html,
       }),
@@ -781,7 +804,7 @@ async function sendExpirationWarning(business, subscription, daysLeft) {
  */
 async function sendSuspensionNotice(business) {
   const client = getResendClient();
-  const recipients = [business.contact_email, PLATFORM_ADMIN_EMAIL].filter(Boolean);
+  const { to, bcc, recipients } = customerAndOperator([business.contact_email]);
 
   if (recipients.length === 0) return { success: false, error: 'No recipients' };
 
@@ -796,7 +819,8 @@ async function sendSuspensionNotice(business) {
     const { error } = await withRetry(
       () => client.emails.send({
         from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
-        to: recipients,
+        to,
+        ...(bcc.length ? { bcc } : {}),
         subject: `${business.name}, your account is paused for now`,
         html,
       }),

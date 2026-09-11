@@ -4,11 +4,12 @@
  * 1. Auto-suspend businesses with expired subscriptions
  * 2. Send 3-day expiration warning emails
  * 3. Convert expired trials to 'expired' status
+ * 4. Remind self-serve trials, once, that they end within 3 days
  */
 
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
-const { sendExpirationWarning, sendSuspensionNotice } = require('./emailService');
+const { sendExpirationWarning, sendSuspensionNotice, sendTrialEndingReminder } = require('./emailService');
 const { claimCronRun, pruneCronRuns } = require('../utils/cronLock');
 const { invalidateBusinessCache } = require('../middleware/authGuard');
 const { logAuditEvent, systemAuditContext, pruneAuditLogs, AUDIT_ACTIONS } = require('../utils/auditLog');
@@ -218,12 +219,114 @@ async function processExpiredTrials() {
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+/* Three days, matching the paid-subscription warning above, so a customer on
+   either path hears at the same point. */
+const TRIAL_REMINDER_WINDOW_MS = 3 * DAY_MS;
+
+/**
+ * Remind a self-serve trial, once, that it ends within three days.
+ *
+ * Until 2026-09-11 nothing did. sendExpirationWarnings reads
+ * business_subscriptions, which a self-serve trial never has, and
+ * processExpiredTrials below sends nothing, so a real signup reached day 30
+ * with no warning and no notice.
+ *
+ * ONCE, AND ONLY ONCE. The window is three days wide and this runs daily, so
+ * businesses.trial_reminder_sent_at (migration 078) records the send. It is
+ * claimed with a conditional update BEFORE sending, so only the run whose
+ * update matched a null sends, and it is released if the send fails so the
+ * next day retries. claimCronRun already stops two workers running on the
+ * same day, but a manual run or a pruned claim row would otherwise send
+ * twice, and a duplicate email to a prospect is worse than a late one.
+ *
+ * If the column is missing the whole sweep is skipped rather than run
+ * without it. Without the record there is no way to send once, only daily.
+ */
+async function sendTrialEndingReminders() {
+  logger.info('[CRON] Checking for free trials ending soon...');
+
+  try {
+    const now = new Date();
+    const horizon = new Date(now.getTime() + TRIAL_REMINDER_WINDOW_MS);
+
+    const { data: ending, error } = await supabaseAdmin
+      .from('businesses')
+      .select('id, name, slug, contact_email, trial_ends_at, trial_reminder_sent_at')
+      .eq('status', 'trialing')
+      .eq('is_demo', false)
+      .is('trial_reminder_sent_at', null)
+      .gt('trial_ends_at', now.toISOString())
+      .lte('trial_ends_at', horizon.toISOString());
+
+    if (error) {
+      if (/trial_reminder_sent_at|PGRST204|42703/.test(`${error.code} ${error.message}`)) {
+        logger.warn('[CRON] businesses.trial_reminder_sent_at is missing; migration 078 not applied. Trial reminders skipped.');
+        return;
+      }
+      logger.error({ err: error }, '[CRON] Error fetching trials ending soon');
+      return;
+    }
+
+    if (!ending || ending.length === 0) {
+      logger.info('[CRON] No free trials ending soon.');
+      return;
+    }
+
+    for (const biz of ending) {
+      if (!biz.contact_email) {
+        logger.warn({ businessId: biz.id }, '[CRON] Trial ending soon but no contact_email; no reminder possible');
+        continue;
+      }
+
+      const claimedAt = new Date().toISOString();
+      const { data: claimed, error: claimError } = await supabaseAdmin
+        .from('businesses')
+        .update({ trial_reminder_sent_at: claimedAt })
+        .eq('id', biz.id)
+        .is('trial_reminder_sent_at', null)
+        .select('id');
+
+      if (claimError) {
+        logger.error({ err: claimError, businessId: biz.id }, '[CRON] Could not claim trial reminder');
+        continue;
+      }
+      if (!claimed || claimed.length === 0) continue; // already sent by another run
+
+      const daysLeft = Math.max(1, Math.ceil((new Date(biz.trial_ends_at) - now) / DAY_MS));
+      let result;
+      try {
+        result = await sendTrialEndingReminder(biz, { daysLeft, trialEndsAt: biz.trial_ends_at });
+      } catch (err) {
+        result = { success: false, error: err.message };
+      }
+
+      if (!result?.success) {
+        // Released by matching our own stamp, so a release can never clear a
+        // reminder that a later run has since sent.
+        await supabaseAdmin
+          .from('businesses')
+          .update({ trial_reminder_sent_at: null })
+          .eq('id', biz.id)
+          .eq('trial_reminder_sent_at', claimedAt);
+        logger.error({ businessId: biz.id, error: result?.error }, '[CRON] Trial reminder failed; claim released for tomorrow');
+        continue;
+      }
+
+      logger.info({ businessId: biz.id, name: biz.name, daysLeft }, '[CRON] Sent trial ending reminder');
+    }
+  } catch (err) {
+    logger.error({ err }, '[CRON] Error sending trial reminders');
+  }
+}
+
 /**
  * Run all subscription checks
  */
 async function runSubscriptionChecks() {
   logger.info('[CRON] === Running daily subscription checks ===');
   await sendExpirationWarnings();
+  await sendTrialEndingReminders();
   await processExpiredSubscriptions();
   await processExpiredTrials();
   logger.info('[CRON] === Subscription checks complete ===');
@@ -285,4 +388,5 @@ module.exports = {
   processExpiredSubscriptions,
   processExpiredTrials,
   sendExpirationWarnings,
+  sendTrialEndingReminders,
 };

@@ -31,6 +31,7 @@ const {
   buildSuspensionNoticeHtml,
   buildWelcomeHtml,
   buildSignupAlertHtml,
+  buildTrialEndingHtml,
 } = require('../services/emailService');
 
 const business = { id: 'b1', name: 'Adom Superstore', slug: 'adom', contact_email: 'owner@example.com' };
@@ -61,6 +62,10 @@ const TEMPLATES = {
     planName: 'Multi-Branch',
     trialEndsAt: '2026-10-08T00:00:00.000Z',
     attribution: { utm_source: 'whatsapp', lp: '/pos-system-ghana/' },
+  }),
+  trialEnding: () => buildTrialEndingHtml(business, {
+    daysLeft: 3,
+    trialEndsAt: '2026-10-08T00:54:00.000Z',
   }),
 };
 
@@ -143,6 +148,52 @@ describe('email templates', () => {
       const html = buildSignupAlertHtml({ name: 'Adom' }, {}, {});
       expect(html).toContain('Adom');
       expect(html).not.toContain('undefined');
+    });
+  });
+
+  /* The paid-subscription warning got its wording wrong, and nothing caught
+     it because nothing read it against the Terms. This one is read against
+     them: 6.1 no card taken, 6.3 no automatic charge and no deletion, 9.2
+     access narrows to sign-in, billing and export and is never locked. */
+  describe('trial ending reminder', () => {
+    const html = buildTrialEndingHtml(business, { daysLeft: 3, trialEndsAt: '2026-10-08T00:54:00.000Z' });
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+    it('says when, in days and as a date', () => {
+      expect(text).toMatch(/3 days/);
+      expect(text).toMatch(/8 October 2026/);
+    });
+
+    it('says what the Terms promise about the end of a trial', () => {
+      expect(text).toMatch(/Nothing will be charged/i);
+      expect(text).toMatch(/not deleted/i);
+      expect(text).toMatch(/still sign in/i);
+      expect(text).toMatch(/export/i);
+    });
+
+    it('does not say what the paid-subscription warning wrongly says', () => {
+      expect(text).not.toMatch(/won.t be able to log in|locked out|paused/i);
+      expect(text).not.toMatch(/renew/i);
+      expect(text).not.toMatch(/\b(we|you) will be charged|charge your card|automatically charged/i);
+    });
+
+    it('sends the reader to billing on their own subdomain', () => {
+      expect(html).toContain('https://adom.app.quaderp.app/business-admin/billing');
+    });
+
+    it('names no price, which lives on the landing page and has drifted before', () => {
+      expect(text).not.toMatch(/GHS|GH₵|₵|\d+\s*\/\s*mo/i);
+    });
+
+    it('escapes the business name, which came off the public signup form', () => {
+      const evil = buildTrialEndingHtml({ name: '<img src=x onerror=alert(1)>', slug: 's' }, { daysLeft: 2 });
+      expect(evil).not.toContain('<img src=x onerror=alert(1)>');
+      expect(evil).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+
+    it('never says zero days, and never renders NaN', () => {
+      expect(buildTrialEndingHtml(business, { daysLeft: 0 })).toMatch(/ends in 1 day\b/);
+      expect(buildTrialEndingHtml(business, {})).not.toContain('NaN');
     });
   });
 

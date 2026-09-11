@@ -1028,10 +1028,139 @@ function senderAddress() {
   return `${PLATFORM_NAME} <${FROM_EMAIL}>`;
 }
 
+/**
+ * "Your free trial ends in N days", for a self-serve trial.
+ *
+ * Deliberately not buildExpirationWarningHtml with a trial passed in. That
+ * template says the account is "paused", that "your team won't be able to log
+ * in", and tells the reader to "renew". None of that is true of a trial, and
+ * the middle claim is not true of anything: Terms 9.2 says a lapsed account is
+ * narrowed to sign-in, billing and data export, never locked. Every sentence
+ * here was checked against Terms 6.1, 6.3 and 9.2, and a test holds it there.
+ *
+ * No price and no plan table. Prices live on the landing page and have
+ * drifted from the database before, and an email cannot be corrected once it
+ * has gone.
+ *
+ * No support address either. Replies go to the From address, which is the
+ * mailbox known to receive, so the footer says to reply rather than naming a
+ * second address nobody has checked.
+ */
+function buildTrialEndingHtml(business, { daysLeft, trialEndsAt } = {}) {
+  const name = escapeHtml(business && business.name);
+  const days = Number.isFinite(daysLeft) && daysLeft > 0 ? Math.ceil(daysLeft) : 1;
+  const dayWord = `${days} day${days !== 1 ? 's' : ''}`;
+  const endDate = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Accra',
+    })
+    : null;
+  const billingUrl = `${resolveBusinessLoginUrl(business)}/business-admin/billing`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 40px;">
+              ${brandBar({ compact: true })}
+              <h1 style="margin:0;color:#ffffff;font-size:22px;">Your free trial ends in ${dayWord}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 40px;">
+              <p style="color:#0f172a;font-size:16px;line-height:1.6;">
+                Hi <strong>${name}</strong>,
+              </p>
+              <p style="color:#475569;font-size:15px;line-height:1.6;">
+                Your free trial of ${PLATFORM_NAME} ends in <strong>${dayWord}</strong>${endDate ? `, on <strong>${endDate}</strong>` : ''}.
+                To keep selling, tracking stock and running reports without a break, choose a plan before then.
+              </p>
+              <p style="color:#475569;font-size:15px;line-height:1.6;">
+                Nothing will be charged. We never took a card, so nothing happens automatically when the trial ends.
+              </p>
+              <p style="color:#475569;font-size:15px;line-height:1.6;">
+                If it ends before you choose, you can still sign in, pick a plan and export your records at any time.
+                Your data is not deleted.
+              </p>
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${billingUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:12px;font-size:16px;font-weight:600;">
+                  Choose a plan
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+                Sent by ${PLATFORM_NAME} because your free trial is ending. Questions? Just reply to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Sends the trial-ending reminder to the business alone.
+ *
+ * One recipient, on purpose. sendExpirationWarning and sendSuspensionNotice
+ * put PLATFORM_ADMIN_EMAIL in the same To header as the customer, so every
+ * customer who got one would see the operator's personal address, which was
+ * taken off the legal pages on 2026-09-02 for exactly that reason. The
+ * operator already hears about signups from sendSignupAlert.
+ */
+async function sendTrialEndingReminder(business, { daysLeft, trialEndsAt } = {}) {
+  const to = business && business.contact_email;
+  if (!to) return { success: false, error: 'No recipient email' };
+
+  const days = Number.isFinite(daysLeft) && daysLeft > 0 ? Math.ceil(daysLeft) : 1;
+  const html = buildTrialEndingHtml(business, { daysLeft: days, trialEndsAt });
+  const subject = headerSafe(
+    `${business.name}: your ${PLATFORM_NAME} free trial ends in ${days} day${days !== 1 ? 's' : ''}`,
+  );
+
+  const client = getResendClient();
+  if (!client) {
+    logger.info({ business: business.name, daysLeft: days }, 'Trial ending reminder simulated (no Resend client)');
+    return { success: true, simulated: true, recipients: [to] };
+  }
+
+  try {
+    const { data, error } = await withRetry(
+      () => client.emails.send({
+        from: `${PLATFORM_NAME} <${FROM_EMAIL}>`,
+        to: [to],
+        subject,
+        html,
+      }),
+      { label: `trial ending reminder ${business.name}` },
+    );
+
+    if (error) {
+      logger.error({ err: error, business: business.name }, 'Trial ending reminder failed');
+      return { success: false, error: error.message };
+    }
+    return { success: true, messageId: data?.id, recipients: [to] };
+  } catch (err) {
+    logger.error({ err, business: business.name }, 'Trial ending reminder failed after retries');
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   LOGO_URL,
   senderAddress,
-  /* The five builders are pure string functions. Exported so they can be
+  /* The six builders are pure string functions. Exported so they can be
      rendered and asserted on — until now nothing could reach them, so the
      customer-facing templates had no test covering them at all. */
   buildInvoiceHtml,
@@ -1039,10 +1168,12 @@ module.exports = {
   buildSuspensionNoticeHtml,
   buildWelcomeHtml,
   buildSignupAlertHtml,
+  buildTrialEndingHtml,
   sendInvoiceEmail,
   sendExpirationWarning,
   sendSuspensionNotice,
   sendSignupAlert,
+  sendTrialEndingReminder,
   sendCustomEmail,
   sendBusinessWelcomeEmail,
   generateSetPasswordLink,

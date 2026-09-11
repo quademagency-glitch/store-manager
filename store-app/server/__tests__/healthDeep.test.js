@@ -55,6 +55,44 @@ describe('GET /api/health/deep', () => {
     expect(res.body.status).toBe('ok');
   });
 
+  /* checkCron used to read the 200 most recent cron_runs rows and pick each
+     job's latest from them. The two five-minute sweeps write 576 rows a day
+     between them, so in production those 200 rows covered 8.2 hours and every
+     DAILY job reported "never-run" for two thirds of the day. The jobs had run
+     all along; only the report was wrong. A health check that cries wolf is
+     one nobody reads, which is how a real stall would have been missed. */
+  it('reports a daily job that ran this morning, rather than "never-run"', async () => {
+    const baseline = { platform_plans: { data: [{ id: 'plan-1' }], error: null, count: 1 } };
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+    // One result per from('cron_runs') call. A per-job lookup finds this row;
+    // a single shared query would have to compete with the five-minute jobs.
+    Object.assign(mockSupabase, buildMockSupabase({
+      ...baseline,
+      cron_runs: [{ data: [{ started_at: threeHoursAgo, scheduled_for: threeHoursAgo }], error: null }],
+    }));
+    _resetCache();
+
+    try {
+      const res = await request(app).get('/api/health/deep');
+      const job = res.body.checks.cron.jobs['subscription-checks'];
+      expect(job.status).toBe('ok');
+      expect(job.lastRunAt).toBe(threeHoursAgo);
+
+      // Pins the shape of the fix: one query per job, not one for all of them.
+      const cronQueries = mockSupabase.from.mock.calls.filter((c) => c[0] === 'cron_runs');
+      expect(cronQueries.length).toBeGreaterThan(1);
+    } finally {
+      Object.assign(mockSupabase, buildMockSupabase(baseline));
+      _resetCache();
+    }
+  });
+
+  it('still says never-run when a job genuinely has no row', async () => {
+    const res = await request(app).get('/api/health/deep');
+    expect(res.body.checks.cron.jobs['subscription-checks'].status).toBe('never-run');
+  });
+
   it('includes the proxy diagnostic block for choosing TRUST_PROXY_HOPS', async () => {
     const res = await request(app)
       .get('/api/health/deep')

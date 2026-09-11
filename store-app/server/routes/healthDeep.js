@@ -134,32 +134,52 @@ const CRON_JOBS = {
 async function checkCron() {
   const startedAt = Date.now();
   try {
-    const { data, error } = await withTimeout(
+    /* One indexed lookup per job, NOT one scan of the whole table.
+     *
+     * This used to read the 200 most recent cron_runs rows and pick each job's
+     * latest out of them, which quietly made the daily jobs unreportable. The
+     * two five-minute sweeps write 576 rows a day between them, so on
+     * production (10,808 rows on 2026-09-11) those 200 rows reached back just
+     * 8.2 hours. Anything daily fell outside the window and came back
+     * "never-run" for roughly two thirds of every day.
+     *
+     * It was a false alarm the whole time: filtering cron_runs by job_name
+     * shows subscription-checks claiming 00:00 and demo-reset 02:00 on every
+     * one of the preceding five days. Nothing was broken except this report,
+     * and a health check that cries wolf is one nobody reads.
+     *
+     * Ordered by scheduled_for rather than started_at so it rides the
+     * (job_name, scheduled_for) unique index from migration 069 instead of
+     * sorting a job's whole history. Buckets increase with real time, so the
+     * newest slot is the newest run; started_at is still what the age is
+     * measured from, because that is when the work actually began.
+     */
+    const names = Object.keys(CRON_JOBS);
+    const results = await Promise.all(names.map((job) => withTimeout(
       supabaseAdmin
         .from('cron_runs')
-        .select('job_name, started_at')
-        .order('started_at', { ascending: false })
-        .limit(200),
+        .select('started_at, scheduled_for')
+        .eq('job_name', job)
+        .order('scheduled_for', { ascending: false })
+        .limit(1),
       SUPABASE_TIMEOUT_MS,
-      'cron_runs',
-    );
-    if (error) throw error;
-
-    const latest = new Map();
-    for (const row of data || []) {
-      if (!latest.has(row.job_name)) latest.set(row.job_name, row.started_at);
-    }
+      `cron_runs:${job}`,
+    )));
 
     const jobs = {};
-    for (const [job, maxAgeMs] of Object.entries(CRON_JOBS)) {
-      const last = latest.get(job) || null;
+    for (let i = 0; i < names.length; i += 1) {
+      const job = names[i];
+      const { data, error } = results[i];
+      if (error) throw error;
+
+      const last = (data && data[0] && data[0].started_at) || null;
       if (!last) {
         jobs[job] = { status: 'never-run', lastRunAt: null };
         continue;
       }
       const ageMs = Date.now() - new Date(last).getTime();
       jobs[job] = {
-        status: ageMs > maxAgeMs ? 'overdue' : 'ok',
+        status: ageMs > CRON_JOBS[job] ? 'overdue' : 'ok',
         lastRunAt: last,
         ageMinutes: Math.round(ageMs / 60000),
       };

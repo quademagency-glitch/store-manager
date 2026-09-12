@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.quaderp.scannerapp",
+      "versionCode": 1,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0D0A28",

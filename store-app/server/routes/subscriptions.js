@@ -5,6 +5,7 @@ const authGuard = require('../middleware/authGuard');
 const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { PG_UNIQUE_VIOLATION } = require('./paystackWebhook');
+const { resolvePaystackGateway } = require('../services/paystack');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
@@ -373,13 +374,11 @@ router.post('/initialize-paystack', authGuard, async (req, res) => {
 
     if (!plan) return res.status(404).json({ error: 'Plan not found' });
 
-    // Get the active Paystack gateway
-    const { data: gateway } = await supabaseAdmin
-      .from('payment_gateways')
-      .select('*')
-      .eq('provider', 'paystack')
-      .eq('is_active', true)
-      .single();
+    /* Through the resolver so this path can be exercised at all. It reads the
+       live row in production and can only return test keys outside it, which
+       is what stops a stray PAYSTACK_MODE pointing real payments at test keys
+       and reporting success while no money moves. */
+    const { gateway } = await resolvePaystackGateway(supabaseAdmin);
 
     if (!gateway) {
       return res.status(400).json({ error: 'Paystack is not configured. Contact your platform administrator.' });
@@ -456,13 +455,11 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
       return res.status(400).json({ error: 'Transaction reference is required' });
     }
 
-    // Get the active Paystack gateway
-    const { data: gateway } = await supabaseAdmin
-      .from('payment_gateways')
-      .select('*')
-      .eq('provider', 'paystack')
-      .eq('is_active', true)
-      .single();
+    /* Through the resolver so this path can be exercised at all. It reads the
+       live row in production and can only return test keys outside it, which
+       is what stops a stray PAYSTACK_MODE pointing real payments at test keys
+       and reporting success while no money moves. */
+    const { gateway } = await resolvePaystackGateway(supabaseAdmin);
 
     if (!gateway) {
       return res.status(400).json({ error: 'Paystack is not configured.' });

@@ -13,6 +13,11 @@ export default function Billing() {
   const { user } = useAuthContext();
   const toast = useToast();
   const [subscription, setSubscription] = useState(null);
+  /* A self-serve trial has NO business_subscriptions row, so `subscription`
+     is null and every detail below used to be hidden behind it. The trial
+     lives on the business record instead, which /businesses/me already
+     returns in full. */
+  const [business, setBusiness] = useState(null);
   const [plans, setPlans] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,20 +41,23 @@ export default function Billing() {
       // looks at to decide whether they are paid up. Silently rendering "no
       // invoices" or "no plan" when the request merely failed is the worst
       // possible answer to that question.
-      const [plansR, subR, invR] = await Promise.allSettled([
+      const [plansR, subR, invR, bizR] = await Promise.allSettled([
         api.get('/subscriptions/plans'),
         api.get(`/subscriptions/business/${user?.business_id}`),
         api.get(`/billing/invoices/${user?.business_id}`),
+        api.get('/businesses/me'),
       ]);
 
       setPlans(plansR.status === 'fulfilled' ? (plansR.value || []) : []);
       setSubscription(subR.status === 'fulfilled' ? subR.value : null);
       setInvoices(invR.status === 'fulfilled' ? (invR.value || []) : []);
+      setBusiness(bizR.status === 'fulfilled' ? bizR.value : null);
 
       const failed = [
         plansR.status === 'rejected' && 'the plan list',
         subR.status === 'rejected' && 'your current subscription',
         invR.status === 'rejected' && 'your invoices',
+        bizR.status === 'rejected' && 'your trial status',
       ].filter(Boolean);
 
       if (failed.length > 0) {
@@ -146,6 +154,15 @@ export default function Billing() {
     ? Math.max(0, Math.ceil((new Date(subscription.current_period_end) - new Date()) / (1000 * 60 * 60 * 24)))
     : 0;
 
+  /* On a free trial: no subscription row, but the business says trialing. */
+  const onTrial = !subscription && business?.status === 'trialing' && Boolean(business?.trial_ends_at);
+  const trialPlan = business?.subscription_plan_id
+    ? plans.find((p) => p.id === business.subscription_plan_id)
+    : null;
+  const trialDaysLeft = onTrial
+    ? Math.max(0, Math.ceil((new Date(business.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   return (
     <div>
       <PageHeader
@@ -158,13 +175,16 @@ export default function Billing() {
       {/* Current Subscription Card */}
       <div className="pa-sub-card" style={{ marginBottom: 'var(--space-2xl)' }}>
         <div className="pa-sub-header">
-          <span className="pa-sub-plan-name">{currentPlan?.name || 'No Plan'}</span>
+          <span className="pa-sub-plan-name">{currentPlan?.name || trialPlan?.name || 'No Plan'}</span>
           {subscription && (
             <span className={`pa-sub-status ${subscription.status}`}>
               {isTrialing ? '🧪 Trial' : subscription.status}
             </span>
           )}
-          {!subscription && (
+          {!subscription && onTrial && (
+            <span className="pa-sub-status trialing">🧪 Trial</span>
+          )}
+          {!subscription && !onTrial && (
             <span className="pa-sub-status expired">No Subscription</span>
           )}
         </div>
@@ -198,6 +218,33 @@ export default function Billing() {
               <span className="pa-sub-detail-label">Days Remaining</span>
               <span className="pa-sub-detail-value" style={{ color: daysLeft <= 5 ? 'var(--color-error-text)' : daysLeft <= 10 ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}>
                 {daysLeft} days
+              </span>
+            </div>
+          </div>
+        )}
+
+        {onTrial && (
+          <div className="pa-sub-details">
+            <div className="pa-sub-detail">
+              <span className="pa-sub-detail-label">Free trial ends</span>
+              <span className="pa-sub-detail-value">
+                {new Date(business.trial_ends_at).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="pa-sub-detail">
+              <span className="pa-sub-detail-label">Days Remaining</span>
+              <span
+                className="pa-sub-detail-value"
+                style={{ color: trialDaysLeft <= 5 ? 'var(--color-error-text)' : trialDaysLeft <= 10 ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}
+              >
+                {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'}
+              </span>
+            </div>
+            <div className="pa-sub-detail">
+              <span className="pa-sub-detail-label">When it ends</span>
+              {/* Matches Terms 6.3 and 9.2, and the reminder email. */}
+              <span className="pa-sub-detail-value" style={{ fontWeight: 400 }}>
+                Nothing is charged. Choose a plan to keep going, and your data stays either way.
               </span>
             </div>
           </div>

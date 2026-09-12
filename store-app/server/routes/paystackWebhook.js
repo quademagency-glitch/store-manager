@@ -23,7 +23,7 @@
 
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');
-const { verifyWebhookSignature } = require('../services/paystack');
+const { verifyWebhookSignature, resolvePaystackGateway } = require('../services/paystack');
 const { invalidateBusinessCache } = require('../middleware/authGuard');
 const logger = require('../utils/logger');
 
@@ -48,12 +48,10 @@ async function paystackWebhookHandler(req, res) {
     }
     const rawBody = req.body;
 
-    const { data: gateway, error: gatewayError } = await supabaseAdmin
-      .from('payment_gateways')
-      .select('id, secret_key, webhook_secret')
-      .eq('provider', 'paystack')
-      .eq('is_active', true)
-      .single();
+    /* Through the resolver, so a local run with PAYSTACK_MODE=test verifies
+       signatures against the test secret. In production the resolver cannot
+       return the test gateway, whatever the environment says. */
+    const { gateway, error: gatewayError } = await resolvePaystackGateway(supabaseAdmin);
 
     // 500, not 200. The old subscriptions.js handler returned 200 here, which
     // told Paystack the event was handled and stopped it retrying, a real

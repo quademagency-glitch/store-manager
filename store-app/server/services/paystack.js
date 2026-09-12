@@ -89,8 +89,70 @@ function verifyWebhookSignature(rawBody, signature, secretKey) {
   return crypto.timingSafeEqual(expected, received);
 }
 
+/**
+ * The Paystack gateway this request should use.
+ *
+ * Production ALWAYS uses the live row in payment_gateways. Test mode needs TWO
+ * independent conditions to be true — PAYSTACK_MODE=test AND
+ * NODE_ENV !== 'production' — so a stray environment variable on Railway
+ * cannot point real customers' payments at test keys. That failure would be
+ * silent and expensive: Paystack would accept the transaction, the app would
+ * record a paid invoice, and no money would ever arrive. One switch was enough
+ * to build this; it is not enough to make it safe.
+ *
+ * Test keys come from the environment and never from payment_gateways. That
+ * table lives in the production database, so a test secret in it would be one
+ * more thing to keep straight and one more thing to leak.
+ *
+ * `id` is null in test mode. business_subscriptions.gateway_id is nullable
+ * (verified against the live schema, and it is the only foreign key pointing
+ * at payment_gateways), so a test payment records with no gateway row instead
+ * of violating the constraint.
+ *
+ * Returns { gateway, error }. A null gateway always means "do not take a
+ * payment": callers fail closed, and the webhook deliberately answers 5xx so
+ * Paystack retries rather than dropping a real event.
+ */
+function isPaystackTestMode() {
+  return process.env.PAYSTACK_MODE === 'test' && process.env.NODE_ENV !== 'production';
+}
+
+async function resolvePaystackGateway(supabaseAdmin) {
+  if (isPaystackTestMode()) {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+      return { gateway: null, error: new Error('PAYSTACK_MODE=test but PAYSTACK_SECRET_KEY is not set') };
+    }
+    return {
+      gateway: {
+        id: null,
+        provider: 'paystack',
+        display_name: 'Paystack (test mode)',
+        secret_key: secretKey,
+        public_key: process.env.PAYSTACK_PUBLIC_KEY || null,
+        webhook_secret: null,
+        is_active: true,
+        mode: 'test',
+      },
+      error: null,
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('payment_gateways')
+    .select('*')
+    .eq('provider', 'paystack')
+    .eq('is_active', true)
+    .single();
+
+  if (error || !data) return { gateway: null, error: error || null };
+  return { gateway: { ...data, mode: 'live' }, error: null };
+}
+
 module.exports = {
   initializeTransaction,
   verifyTransaction,
-  verifyWebhookSignature
+  verifyWebhookSignature,
+  resolvePaystackGateway,
+  isPaystackTestMode,
 };

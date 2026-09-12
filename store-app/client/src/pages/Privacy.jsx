@@ -1,6 +1,6 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
 import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../legal/entity';
-import { analyticsAllowed } from '../lib/analyticsGate';
+import { analyticsAllowed, subprocessorAllowed } from '../lib/analyticsGate';
 
 /* Read from the same switch the software reads, so this page cannot describe
    analytics differently from how the app behaves.
@@ -17,6 +17,12 @@ import { analyticsAllowed } from '../lib/analyticsGate';
 const ANALYTICS_LIVE = analyticsAllowed(
   import.meta.env.VITE_POSTHOG_KEY,
   import.meta.env.VITE_POSTHOG_START,
+);
+
+/* See Dpa.jsx: Vercel hosts the app either way, Speed Insights adds
+   performance measurement as a second purpose and needs its own notice. */
+const SPEED_INSIGHTS_LIVE = subprocessorAllowed(
+  import.meta.env.VITE_SPEED_INSIGHTS_START,
 );
 
 /**
@@ -267,7 +273,10 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Vercel</td>
-                  <td>Hosting and delivery of the web application</td>
+                  <td>
+                    Hosting and delivery of the web application
+                    {SPEED_INSIGHTS_LIVE && ', and how quickly each screen loads. Recorded against the type of screen, for example a customer page, never against which customer or which user.'}
+                  </td>
                   <td>Global edge network</td>
                 </tr>
                 <tr>

@@ -3,6 +3,37 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useAppTheme } from '@/lib/theme-context';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { PostHogProvider } from 'posthog-react-native';
+import * as Sentry from '@sentry/react-native';
+
+/**
+ * Sentry error tracking.
+ *
+ * INERT BY DEFAULT: with no EXPO_PUBLIC_SENTRY_DSN set, Sentry.init() is
+ * never called and the SDK does nothing. Setting one env var in EAS or .env
+ * turns it on.
+ *
+ * Privacy: sendDefaultPii is OFF so no IPs, cookies or device identifiers are
+ * auto-attached. Tracing is off by default (this is being adopted for error
+ * visibility, not performance work). Request bodies are stripped because the
+ * scanner sends authentication tokens.
+ */
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: __DEV__ ? 'development' : 'production',
+    // Error visibility only; tracing is the expensive part.
+    tracesSampleRate: 0,
+    // No auto-captured IPs, cookies or device identity.
+    sendDefaultPii: false,
+    beforeSend(event) {
+      // Never ship request bodies — the scanner sends auth tokens.
+      if (event.request) delete event.request.data;
+      return event;
+    },
+  });
+}
 
 /**
  * Analytics is allowed only when a key is configured AND the start date set
@@ -75,7 +106,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <MaybeAnalytics>
       <ThemeProvider>
@@ -84,3 +115,8 @@ export default function RootLayout() {
     </MaybeAnalytics>
   );
 }
+
+// Sentry.wrap provides automatic error boundary and touch event tracking.
+// No-op when Sentry is not initialised (no DSN).
+export default Sentry.wrap(RootLayout);
+

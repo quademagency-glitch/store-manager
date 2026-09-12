@@ -303,7 +303,24 @@ describe('welcome email, scanner download', () => {
     const { buildWelcomeHtml: build } = require('../services/emailService');
     const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
     expect(html).toContain('https://downloads.example/quaderp-scanner.apk');
-    expect(html).toMatch(/Download the scanner app/i);
+    expect(html).toMatch(/Download for Android/i);
+    delete process.env.SCANNER_DOWNLOAD_URL;
+  });
+
+  it('does not promise iPhone owners something they cannot do', () => {
+    // Android permits installing an app from a file. iOS does not, at all,
+    // outside the App Store, and there is no iOS release. The first draft of
+    // this section said "install it on any phone your staff use", which reads
+    // as a promise to every iPhone owner on the team and cannot be kept.
+    jest.resetModules();
+    process.env.SCANNER_DOWNLOAD_URL = 'https://downloads.example/quaderp-scanner.apk';
+    const { buildWelcomeHtml: build } = require('../services/emailService');
+    const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
+
+    expect(html).toMatch(/Android/);
+    expect(html).not.toMatch(/any phone/i);
+    // Says so outright rather than leaving it to be inferred from the word Android.
+    expect(html).toMatch(/no iPhone version/i);
     delete process.env.SCANNER_DOWNLOAD_URL;
   });
 });

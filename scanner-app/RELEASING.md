@@ -9,6 +9,21 @@ As of 2026-09-12 **no build has ever been produced**. There is no APK, no Play
 Store listing, and the Expo project has no published builds. This file is the
 shortest path from that to a link you can put in front of a customer.
 
+## Android only, decided 2026-09-12
+
+The owner's call, and it settles a real constraint rather than a preference.
+Android lets you install an app from a file, so a link in an email works. iOS
+does not, at all, outside the App Store: there is no equivalent to handing
+someone an APK, and TestFlight caps at 10,000 testers on builds that expire
+every 90 days. So an emailed download button can only ever serve Android.
+
+The welcome email says so in as many words, and a test asserts it, because the
+first draft said "install it on any phone your staff use" and that is a promise
+to every iPhone owner on a shop's team that cannot be kept.
+
+The iOS project and bundle identifier are left in place. Nothing here removes
+the ability to ship to Apple later; it only stops the email claiming it exists.
+
 ## Producing an Android build
 
 Needs an Expo account. Nothing here needs Android Studio or a JDK; the build

@@ -657,12 +657,12 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:12px;border:1px solid #bae6fd;">
                 <tr>
                   <td style="padding:16px 20px;">
-                    <p style="margin:0 0 6px;color:#0f172a;font-size:15px;font-weight:600;">Stock counting on your phone</p>
+                    <p style="margin:0 0 6px;color:#0f172a;font-size:15px;font-weight:600;">Stock counting on an Android phone</p>
                     <p style="margin:0 0 12px;color:#475569;font-size:14px;line-height:1.6;">
-                      The scanner app turns a phone into a barcode scanner for stock takes, deliveries and price checks. Install it on any phone your staff use on the floor.
+                      The scanner app turns an Android phone into a barcode scanner for stock takes, deliveries and price checks. Install it on any Android phone your staff use on the floor. There is no iPhone version yet.
                     </p>
                     <a href="${SCANNER_DOWNLOAD_URL}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;">
-                      Download the scanner app
+                      Download for Android
                     </a>
                   </td>
                 </tr>

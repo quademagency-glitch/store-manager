@@ -31,6 +31,11 @@ const PLATFORM_ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL || '';
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@quaderp.app';
 const APP_URL = process.env.APP_URL || 'https://app.quaderp.app';
 
+/* Where the mobile stock scanner is downloaded from. Unset in most
+   environments, and the welcome email simply omits the section when it is
+   empty rather than shipping a dead link or a placeholder. */
+const SCANNER_DOWNLOAD_URL = process.env.SCANNER_DOWNLOAD_URL || '';
+
 /* The QuadERP mark for email headers. Hosted on the landing site, which is
    public and already serves it over https.
 
@@ -643,6 +648,29 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
             </td>
           </tr>
 
+          <!-- Mobile scanner. Rendered only when a download URL is configured:
+               a welcome email that tells someone to install an app and then
+               does not say where is worse than not mentioning it. -->
+          ${SCANNER_DOWNLOAD_URL ? `
+          <tr>
+            <td style="padding:24px 40px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:12px;border:1px solid #bae6fd;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 6px;color:#0f172a;font-size:15px;font-weight:600;">Stock counting on your phone</p>
+                    <p style="margin:0 0 12px;color:#475569;font-size:14px;line-height:1.6;">
+                      The scanner app turns a phone into a barcode scanner for stock takes, deliveries and price checks. Install it on any phone your staff use on the floor.
+                    </p>
+                    <a href="${SCANNER_DOWNLOAD_URL}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+                      Download the scanner app
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ` : ''}
+
           <!-- Account details -->
           <tr>
             <td style="padding:24px 40px 0;">
@@ -652,7 +680,11 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
                     <p style="margin:0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Your login email</p>
                     <p style="margin:4px 0 12px;color:#0f172a;font-size:15px;font-weight:600;">${adminEmail}</p>
                     <p style="margin:0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Sign in at</p>
+                    ${ctaMode === 'verify-email' ? `
+                    <p style="margin:4px 0 0;color:#0f172a;font-size:15px;font-weight:600;">${loginUrl}</p>
+                    ` : `
                     <p style="margin:4px 0 0;font-size:15px;font-weight:600;"><a href="${loginUrl}" style="color:#6366f1;text-decoration:none;">${loginUrl}</a></p>
+                    `}
                     ${planName ? `
                     <p style="margin:12px 0 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Plan</p>
                     <p style="margin:4px 0 0;color:#0f172a;font-size:15px;font-weight:600;">${planName}</p>

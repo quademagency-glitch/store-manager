@@ -236,3 +236,74 @@ describe('email templates', () => {
     expect(senderAddress()).not.toContain('quaderp.com');
   });
 });
+
+/**
+ * The confirmation email that let a real signup get stuck.
+ *
+ * On 2026-09-12 a customer signed up, was emailed a confirmation link, clicked
+ * through to a sign in form, and was told their email was not confirmed. The
+ * token in auth.users was never consumed, so the confirm link was never
+ * followed. Sitting directly under the Confirm button was "Sign in at
+ * <their url>", rendered as a live link to a page that works without
+ * confirming anything. Both real signups the platform has ever had were stuck
+ * the same way, the earliest since 2026-08-20.
+ *
+ * The information is worth keeping, the second click target is not.
+ */
+describe('welcome email, verify-email mode', () => {
+  const business = { name: 'Omek Gigs Appliances', slug: 'omek-gigs-appliances' };
+  const opts = {
+    setPasswordUrl: 'https://project.supabase.co/auth/v1/verify?token=abc&type=signup',
+    loginUrl: 'https://omek-gigs-appliances.app.quaderp.app',
+    planName: 'Single Branch',
+  };
+
+  it('offers exactly one clickable destination: the confirmation link', () => {
+    const html = buildWelcomeHtml(business, 'Emmanuel', 'info@omekgh.com', {
+      ...opts, ctaMode: 'verify-email',
+    });
+
+    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+    const appLinks = hrefs.filter((h) => h.includes('omek-gigs-appliances.app.quaderp.app'));
+
+    expect(hrefs).toContain(opts.setPasswordUrl);
+    expect(appLinks).toHaveLength(0);
+    // Still tells them where they will be signing in, just does not invite a
+    // click on it before the address is confirmed.
+    expect(html).toContain(opts.loginUrl);
+  });
+
+  it('still links the sign in URL when the email is not a confirmation', () => {
+    // set-password mode is sent to staff whose address is already trusted, so
+    // there is nothing to bypass and the link is a convenience.
+    const html = buildWelcomeHtml(business, 'Emmanuel', 'info@omekgh.com', {
+      ...opts, ctaMode: 'set-password',
+    });
+    expect(html).toContain(`href="${opts.loginUrl}"`);
+  });
+});
+
+describe('welcome email, scanner download', () => {
+  const business = { name: 'Omek Gigs Appliances', slug: 'omek-gigs-appliances' };
+  const base = { loginUrl: 'https://omek.app.quaderp.app', setPasswordUrl: 'https://x/confirm' };
+
+  it('omits the section entirely when no download URL is configured', () => {
+    // A welcome email that tells someone to install an app and does not say
+    // where is worse than one that never mentions it.
+    jest.resetModules();
+    delete process.env.SCANNER_DOWNLOAD_URL;
+    const { buildWelcomeHtml: build } = require('../services/emailService');
+    const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
+    expect(html).not.toMatch(/scanner app/i);
+  });
+
+  it('includes it when configured', () => {
+    jest.resetModules();
+    process.env.SCANNER_DOWNLOAD_URL = 'https://downloads.example/quaderp-scanner.apk';
+    const { buildWelcomeHtml: build } = require('../services/emailService');
+    const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
+    expect(html).toContain('https://downloads.example/quaderp-scanner.apk');
+    expect(html).toMatch(/Download the scanner app/i);
+    delete process.env.SCANNER_DOWNLOAD_URL;
+  });
+});

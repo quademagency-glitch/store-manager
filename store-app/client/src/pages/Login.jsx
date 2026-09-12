@@ -19,6 +19,41 @@ export default function Login() {
   const demoRequested = searchParams.get('demo') === '1';
   const demoAutoStarted = useRef(false);
 
+  /* Supabase sends a failed email confirmation BACK HERE, with the reason in
+     the URL fragment:
+
+       /login#error=access_denied&error_code=otp_expired&error_description=...
+
+     Nothing read it. So a customer clicked "Confirm your email", landed on an
+     ordinary-looking sign in form with no message at all, signed in, and was
+     told their email was not confirmed, which flatly contradicts the email
+     they had just clicked. That is how this presented on 2026-09-12: the
+     customer could not tell that anything had failed, and neither could we.
+
+     A fragment is never sent to the server, so this is the only place the
+     reason can be surfaced. Cleared from the address bar afterwards so a
+     refresh does not re-accuse them of something they already fixed. */
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2 || !hash.includes('error')) return;
+
+    const params = new URLSearchParams(hash.slice(1));
+    const code = params.get('error_code');
+    const description = params.get('error_description');
+    if (!code && !description) return;
+
+    // otp_expired covers both halves of "this link is no longer usable":
+    // genuinely timed out, and already redeemed. Neither is the customer's
+    // fault and both have the same remedy, so they get the same sentence.
+    setError(
+      code === 'otp_expired' || code === 'access_denied'
+        ? 'That confirmation link has expired or has already been used. Enter your email and password below and we will send you a fresh one.'
+        : (description ? description.replace(/\+/g, ' ') : 'That link could not be used. Please request a new one.'),
+    );
+
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+
   /* `?demo=1` is how "Try Live Demo" on the marketing page gets here: one
      click on the landing page should land in the app, not on a login form
      with another button to find.

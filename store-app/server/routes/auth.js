@@ -550,6 +550,38 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
 });
 
 /**
+ * The actor on a demo-login audit row, deliberately without a business.
+ *
+ * It used to carry business_id: userData.business_id, which is the demo
+ * tenant, and that quietly destroyed the record every night. The demo is torn
+ * down and rebuilt at 02:00 Accra, and the teardown in scripts/seed-demo-data
+ * runs `DELETE FROM <table> WHERE business_id = $1` over every table that has
+ * a business_id column. audit_logs has one. audit_logs.business_id is also
+ * ON DELETE CASCADE against businesses, so the row had two ways to die and
+ * took both.
+ *
+ * The effect was a Front Door panel on Platform Admin whose "demo opens this
+ * week" could never exceed one day, silently resetting to zero each night.
+ * Verified on 2026-09-12: two demo opens recorded on the 8th were gone, and
+ * audit_logs was back to the single signup row from 20 August.
+ *
+ * Leaving business_id null is not a workaround, it is the more accurate
+ * record. Somebody opening the public sandbox is an anonymous visitor to the
+ * platform, not activity belonging to the demo tenant, and no real business
+ * should find a stranger's session in its own audit log. actor_user_id is
+ * ON DELETE SET NULL, so the nightly rebuild empties that field and leaves
+ * the row, and actor_email is plain text that survives on its own.
+ */
+function demoAuditActor(userData) {
+  return {
+    id: userData.id,
+    email: userData.email,
+    business_id: null,
+    role: userData.roles ? userData.roles.name : 'Demo',
+  };
+}
+
+/**
  * POST /api/auth/demo-login
  * Sign a visitor straight into the public sandbox, no signup, no email.
  *
@@ -622,12 +654,7 @@ router.post('/demo-login', demoLoginCeiling, demoLoginLimiter, async (req, res) 
       });
     }
 
-    req.auditActor = {
-      id: userData.id,
-      email: userData.email,
-      business_id: userData.business_id,
-      role: userData.roles ? userData.roles.name : 'Demo',
-    };
+    req.auditActor = demoAuditActor(userData);
     logAuditEvent(req, AUDIT_ACTIONS.DEMO_LOGIN, 'user', userData.id);
 
     return res.json({
@@ -1011,6 +1038,7 @@ module.exports = router;
 // behind `trust proxy`, so every request in a test run shares one key and the
 // suite would otherwise spend its whole 5/hour budget on the first few cases, // which is not a reason to weaken the limit for real traffic.
 module.exports.signupLimiter = signupLimiter;
+module.exports.demoAuditActor = demoAuditActor;
 module.exports.resendConfirmationLimiter = resendConfirmationLimiter;
 module.exports.resendConfirmationEmailLimiter = resendConfirmationEmailLimiter;
 module.exports.resendConfirmationCeiling = resendConfirmationCeiling;

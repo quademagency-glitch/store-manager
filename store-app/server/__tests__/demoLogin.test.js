@@ -103,3 +103,37 @@ describe('POST /api/auth/demo-login', () => {
     expect(JSON.stringify(res.body)).not.toContain('test-password');
   });
 });
+
+/**
+ * The demo tenant is deleted and rebuilt nightly, and the teardown sweeps
+ * `DELETE FROM <table> WHERE business_id = $1` across every table carrying a
+ * business_id, audit_logs included. Attaching the demo business to this row
+ * therefore deleted the record of the visit every night at 02:00, so the
+ * Platform Admin panel that counts demo opens could never hold more than a
+ * day. Checked on 2026-09-12: two opens recorded on the 8th had gone.
+ */
+describe('demo-login audit actor', () => {
+  const { demoAuditActor } = require('../routes/auth');
+
+  const userData = {
+    id: 'demo-user-1',
+    email: 'demo@quaderp.app',
+    business_id: 'biz-demo-1',
+    roles: { name: 'Business Admin' },
+  };
+
+  it('carries no business, so the nightly teardown cannot sweep the row', () => {
+    expect(demoAuditActor(userData).business_id).toBeNull();
+  });
+
+  it('still names who and what, which is the part worth keeping', () => {
+    const actor = demoAuditActor(userData);
+    expect(actor.id).toBe('demo-user-1');
+    expect(actor.email).toBe('demo@quaderp.app');
+    expect(actor.role).toBe('Business Admin');
+  });
+
+  it('falls back to Demo when the account has no role attached', () => {
+    expect(demoAuditActor({ ...userData, roles: null }).role).toBe('Demo');
+  });
+});

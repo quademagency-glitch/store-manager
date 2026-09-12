@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.quaderp.scannerapp",
-      "versionCode": 1,
+      "versionCode": 3,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0D0A28",
@@ -42,8 +42,7 @@
           }
         }
       ],
-      "expo-localization",
-      "@sentry/react-native"
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

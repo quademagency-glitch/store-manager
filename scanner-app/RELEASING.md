@@ -57,6 +57,54 @@ that redirects to the current build means the link in every email already sent
 keeps working, and swapping APK for Play Store later changes nothing anywhere
 else. The email template does not care which it is given.
 
+## Commit app.json after every build
+
+`autoIncrement` raises `expo.android.versionCode` in **app.json in your working
+tree**, because `cli.appVersionSource` is `local` and the repo is therefore the
+record of what has been released. If you do not commit that bump, the next
+build starts from the old number again and produces an APK that will not
+install over the one already on people's phones.
+
+The first two builds took it from 1 to 2 to 3. If a build number ever seems to
+have gone backwards, this is why.
+
+Switching `cli.appVersionSource` to `"remote"` moves the counter to Expo's
+servers and removes the need to remember any of this. Worth doing; it needs one
+build to verify, so it has been left as a deliberate choice rather than changed
+underneath you.
+
+## Sentry is disabled at build time, on purpose
+
+`@sentry/react-native` 7.11.0 is the version Expo recommends for SDK 56, and
+its Metro serializer crashes this project's build:
+
+```
+TypeError: Cannot read properties of undefined (reading 'match')
+  at determineDebugIdFromBundleSource (@sentry/react-native/dist/js/tools/utils.js:37)
+  at sentryMetroSerializer.js:63
+```
+
+It reads the bundle source to stamp a debug ID into it, and gets `undefined`,
+because this SDK hands the serializer Hermes bytecode rather than JavaScript.
+The first ever build of this app, on 2026-09-12, failed on exactly this after
+about a minute, reported only as "See logs of the Bundle JavaScript build
+phase".
+
+Removing `@sentry/react-native` from `expo.plugins` and `withSentryConfig` from
+metro.config.js makes the build succeed. Both were removed; the dependency and
+the guarded `Sentry.init()` call are still there.
+
+What that costs: no native crash capture and no source maps, so a future stack
+trace would point at minified bytecode. What it does not cost anything today:
+`EXPO_PUBLIC_SENTRY_DSN` is unset, so Sentry does nothing at runtime either
+way. `Sentry.init()` is now wrapped in try/catch as well, because without the
+config plugin the native module may not be linked and an error reporter that
+crashes the app on boot is worse than no error reporter.
+
+To restore it properly, wait for a `@sentry/react-native` release that supports
+React Native 0.85, then put the plugin back and rebuild. Do not put it back
+without rebuilding: the failure appears only at build time.
+
 ## versionCode, and why a second release fails without it
 
 `android.versionCode` was unset until 2026-09-12, which means Expo stamped

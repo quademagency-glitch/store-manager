@@ -19,20 +19,31 @@ import * as Sentry from '@sentry/react-native';
  */
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
+/* Wrapped, because the @sentry/react-native Expo config plugin had to be
+   removed to make the app buildable at all (see below), and without it the
+   native module may not be linked. Sentry.init() would then throw on boot and
+   take the whole app with it the moment somebody sets a DSN. An error reporter
+   that prevents the app from starting is worse than no error reporter. */
 if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: __DEV__ ? 'development' : 'production',
-    // Error visibility only; tracing is the expensive part.
-    tracesSampleRate: 0,
-    // No auto-captured IPs, cookies or device identity.
-    sendDefaultPii: false,
-    beforeSend(event) {
-      // Never ship request bodies — the scanner sends auth tokens.
-      if (event.request) delete event.request.data;
-      return event;
-    },
-  });
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      environment: __DEV__ ? 'development' : 'production',
+      // Error visibility only; tracing is the expensive part.
+      tracesSampleRate: 0,
+      // No auto-captured IPs, cookies or device identity.
+      sendDefaultPii: false,
+      beforeSend(event) {
+        // Never ship request bodies, the scanner sends auth tokens.
+        if (event.request) delete event.request.data;
+        return event;
+      },
+    });
+  } catch (err) {
+    // Deliberately swallowed. Nothing the app does depends on Sentry, and a
+    // crash reporter that crashes the app is the worst of both.
+    console.warn('[sentry] init failed, continuing without error reporting', err);
+  }
 }
 
 /**

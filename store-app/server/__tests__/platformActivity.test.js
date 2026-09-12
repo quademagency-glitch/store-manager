@@ -23,6 +23,23 @@ const app = require('../index');
 
 const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
 
+/* Anchored to the start of the UTC day, NOT to "now".
+ *
+ * The route buckets "today" from setUTCHours(0, 0, 0, 0), so a fixture written
+ * as hoursAgo(3) stops being today once the clock passes midnight UTC, and
+ * this suite went red every night between 00:00 and 03:00. Found on
+ * 2026-09-12 at 00:05 UTC with four tests reporting counts of 0 against
+ * expectations of 5, 1, 1 and 120.
+ *
+ * hoursAgo is kept for rows that are meant to be older than today; only the
+ * ones asserting on today's bucket move. The millisecond offset keeps rows
+ * distinguishable, which the distinct-address counting relies on. */
+const earlierToday = (offsetMs = 0) => {
+  const midnight = new Date();
+  midnight.setUTCHours(0, 0, 0, 0);
+  return new Date(midnight.getTime() + 1000 + offsetMs).toISOString();
+};
+
 const demo = (ip, when) => ({
   id: Math.random(), action: 'auth.demo_login', created_at: when,
   actor_email: 'demo@quaderp.app', ip_address: ip,
@@ -49,9 +66,9 @@ describe('GET /api/platform/activity', () => {
     overrides.audit_logs = {
       // One person clicking around four times, plus a second person once.
       data: [
-        demo('1.1.1.1', hoursAgo(1)), demo('1.1.1.1', hoursAgo(1)),
-        demo('1.1.1.1', hoursAgo(2)), demo('1.1.1.1', hoursAgo(2)),
-        demo('2.2.2.2', hoursAgo(3)),
+        demo('1.1.1.1', earlierToday(0)), demo('1.1.1.1', earlierToday(1)),
+        demo('1.1.1.1', earlierToday(2)), demo('1.1.1.1', earlierToday(3)),
+        demo('2.2.2.2', earlierToday(4)),
       ],
       error: null,
     };
@@ -65,7 +82,7 @@ describe('GET /api/platform/activity', () => {
 
   it('separates today from the rest of the week', async () => {
     overrides.audit_logs = {
-      data: [demo('1.1.1.1', hoursAgo(1)), demo('2.2.2.2', hoursAgo(70))],
+      data: [demo('1.1.1.1', earlierToday()), demo('2.2.2.2', hoursAgo(70))],
       error: null,
     };
 
@@ -77,7 +94,7 @@ describe('GET /api/platform/activity', () => {
 
   it('does not confuse a signup with a demo open', async () => {
     overrides.audit_logs = {
-      data: [signup('Adom Superstore', hoursAgo(1)), demo('1.1.1.1', hoursAgo(1))],
+      data: [signup('Adom Superstore', earlierToday(0)), demo('1.1.1.1', earlierToday(1))],
       error: null,
     };
 
@@ -114,7 +131,7 @@ describe('GET /api/platform/activity', () => {
 
   it('caps the list well below the query limit', async () => {
     overrides.audit_logs = {
-      data: Array.from({ length: 120 }, (_, i) => demo(`3.3.3.${i % 10}`, hoursAgo(1))),
+      data: Array.from({ length: 120 }, (_, i) => demo(`3.3.3.${i % 10}`, earlierToday(i))),
       error: null,
     };
 

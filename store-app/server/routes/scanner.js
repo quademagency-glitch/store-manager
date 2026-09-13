@@ -22,6 +22,12 @@ const logger = require('../utils/logger');
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const permissionCheck = require('../middleware/permissionCheck');
+const fs = require('node:fs');
+const fsp = require('node:fs/promises');
+const path = require('node:path');
+const { pipeline } = require('node:stream/promises');
+const { Readable } = require('node:stream');
 const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
@@ -40,57 +46,116 @@ const scanLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/*
+ * ── The scanner APK ─────────────────────────────────────────────────────────
+ *
+ * The build is served from a Railway volume mounted at /data, and reaches
+ * signed-in users only. It was first published as a public GitHub release,
+ * which anyone on the internet could download; the requirement is that it
+ * reaches QuadERP customers and nobody else.
+ *
+ * WHY A VOLUME AND NOT OBJECT STORAGE: Supabase Storage was the first choice
+ * and its plan caps uploads at 50MB, verified by uploading the real file and
+ * receiving a 413. The APK is 83MB with both ARM architectures, and 60MB with
+ * 64-bit alone, so trimming architectures does not get under the cap either,
+ * it only drops support for older handsets in exchange for nothing.
+ */
+const APK_PATH = process.env.SCANNER_APK_PATH || '/data/quaderp-scanner.apk';
+
+/* Downloads are slow and large, so they are counted separately from the rest
+   of the API. Ten per hour is far above installing the app on every phone in a
+   shop in one sitting, and far below anything that would tie up workers. */
+const apkDownloadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || rateLimit.ipKeyGenerator(req.ip),
+  message: { error: 'Too many downloads. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * GET /api/scanner/app-download
  *
- * Hands a signed, short-lived link to the scanner APK. Signed in users only.
- *
- * WHY THIS EXISTS RATHER THAN A PUBLIC LINK: the build was first published as
- * a GitHub release asset, which anyone on the internet could download. The
- * owner's requirement is that the scanner is available to QuadERP customers
- * and nobody else, so the bytes live in a PRIVATE storage bucket and this
- * route is the only way to reach them.
- *
- * The signed URL is deliberately short-lived. It is a capability: anyone
- * holding it can download without signing in, so it should outlive the click
- * that produced it and very little else. Sixty seconds is ample for a browser
- * to follow a redirect and start the transfer, and the transfer itself is not
- * interrupted when the URL expires mid-download.
- *
- * 302 rather than streaming the file through this process. An 80MB download
- * held open through the API would occupy a worker for the length of a shop's
- * mobile connection, and this same process is serving the till.
- *
- * Access: any authenticated user. Deliberately NOT permission-gated: the
+ * Access: any authenticated user. Deliberately NOT permission-gated. The
  * people who most need the scanner are the staff counting stock, and putting
- * it behind an admin permission would mean the manager installing it on
+ * it behind an admin permission would leave a manager installing it on
  * everyone's phone by hand.
+ *
+ * An earlier draft of this route worried about tying up a worker for the
+ * length of an 80MB transfer on a shop's mobile connection. res.download
+ * streams asynchronously and does not block the event loop, and the real
+ * volume here is a handful of installs per customer, not a download service.
+ * The limiter above is the guard that actually matters.
  */
-router.get('/app-download', authGuard, async (req, res) => {
-  const bucket = process.env.SCANNER_APK_BUCKET || 'app-downloads';
-  const object = process.env.SCANNER_APK_OBJECT || 'quaderp-scanner.apk';
+router.get('/app-download', authGuard, apkDownloadLimiter, (req, res) => {
+  if (!fs.existsSync(APK_PATH)) {
+    // The one person who sees this is trying to install the app, and a bare
+    // 404 reads as "this product is broken" rather than "not uploaded yet".
+    logger.warn({ path: APK_PATH }, 'Scanner APK requested but not present on the volume');
+    return res.status(404).json({
+      error: 'Not available',
+      message: 'The scanner app is not available to download yet. Please contact support.',
+    });
+  }
 
+  return res.download(APK_PATH, 'quaderp-scanner.apk', (err) => {
+    // Fires for a client that disconnected mid-transfer, which on a shop's
+    // connection is ordinary rather than exceptional. Nothing to do but avoid
+    // trying to send a second response.
+    if (err && !res.headersSent) {
+      logger.error({ err }, 'Scanner APK download failed');
+    }
+  });
+});
+
+/**
+ * POST /api/scanner/app-upload   { url }
+ *
+ * Fetches a build into the volume. Platform admins only.
+ *
+ * This is how a release gets onto the volume at all: Railway volumes cannot be
+ * written to from outside the running service, so publishing a new scanner
+ * build means pointing this at the EAS artifact URL once. See
+ * scanner-app/RELEASING.md.
+ *
+ * Downloads to a temporary file and renames into place, so a failed or
+ * half-finished transfer cannot replace a working APK with a truncated one.
+ * Rename within the same filesystem is atomic; a customer downloading while
+ * this runs gets either the old file or the new one, never a mixture.
+ */
+router.post('/app-upload', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+  const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+  if (!/^https:\/\//i.test(url)) {
+    return res.status(400).json({ error: 'A https url is required' });
+  }
+
+  const tmp = `${APK_PATH}.incoming`;
   try {
-    const { data, error } = await supabaseAdmin
-      .storage
-      .from(bucket)
-      .createSignedUrl(object, 60, { download: 'quaderp-scanner.apk' });
+    await fsp.mkdir(path.dirname(APK_PATH), { recursive: true });
 
-    if (error || !data?.signedUrl) {
-      // Most likely the build has not been uploaded yet. Say so plainly: a
-      // 404 with no explanation here reads as "the app is broken" to the one
-      // person trying to install it.
-      logger.warn({ err: error, bucket, object }, 'Scanner APK not available for download');
-      return res.status(404).json({
-        error: 'Not available',
-        message: 'The scanner app is not available to download yet. Please contact support.',
-      });
+    const response = await fetch(url);
+    if (!response.ok || !response.body) {
+      return res.status(502).json({ error: 'Could not fetch that build', status: response.status });
     }
 
-    return res.redirect(302, data.signedUrl);
+    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmp));
+    const { size } = await fsp.stat(tmp);
+
+    // An APK is a zip. Anything much smaller than a megabyte is an error page
+    // that arrived with a 200, which is a thing CDNs do.
+    if (size < 1_000_000) {
+      await fsp.unlink(tmp).catch(() => {});
+      return res.status(502).json({ error: 'That url did not return a build', bytes: size });
+    }
+
+    await fsp.rename(tmp, APK_PATH);
+    logger.info({ bytes: size, by: req.user.id }, 'Scanner APK replaced');
+    return res.json({ ok: true, bytes: size });
   } catch (err) {
-    logger.error({ err }, 'Failed to sign scanner APK download');
-    return res.status(500).json({ error: 'Failed to prepare download' });
+    await fsp.unlink(tmp).catch(() => {});
+    logger.error({ err }, 'Scanner APK upload failed');
+    return res.status(500).json({ error: 'Upload failed' });
   }
 });
 

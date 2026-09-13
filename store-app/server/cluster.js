@@ -143,6 +143,16 @@ if (cluster.isPrimary) {
 
   logger.info('📋 Crons initialized in primary process');
 
+  /* Put the scanner build on the volume, in the PRIMARY only. Eight workers
+     each fetching 80MB on boot would be eight times the transfer for one file,
+     and they share the volume. Deliberately not awaited: the API serving a
+     shop's till must not wait on, or refuse to start because of, a download of
+     an optional companion app. */
+  require('./services/scannerApk')
+    .ensureScannerApk()
+    .then((r) => logger.info({ ...r }, '[scanner-apk] startup check complete'))
+    .catch((err) => logger.error({ err }, '[scanner-apk] startup check threw'));
+
   // Fan the shutdown signal out to the workers.
   //
   // Node's cluster module does NOT forward signals to children, and Railway

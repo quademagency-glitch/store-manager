@@ -60,7 +60,7 @@ const scanLimiter = rateLimit({
  * 64-bit alone, so trimming architectures does not get under the cap either,
  * it only drops support for older handsets in exchange for nothing.
  */
-const APK_PATH = process.env.SCANNER_APK_PATH || '/data/quaderp-scanner.apk';
+const { APK_PATH } = require('../services/scannerApk');
 
 /* Downloads are slow and large, so they are counted separately from the rest
    of the API. Ten per hour is far above installing the app on every phone in a
@@ -107,56 +107,6 @@ router.get('/app-download', authGuard, apkDownloadLimiter, (req, res) => {
       logger.error({ err }, 'Scanner APK download failed');
     }
   });
-});
-
-/**
- * POST /api/scanner/app-upload   { url }
- *
- * Fetches a build into the volume. Platform admins only.
- *
- * This is how a release gets onto the volume at all: Railway volumes cannot be
- * written to from outside the running service, so publishing a new scanner
- * build means pointing this at the EAS artifact URL once. See
- * scanner-app/RELEASING.md.
- *
- * Downloads to a temporary file and renames into place, so a failed or
- * half-finished transfer cannot replace a working APK with a truncated one.
- * Rename within the same filesystem is atomic; a customer downloading while
- * this runs gets either the old file or the new one, never a mixture.
- */
-router.post('/app-upload', authGuard, permissionCheck('manage_platform'), async (req, res) => {
-  const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
-  if (!/^https:\/\//i.test(url)) {
-    return res.status(400).json({ error: 'A https url is required' });
-  }
-
-  const tmp = `${APK_PATH}.incoming`;
-  try {
-    await fsp.mkdir(path.dirname(APK_PATH), { recursive: true });
-
-    const response = await fetch(url);
-    if (!response.ok || !response.body) {
-      return res.status(502).json({ error: 'Could not fetch that build', status: response.status });
-    }
-
-    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmp));
-    const { size } = await fsp.stat(tmp);
-
-    // An APK is a zip. Anything much smaller than a megabyte is an error page
-    // that arrived with a 200, which is a thing CDNs do.
-    if (size < 1_000_000) {
-      await fsp.unlink(tmp).catch(() => {});
-      return res.status(502).json({ error: 'That url did not return a build', bytes: size });
-    }
-
-    await fsp.rename(tmp, APK_PATH);
-    logger.info({ bytes: size, by: req.user.id }, 'Scanner APK replaced');
-    return res.json({ ok: true, bytes: size });
-  } catch (err) {
-    await fsp.unlink(tmp).catch(() => {});
-    logger.error({ err }, 'Scanner APK upload failed');
-    return res.status(500).json({ error: 'Upload failed' });
-  }
 });
 
 /**

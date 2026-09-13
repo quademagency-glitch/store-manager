@@ -41,6 +41,30 @@ back a shareable install page. Without that flag the artifact is downloadable
 only from the EAS dashboard by the account owner, so there is no URL to give
 anyone — that was the state of this config until 2026-09-12.
 
+## Where the APK is hosted
+
+`https://github.com/quademagency-glitch/store-manager/releases/download/scanner-latest/quaderp-scanner.apk`
+
+A GitHub release on the tag `scanner-latest`, and that tag is deliberately a
+moving one: each release **replaces the asset on the same tag** rather than
+creating a new one, so the link in every welcome email already sent keeps
+working. That is the whole point of the arrangement, and it is the reason not
+to publish a `scanner-v1.2.3` tag and point the email at it.
+
+Do not use `/releases/latest/download/...` either, tempting as it looks.
+"latest" there means the newest release in the whole repository, so the first
+release published for anything else would silently take the scanner's link with
+it and serve a 404.
+
+Supabase Storage was the first choice and does not work: the project's plan
+caps uploads at 50MB per file, verified by probing it, and the APK is 79MB.
+
+To publish a new build:
+
+```sh
+gh release upload scanner-latest ./quaderp-scanner.apk --clobber
+```
+
 ## Pointing the email at it
 
 Set the build's install URL on the Railway API service:

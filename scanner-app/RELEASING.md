@@ -57,6 +57,27 @@ that redirects to the current build means the link in every email already sent
 keeps working, and swapping APK for Play Store later changes nothing anywhere
 else. The email template does not care which it is given.
 
+## Anything that must survive a build belongs in app.json
+
+`/android` is gitignored. EAS builds from what git tracks, so it never receives
+that folder and runs `expo prebuild` to regenerate it from app.json every time.
+
+Editing `android/gradle.properties`, or anything else under `android/`,
+therefore works perfectly on your own machine and is silently discarded in the
+build. On 2026-09-13 an architecture change made that way looked applied
+locally and would have produced an identical 145MB APK; `expo prebuild --clean`
+is the quick way to see it happen, since it wipes and regenerates the folder
+exactly as EAS does.
+
+Native build settings go in a config plugin instead, as
+`plugins/withAndroidArchitectures.js` does. Plugins are tracked, so they
+survive. Verify one locally with:
+
+```sh
+npx expo prebuild --platform android --no-install --clean
+grep reactNativeArchitectures android/gradle.properties
+```
+
 ## Commit app.json after every build
 
 `autoIncrement` raises `expo.android.versionCode` in **app.json in your working

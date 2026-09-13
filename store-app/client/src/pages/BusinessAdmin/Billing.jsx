@@ -360,12 +360,34 @@ export default function Billing() {
                   </div>
                 )}
 
+                {/* Setup is NOT a fee on the plan, and this chip used to say so.
+                    It rendered "GHS 1,000 Setup Fee" beside Users and Locations,
+                    as though signing up cost a thousand cedis, while the pricing
+                    page told the same person "No setup fee to start" and the FAQ
+                    answered "Do I have to pay a setup fee?" with "No."
+
+                    Nothing charges it: subscriptions.js builds the Paystack
+                    amount from price_monthly or price_yearly and never reads
+                    setup_fee. The column is what OPTIONAL guided setup costs if
+                    a customer asks us to load their stock and train their staff,
+                    which is a service sold separately and once.
+
+                    So the chip states the fact, and the offer is spelled out
+                    below it in the site's own words rather than being implied by
+                    a number with a fee label on it. */}
                 <div className="pa-plan-limits" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
-                  <span className="pa-plan-limit"><strong>{plan.setup_fee > 0 ? new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(plan.setup_fee) : 'Free'}</strong> Setup Fee</span>
+                  <span className="pa-plan-limit"><strong>No</strong> Setup Fee</span>
                   <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
                   <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
                   <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>
                 </div>
+                {plan.setup_fee > 0 && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem', lineHeight: 1.5 }}>
+                    Set it up yourself at no charge. If you would rather we did it, guided setup is our
+                    team loading your products, prices and opening stock and training your staff:{' '}
+                    {new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(plan.setup_fee)}, optional, charged once.
+                  </p>
+                )}
                 {/* Collapsible features toggle */}
                 <button 
                   onClick={() => toggleFeatures(plan.id)}

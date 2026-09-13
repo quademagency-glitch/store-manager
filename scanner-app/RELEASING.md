@@ -43,43 +43,40 @@ anyone — that was the state of this config until 2026-09-12.
 
 ## Where the APK is hosted
 
-`https://github.com/quademagency-glitch/store-manager/releases/download/scanner-latest/quaderp-scanner.apk`
+On a Railway volume mounted at `/data`, on our own server, reachable only
+through `GET /api/scanner/app-download`, which requires a signed-in QuadERP
+session. Customers get it from `/scanner` inside the app.
 
-A GitHub release on the tag `scanner-latest`, and that tag is deliberately a
-moving one: each release **replaces the asset on the same tag** rather than
-creating a new one, so the link in every welcome email already sent keeps
-working. That is the whole point of the arrangement, and it is the reason not
-to publish a `scanner-v1.2.3` tag and point the email at it.
+It is deliberately not public. It was briefly a GitHub release asset, which
+anyone on the internet could fetch; that release has been deleted.
 
-Do not use `/releases/latest/download/...` either, tempting as it looks.
-"latest" there means the newest release in the whole repository, so the first
-release published for anything else would silently take the scanner's link with
-it and serve a 404.
+Object storage was the first choice and cannot hold it. Supabase Storage caps
+uploads at 50MB on this plan, established by uploading the real file and
+getting a 413 rather than by reading the docs. Trimming architectures does not
+rescue it either: a 64-bit-only build is 60.6MB, still over, so dropping
+`armeabi-v7a` would exclude older handsets and buy nothing.
 
-Supabase Storage was the first choice and does not work: the project's plan
-caps uploads at 50MB per file, verified by probing it, and the APK is 79MB.
+## Publishing a new build
 
-To publish a new build:
+A Railway volume cannot be written to from outside the running service, so the
+server fetches the build itself on startup.
 
-```sh
-gh release upload scanner-latest ./quaderp-scanner.apk --clobber
-```
-
-## Pointing the email at it
-
-Set the build's install URL on the Railway API service:
+1. Build it, and take the **Application Archive URL** from the finished build.
+2. Set it on the API service and let Railway redeploy:
 
 ```sh
-railway variables --set "SCANNER_DOWNLOAD_URL=https://expo.dev/accounts/<account>/projects/scanner-app/builds/<id>" \
+railway variables --set "SCANNER_APK_SOURCE_URL=<artifact url>" \
   --service store-manager-api --environment production
 ```
 
-**Prefer a stable URL you own.** An EAS build URL names one specific build, and
-a welcome email sent today may be opened next year, long after that build is
-superseded or expired. A page on the marketing site, `quaderp.app/scanner`,
-that redirects to the current build means the link in every email already sent
-keeps working, and swapping APK for Play Store later changes nothing anywhere
-else. The email template does not care which it is given.
+That is the whole process. The URL is the single source of truth: the server
+records which one it last fetched beside the file, so a redeploy with an
+unchanged URL does nothing, and changing it replaces the build. The download is
+written to a temporary file and renamed into place, so a transfer that dies
+halfway leaves the previous working APK where it was.
+
+Check it took: the boot log carries `[scanner-apk] startup check complete` with
+a status of `updated`, `already-current` or `not-configured`.
 
 ## Anything that must survive a build belongs in app.json
 

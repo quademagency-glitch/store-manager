@@ -21,7 +21,15 @@ const { withGradleProperties } = require('expo/config-plugins');
  * Dropping it would shrink the download further while silently excluding
  * exactly the staff most likely to be handed a scanner.
  */
-const ARCHITECTURES = 'armeabi-v7a,arm64-v8a';
+/* Overridable so a slimmer, single-architecture APK can be built without
+   editing this file. 64-bit ARM alone is roughly half the size, which matters
+   because private hosting has a file size ceiling. Both are the default
+   because a single download that works on every handset is worth more than a
+   smaller one that quietly excludes older phones.
+
+     SCANNER_ANDROID_ARCHS=arm64-v8a npx eas build -p android --profile preview
+*/
+const ARCHITECTURES = process.env.SCANNER_ANDROID_ARCHS || 'armeabi-v7a,arm64-v8a';
 
 module.exports = function withAndroidArchitectures(config) {
   return withGradleProperties(config, (cfg) => {

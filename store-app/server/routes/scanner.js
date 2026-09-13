@@ -41,6 +41,60 @@ const scanLimiter = rateLimit({
 });
 
 /**
+ * GET /api/scanner/app-download
+ *
+ * Hands a signed, short-lived link to the scanner APK. Signed in users only.
+ *
+ * WHY THIS EXISTS RATHER THAN A PUBLIC LINK: the build was first published as
+ * a GitHub release asset, which anyone on the internet could download. The
+ * owner's requirement is that the scanner is available to QuadERP customers
+ * and nobody else, so the bytes live in a PRIVATE storage bucket and this
+ * route is the only way to reach them.
+ *
+ * The signed URL is deliberately short-lived. It is a capability: anyone
+ * holding it can download without signing in, so it should outlive the click
+ * that produced it and very little else. Sixty seconds is ample for a browser
+ * to follow a redirect and start the transfer, and the transfer itself is not
+ * interrupted when the URL expires mid-download.
+ *
+ * 302 rather than streaming the file through this process. An 80MB download
+ * held open through the API would occupy a worker for the length of a shop's
+ * mobile connection, and this same process is serving the till.
+ *
+ * Access: any authenticated user. Deliberately NOT permission-gated: the
+ * people who most need the scanner are the staff counting stock, and putting
+ * it behind an admin permission would mean the manager installing it on
+ * everyone's phone by hand.
+ */
+router.get('/app-download', authGuard, async (req, res) => {
+  const bucket = process.env.SCANNER_APK_BUCKET || 'app-downloads';
+  const object = process.env.SCANNER_APK_OBJECT || 'quaderp-scanner.apk';
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .storage
+      .from(bucket)
+      .createSignedUrl(object, 60, { download: 'quaderp-scanner.apk' });
+
+    if (error || !data?.signedUrl) {
+      // Most likely the build has not been uploaded yet. Say so plainly: a
+      // 404 with no explanation here reads as "the app is broken" to the one
+      // person trying to install it.
+      logger.warn({ err: error, bucket, object }, 'Scanner APK not available for download');
+      return res.status(404).json({
+        error: 'Not available',
+        message: 'The scanner app is not available to download yet. Please contact support.',
+      });
+    }
+
+    return res.redirect(302, data.signedUrl);
+  } catch (err) {
+    logger.error({ err }, 'Failed to sign scanner APK download');
+    return res.status(500).json({ error: 'Failed to prepare download' });
+  }
+});
+
+/**
  * GET /api/scanner/token
  * Generate a new dynamic QR token for linking a scanner
  * Access: Authenticated users

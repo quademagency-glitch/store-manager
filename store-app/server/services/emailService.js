@@ -34,7 +34,13 @@ const APP_URL = process.env.APP_URL || 'https://app.quaderp.app';
 /* Where the mobile stock scanner is downloaded from. Unset in most
    environments, and the welcome email simply omits the section when it is
    empty rather than shipping a dead link or a placeholder. */
-const SCANNER_DOWNLOAD_URL = process.env.SCANNER_DOWNLOAD_URL || '';
+/* The scanner section links to /scanner INSIDE the app, not to a file.
+   The build sits behind a sign-in now, so a direct link in an email would be
+   a 401 for the recipient and a download for nobody. The flag exists so the
+   section can be kept out of the email until a build has actually been put on
+   the server, rather than promising an app that is not there. */
+const SCANNER_ENABLED = String(process.env.SCANNER_ENABLED || '').toLowerCase() === 'true'
+  || Boolean(process.env.SCANNER_APK_SOURCE_URL);
 
 /* The QuadERP mark for email headers. Hosted on the landing site, which is
    public and already serves it over https.
@@ -651,7 +657,7 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
           <!-- Mobile scanner. Rendered only when a download URL is configured:
                a welcome email that tells someone to install an app and then
                does not say where is worse than not mentioning it. -->
-          ${SCANNER_DOWNLOAD_URL ? `
+          ${SCANNER_ENABLED ? `
           <tr>
             <td style="padding:24px 40px 0;">
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:12px;border:1px solid #bae6fd;">
@@ -661,8 +667,11 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
                     <p style="margin:0 0 12px;color:#475569;font-size:14px;line-height:1.6;">
                       The scanner app turns an Android phone into a barcode scanner for stock takes, deliveries and price checks. Install it on any Android phone your staff use on the floor. There is no iPhone version yet.
                     </p>
-                    <a href="${SCANNER_DOWNLOAD_URL}" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;">
-                      Download for Android
+                    <p style="margin:0 0 12px;color:#64748b;font-size:13px;line-height:1.6;">
+                      Open this on the phone itself and sign in. The download is only available to people with a QuadERP account.
+                    </p>
+                    <a href="${loginUrl}/scanner" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;">
+                      Get the scanner app
                     </a>
                   </td>
                 </tr>

@@ -291,7 +291,7 @@ describe('welcome email, scanner download', () => {
     // A welcome email that tells someone to install an app and does not say
     // where is worse than one that never mentions it.
     jest.resetModules();
-    delete process.env.SCANNER_DOWNLOAD_URL;
+    delete process.env.SCANNER_ENABLED;
     const { buildWelcomeHtml: build } = require('../services/emailService');
     const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
     expect(html).not.toMatch(/scanner app/i);
@@ -299,12 +299,14 @@ describe('welcome email, scanner download', () => {
 
   it('includes it when configured', () => {
     jest.resetModules();
-    process.env.SCANNER_DOWNLOAD_URL = 'https://downloads.example/quaderp-scanner.apk';
+    process.env.SCANNER_ENABLED = 'true';
     const { buildWelcomeHtml: build } = require('../services/emailService');
     const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
-    expect(html).toContain('https://downloads.example/quaderp-scanner.apk');
-    expect(html).toMatch(/Download for Android/i);
-    delete process.env.SCANNER_DOWNLOAD_URL;
+    // Links into the app, never at a file: the build is behind a sign-in.
+    expect(html).toContain(`${base.loginUrl}/scanner`);
+    expect(html).not.toMatch(/\.apk/);
+    expect(html).toMatch(/Get the scanner app/i);
+    delete process.env.SCANNER_ENABLED;
   });
 
   it('does not promise iPhone owners something they cannot do', () => {
@@ -313,7 +315,7 @@ describe('welcome email, scanner download', () => {
     // this section said "install it on any phone your staff use", which reads
     // as a promise to every iPhone owner on the team and cannot be kept.
     jest.resetModules();
-    process.env.SCANNER_DOWNLOAD_URL = 'https://downloads.example/quaderp-scanner.apk';
+    process.env.SCANNER_ENABLED = 'true';
     const { buildWelcomeHtml: build } = require('../services/emailService');
     const html = build(business, 'Emmanuel', 'info@omekgh.com', base);
 
@@ -321,6 +323,6 @@ describe('welcome email, scanner download', () => {
     expect(html).not.toMatch(/any phone/i);
     // Says so outright rather than leaving it to be inferred from the word Android.
     expect(html).toMatch(/no iPhone version/i);
-    delete process.env.SCANNER_DOWNLOAD_URL;
+    delete process.env.SCANNER_ENABLED;
   });
 });

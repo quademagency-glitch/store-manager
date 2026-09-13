@@ -21,6 +21,7 @@ const Inventory = lazy(() => import('./pages/Inventory'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ScannerApp = lazy(() => import('./pages/ScannerApp'));
 const Customers = lazy(() => import('./pages/Customers'));
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'));
 const Returns = lazy(() => import('./pages/Returns'));
@@ -206,6 +207,11 @@ export default function App() {
                     } />
                     <Route path="/settings" element={
                       <ProtectedRoute requiredPermission="manage_users"><Settings /></ProtectedRoute>
+                    } />
+                    {/* No requiredPermission: the staff who need the scanner are
+                        the ones counting stock, not only admins. */}
+                    <Route path="/scanner" element={
+                      <ProtectedRoute><ScannerApp /></ProtectedRoute>
                     } />
                     <Route path="/profile" element={
                       <ProtectedRoute><UserProfile /></ProtectedRoute>

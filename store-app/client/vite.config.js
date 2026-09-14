@@ -27,23 +27,39 @@ export default defineConfig({
     react(), 
     tailwindcss(),
     VitePWA({
-      /* autoUpdate already reloads the page after a deployment, from the
-         `activated` handler in vite-plugin-pwa's register client, which fires
-         only when `isUpdate` or `isExternal` is set.
+      /* 'prompt', NOT 'autoUpdate'.
 
-         index.html used to carry a hand-written listener that did the same
-         thing without those guards:
+         autoUpdate reloads every open tab the moment a deployment lands, with
+         no warning. On three deploys in one evening that is three reloads,
+         which is how it was reported. On an ERP it is worse than annoying:
+         the reload arrives mid-session and throws away whatever was on
+         screen, so a half-finished sale or a part-filled product form is
+         simply gone.
+
+         components/ReloadPrompt.jsx already exists to do this properly, a
+         small "New version available" card with a Reload button, and it is
+         rendered in App.jsx. Under autoUpdate it could never appear, because
+         the register client never sets `needRefresh` in that mode. It was
+         dead UI sitting next to the behaviour it was written to prevent.
+
+         `skipWaiting` is deliberately NOT set in the workbox block below, and
+         must not be. Prompting depends on the new worker sitting in `waiting`
+         until the reader accepts; skipWaiting activates it immediately and
+         takes the choice away again, which is autoUpdate by another name.
+         The virtual register module posts SKIP_WAITING itself when the button
+         is pressed.
+
+         index.html used to carry a hand-written listener:
 
            navigator.serviceWorker.addEventListener('controllerchange',
              () => window.location.reload())
 
          controllerchange fires the first time any worker takes control, and
-         `clientsClaim` below makes a freshly installed worker do exactly that.
-         So every first-time visitor got a full page reload once precaching
-         finished, 14 to 20 seconds in, with no update to apply. It landed
-         mid-session and threw away the rendered app and every API response.
+         `clientsClaim` below makes a freshly installed worker do exactly
+         that. So every first-time visitor got a full page reload once
+         precaching finished, 14 to 20 seconds in, with no update to apply.
          Do not add that listener back. */
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'QuadERP',
@@ -66,8 +82,13 @@ export default defineConfig({
         ]
       },
       workbox: {
+        /* clientsClaim on its own is safe: it makes an ACTIVATED worker take
+           control of open pages, which is what lets the app work offline on a
+           first visit. It does not reload anything by itself.
+
+           skipWaiting is the one that must stay off, see the note on
+           registerType above. */
         clientsClaim: true,
-        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {

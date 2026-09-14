@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:realtime && npm run check:legal && npm run check:privacy && npm run check:inline-style && vite build && npm run check:csp",
+    "build": "npm run check:realtime && npm run check:legal && npm run check:privacy && npm run check:inline-style && vite build && npm run check:csp && npm run check:pwa",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:visual": "VITE_USE_MOCKS=true playwright test --project=visual",
@@ -19,6 +19,7 @@
     "test:e2e": "playwright test --project=e2e",
     "check:csp": "node scripts/check-csp-hashes.mjs",
     "check:inline-style": "node scripts/check-inline-style.mjs",
+    "check:pwa": "node scripts/check-pwa-update.mjs",
     "check:realtime": "node scripts/check-realtime-stub.mjs",
     "check:legal": "node scripts/check-legal-entity.mjs",
     "check:privacy": "node scripts/check-privacy-claims.mjs"

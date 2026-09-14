@@ -27,12 +27,35 @@ function applyProductFilters(query, filters, businessId) {
 }
 
 /**
+ * Which number a mode works from.
+ *
+ * Every mode here used to start from the current selling price, which made
+ * an unpriced product impossible to price: 0 * 1.3 is still 0. Bulk import
+ * now accepts sheets that carry only what you paid, so cost_markup_percent
+ * starts from cost_price instead. Everything else is unchanged.
+ */
+function priceBaseFor(mode, currentPrice, costPrice) {
+  return mode === 'cost_markup_percent' ? costPrice : currentPrice;
+}
+
+/**
+ * A markup on cost is meaningless when no cost was ever recorded, and
+ * applying it anyway would rewrite a real selling price to 0. Those products
+ * are skipped and counted rather than silently wrecked.
+ */
+function skipForMissingCost(mode, costPrice) {
+  return mode === 'cost_markup_percent' && !(costPrice > 0);
+}
+
+/**
  * Helper: Calculate new price based on mode
  */
 function calculateNewPrice(currentPrice, mode, value, rounding = 0.01) {
   let newPrice;
 
   switch (mode) {
+    // Same arithmetic, different base: see priceBaseFor.
+    case 'cost_markup_percent':
     case 'markup_percent':
       newPrice = currentPrice * (1 + value / 100);
       break;
@@ -86,8 +109,11 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
 
     const preview = products.map(p => {
       const currentPrice = parseFloat(p.price) || 0;
-      const newPrice = calculateNewPrice(currentPrice, mode, parseFloat(value), parseFloat(rounding));
       const costPrice = parseFloat(p.cost_price) || 0;
+      const skipped = skipForMissingCost(mode, costPrice);
+      const newPrice = skipped
+        ? currentPrice
+        : calculateNewPrice(priceBaseFor(mode, currentPrice, costPrice), mode, parseFloat(value), parseFloat(rounding));
       const margin = newPrice > 0 && costPrice > 0 ? ((newPrice - costPrice) / newPrice * 100).toFixed(1) : null;
 
       return {
@@ -100,12 +126,15 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
         change: parseFloat((newPrice - currentPrice).toFixed(2)),
         change_percent: currentPrice > 0 ? parseFloat(((newPrice - currentPrice) / currentPrice * 100).toFixed(1)) : 0,
         cost_price: costPrice,
-        margin
+        margin,
+        skipped,
+        skip_reason: skipped ? 'No cost price recorded, so a markup on cost cannot be worked out.' : null
       };
     });
 
     res.json({
       count: preview.length,
+      skipped_count: preview.filter(p => p.skipped).length,
       total_current: parseFloat(preview.reduce((s, p) => s + p.current_price, 0).toFixed(2)),
       total_new: parseFloat(preview.reduce((s, p) => s + p.new_price, 0).toFixed(2)),
       products: preview
@@ -147,11 +176,19 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
     const batchId = randomUUID();
     const logEntries = [];
     let updatedCount = 0;
+    let skippedNoCost = 0;
 
     // Update each product
     for (const p of products) {
       const oldPrice = parseFloat(p.price) || 0;
-      const newPrice = calculateNewPrice(oldPrice, mode, parseFloat(value), parseFloat(rounding));
+      const costPrice = parseFloat(p.cost_price) || 0;
+
+      if (skipForMissingCost(mode, costPrice)) {
+        skippedNoCost += 1;
+        continue;
+      }
+
+      const newPrice = calculateNewPrice(priceBaseFor(mode, oldPrice, costPrice), mode, parseFloat(value), parseFloat(rounding));
 
       if (newPrice === oldPrice) continue;
 
@@ -194,9 +231,12 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
     }
 
     res.json({
-      message: `Updated prices for ${updatedCount} product(s)`,
+      message: skippedNoCost > 0
+        ? `Updated prices for ${updatedCount} product(s). ${skippedNoCost} skipped, no cost price recorded.`
+        : `Updated prices for ${updatedCount} product(s)`,
       batch_id: batchId,
       updated_count: updatedCount,
+      skipped_no_cost: skippedNoCost,
       total_products: products.length
     });
   } catch (err) {

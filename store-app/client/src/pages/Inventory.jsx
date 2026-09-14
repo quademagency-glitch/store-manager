@@ -70,7 +70,10 @@ export default function Inventory() {
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const { exportCsv } = useExportCsv();
-  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, fetchProducts } = useProducts();
+  // The hook exports this as refreshProducts, so destructuring `fetchProducts`
+  // silently produced undefined and the list never refreshed after a bulk
+  // price change.
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, refreshProducts: fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
   const { role, locationIds } = useAuthContext();
   const isManagerOrAdmin = ['Business Admin', 'Manager', 'Platform Admin'].includes(role);
@@ -381,6 +384,14 @@ export default function Inventory() {
       );
     }
 
+    // A price condition rather than a stock one, so it runs before the stock
+    // branches below and leaves their location handling intact. Bulk import
+    // accepts sheets that carry only what you paid, and those products arrive
+    // with no selling price; this is where they are found afterwards.
+    if (stockFilter === 'needs_pricing') {
+      result = result.filter(p => !(Number(p.price) > 0));
+    }
+
     if (!isManagerOrAdmin && locationFilter === 'all' && visibleLocations.length > 0) {
       // Force filter to first assigned location if non-admin tries to view all
       const forcedLocation = visibleLocations[0].id;
@@ -589,6 +600,9 @@ export default function Inventory() {
                 <option value="in_stock">In Stock</option>
                 <option value="low_stock">Low Stock (≤5)</option>
                 <option value="out_of_stock">Out of Stock</option>
+                {/* Where a cost-only import lands. Import no longer demands a
+                    selling price, so these are the products still to price. */}
+                <option value="needs_pricing">Needs Pricing</option>
               </select>
             </div>
             <div className="flex gap-sm items-center">

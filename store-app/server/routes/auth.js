@@ -13,7 +13,7 @@ const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl, sendSignupAlert } = r
 const { DEMO_EMAIL, DEMO_PASSWORD, isDemoEnabled } = require('../config/demo');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { clientAddress } = require('../utils/clientAddress');
+const { clientAddressKey } = require('../utils/clientAddress');
 const { perWorker } = require('../utils/clusterLimits');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
@@ -113,11 +113,16 @@ const loginLimiter = rateLimit({
 // chosen by whoever is calling, so keying on it hands out a fresh allowance per
 // made-up address, which is not a limit at all.
 //
-// They key on utils/clientAddress instead, which recovers the real caller from
-// x-vercel-forwarded-for. Read that file before changing anything here: the
-// value is a CLAIM. The Railway host is publicly reachable, so a caller who
-// skips Vercel can put anything in that header and mint themselves a new
-// bucket per request.
+// They key on utils/clientAddressKey instead, which recovers the real caller
+// from x-vercel-forwarded-for and then groups IPv6 by prefix. Use that, never
+// clientAddress directly: one exact IPv6 address is not a caller, it is one of
+// the many a single visitor holds, so keying on it hands out a fresh allowance
+// per request and the limit never fires.
+//
+// Read utils/clientAddress.js before changing anything here: the value is a
+// CLAIM. The Railway host is publicly reachable, so a caller who skips Vercel
+// can put anything in that header and mint themselves a new bucket per
+// request.
 //
 // Hence the pair. The per-visitor limiter is what genuine visitors meet, and
 // it is generous because it now applies to one person instead of to everybody
@@ -149,7 +154,7 @@ const GLOBAL = 'all';
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
-  keyGenerator: clientAddress,
+  keyGenerator: clientAddressKey,
   message: { error: 'Too many signup attempts from this address. Please try again in an hour.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -169,7 +174,7 @@ const signupCeiling = rateLimit({
 const demoLoginLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20,
-  keyGenerator: clientAddress,
+  keyGenerator: clientAddressKey,
   message: { error: 'Too many demo sessions from this address. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -226,7 +231,7 @@ const resendConfirmationEmailLimiter = rateLimit({
 const resendConfirmationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
-  keyGenerator: clientAddress,
+  keyGenerator: clientAddressKey,
   handler: retryAfterHandler('Too many requests from this address. Please try again in an hour.'),
   standardHeaders: true,
   legacyHeaders: false,

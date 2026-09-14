@@ -4,6 +4,7 @@ const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { invalidateCachePrefix } = require('../middleware/apiCache');
 const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
@@ -485,6 +486,32 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), asyn
           quantity: newQty
         }, { onConflict: 'product_id,location_id' });
 
+      /* Record what the goods actually cost.
+       *
+       * Receiving used to read unit_cost, put it in the response, and never
+       * write it anywhere. So a shop could receive five air conditioners at
+       * GHS 4,500 each and the product's cost_price stayed 0.00: every margin
+       * read as if the stock were free, and "Set price from cost" skipped the
+       * product entirely because it has no cost to mark up.
+       *
+       * Last cost wins, deliberately, rather than a weighted average against
+       * the existing figure. Nearly every product here still has cost_price 0
+       * because bulk import never captured one, and averaging against that
+       * zero would invent a cost far below what was really paid. A zero or
+       * missing unit_cost on the line is left alone for the same reason: it
+       * means "not recorded", not "free".
+       */
+      const unitCost = parseFloat(poItem.unit_cost);
+      if (Number.isFinite(unitCost) && unitCost > 0) {
+        const { error: costErr } = await supabaseAdmin
+          .from('products')
+          .update({ cost_price: unitCost })
+          .eq('id', poItem.product_id)
+          .eq('business_id', req.user.business_id);
+
+        if (costErr) logger.error({ err: costErr, product_id: poItem.product_id }, 'Failed to update cost price on receipt:');
+      }
+
       // Create stock movement
       await supabaseAdmin.from('stock_movements').insert({
         product_id: poItem.product_id,
@@ -493,6 +520,7 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), asyn
         location_id,
         quantity_change: actualReceive,
         movement_type: 'RECEIPT',
+        reference_id: po.id,
         notes: `PO ${po.po_number}, received ${actualReceive} units${notes ? '. ' + notes : ''}`
       });
 
@@ -502,6 +530,10 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), asyn
         unit_cost: poItem.unit_cost
       });
     }
+
+    /* Receiving changes both the stock counts and the cost prices that
+       GET /api/products serves, and that route is wrapped in apiCache(5). */
+    if (receivedItems.length > 0) invalidateCachePrefix('/api/products');
 
     // Determine new PO status
     const { data: updatedItems } = await supabaseAdmin

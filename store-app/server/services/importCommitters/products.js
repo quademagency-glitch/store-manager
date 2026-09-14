@@ -1,10 +1,15 @@
 const { supabaseAdmin } = require('../../db/supabase');
 
 /**
- * Commits one validated product row: inserts the product, and if an
- * opening_quantity + location_id were mapped, sets aggregate opening stock, * the exact same sequence as the existing single-product "initial stock"
- * flow in routes/products.js (insert product -> product_inventory -> a
- * RECEIPT stock_movement). No QR/unit-level tracking is touched.
+ * Commits one validated product row: inserts the product, then sets opening
+ * stock, the exact same sequence as the existing single-product "initial
+ * stock" flow in routes/products.js (insert product -> product_inventory ->
+ * a RECEIPT stock_movement). No QR/unit-level tracking is touched.
+ *
+ * `row.location_id` is already resolved by validateProductRows, which falls
+ * back to the business's only location and refuses a quantity it cannot
+ * place. By the time a row reaches here, a quantity above zero always has a
+ * location to go to.
  */
 async function commitProductRow(row, { businessId, userId, importBatchId }) {
   const { data: product, error } = await supabaseAdmin
@@ -41,7 +46,11 @@ async function commitProductRow(row, { businessId, userId, importBatchId }) {
 
     if (invError) throw invError;
 
-    await supabaseAdmin
+    // The movement is the audit trail for the balance above, and undo finds
+    // it by reference_id. Letting this fail quietly leaves stock that no
+    // history explains and that undo cannot reverse, so it throws like the
+    // rest of the row.
+    const { error: moveError } = await supabaseAdmin
       .from('stock_movements')
       .insert({
         product_id: product.id,
@@ -53,6 +62,8 @@ async function commitProductRow(row, { businessId, userId, importBatchId }) {
         reference_id: importBatchId,
         notes: 'Opening stock, bulk import',
       });
+
+    if (moveError) throw moveError;
   }
 
   return product;

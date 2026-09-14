@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════════════════════════
+   PRICE TAGS AND PRICE LIST, PRINT LAYOUT
+
+   This lived in <style> elements inside PriceTagPrinter.jsx and
+   PriceListPrint.jsx, and it never once took effect in production.
+
+   vercel.json sends `style-src 'self'` with no 'unsafe-inline', no nonce
+   and no hash, so the browser refuses every <style> ELEMENT on the page.
+   The companion `style-src-attr 'unsafe-inline'` only covers style="..."
+   ATTRIBUTES, which is why every inline style={{...}} prop kept working and
+   hid the problem. Those two components were the only two files in the
+   client using a <style> element, and they were exactly the two print
+   features that came out blank.
+
+   It reproduced only in production: the Vite dev server sends no CSP at
+   all, so this looked fine on localhost every time.
+
+   A real stylesheet is served from the app's own origin, so 'self' allows
+   it. Do not move these rules back inline, and do not "fix" this by adding
+   'unsafe-inline' to the CSP.
+
+   The containers use the existing .print-only utility from print.css
+   (display:none on screen, display:block when printing) rather than
+   .hidden, which has no print-media exception and was what actually kept
+   the page empty once the <style> block was blocked.
+   ═══════════════════════════════════════════════════════════ */
+
+@media print {
+
+  /* ─── Price tags ─── */
+  .tag-page { page-break-after: always; padding: 10mm; }
+  .tag-page:last-child { page-break-after: avoid; }
+
+  .tag-grid { display: grid; gap: 4mm; height: 100%; }
+  .tag-grid.cols-1 { grid-template-columns: 1fr; }
+  .tag-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .tag-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .price-tag {
+    border: 1px dashed #ccc;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .price-tag .tag-name { font-weight: 700; font-size: 11pt; margin-bottom: 2px; line-height: 1.2; }
+  .price-tag .tag-sku { font-size: 8pt; color: #666; font-family: monospace; margin-bottom: 4px; }
+  .price-tag .tag-category { font-size: 7pt; color: #999; margin-bottom: 4px; text-transform: uppercase; }
+  .price-tag .tag-price { font-size: 18pt; font-weight: 900; color: #000; }
+  .price-tag .tag-cost { font-size: 8pt; color: #999; margin-top: 2px; }
+
+  .tag-grid.cols-1 .price-tag { flex-direction: row; justify-content: space-between; padding: 6px 16px; }
+  .tag-grid.cols-1 .price-tag .tag-name { font-size: 10pt; text-align: left; margin: 0; }
+  .tag-grid.cols-1 .price-tag .tag-price { font-size: 14pt; }
+  .tag-grid.cols-4 .price-tag .tag-name { font-size: 9pt; }
+  .tag-grid.cols-4 .price-tag .tag-price { font-size: 14pt; }
+
+  .tag-page-header {
+    text-align: center;
+    margin-bottom: 6mm;
+    font-size: 10pt;
+    color: #666;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4mm;
+  }
+  .tag-page-header strong { font-size: 12pt; color: #000; }
+
+  /* ─── Price list ─── */
+  #price-list-print { font-family: Arial, sans-serif; color: #000; }
+
+  .pl-header { text-align: center; margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 2px solid #000; }
+  .pl-header h1 { font-size: 16pt; margin: 0 0 2mm 0; }
+  .pl-header .pl-sub { font-size: 9pt; color: #666; }
+
+  .pl-group-title { font-size: 11pt; font-weight: 700; padding: 4mm 0 2mm 0; border-bottom: 1px solid #ccc; margin-bottom: 2mm; }
+
+  .pl-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 6mm; }
+  .pl-table th { text-align: left; padding: 2mm 3mm; border-bottom: 2px solid #333; font-size: 8pt; text-transform: uppercase; color: #555; }
+  .pl-table td { padding: 2mm 3mm; border-bottom: 0.5pt solid #ddd; }
+  .pl-table .pl-price { text-align: right; font-weight: 700; font-size: 10pt; }
+  .pl-table .pl-cost { text-align: right; color: #888; }
+  .pl-table .pl-margin { text-align: right; font-size: 8pt; }
+  .pl-table .pl-num { color: #999; width: 8mm; }
+  .pl-table .pl-sku { font-family: monospace; font-size: 8pt; color: #666; }
+
+  .pl-footer { text-align: center; font-size: 8pt; color: #999; margin-top: 6mm; padding-top: 4mm; border-top: 1px solid #ddd; }
+}

@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useImports } from '../hooks/useImports';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
+import { api } from '../lib/api';
 
 const ENTITY_CONFIG = {
   products: {
     label: 'Products',
-    requiredFields: ['name', 'sku', 'price'],
-    optionalFields: ['category', 'cost_price', 'opening_quantity', 'location_id'],
+    // Only the name is required. A supplier's price list normally carries
+    // what you paid, not what you will charge, and requiring a selling price
+    // made those sheets impossible to import at all.
+    requiredFields: ['name'],
+    optionalFields: ['sku', 'category', 'price', 'cost_price', 'opening_quantity', 'location_id'],
     fieldHints: {
-      opening_quantity: 'Starting stock quantity at the location below (leave blank for 0)',
-      location_id: 'The location ID this opening stock applies to (see Business Admin > Locations)',
+      sku: 'Your own product code. Leave it unmapped and one will be generated.',
+      price: 'What you sell it for. Leave it blank to import cost only and set prices later.',
+      cost_price: 'What you paid for it.',
+      opening_quantity: 'Stock on hand right now (leave blank for 0)',
+      location_id: 'Only needed if the sheet itself names a different location per row. Otherwise use the location picker above.',
     },
   },
   customers: {
@@ -54,6 +61,32 @@ export default function ImportWizard() {
   const [validation, setValidation] = useState(null);
   const [commitResult, setCommitResult] = useState(null);
 
+  /* Where opening stock goes.
+   *
+   * Stock does not live on the product, it lives per location, so a quantity
+   * with no location has nowhere to go. Until this picker existed the only
+   * way to say was to paste a location UUID into every row of the
+   * spreadsheet, and a sheet that did not do that had every quantity
+   * silently dropped while the wizard still said the import succeeded.
+   *
+   * A single-location business never has to touch this. */
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState('');
+
+  useEffect(() => {
+    if (entityType !== 'products') return;
+    let cancelled = false;
+    api.get('/locations')
+      .then(res => {
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        setLocations(list);
+        if (list.length === 1) setLocationId(list[0].id);
+      })
+      .catch(() => { if (!cancelled) setLocations([]); });
+    return () => { cancelled = true; };
+  }, [entityType]);
+
   if (!config) {
     return <div className="alert alert-error">Unknown import type "{entityType}".</div>;
   }
@@ -95,7 +128,7 @@ export default function ImportWizard() {
       return;
     }
 
-    const res = await validateRows({ entityType, columnMapping, rows });
+    const res = await validateRows({ entityType, columnMapping, rows, locationId });
     if (!res) return;
     setValidation(res);
     setStep(2);
@@ -103,7 +136,7 @@ export default function ImportWizard() {
 
   const handleCommit = async () => {
     const columnMapping = buildColumnMapping();
-    const res = await commitImport({ entityType, sourceFilename: file?.name || 'upload', columnMapping, rows });
+    const res = await commitImport({ entityType, sourceFilename: file?.name || 'upload', columnMapping, rows, locationId });
     if (!res) return;
     setCommitResult(res);
     setStep(3);
@@ -165,7 +198,7 @@ export default function ImportWizard() {
 
       {step === 0 && (
         <div className="glass-panel" style={{ padding: 'var(--space-xl)' }}>
-          <p>Upload a .csv or .xlsx file. Required columns: <strong>{config.requiredFields.join(', ')}</strong>.</p>
+          <p>Upload a .csv, .xlsx or .xls file. Required columns: <strong>{config.requiredFields.join(', ')}</strong>.</p>
           <p className="text-muted">Optional columns: {config.optionalFields.join(', ')}.</p>
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={loading} className="form-input mt-md" />
           {loading && <p className="text-muted mt-sm">Reading file...</p>}
@@ -176,6 +209,33 @@ export default function ImportWizard() {
         <div className="glass-panel" style={{ padding: 'var(--space-xl)' }}>
           <h3 className="mb-lg">Map your columns</h3>
           <p className="text-muted mb-lg">We matched what we could automatically. Confirm or adjust each field below.</p>
+
+          {/* Opening stock has to belong to a location. With exactly one
+              location this is already chosen and only shown for confirmation;
+              with several, leaving it unset makes any row that carries a
+              quantity fail validation rather than importing as zero. */}
+          {entityType === 'products' && locations.length > 0 && (
+            <div className="form-group mb-lg">
+              <label>Opening stock goes to</label>
+              {locations.length === 1 ? (
+                <p className="text-muted mb-0"><strong>{locations[0].name}</strong>, your only location.</p>
+              ) : (
+                <>
+                  <select
+                    className="form-input"
+                    value={locationId}
+                    onChange={(e) => setLocationId(e.target.value)}
+                  >
+                    <option value="">Choose a location...</option>
+                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                  <small className="text-muted block">
+                    Required if your file has a quantity column.
+                  </small>
+                </>
+              )}
+            </div>
+          )}
 
           {allFields.map(field => (
             <div key={field} className="form-row mb-md items-center">

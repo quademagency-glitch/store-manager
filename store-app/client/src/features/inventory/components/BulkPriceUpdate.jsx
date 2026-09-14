@@ -39,6 +39,11 @@ export default function BulkPriceUpdate({ onComplete }) {
     { id: 'markdown_percent', label: 'Markdown %', icon: '↓', hint: 'Decrease prices by percentage', color: 'var(--color-error)' },
     { id: 'fixed_amount', label: 'Fixed Amount', icon: '±', hint: 'Add or subtract a fixed amount', color: 'var(--color-primary)' },
     { id: 'set_price', label: 'Set Price', icon: '=', hint: 'Set all matched to exact price', color: 'var(--color-warning)' },
+    // The other four all work off the CURRENT selling price, so a product
+    // imported with a cost and no price could never be priced: 0 plus 30% is
+    // still 0. This one starts from cost instead, which is what a cost-only
+    // import needs afterwards.
+    { id: 'cost_markup_percent', label: 'From Cost %', icon: '⤢', hint: 'Set price = cost + this percentage', color: 'var(--color-info, var(--color-primary))' },
   ];
 
   const roundingOptions = [
@@ -143,7 +148,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         {/* Mode Selector */}
         <div className="mb-md">
           <label className="form-label" style={{ fontSize: '0.8rem' }}>Update Mode</label>
-          <div className="bulk-price-mode-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+          <div className="bulk-price-mode-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px' }}>
             {modes.map(m => (
               <button
                 key={m.id}
@@ -172,6 +177,7 @@ export default function BulkPriceUpdate({ onComplete }) {
             <label className="form-label" style={{ fontSize: '0.8rem' }}>
               {mode === 'markup_percent' ? 'Markup (%)' :
                mode === 'markdown_percent' ? 'Markdown (%)' :
+               mode === 'cost_markup_percent' ? 'Markup on cost (%)' :
                mode === 'fixed_amount' ? 'Amount (+/-)' : 'New Price'}
             </label>
             <input
@@ -234,6 +240,25 @@ export default function BulkPriceUpdate({ onComplete }) {
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: preview.total_new > preview.total_current ? 'var(--color-success)' : 'var(--color-error)' }}>{fmt(preview.total_new)}</div>
             </div>
           </div>
+
+          {/* A markup on cost cannot be worked out without a cost, and
+              applying it anyway would rewrite a real price to zero. The
+              server skips those, so say so rather than letting the count
+              quietly disagree with the number of products matched. */}
+          {preview.skipped_count > 0 && (
+            <div
+              className="mb-md"
+              style={{
+                padding: '10px 14px',
+                borderRadius: '8px',
+                background: 'var(--color-warning-bg, rgba(255, 180, 0, 0.12))',
+                color: 'var(--color-text-primary)',
+                fontSize: '0.85rem',
+              }}
+            >
+              {preview.skipped_count} product(s) have no cost price recorded and will be left unchanged.
+            </div>
+          )}
 
           {/* Preview Table */}
           <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '16px' }}>

@@ -21,11 +21,16 @@ export function useImports() {
     }
   }, []);
 
-  const validateRows = useCallback(async ({ entityType, columnMapping, rows }) => {
+  const validateRows = useCallback(async ({ entityType, columnMapping, rows, locationId }) => {
     setLoading(true);
     setError(null);
     try {
-      return await api.post('/imports/validate', { entity_type: entityType, column_mapping: columnMapping, rows });
+      return await api.post('/imports/validate', {
+        entity_type: entityType,
+        column_mapping: columnMapping,
+        rows,
+        location_id: locationId || null,
+      });
     } catch (err) {
       setError(err.message || 'Failed to validate rows');
       return null;
@@ -34,7 +39,7 @@ export function useImports() {
     }
   }, []);
 
-  const commitImport = useCallback(async ({ entityType, sourceFilename, columnMapping, rows }) => {
+  const commitImport = useCallback(async ({ entityType, sourceFilename, columnMapping, rows, locationId }) => {
     setLoading(true);
     setError(null);
     try {
@@ -43,6 +48,7 @@ export function useImports() {
         source_filename: sourceFilename,
         column_mapping: columnMapping,
         rows,
+        location_id: locationId || null,
       });
     } catch (err) {
       setError(err.message || 'Failed to commit import');

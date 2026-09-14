@@ -92,11 +92,22 @@ test('no component injects screen CSS through a <style> tag', () => {
     const text = fs.readFileSync(file, 'utf8');
     // Match a <style> element and capture its template-literal body.
     for (const m of text.matchAll(/<style[^>]*>\s*\{?\s*`([\s\S]*?)`/g)) {
-      const body = m[1];
-      // Print-only blocks are fine: they are scoped to @media print, cannot
-      // affect the screen cascade, and are generated per print job.
-      const stripped = body.replace(/@media\s+print\s*\{[\s\S]*\}/g, '').trim();
-      if (stripped.length > 0) {
+      /* This used to exempt blocks wholly inside @media print, on the grounds
+         that they cannot affect the screen cascade. That was true about the
+         cascade and wrong about whether they run at all, and the exemption is
+         exactly where a real bug lived for months.
+
+         The CSP sends `style-src 'self'` with no 'unsafe-inline', no nonce and
+         no hash, so the browser refuses EVERY <style> element, print-scoped or
+         not. The price tag printer and the price list printer kept their whole
+         layout in one, and both printed blank pages in production while
+         looking perfect on localhost, where the dev server sends no CSP.
+
+         So there is no safe kind of <style> element here. scripts/
+         check-inline-style.mjs enforces the CSP half at build time and relaxes
+         itself if the policy ever changes; this test keeps the cascade half,
+         which holds even if 'unsafe-inline' were added. */
+      if (m[1].trim().length > 0) {
         offenders.push(`  ${path.relative(SRC, file)}`);
       }
     }
@@ -104,8 +115,9 @@ test('no component injects screen CSS through a <style> tag', () => {
 
   expect(
     offenders,
-    'Injected <style> content is unlayered, so it outranks the entire cascade ' +
-      'layer system, and only while the component happens to be mounted. Move ' +
+    'Injected <style> content is blocked outright by the CSP (style-src \'self\'), ' +
+      'and even if it were not, it is unlayered, so it outranks the entire cascade ' +
+      'layer system and only while the component happens to be mounted. Move ' +
       'it to src/styles and import it into a layer:\n' + offenders.join('\n'),
   ).toEqual([]);
 });

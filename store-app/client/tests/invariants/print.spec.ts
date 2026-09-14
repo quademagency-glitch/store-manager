@@ -18,6 +18,8 @@ const PRINT_CSS = fs.readFileSync(
   path.resolve(HERE, '../../src/styles/print.css'),
   'utf8',
 );
+const src = (p: string) => fs.readFileSync(path.resolve(HERE, '../../src', p), 'utf8');
+const PRICE_PRINT_CSS = src('styles/price-print.css');
 
 /**
  * Comments stripped before any rule matching.
@@ -93,4 +95,114 @@ test('thermal formats compute to their real paper widths under print media', asy
   // Allow a pixel of rounding; the point is 58 is not 80.
   expect(Math.abs(parseFloat(widths.eighty) - mm(80)), `80mm format measured ${widths.eighty}`).toBeLessThan(2);
   expect(Math.abs(parseFloat(widths.fiftyEight) - mm(58)), `58mm format measured ${widths.fiftyEight}`).toBeLessThan(2);
+});
+
+/**
+ * Price tags and the price list.
+ *
+ * Both printed a completely blank page in production for months. Their whole
+ * layout, including the one rule that made the container visible, sat in a
+ * <style> element inside the component, and the site's CSP (`style-src
+ * 'self'`, no 'unsafe-inline', no nonce, no hash) refuses <style> ELEMENTS.
+ * The sibling `style-src-attr 'unsafe-inline'` keeps every style={{...}} prop
+ * working, so nothing else on the page looked wrong.
+ *
+ * Nobody could see it locally either: the Vite dev server sends no CSP.
+ *
+ * scripts/check-inline-style.mjs now fails the build if a <style> element
+ * comes back while the policy forbids it. These tests cover the other half,
+ * that the stylesheet which replaced it actually shows the tags.
+ */
+test('the printable containers are print-only, not .hidden', () => {
+  for (const file of [
+    'features/inventory/components/PriceTagPrinter.jsx',
+    'features/inventory/components/PriceListPrint.jsx',
+  ]) {
+    const jsx = src(file);
+    expect(jsx, `${file} should mark its printable area with the .print-only utility`)
+      .toMatch(/className="printable-area print-only"/);
+    // `.hidden` is `display: none` with no print-media exception, so it kept
+    // the page empty even once the CSS was reachable.
+    expect(jsx, `${file} still uses .hidden, which has no print exception`)
+      .not.toMatch(/className="printable-area hidden"/);
+  }
+});
+
+test('price tag geometry lives in a stylesheet, scoped to print', () => {
+  const withoutComments = PRICE_PRINT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  const printBlocks = withoutComments.match(/@media\s+print\s*\{/g) || [];
+  expect(printBlocks.length, 'price-print.css must scope its rules to @media print').toBeGreaterThan(0);
+
+  for (const selector of ['.tag-page', '.tag-grid', '.price-tag', '.tag-price', '.pl-table']) {
+    expect(withoutComments, `${selector} is not defined in price-print.css`).toContain(selector);
+  }
+
+  // Anything outside an @media print block would apply on screen too.
+  const firstRule = withoutComments.indexOf('.tag-page');
+  const firstMedia = withoutComments.indexOf('@media print');
+  expect(firstMedia, 'the first @media print must open before the first rule').toBeLessThan(firstRule);
+});
+
+test('a print-only printable area is hidden on screen and shown when printing', async ({ page }) => {
+  await gotoApp(page, '/dashboard');
+
+  const displayFor = () => page.evaluate(() => {
+    const el = document.createElement('div');
+    el.className = 'printable-area print-only';
+    document.body.appendChild(el);
+    const value = getComputedStyle(el).display;
+    el.remove();
+    return value;
+  });
+
+  expect(await displayFor(), 'the tag container must stay out of the way on screen').toBe('none');
+
+  await page.emulateMedia({ media: 'print' });
+  expect(await page.evaluate(() => matchMedia('print').matches), 'print emulation did not reach the page').toBe(true);
+
+  // This is the exact assertion that would have caught the blank page.
+  expect(await displayFor(), 'the tag container is still display:none when printing, so the page prints blank').toBe('block');
+});
+
+test('price tags lay out as a grid of visible tags when printing', async ({ page }) => {
+  await gotoApp(page, '/dashboard');
+  await page.emulateMedia({ media: 'print' });
+
+  const measured = await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.id = 'price-tags-print';
+    host.className = 'printable-area print-only';
+    host.innerHTML = `
+      <div class="tag-page">
+        <div class="tag-grid cols-3">
+          <div class="price-tag"><div class="tag-name">Hisense Fridge</div><div class="tag-price">GHS 2,450.50</div></div>
+          <div class="price-tag"><div class="tag-name">Kettle</div><div class="tag-price">GHS 104.00</div></div>
+          <div class="price-tag"><div class="tag-name">Blender</div><div class="tag-price">GHS 260.00</div></div>
+        </div>
+      </div>`;
+    document.body.appendChild(host);
+
+    const grid = host.querySelector('.tag-grid') as HTMLElement;
+    const tag = host.querySelector('.price-tag') as HTMLElement;
+    const price = host.querySelector('.tag-price') as HTMLElement;
+    const result = {
+      hostDisplay: getComputedStyle(host).display,
+      columns: getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length,
+      tagWidth: tag.getBoundingClientRect().width,
+      tagHeight: tag.getBoundingClientRect().height,
+      priceVisibility: getComputedStyle(price).visibility,
+      priceWeight: getComputedStyle(price).fontWeight,
+    };
+    host.remove();
+    return result;
+  });
+
+  expect(measured.hostDisplay).toBe('block');
+  expect(measured.columns, 'cols-3 must produce three grid tracks').toBe(3);
+  expect(measured.tagWidth, 'a tag with no width prints as nothing').toBeGreaterThan(10);
+  expect(measured.tagHeight, 'a tag with no height prints as nothing').toBeGreaterThan(10);
+  // print.css hides everything with `body * { visibility: hidden }` and only
+  // re-shows `.printable-area *`, so a tag outside that tree prints invisibly.
+  expect(measured.priceVisibility).toBe('visible');
+  expect(measured.priceWeight, 'the price should still be the boldest thing on the tag').toBe('900');
 });

@@ -130,25 +130,9 @@ export default function PriceListPrint() {
       </div>
 
       {/* ═══ PRINTABLE AREA ═══ */}
-      <div id="price-list-print" className="printable-area hidden">
-        <style>{`
-          @media print {
-            #price-list-print { display: block !important; font-family: Arial, sans-serif; color: #000; }
-            .pl-header { text-align: center; margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 2px solid #000; }
-            .pl-header h1 { font-size: 16pt; margin: 0 0 2mm 0; }
-            .pl-header .pl-sub { font-size: 9pt; color: #666; }
-            .pl-group-title { font-size: 11pt; font-weight: 700; padding: 4mm 0 2mm 0; border-bottom: 1px solid #ccc; margin-bottom: 2mm; }
-            .pl-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 6mm; }
-            .pl-table th { text-align: left; padding: 2mm 3mm; border-bottom: 2px solid #333; font-size: 8pt; text-transform: uppercase; color: #555; }
-            .pl-table td { padding: 2mm 3mm; border-bottom: 0.5pt solid #ddd; }
-            .pl-table .pl-price { text-align: right; font-weight: 700; font-size: 10pt; }
-            .pl-table .pl-cost { text-align: right; color: #888; }
-            .pl-table .pl-margin { text-align: right; font-size: 8pt; }
-            .pl-table .pl-num { color: #999; width: 8mm; }
-            .pl-table .pl-sku { font-family: monospace; font-size: 8pt; color: #666; }
-            .pl-footer { text-align: center; font-size: 8pt; color: #999; margin-top: 6mm; padding-top: 4mm; border-top: 1px solid #ddd; }
-          }
-        `}</style>
+      {/* Layout lives in styles/price-print.css. See the note there: an inline
+          <style> element is blocked by the CSP and this printed blank. */}
+      <div id="price-list-print" className="printable-area print-only">
         <div className="pl-header">
           <h1>{business?.business_name || 'Price List'}</h1>
           <div className="pl-sub">

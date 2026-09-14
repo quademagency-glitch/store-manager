@@ -7,8 +7,9 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { getPagination } = require('../utils/paginate');
 const upload = require('../middleware/upload');
+const { invalidateCachePrefix } = require('../middleware/apiCache');
 const { parseFile, applyColumnMapping, suggestColumnMapping } = require('../services/importParser');
-const { VALIDATORS, TARGET_FIELDS } = require('../services/importValidators');
+const { VALIDATORS, TARGET_FIELDS, ImportRequestError } = require('../services/importValidators');
 const { commitProductRow } = require('../services/importCommitters/products');
 const { commitCustomerRow } = require('../services/importCommitters/customers');
 const { commitSupplierRow } = require('../services/importCommitters/suppliers');
@@ -34,6 +35,9 @@ const MAX_IMPORT_ROWS = 20_000;
 const validateRequestSchema = z.object({
   entity_type: z.enum(ENTITY_TYPES),
   column_mapping: z.record(z.string(), z.string()),
+  // Which location opening stock belongs to, when the sheet does not say and
+  // the business has more than one. Ownership is checked in the validator.
+  location_id: z.string().uuid().nullish(),
   rows: z.array(z.record(z.string(), z.any()))
     .max(MAX_IMPORT_ROWS, `Import is limited to ${MAX_IMPORT_ROWS.toLocaleString()} rows at a time.`),
 });
@@ -48,7 +52,7 @@ const commitRequestSchema = validateRequestSchema.extend({
  * a fuzzy-matched suggested column mapping. Nothing is persisted yet; the
  * client holds the parsed rows in memory through map -> validate -> commit.
  */
-router.post('/preview', authGuard, permissionCheck('manage_financials'), upload.single('file'), async (req, res) => {
+router.post('/preview', authGuard, permissionCheck('manage_financials'), upload.singleFile('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
     const { entity_type } = req.body;
@@ -61,7 +65,7 @@ router.post('/preview', authGuard, permissionCheck('manage_financials'), upload.
       return res.status(400).json({ error: 'The uploaded file has no data rows.' });
     }
 
-    const suggestedMapping = suggestColumnMapping(headers, TARGET_FIELDS[entity_type]);
+    const suggestedMapping = suggestColumnMapping(headers, TARGET_FIELDS[entity_type], entity_type);
 
     res.json({
       headers,
@@ -83,9 +87,11 @@ router.post('/preview', authGuard, permissionCheck('manage_financials'), upload.
  */
 router.post('/validate', authGuard, permissionCheck('manage_financials'), validateBody(validateRequestSchema), async (req, res) => {
   try {
-    const { entity_type, column_mapping, rows } = req.body;
+    const { entity_type, column_mapping, rows, location_id } = req.body;
     const mappedRows = applyColumnMapping(rows, column_mapping);
-    const { valid, errors, warnings } = await VALIDATORS[entity_type](mappedRows, req.user.business_id);
+    const { valid, errors, warnings } = await VALIDATORS[entity_type](mappedRows, req.user.business_id, {
+      locationId: location_id || null,
+    });
 
     res.json({
       total_rows: rows.length,
@@ -97,6 +103,7 @@ router.post('/validate', authGuard, permissionCheck('manage_financials'), valida
       preview: valid.slice(0, 20),
     });
   } catch (err) {
+    if (err instanceof ImportRequestError) return res.status(400).json({ error: err.message });
     logger.error({ err }, 'Error validating import:');
     res.status(500).json({ error: 'Failed to validate import.' });
   }
@@ -111,9 +118,11 @@ router.post('/validate', authGuard, permissionCheck('manage_financials'), valida
  */
 router.post('/commit', authGuard, permissionCheck('manage_financials'), validateBody(commitRequestSchema), async (req, res) => {
   try {
-    const { entity_type, source_filename, column_mapping, rows } = req.body;
+    const { entity_type, source_filename, column_mapping, rows, location_id } = req.body;
     const mappedRows = applyColumnMapping(rows, column_mapping);
-    const { valid, errors: validationErrors } = await VALIDATORS[entity_type](mappedRows, req.user.business_id);
+    const { valid, errors: validationErrors } = await VALIDATORS[entity_type](mappedRows, req.user.business_id, {
+      locationId: location_id || null,
+    });
 
     const { data: batch, error: batchErr } = await supabaseAdmin
       .from('import_batches')
@@ -171,6 +180,11 @@ router.post('/commit', authGuard, permissionCheck('manage_financials'), validate
 
     if (updateErr) throw updateErr;
 
+    // GET /api/products is wrapped in apiCache(5), and the single-product
+    // write paths invalidate it while this one did not, so the list could
+    // still be serving the pre-import rows straight after a commit.
+    if (entity_type === 'products') invalidateCachePrefix('/api/products');
+
     // Bulk imports create or overwrite records in volume, which makes them one
     // of the few non-security events worth a trail, the undo below is the
     // other half of that story.
@@ -184,6 +198,7 @@ router.post('/commit', authGuard, permissionCheck('manage_financials'), validate
 
     res.status(201).json({ batch: updatedBatch, outcomes });
   } catch (err) {
+    if (err instanceof ImportRequestError) return res.status(400).json({ error: err.message });
     logger.error({ err }, 'Error committing import:');
     res.status(500).json({ error: 'Failed to commit import.' });
   }

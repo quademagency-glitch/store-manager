@@ -56,8 +56,16 @@ export default function InventoryAnalytics() {
               <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)' }}>{summary.total_skus}</div>
             </div>
             <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '8px' }}>Inventory Value</div>
+              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '8px' }}>Inventory Value at Cost</div>
               <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(summary.total_inventory_value)}</div>
+              {/* The total counts a product with no recorded cost as zero, so
+                  say when it is incomplete rather than letting it read as the
+                  whole picture. */}
+              {summary.uncosted_count > 0 && (
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+                  {summary.uncosted_count} item{summary.uncosted_count === 1 ? '' : 's'} with no cost recorded, not counted
+                </div>
+              )}
             </div>
             <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
               <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: '8px' }}>Below Reorder</div>

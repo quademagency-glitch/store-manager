@@ -21,18 +21,32 @@ router.get('/summary', authGuard, permissionCheck('manage_inventory'), async (re
       .select('id', { count: 'exact', head: true })
       .eq('business_id', businessId);
 
-    // Total stock value = SUM(quantity * price) across all inventory
+    /* Stock is valued at what it COST, not at what it might sell for.
+     *
+     * This used to multiply by products.price, the selling price, which is
+     * the retail value of the shelf rather than the money tied up in it, and
+     * it overstates by the whole margin. It also reads zero for anything not
+     * yet priced: a real customer had 65 units they had paid GHS 295,363 for
+     * and the tile said the inventory was worth nothing, because the import
+     * had put their purchase costs in the selling price column and left them
+     * to be priced later.
+     *
+     * Cost is the conventional basis and it is the one that does not move
+     * when somebody edits a price. Anything with no cost recorded counts as
+     * zero and is reported separately, so an understated total says so
+     * instead of looking complete.
+     */
     const { data: inventoryData } = await supabaseAdmin
       .from('product_inventory')
       .select(`
         quantity,
-        product:products!product_id(price, business_id)
+        product:products!product_id(cost_price, business_id)
       `)
       .not('quantity', 'eq', 0);
 
-    const totalValue = (inventoryData || [])
-      .filter(i => i.product?.business_id === businessId)
-      .reduce((sum, i) => sum + (i.quantity * Number(i.product?.price || 0)), 0);
+    const ownStock = (inventoryData || []).filter(i => i.product?.business_id === businessId);
+    const totalValue = ownStock.reduce((sum, i) => sum + (i.quantity * Number(i.product?.cost_price || 0)), 0);
+    const uncostedCount = ownStock.filter(i => !(Number(i.product?.cost_price) > 0)).length;
 
     // Items below reorder point (using low_stock_threshold as default reorder point)
     const { data: belowReorder } = await supabaseAdmin
@@ -74,6 +88,9 @@ router.get('/summary', authGuard, permissionCheck('manage_inventory'), async (re
     res.json({
       total_skus: totalSKUs || 0,
       total_inventory_value: Math.round(totalValue * 100) / 100,
+      // How many stocked lines contribute nothing because no cost was ever
+      // recorded for them. Lets the page say the total is incomplete.
+      uncosted_count: uncostedCount,
       below_reorder_count: belowReorderCount,
       dead_stock_count: deadStockCount
     });
@@ -91,11 +108,12 @@ router.get('/valuation', authGuard, permissionCheck('manage_inventory'), async (
   try {
     const businessId = req.user.business_id;
 
+    // At cost, matching /summary above. See the note there.
     const { data } = await supabaseAdmin
       .from('product_inventory')
       .select(`
         quantity, location_id,
-        product:products!product_id(id, name, sku, price, category, business_id),
+        product:products!product_id(id, name, sku, cost_price, category, business_id),
         location:locations!location_id(id, name)
       `)
       .gt('quantity', 0);
@@ -108,7 +126,7 @@ router.get('/valuation', authGuard, permissionCheck('manage_inventory'), async (
 
     for (const item of filtered) {
       const category = item.product?.category || 'Uncategorized';
-      const value = item.quantity * Number(item.product?.price || 0);
+      const value = item.quantity * Number(item.product?.cost_price || 0);
 
       if (!byCategory[category]) byCategory[category] = { category, value: 0, item_count: 0, total_units: 0 };
       byCategory[category].value += value;
@@ -124,7 +142,8 @@ router.get('/valuation', authGuard, permissionCheck('manage_inventory'), async (
     res.json({
       by_category: Object.values(byCategory).sort((a, b) => b.value - a.value),
       by_location: Object.values(byLocation).sort((a, b) => b.value - a.value),
-      total_value: filtered.reduce((sum, i) => sum + (i.quantity * Number(i.product?.price || 0)), 0)
+      total_value: filtered.reduce((sum, i) => sum + (i.quantity * Number(i.product?.cost_price || 0)), 0),
+      uncosted_count: filtered.filter(i => !(Number(i.product?.cost_price) > 0)).length
     });
   } catch (err) {
     logger.error({ err: err }, 'Error fetching valuation:');

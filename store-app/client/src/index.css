@@ -135,6 +135,9 @@
 
 /* --- print --- */
 @import './styles/print.css' layer(print);
+/* After print.css: the price tag and price list geometry, which used to sit
+   in <style> elements the CSP blocked. */
+@import './styles/price-print.css' layer(print);
 
 /* --- a11y --- */
 @import './styles/a11y.css' layer(a11y);

@@ -188,41 +188,11 @@ export default function PriceTagPrinter() {
       </div>
 
       {/* ═══ PRINTABLE AREA ═══ */}
-      <div id="price-tags-print" className="printable-area hidden">
-        <style>{`
-          @media print {
-            #price-tags-print { display: block !important; }
-            .tag-page { page-break-after: always; padding: 10mm; }
-            .tag-page:last-child { page-break-after: avoid; }
-            .tag-grid { display: grid; gap: 4mm; height: 100%; }
-            .tag-grid.cols-1 { grid-template-columns: 1fr; }
-            .tag-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-            .tag-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-            .price-tag {
-              border: 1px dashed #ccc;
-              padding: 8px 12px;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              align-items: center;
-              text-align: center;
-              overflow: hidden;
-            }
-            .price-tag .tag-name { font-weight: 700; font-size: 11pt; margin-bottom: 2px; line-height: 1.2; }
-            .price-tag .tag-sku { font-size: 8pt; color: #666; font-family: monospace; margin-bottom: 4px; }
-            .price-tag .tag-category { font-size: 7pt; color: #999; margin-bottom: 4px; text-transform: uppercase; }
-            .price-tag .tag-price { font-size: 18pt; font-weight: 900; color: #000; }
-            .price-tag .tag-cost { font-size: 8pt; color: #999; margin-top: 2px; }
-            .tag-grid.cols-1 .price-tag { flex-direction: row; justify-content: space-between; padding: 6px 16px; }
-            .tag-grid.cols-1 .price-tag .tag-name { font-size: 10pt; text-align: left; margin: 0; }
-            .tag-grid.cols-1 .price-tag .tag-price { font-size: 14pt; }
-            .tag-grid.cols-4 .price-tag .tag-name { font-size: 9pt; }
-            .tag-grid.cols-4 .price-tag .tag-price { font-size: 14pt; }
-            .tag-page-header { text-align: center; margin-bottom: 6mm; font-size: 10pt; color: #666; border-bottom: 1px solid #ddd; padding-bottom: 4mm; }
-            .tag-page-header strong { font-size: 12pt; color: #000; }
-          }
-        `}</style>
-
+      {/* The layout for this lives in styles/price-print.css, NOT in a <style>
+          element here. An inline <style> is blocked by the site's CSP
+          (style-src 'self'), which is why these tags printed as a blank page
+          in production while looking correct on localhost. */}
+      <div id="price-tags-print" className="printable-area print-only">
         {(() => {
           const perPage = layoutConfig.cols * layoutConfig.rows;
           const pages = [];

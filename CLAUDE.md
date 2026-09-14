@@ -15,6 +15,42 @@ disable the check.
 
 Deploy config:
 - `railway.json` locks Railway's build root to `store-app/server/`
+
+**The build root really lives in Railway, not in this repo.** Checked on
+2026-09-14 with `railway config pull --json`: the `store-manager-api`
+service carries `source.rootDirectory = "store-app/server/"` in its own
+GitHub source settings. `railway.json` is not re-read on every deploy to
+decide this, so editing that file alone is not a reliable way to move the
+build root, and deleting it is unlikely to be what breaks a deploy.
+
+Three Railway config files are tracked, and two of them do nothing:
+`railway.json` (build root), `railway.toml`, and an identical
+`store-app/server/railway.toml`. Both `.toml` files declare
+`builder = "NIXPACKS"` and `buildCommand = "npm install"`, while the live
+service runs **RAILPACK** with an empty build command, so Railway is
+plainly not reading them. Do not tune them expecting an effect; change the
+service in Railway, or use the Infrastructure as Code file described below.
+
+**Config as Code is deprecated, and `railway config migrate` gets this repo
+wrong.** Railway warns that `railway.json` / `railway.toml` give way to
+`.railway/railway.ts` on 2026-12-01. Do not trust the automatic migration:
+run on 2026-09-14 it read the two `.toml` files as two separate services,
+emitted phantom services named `ERP` and `server` (the real one is
+`store-manager-api`), and **dropped `rootDirectory` entirely**. Applying
+that would point the build at the repo root, which is the silent-wrong-build
+failure this file exists to warn about.
+
+`railway config pull` is the one to use instead: it reads the live project
+and emits the correct single service, with the root directory intact, the
+`/data` volume, and every environment variable as `preserve()` so no secret
+value is written into a public repo.
+
+Verifying it with `railway config plan` needs `npm install railway` at the
+**repo root**, and there is deliberately no root `package.json` here:
+`vercel.json` sets `framework: None` and `cd`s into `store-app/client` for
+both install and build. Weigh that before creating one. Until then the old
+files keep working, and a generated-but-unverified `.railway/railway.ts`
+should not be committed, in case Railway applies it on sight.
 - Vercel's dashboard Root Directory setting must stay **blank** (repo root), `vercel.json`'s `buildCommand`/`outputDirectory` already `cd` into
   `store-app/client/` themselves.
 

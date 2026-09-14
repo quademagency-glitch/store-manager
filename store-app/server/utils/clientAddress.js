@@ -1,3 +1,5 @@
+const { ipKeyGenerator } = require('express-rate-limit');
+
 /**
  * The address of whoever actually made the request, as best it can be known.
  *
@@ -86,4 +88,28 @@ function clientAddress(req) {
   return normalise(req.ip) || 'unknown';
 }
 
-module.exports = { clientAddress, fromForwarded, normalise };
+/**
+ * The rate-limit bucket for a caller. Use THIS as a `keyGenerator`, never
+ * `clientAddress` directly.
+ *
+ * clientAddress returns one exact address. For IPv4 that is a fair bucket,
+ * because an address is roughly a caller. For IPv6 it is not: a home
+ * connection is handed a whole prefix, so the same person can send every
+ * request from a different address and be given a brand new allowance each
+ * time. The limit still reads as enforced and simply never fires.
+ *
+ * express-rate-limit calls this out at startup, once per limiter per worker,
+ * as ERR_ERL_KEY_GEN_IPV6. With eight workers that was 72 lines of red
+ * stack trace on every boot, ahead of any "Worker started" line, which is
+ * both how the bypass stayed unnoticed and why a perfectly healthy deploy
+ * looked like a crash loop in the Railway log view.
+ *
+ * ipKeyGenerator leaves IPv4 untouched and collapses IPv6 to its /56, so one
+ * visitor gets one bucket. A non-address fallback such as 'unknown' passes
+ * through unchanged rather than throwing.
+ */
+function clientAddressKey(req) {
+  return ipKeyGenerator(clientAddress(req));
+}
+
+module.exports = { clientAddress, clientAddressKey, fromForwarded, normalise };

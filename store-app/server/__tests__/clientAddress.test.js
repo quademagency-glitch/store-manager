@@ -14,7 +14,7 @@
  * addresses, and signup was capped at 5 an hour for the entire platform.
  */
 
-const { clientAddress, fromForwarded, normalise } = require('../utils/clientAddress');
+const { clientAddress, clientAddressKey, fromForwarded, normalise } = require('../utils/clientAddress');
 
 /** Minimal stand-in for the bits of req this reads. */
 const asReq = (headers = {}, ip = '15.240.64.77') => ({
@@ -85,5 +85,58 @@ describe('clientAddress', () => {
     // Built directly, not via asReq: its default parameter would substitute an
     // address for the explicit undefined and the assertion would pass vacuously.
     expect(clientAddress({ ip: undefined, get: () => undefined })).toBe('unknown');
+  });
+});
+
+/**
+ * The rate-limit key, which is not the same thing as the address.
+ *
+ * The signup, demo-login and resend-confirmation limiters keyed on
+ * clientAddress directly. For IPv4 that is a fair bucket. For IPv6 it is not:
+ * a single home connection is handed a whole prefix, so the same person can
+ * send every request from a different address, be given a fresh allowance each
+ * time, and never once trip a limit that reads as enforced.
+ *
+ * express-rate-limit warned about exactly this at startup, once per limiter
+ * per worker. With eight workers that was 72 lines of red stack trace ahead of
+ * any "Worker started" line, which is both why the bypass went unnoticed and
+ * why a healthy deploy looked like a crash loop in the Railway log view.
+ */
+describe('clientAddressKey', () => {
+  const v6 = (addr) => asReq({ 'x-vercel-forwarded-for': addr });
+
+  it('leaves an IPv4 caller exactly as it is', () => {
+    expect(clientAddressKey(asReq({ 'x-vercel-forwarded-for': '154.163.174.227' })))
+      .toBe('154.163.174.227');
+  });
+
+  /* The bypass, closed. These are two addresses one visitor can hold at once. */
+  it('gives two addresses from the same IPv6 prefix the same bucket', () => {
+    const a = clientAddressKey(v6('2001:db8:1234:5678:9abc:def0:1234:5678'));
+    const b = clientAddressKey(v6('2001:db8:1234:5678:ffff:ffff:ffff:0001'));
+
+    expect(a).toBe(b);
+    expect(a).not.toBe('2001:db8:1234:5678:9abc:def0:1234:5678');
+  });
+
+  it('still separates genuinely different IPv6 callers', () => {
+    expect(clientAddressKey(v6('2001:db8:1111:0:0:0:0:1')))
+      .not.toBe(clientAddressKey(v6('2001:db8:2222:0:0:0:0:1')));
+  });
+
+  it('keys on the real caller, not on the Vercel hop', () => {
+    const req = asReq({
+      'x-forwarded-for': '15.240.64.77, 152.233.29.1',
+      'x-vercel-forwarded-for': '154.163.174.227',
+    });
+    expect(clientAddressKey(req)).toBe('154.163.174.227');
+  });
+
+  it('survives an address it cannot parse rather than throwing', () => {
+    // clientAddress falls back to 'unknown' when there is nothing usable, and
+    // a keyGenerator that throws takes the whole request down with it.
+    const req = { ip: undefined, get: () => undefined };
+    expect(() => clientAddressKey(req)).not.toThrow();
+    expect(clientAddressKey(req)).toBeTruthy();
   });
 });

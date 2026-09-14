@@ -36,13 +36,28 @@ router.get('/', authGuard, permissionCheck('manage_inventory'), async (req, res)
     const { page, limit, offset } = getPagination(req.query);
     const statusFilter = req.query.status; // optional: draft, sent, partial, received, cancelled
 
+    /* Do NOT embed `creator:users!created_by` or `receiver:users!received_by`
+       here. purchase_orders.created_by and received_by are foreign keys to
+       auth.users, NOT to public.users, so PostgREST has no relationship to
+       follow and answers the whole request with
+       PGRST200 "Could not find a relationship between 'purchase_orders' and
+       'users' in the schema cache".
+
+       One unresolvable embed fails the ENTIRE select, so this route and the
+       detail route below both returned 500 and the purchase order list was
+       always empty. Creating a PO worked, because POST does not embed users,
+       which made it look as though saving a PO silently lost it. Reported
+       exactly that way on 2026-09-14, with the PO sitting in the table the
+       whole time.
+
+       Nothing rendered these fields; they were dead weight that broke the
+       feature. If a creator name is ever wanted, read public.users
+       separately by id (public.users.id IS the auth user id) and stitch. */
     let query = supabaseAdmin
       .from('purchase_orders')
       .select(`
         *,
         supplier:suppliers!supplier_id(id, name, contact_person),
-        creator:users!created_by(id, name, email),
-        receiver:users!received_by(id, name, email),
         items:purchase_order_items(
           id, product_id, quantity, received_quantity, unit_cost, total,
           product:products!product_id(id, name, sku)
@@ -88,8 +103,6 @@ router.get('/:id', authGuard, permissionCheck('manage_inventory'), async (req, r
       .select(`
         *,
         supplier:suppliers!supplier_id(id, name, contact_person, phone, email, address),
-        creator:users!created_by(id, name, email),
-        receiver:users!received_by(id, name, email),
         items:purchase_order_items(
           id, product_id, quantity, received_quantity, unit_cost, total, notes,
           product:products!product_id(id, name, sku, price, category)

@@ -67,7 +67,6 @@ router.get('/:id', authGuard, async (req, res) => {
       .select(`
         *,
         customer:customers!customer_id(id, name, phone, customer_code),
-        creator:users!created_by(id, name, email),
         items:customer_order_items(id, product_id, custom_description, quantity, unit_price,
           product:products!product_id(id, name, sku, price))
       `)

@@ -125,6 +125,7 @@
 @import './styles/reports.css' layer(pages);
 @import './styles/qr-print-label.css' layer(pages);
 @import './styles/help-center.css' layer(pages);
+@import './styles/product-detail.css' layer(pages);
 @import './styles/command-palette.css' layer(components);
 
 /* --- utilities --- */

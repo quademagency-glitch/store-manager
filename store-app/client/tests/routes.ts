@@ -35,6 +35,10 @@ export const APP_ROUTES: Route[] = [
   // in every tour run. The sidebar still links it; the redirect is what needs
   // a test, not a screenshot.
   { path: '/inventory', name: '02-inventory' },
+  /* The page a product row opens. Addressed by a fixture id rather than
+     through a click so the empty-state and no-crash passes can reach it
+     directly, the same way every other route here is reached. */
+  { path: '/inventory/products/p1', name: '02b-product-detail' },
   {
     path: '/sales',
     name: '03-sales-pos',

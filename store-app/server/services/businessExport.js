@@ -50,7 +50,7 @@ const EXPORT_TABLES = [
   'business_ledger', 'accounting_templates',
   'loyalty_rules', 'loyalty_ledger', 'gift_cards', 'store_credit_ledger',
   'attendance_logs', 'shift_schedules', 'commission_rules', 'commission_ledger',
-  'price_change_log', 'alerts', 'import_batches',
+  'price_change_log', 'product_change_log', 'alerts', 'import_batches',
   'crm_communication_templates',
   'billing_invoices', 'business_subscriptions',
   'audit_logs',

@@ -86,6 +86,40 @@ const CUSTOMER_NOTES = {
   c3: [],
 };
 
+/* Per-product timeline for the product detail page. One of each kind the
+   server can emit (stock / price / edit), because the page renders each one
+   differently and a fixture with only stock rows would leave two of the three
+   renderers untested. Keyed by product id; p1 is the row the harness opens. */
+const PRODUCT_HISTORY = {
+  p1: [
+    { id: 'stock:m1', kind: 'stock', at: T0, actor: 'Ama Mensah', movement_type: 'SALE',
+      quantity_change: -2, location: 'Adom Superstore, Osu', reference_id: 'sale1', notes: null },
+    { id: 'price:pc1', kind: 'price', at: '2026-07-30T16:20:00.000Z', actor: 'Ama Mensah',
+      old_price: 90, new_price: 98, old_cost_price: 61, new_cost_price: 64.5,
+      change_type: 'manual', reason: null, is_bulk: false },
+    { id: 'stock:m2', kind: 'stock', at: '2026-07-29T09:15:00.000Z', actor: 'Kofi Boateng',
+      movement_type: 'RECEIPT', quantity_change: 50, location: 'Adom Superstore, Osu',
+      reference_id: 'po1', notes: 'PO-1001' },
+    { id: 'edit:e1', kind: 'edit', at: '2026-07-28T11:05:00.000Z', actor: 'Ama Mensah',
+      field: 'name', old_value: 'Perfumed Rice 5KG', new_value: 'Perfumed Rice 5kg' },
+    { id: 'stock:m3', kind: 'stock', at: '2026-07-27T16:40:00.000Z', actor: 'Ama Mensah',
+      movement_type: 'ADJUSTMENT', quantity_change: -1, location: 'Adom Superstore, Osu',
+      reference_id: null, notes: 'Damaged in transit' },
+    { id: 'price:pc2', kind: 'price', at: '2026-07-20T08:00:00.000Z', actor: 'Kofi Boateng',
+      old_price: 86, new_price: 90, old_cost_price: 61, new_cost_price: 61,
+      change_type: 'markup_percent', reason: 'July repricing', is_bulk: true },
+  ],
+};
+
+/* Stock imported with a cost and no selling price, which is what the bulk
+   importer produces from a supplier's sheet. Kept apart from '/products' so
+   the inventory list, and its screenshots, stay as they were. */
+const COST_ONLY_PREVIEW = [
+  { id: 'cp1', name: 'LG 1.5 HP Air Conditioner', sku: 'S4-Q12JAQAL', category: 'Air Conditioner', cost_price: 5824 },
+  { id: 'cp2', name: 'LG 32-inch Television', sku: '32LP', category: 'Television', cost_price: 1400 },
+  { id: 'cp3', name: 'Sigma Built-in Oven', sku: 'SIG-BIO-B1065M80-II', category: 'Oven', cost_price: 3000 },
+];
+
 const paged = (rows) => ({ data: rows, total: rows.length, page: 1, totalPages: 1 });
 
 const FIXTURES = {
@@ -185,6 +219,28 @@ const FIXTURES = {
      now fall back to an empty list AND report the error, but the fixture is
      still needed so the mocked runs exercise a populated picker.
      Mirrors the catalogue in the demo seeder. */
+  /* GET /api/pricing/history. One bulk run and one single edit, because the
+     view groups them differently: a batch gets a header row, a lone change
+     gets the full table. Both carry changed_by_name, which the route stitches
+     on from public.users. */
+  '/pricing/history': {
+    data: [
+      { id: 'pcl1', product_id: 'cp1', product: { name: 'LG 1.5 HP Air Conditioner', sku: 'S4-Q12JAQAL', category: 'Air Conditioner' },
+        old_price: 0, new_price: 7571, old_cost_price: 5824, new_cost_price: 5824,
+        change_type: 'cost_markup_percent', change_value: 30, batch_id: 'batch-1',
+        reason: 'Opening prices', changed_by_name: 'Ama Mensah', created_at: T0 },
+      { id: 'pcl2', product_id: 'cp2', product: { name: 'LG 32-inch Television', sku: '32LP', category: 'Television' },
+        old_price: 0, new_price: 1820, old_cost_price: 1400, new_cost_price: 1400,
+        change_type: 'cost_markup_percent', change_value: 30, batch_id: 'batch-1',
+        reason: 'Opening prices', changed_by_name: 'Ama Mensah', created_at: T0 },
+      { id: 'pcl3', product_id: 'p1', product: { name: 'Perfumed Rice 5kg', sku: 'DEMO-005', category: 'Groceries' },
+        old_price: 90, new_price: 98, old_cost_price: 61, new_cost_price: 64.5,
+        change_type: 'manual', change_value: null, batch_id: null,
+        reason: null, changed_by_name: 'Kofi Boateng', created_at: '2026-07-30T16:20:00.000Z' },
+    ],
+    total: 3, page: 1, total_pages: 1,
+  },
+
   '/pricing/categories': ['Drinks', 'Groceries', 'Household', 'Personal Care', 'Pharmacy', 'Stationery'],
 
   // The real endpoint returns the business row plus `currency` and `country`
@@ -575,6 +631,83 @@ function applyStoreCredit(customerId, delta, note, type) {
 }
 
 const ROUTE_FIXTURES = {
+  // ── Product detail (routes/products.js) ──
+  /* Reads the same list the inventory page renders, so the detail page cannot
+     drift into showing a product the list does not have. */
+  'GET /products/:id': (_b, p) => (FIXTURES['/products'] || []).find((x) => x.id === p.id) || null,
+
+  'GET /products/:id/history': (_b, p) => ({
+    data: PRODUCT_HISTORY[p.id] || [],
+    page: 1,
+    limit: 50,
+    hasMore: false,
+    includes: { stock: true, edits: true, prices: true },
+  }),
+
+  'GET /products/:id/stats': (_b, p) => {
+    const product = (FIXTURES['/products'] || []).find((x) => x.id === p.id);
+    const inventory = (product && product.product_inventory) || [];
+    return {
+      window_days: 90,
+      units_sold: p.id === 'p1' ? 42 : 0,
+      sale_count: p.id === 'p1' ? 31 : 0,
+      revenue: p.id === 'p1' ? 4116 : 0,
+      last_sold_at: p.id === 'p1' ? T0 : null,
+      stock_by_location: inventory.map((i) => ({
+        location_id: i.location_id,
+        location: 'Adom Superstore, Osu',
+        quantity: i.quantity,
+        low_stock_threshold: i.low_stock_threshold,
+      })),
+      batches: [],
+    };
+  },
+
+  /* Bulk price update (routes/pricing.js).
+
+     Mode-aware on purpose. The panel has two states worth seeing and they
+     are opposites: a percentage OF the selling price cannot move a product
+     imported at cost only, and pricing FROM cost can. A canned response
+     would show one of them and make the "Use From Cost %" button look dead,
+     since the button's whole job is to re-run the preview and change the
+     answer. Shapes follow the real route; check routes/pricing.js first. */
+  'POST /pricing/preview': (body) => {
+    const mode = body.mode;
+    const value = Number(body.value) || 0;
+    const fromCost = mode === 'cost_markup_percent';
+    const filters = body.filters || {};
+    /* Every fixture row here is unpriced, so the filter can only narrow by
+       the other criteria; what matters is that it is honoured at all rather
+       than silently ignored, which is the failure it exists to prevent. */
+    const source = filters.product_ids && filters.product_ids.length > 0
+      ? COST_ONLY_PREVIEW.filter((r) => filters.product_ids.includes(r.id))
+      : COST_ONLY_PREVIEW;
+    const rows = source.map((r) => {
+      const newPrice = fromCost ? Math.round(r.cost_price * (1 + value / 100)) : 0;
+      return {
+        ...r,
+        current_price: 0,
+        new_price: newPrice,
+        change: newPrice,
+        change_percent: 0,
+        margin: newPrice > 0 ? (((newPrice - r.cost_price) / newPrice) * 100).toFixed(1) : null,
+        skipped: !fromCost,
+        skip_reason: fromCost
+          ? null
+          : 'No selling price to work from. Use "From Cost %" to price this from what you paid.',
+      };
+    });
+    return {
+      count: rows.length,
+      skipped_count: rows.filter((r) => r.skipped).length,
+      skipped_no_price: rows.filter((r) => r.skipped).length,
+      suggested_mode: fromCost ? null : 'cost_markup_percent',
+      total_current: 0,
+      total_new: rows.reduce((sum, r) => sum + r.new_price, 0),
+      products: rows,
+    };
+  },
+
   // ── Customer detail (routes/customers.js, routes/sales.js, routes/loyalty.js) ──
   'GET /customers/:id': (_body, params) => CUSTOMERS.find((c) => c.id === params.id) || null,
 

@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 const Sales = lazy(() => import('./pages/Sales'));
 const Inventory = lazy(() => import('./pages/Inventory'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const Reconciliation = lazy(() => import('./pages/Reconciliation'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -178,6 +179,12 @@ export default function App() {
                     } />
                     <Route path="/inventory" element={
                       <ProtectedRoute requiredPermission="view_inventory"><Inventory /></ProtectedRoute>
+                    } />
+                    {/* Nested under /inventory so the permission, the sidebar
+                        highlight and the back button all stay with the list
+                        this page was opened from. */}
+                    <Route path="/inventory/products/:id" element={
+                      <ProtectedRoute requiredPermission="view_inventory"><ProductDetail /></ProtectedRoute>
                     } />
                     <Route path="/alerts" element={
                       <ProtectedRoute requiredPermission={ALERTS_PERMISSIONS}><Alerts /></ProtectedRoute>

@@ -15,6 +15,11 @@ export default function BulkPriceUpdate({ onComplete }) {
   const [categories, setCategories] = useState([]);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSku, setFilterSku] = useState('');
+  const [unpricedOnly, setUnpricedOnly] = useState(false);
+  /* ids the run will actually touch. Empty set means "everything the preview
+     matched", so a preview that has not been narrowed behaves as it always
+     did, and a deliberate selection of none is still respected. */
+  const [excluded, setExcluded] = useState(() => new Set());
   const [mode, setMode] = useState('markup_percent');
   const [value, setValue] = useState('');
   const [rounding, setRounding] = useState('0.01');
@@ -54,24 +59,35 @@ export default function BulkPriceUpdate({ onComplete }) {
     { value: '1.00', label: 'Nearest 1.00' },
   ];
 
-  const handlePreview = async () => {
+  /* Takes the mode explicitly so the "use From Cost %" button can switch and
+     re-run in one click, rather than previewing with the mode that is being
+     replaced. Call it as handlePreview(), never as an onClick handler
+     directly: React would pass the click event in as the mode. */
+  const buildFilters = () => {
+    const filters = {};
+    if (filterCategory) filters.category = filterCategory;
+    if (filterSku) filters.sku_pattern = filterSku;
+    if (unpricedOnly) filters.unpriced_only = true;
+    return filters;
+  };
+
+  const handlePreview = async (useMode = mode) => {
     if (!value || isNaN(parseFloat(value))) {
       toast.error('Enter a valid number');
       return;
     }
     setPreviewLoading(true);
     try {
-      const filters = {};
-      if (filterCategory) filters.category = filterCategory;
-      if (filterSku) filters.sku_pattern = filterSku;
+      const filters = buildFilters();
 
       const result = await api.post('/pricing/preview', {
         filters,
-        mode,
+        mode: useMode,
         value: parseFloat(value),
         rounding: parseFloat(rounding)
       });
       setPreview(result);
+      setExcluded(new Set());
     } catch (err) {
       toast.error(err.message || 'Preview failed');
     } finally {
@@ -80,17 +96,11 @@ export default function BulkPriceUpdate({ onComplete }) {
   };
 
   const handleApply = async () => {
-    if (!preview || preview.count === 0) return;
-
-    const changedProducts = preview.products.filter(p => p.change !== 0);
-    if (changedProducts.length === 0) {
-      toast.info('No price changes to apply');
-      return;
-    }
+    if (!preview || selectedProducts.length === 0) return;
 
     const confirmed = await confirm({
       title: 'Apply Price Update',
-      message: `This will update prices for ${changedProducts.length} product(s). This action is logged in the audit trail.`,
+      message: `This will update prices for ${selectedProducts.length} product(s). This action is logged in the audit trail.`,
       confirmText: 'Apply Changes',
       variant: 'warning'
     });
@@ -99,9 +109,10 @@ export default function BulkPriceUpdate({ onComplete }) {
 
     setApplying(true);
     try {
-      const filters = {};
-      if (filterCategory) filters.category = filterCategory;
-      if (filterSku) filters.sku_pattern = filterSku;
+      /* Pin the run to exactly the rows still ticked. Without this the apply
+         re-runs the filters server-side and could touch a product the user
+         had just unticked, or one added since the preview. */
+      const filters = { ...buildFilters(), product_ids: selectedProducts.map(p => p.id) };
 
       const result = await api.put('/pricing/bulk-update', {
         filters,
@@ -122,7 +133,33 @@ export default function BulkPriceUpdate({ onComplete }) {
     }
   };
 
-  const changedCount = preview ? preview.products.filter(p => p.change !== 0).length : 0;
+  const switchMode = (nextMode) => {
+    setMode(nextMode);
+    handlePreview(nextMode);
+  };
+
+  /* A row is in the run when it would change something AND has not been
+     unticked. Skipped rows are never in it: the server refuses them anyway,
+     and offering a tick box that does nothing is worse than offering none. */
+  const changeableProducts = preview ? preview.products.filter(p => !p.skipped && p.change !== 0) : [];
+  const selectedProducts = changeableProducts.filter(p => !excluded.has(p.id));
+  const changedCount = selectedProducts.length;
+
+  const toggleRow = (id) => {
+    setExcluded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setExcluded(prev => (
+      prev.size > 0 ? new Set() : new Set(changeableProducts.map(p => p.id))
+    ));
+  };
+  const skippedNoPrice = preview ? (preview.skipped_no_price || 0) : 0;
+  const skippedNoCost = preview ? (preview.skipped_count || 0) - skippedNoPrice : 0;
 
   return (
     <div className="mt-md">
@@ -144,6 +181,17 @@ export default function BulkPriceUpdate({ onComplete }) {
             <input className="form-input" placeholder="e.g. ELEC or PHN" value={filterSku} onChange={e => { setFilterSku(e.target.value); setPreview(null); }} />
           </div>
         </div>
+
+        {/* The filter a shop needs straight after importing a supplier's
+            sheet: price the new arrivals without touching everything else. */}
+        <label className="bulk-price-check mb-md">
+          <input
+            type="checkbox"
+            checked={unpricedOnly}
+            onChange={e => { setUnpricedOnly(e.target.checked); setPreview(null); }}
+          />
+          <span>Only products with no selling price yet</span>
+        </label>
 
         {/* Mode Selector */}
         <div className="mb-md">
@@ -207,7 +255,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         {/* Preview Button */}
         <button
           className="btn btn-primary flex items-center gap-sm"
-          onClick={handlePreview}
+          onClick={() => handlePreview()}
           disabled={previewLoading || !value}
         >
           {previewLoading ? (
@@ -241,22 +289,33 @@ export default function BulkPriceUpdate({ onComplete }) {
             </div>
           </div>
 
-          {/* A markup on cost cannot be worked out without a cost, and
-              applying it anyway would rewrite a real price to zero. The
-              server skips those, so say so rather than letting the count
-              quietly disagree with the number of products matched. */}
-          {preview.skipped_count > 0 && (
-            <div
-              className="mb-md"
-              style={{
-                padding: '10px 14px',
-                borderRadius: '8px',
-                background: 'var(--color-warning-bg, rgba(255, 180, 0, 0.12))',
-                color: 'var(--color-text-primary)',
-                fontSize: '0.85rem',
-              }}
-            >
-              {preview.skipped_count} product(s) have no cost price recorded and will be left unchanged.
+          {/* Two opposite dead ends, and the count alone explains neither.
+              A markup on cost cannot be worked out without a cost, and
+              applying it anyway would rewrite a real price to zero. A markup
+              on the PRICE cannot move a price of 0, which is every product a
+              cost-only import just created, and that one has a way out: the
+              same run, from cost instead. */}
+          {skippedNoCost > 0 && (
+            <div className="bulk-price-note mb-md">
+              {skippedNoCost} product(s) have no cost price recorded and will be left unchanged.
+            </div>
+          )}
+          {skippedNoPrice > 0 && (
+            <div className="bulk-price-note mb-md">
+              <span>
+                {skippedNoPrice} product(s) have no selling price yet, so a percentage of it
+                is still nothing. Price them from what you paid instead.
+              </span>
+              {preview.suggested_mode === 'cost_markup_percent' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => switchMode('cost_markup_percent')}
+                  disabled={previewLoading}
+                >
+                  Use From Cost % instead
+                </button>
+              )}
             </div>
           )}
 
@@ -265,6 +324,15 @@ export default function BulkPriceUpdate({ onComplete }) {
             <table className="glass-table">
               <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                 <tr>
+                  <th style={{ width: '2.5rem' }}>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all products"
+                      checked={changeableProducts.length > 0 && excluded.size === 0}
+                      onChange={toggleAll}
+                      disabled={changeableProducts.length === 0}
+                    />
+                  </th>
                   <th>Product</th><th>SKU</th><th>Category</th>
                   <th className="text-right">Current</th>
                   <th className="text-right">New Price</th>
@@ -275,6 +343,17 @@ export default function BulkPriceUpdate({ onComplete }) {
               <tbody>
                 {preview.products.map(p => (
                   <tr key={p.id} style={{ opacity: p.change === 0 ? 0.5 : 1 }}>
+                    <td>
+                      {/* Nothing to tick on a row the run cannot move. */}
+                      {!p.skipped && p.change !== 0 && (
+                        <input
+                          type="checkbox"
+                          aria-label={`Include ${p.name}`}
+                          checked={!excluded.has(p.id)}
+                          onChange={() => toggleRow(p.id)}
+                        />
+                      )}
+                    </td>
                     <td className="font-medium">{p.name}</td>
                     <td><code className="text-mono" style={{ fontSize: '0.85rem' }}>{p.sku}</code></td>
                     <td><span className="badge badge-neutral">{p.category}</span></td>

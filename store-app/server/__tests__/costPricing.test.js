@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { buildMockSupabase } = require('./helpers/mockSupabase');
+const { buildMockSupabase, makeQueryMock } = require('./helpers/mockSupabase');
 
 /**
  * Pricing from cost.
@@ -135,6 +135,145 @@ describe('PUT /api/pricing/bulk-update, from cost', () => {
     const updates = mock.mutations.filter(m => m.table === 'products' && m.op === 'update');
     expect(updates).toHaveLength(1);
     expect(updates[0].payload).toEqual({ price: 130 });
+  });
+});
+
+/**
+ * The dead end a cost-only import walks into.
+ *
+ * Bulk import encourages sheets that carry only what you paid, and the tool's
+ * default mode is Markup %. Against 52 products imported at cost, that mode
+ * matched all 52, changed none of them, and said nothing at all: the preview
+ * read "52 products / 0 will change" and the apply read "Updated prices for 0
+ * product(s)". Nothing was broken, and nothing explained itself either, which
+ * is indistinguishable from broken.
+ */
+describe('a percentage of a price that does not exist', () => {
+  it('says why it cannot price an imported product, instead of quietly doing nothing', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 250 })], error: null };
+
+    const res = await preview({ mode: 'markup_percent', value: 30 });
+
+    expect(res.body.products[0].skipped).toBe(true);
+    expect(res.body.products[0].skip_reason).toMatch(/no selling price/i);
+    expect(res.body.skipped_no_price).toBe(1);
+  });
+
+  it('points at the mode that would work, when there is a cost to work from', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 250 })], error: null };
+
+    const res = await preview({ mode: 'markup_percent', value: 30 });
+
+    expect(res.body.suggested_mode).toBe('cost_markup_percent');
+  });
+
+  it('does not suggest pricing from cost when there is no cost either', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 0 })], error: null };
+
+    const res = await preview({ mode: 'markup_percent', value: 30 });
+
+    expect(res.body.products[0].skipped).toBe(true);
+    // Switching mode would hit the opposite dead end, so do not offer it.
+    expect(res.body.suggested_mode).toBe(null);
+  });
+
+  it('leaves set_price and fixed_amount alone, neither multiplies by the price', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 250 })], error: null };
+    const set = await preview({ mode: 'set_price', value: 400 });
+    expect(set.body.products[0].skipped).toBe(false);
+    expect(set.body.products[0].new_price).toBe(400);
+
+    overrides.products = { data: [product({ price: 0, cost_price: 250 })], error: null };
+    const fixed = await preview({ mode: 'fixed_amount', value: 400 });
+    expect(fixed.body.products[0].skipped).toBe(false);
+    expect(fixed.body.products[0].new_price).toBe(400);
+  });
+
+  it('counts them on apply and names the mode that works', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 250 })], error: null };
+
+    const res = await apply({ mode: 'markup_percent', value: 30 });
+
+    expect(res.body.updated_count).toBe(0);
+    expect(res.body.skipped_no_price).toBe(1);
+    expect(res.body.message).toMatch(/From Cost %/);
+    // And nothing was written, since nothing could be worked out.
+    expect(mock.mutations.filter(m => m.table === 'products' && m.op === 'update')).toHaveLength(0);
+  });
+});
+
+/**
+ * Narrowing a run to the products you meant.
+ *
+ * Asserted through the QUERY the route builds, because that is where a filter
+ * acts: one that is accepted and then not applied reads as a successful run
+ * over the wrong products, which is worse than an error.
+ */
+describe('choosing which products to reprice', () => {
+  const originalFrom = mock.from.getMockImplementation();
+
+  /* authGuard reads `users` before the route reads `products`, so this has to
+     answer both: a real user, and a recording proxy for the product query. */
+  const USER = {
+    id: 'user-uuid-123', name: 'Test User', email: 'test@example.com',
+    business_id: 'biz-uuid-123', status: 'active', role_id: 'role-uuid-123',
+    roles: { name: 'Business Admin', permissions: ['manage_products'] },
+    businesses: { status: 'active' }, user_locations: [],
+  };
+
+  function captureQuery() {
+    const calls = [];
+    const chain = new Proxy({}, {
+      get(_t, prop) {
+        if (prop === 'then') return (resolve) => resolve({ data: [], error: null });
+        return (...args) => { calls.push([prop, args]); return chain; };
+      },
+    });
+    mock.from.mockImplementation((table) => {
+      if (table === 'products') return chain;
+      return makeQueryMock({ data: USER, error: null });
+    });
+    return calls;
+  }
+
+  afterEach(() => mock.from.mockImplementation(originalFrom));
+
+  it('can limit a run to products that have no price yet', async () => {
+    const calls = captureQuery();
+
+    await preview({ mode: 'cost_markup_percent', value: 30, filters: { unpriced_only: true } });
+
+    // NULL and 0 both mean unpriced: the column is nullable and import writes 0.
+    expect(calls).toContainEqual(['or', ['price.is.null,price.eq.0']]);
+  });
+
+  it('does not filter by price when the caller did not ask', async () => {
+    const calls = captureQuery();
+
+    await preview({ mode: 'cost_markup_percent', value: 30, filters: {} });
+
+    expect(calls.some(([m]) => m === 'or')).toBe(false);
+  });
+
+  it('can be narrowed to individually chosen products', async () => {
+    const calls = captureQuery();
+
+    await preview({ mode: 'set_price', value: 10, filters: { product_ids: ['p1', 'p3'] } });
+
+    expect(calls).toContainEqual(['in', ['id', ['p1', 'p3']]]);
+  });
+
+  it('still applies category and SKU alongside them', async () => {
+    const calls = captureQuery();
+
+    await preview({
+      mode: 'markup_percent', value: 10,
+      filters: { category: 'Fridges', sku_pattern: 'HS', unpriced_only: true },
+    });
+
+    expect(calls).toContainEqual(['eq', ['category', 'Fridges']]);
+    expect(calls).toContainEqual(['ilike', ['sku', '%HS%']]);
+    expect(calls).toContainEqual(['or', ['price.is.null,price.eq.0']]);
   });
 });
 

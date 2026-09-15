@@ -20,6 +20,15 @@ function applyProductFilters(query, filters, businessId) {
   if (filters.sku_pattern) {
     query = query.ilike('sku', `%${filters.sku_pattern}%`);
   }
+  /* "The ones I just imported and have not priced yet". Without it, pricing a
+     cost-only import meant either repricing the whole catalogue or knowing a
+     SKU pattern that happened to isolate it. NULL and 0 both mean unpriced:
+     the column is nullable and the importer writes 0. */
+  if (filters.unpriced_only) {
+    query = query.or('price.is.null,price.eq.0');
+  }
+  /* Set by the preview table's tick boxes, so a run can be narrowed to
+     individual products after seeing what it would do. */
   if (filters.product_ids && filters.product_ids.length > 0) {
     query = query.in('id', filters.product_ids);
   }
@@ -38,13 +47,33 @@ function priceBaseFor(mode, currentPrice, costPrice) {
   return mode === 'cost_markup_percent' ? costPrice : currentPrice;
 }
 
+/* A percentage OF the selling price cannot move a price of 0: 0 + 30% is 0.
+   set_price and fixed_amount both still work on an unpriced product, since
+   neither multiplies by it. */
+const PERCENT_OF_PRICE_MODES = ['markup_percent', 'markdown_percent'];
+
+const NO_COST = 'No cost price recorded, so a markup on cost cannot be worked out.';
+const NO_PRICE = 'No selling price to work from. Use "From Cost %" to price this from what you paid.';
+
 /**
- * A markup on cost is meaningless when no cost was ever recorded, and
- * applying it anyway would rewrite a real selling price to 0. Those products
- * are skipped and counted rather than silently wrecked.
+ * Why this product cannot be repriced by this mode, or null if it can.
+ *
+ * Two dead ends, opposite to each other:
+ *
+ *   A markup ON COST is meaningless with no cost recorded, and applying it
+ *   anyway would rewrite a real selling price to 0.
+ *
+ *   A markup ON THE SELLING PRICE is meaningless with no price recorded. It
+ *   is not destructive, it simply does nothing, which is worse in one way:
+ *   the run reported "52 products" and "0 will change" with no explanation,
+ *   so a shop that had just imported a cost-only sheet, which is exactly
+ *   what bulk import now encourages, saw the tool shrug. Naming the reason
+ *   and the mode that does work is the whole fix.
  */
-function skipForMissingCost(mode, costPrice) {
-  return mode === 'cost_markup_percent' && !(costPrice > 0);
+function skipReasonFor(mode, currentPrice, costPrice) {
+  if (mode === 'cost_markup_percent') return costPrice > 0 ? null : NO_COST;
+  if (PERCENT_OF_PRICE_MODES.includes(mode) && !(currentPrice > 0)) return NO_PRICE;
+  return null;
 }
 
 /**
@@ -110,7 +139,8 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
     const preview = products.map(p => {
       const currentPrice = parseFloat(p.price) || 0;
       const costPrice = parseFloat(p.cost_price) || 0;
-      const skipped = skipForMissingCost(mode, costPrice);
+      const skipReason = skipReasonFor(mode, currentPrice, costPrice);
+      const skipped = !!skipReason;
       const newPrice = skipped
         ? currentPrice
         : calculateNewPrice(priceBaseFor(mode, currentPrice, costPrice), mode, parseFloat(value), parseFloat(rounding));
@@ -128,13 +158,22 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
         cost_price: costPrice,
         margin,
         skipped,
-        skip_reason: skipped ? 'No cost price recorded, so a markup on cost cannot be worked out.' : null
+        skip_reason: skipReason
       };
     });
+
+    /* Only worth offering when switching would actually achieve something:
+       the rows that stalled for want of a price have a cost to work from. */
+    const stalledForPrice = preview.filter(p => p.skip_reason === NO_PRICE);
+    const suggestedMode = stalledForPrice.length > 0 && stalledForPrice.some(p => p.cost_price > 0)
+      ? 'cost_markup_percent'
+      : null;
 
     res.json({
       count: preview.length,
       skipped_count: preview.filter(p => p.skipped).length,
+      skipped_no_price: stalledForPrice.length,
+      suggested_mode: suggestedMode,
       total_current: parseFloat(preview.reduce((s, p) => s + p.current_price, 0).toFixed(2)),
       total_new: parseFloat(preview.reduce((s, p) => s + p.new_price, 0).toFixed(2)),
       products: preview
@@ -177,14 +216,17 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
     const logEntries = [];
     let updatedCount = 0;
     let skippedNoCost = 0;
+    let skippedNoPrice = 0;
 
     // Update each product
     for (const p of products) {
       const oldPrice = parseFloat(p.price) || 0;
       const costPrice = parseFloat(p.cost_price) || 0;
 
-      if (skipForMissingCost(mode, costPrice)) {
-        skippedNoCost += 1;
+      const skipReason = skipReasonFor(mode, oldPrice, costPrice);
+      if (skipReason) {
+        if (skipReason === NO_COST) skippedNoCost += 1;
+        else skippedNoPrice += 1;
         continue;
       }
 
@@ -213,7 +255,10 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
         change_value: parseFloat(value),
         batch_id: batchId,
         reason: reason || null,
-        changed_by: req.user.auth_id
+        // req.user has no auth_id — authGuard builds it from the users row,
+        // whose id IS the auth.users id (001). auth_id was silently undefined,
+        // so every bulk repricing was logged with no author at all.
+        changed_by: req.user.id
       });
 
       updatedCount++;
@@ -230,13 +275,19 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
       }
     }
 
+    /* Say what was left behind AND what to do about it. "Updated prices for 0
+       product(s)" on its own is what made this look broken to a shop whose
+       products were all imported at cost. */
+    let message = `Updated prices for ${updatedCount} product(s)`;
+    if (skippedNoCost > 0) message += `. ${skippedNoCost} skipped, no cost price recorded.`;
+    if (skippedNoPrice > 0) message += `. ${skippedNoPrice} skipped, no selling price to mark up, use From Cost % instead.`;
+
     res.json({
-      message: skippedNoCost > 0
-        ? `Updated prices for ${updatedCount} product(s). ${skippedNoCost} skipped, no cost price recorded.`
-        : `Updated prices for ${updatedCount} product(s)`,
+      message,
       batch_id: batchId,
       updated_count: updatedCount,
       skipped_no_cost: skippedNoCost,
+      skipped_no_price: skippedNoPrice,
       total_products: products.length
     });
   } catch (err) {
@@ -321,8 +372,25 @@ router.get('/history', authGuard, permissionCheck('manage_products'), async (req
     const { data, error, count } = await query;
     if (error) throw error;
 
+    /* Who changed it, stitched on rather than embedded. changed_by is a
+       foreign key to auth.users, not public.users, so `users!changed_by`
+       makes PostgREST fail the whole select with PGRST200 and the history
+       comes back empty. public.users.id IS the auth id, so one lookup keyed
+       by id is all it takes. See __tests__/postgrestEmbeds.test.js. */
+    const rows = data || [];
+    const authorIds = [...new Set(rows.map(r => r.changed_by).filter(Boolean))];
+    if (authorIds.length > 0) {
+      const { data: users } = await supabaseAdmin
+        .from('users')
+        .select('id, name')
+        .in('id', authorIds);
+      const byId = {};
+      for (const u of users || []) byId[u.id] = u.name;
+      for (const row of rows) row.changed_by_name = byId[row.changed_by] || null;
+    }
+
     res.json({
-      data,
+      data: rows,
       total: count,
       page: parseInt(page, 10),
       total_pages: Math.ceil(count / parseInt(limit, 10))

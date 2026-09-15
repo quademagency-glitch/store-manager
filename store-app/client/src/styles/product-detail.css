@@ -1,0 +1,142 @@
+/* ============================================
+   Product detail page
+
+   The history is a timeline rather than a table on purpose: its rows are not
+   the same shape. A stock movement has a quantity and a branch, a price change
+   has two amounts, an edit has an old and a new string. Forcing all three into
+   shared columns leaves most cells empty, which is what a merged ledger table
+   looked like before this.
+
+   Every rule here is scoped to .pd-*, so nothing leaks into the inventory
+   tables the page also uses.
+   ============================================ */
+
+.pd-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.pd-stat {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  box-shadow: var(--shadow-sm);
+  /* Lets the value size against its own tile rather than the viewport, the
+     same trick the dashboard stat cards use. */
+  container-type: inline-size;
+}
+
+.pd-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.pd-stat-value {
+  font-size: clamp(1.25rem, 12cqi, 1.9rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Dates are text, not figures — they should not compete with the numbers. */
+.pd-stat-value--sm {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pd-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.pd-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+}
+
+.pd-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.pd-event {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+}
+
+/* The left edge carries the kind, so the three are scannable without reading
+   every line. */
+.pd-event--stock { border-left-color: var(--color-accent-primary); }
+.pd-event--price { border-left-color: var(--color-warning); }
+.pd-event--edit  { border-left-color: var(--color-text-tertiary); }
+
+.pd-event-mark {
+  flex: 0 0 auto;
+  min-width: 3rem;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.pd-event--stock .pd-event-mark { color: var(--color-accent-primary); }
+.pd-event--price .pd-event-mark { color: var(--color-warning); }
+
+.pd-event-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.pd-event-title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pd-event-meta {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.pd-event-note {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.pd-more {
+  margin-top: var(--space-lg);
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .pd-event {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .pd-event-mark {
+    min-width: 2.25rem;
+  }
+}

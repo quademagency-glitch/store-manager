@@ -48,6 +48,8 @@ export default function PriceChangeHistory() {
       case 'fixed_amount': return { label: 'Fixed Amt', color: 'var(--color-primary)' };
       case 'set_price': return { label: 'Set Price', color: 'var(--color-warning)' };
       case 'manual': return { label: 'Manual', color: 'var(--color-text-secondary)' };
+      // Added by migration 079. Without it this rendered the raw column value.
+      case 'cost_markup_percent': return { label: 'From Cost %', color: 'var(--color-primary)' };
       default: return { label: type, color: 'var(--color-text-muted)' };
     }
   };
@@ -120,7 +122,10 @@ export default function PriceChangeHistory() {
                     </div>
                   )}
 
-                  {/* Entries */}
+                  {/* Entries. Scrolls rather than clips: nine columns do not
+                      fit a phone, and the last of them is the reason, which
+                      was being cut off with nothing to say it was there. */}
+                  <div className="table-container">
                   <table className="glass-table mb-0">
                     {!isBulk && (
                       <thead>
@@ -129,6 +134,7 @@ export default function PriceChangeHistory() {
                           <th className="text-right">Old Price</th>
                           <th className="text-right">New Price</th>
                           <th className="text-right">Change</th>
+                          <th>By</th>
                           <th>Reason</th>
                         </tr>
                       </thead>
@@ -159,6 +165,9 @@ export default function PriceChangeHistory() {
                             <td style={{ textAlign: 'right', color: change > 0 ? 'var(--color-success)' : 'var(--color-error)', fontSize: '0.85rem' }}>
                               {change > 0 ? '+' : ''}{fmt(change)}
                             </td>
+                            <td className="text-muted" style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                              {entry.changed_by_name || '-'}
+                            </td>
                             <td className="text-muted" style={{ fontSize: '0.85rem', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {entry.reason || '-'}
                             </td>
@@ -167,6 +176,7 @@ export default function PriceChangeHistory() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               );
             })}

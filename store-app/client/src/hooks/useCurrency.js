@@ -1,6 +1,20 @@
 import { useMemo } from 'react';
 
 /**
+ * currencyPrefixStyle, sizing for an `.input-prefix` money field.
+ *
+ * The stylesheet reserves 2rem of left padding, which clears a one-character
+ * symbol like $ and nothing wider: GH₵ and F CFA sit on top of the value.
+ * Reserve the symbol's own width instead, its 0.8rem offset plus the symbol
+ * plus the gap the input pads with anyway.
+ *
+ * Spread onto the `.input-prefix-wrapper`, the input inherits it.
+ */
+export function currencyPrefixStyle(symbol) {
+  return { '--prefix-pad': `calc(1.6rem + ${(symbol || '').length || 1}ch)` };
+}
+
+/**
  * useCurrency, Provides a standardized currency formatter based on business config.
  * 
  * Resolves the inconsistency where some pages use USD and others GHS.
@@ -54,5 +68,7 @@ export function useCurrency(business, overrideCurrency) {
     }
   }, [currencyCode, locale]);
 
-  return { fmt, currencyCode, currencySymbol, locale };
+  const prefixStyle = useMemo(() => currencyPrefixStyle(currencySymbol), [currencySymbol]);
+
+  return { fmt, currencyCode, currencySymbol, locale, prefixStyle };
 }

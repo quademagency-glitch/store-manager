@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Modal from '../../../components/Modal';
+import { currencyPrefixStyle } from '../../../hooks/useCurrency';
 
-export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, editingProduct, locations, isSubmitting, error }) {
+export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, editingProduct, locations, currencySymbol, isSubmitting, error }) {
   const {
     register,
     handleSubmit,
@@ -50,6 +51,8 @@ export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, edit
     onSubmit(data);
   };
 
+  const prefixStyle = currencyPrefixStyle(currencySymbol);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editingProduct ? 'Edit Product' : 'Add New Product'}>
       <form onSubmit={handleSubmit(onFormSubmit)} className="form-layout">
@@ -94,8 +97,8 @@ export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, edit
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="prod-price">Selling Price *</label>
-            <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
+            <div className="input-prefix-wrapper" style={prefixStyle}>
+              <span className="input-prefix">{currencySymbol}</span>
               <input 
                 type="number" 
                 id="prod-price" 
@@ -110,8 +113,8 @@ export default function ProductModal({ isOpen, onClose, onSubmit, onDelete, edit
           </div>
           <div className="form-group">
             <label htmlFor="prod-cost">Cost Price</label>
-            <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
+            <div className="input-prefix-wrapper" style={prefixStyle}>
+              <span className="input-prefix">{currencySymbol}</span>
               <input 
                 type="number" 
                 id="prod-cost" 

@@ -111,3 +111,46 @@
   background: rgba(34, 197, 94, 0.1);
   color: var(--color-success-text);
 }
+
+/* Bulk price update: why a product was left out, and the way forward.
+
+   The count alone ("52 products, 0 will change") was the whole problem, so
+   this sits between the summary and the table where the reader is already
+   looking for the discrepancy. It wraps rather than truncating: the message
+   carries a sentence and, for the fixable case, a button. */
+.bulk-price-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg, rgba(255, 180, 0, 0.12));
+  border: 1px solid var(--color-warning);
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+}
+
+.bulk-price-note > span {
+  flex: 1;
+  min-width: 12rem;
+}
+
+/* "Only products with no selling price yet". A checkbox filter sat between
+   two dropdowns needs its label tied to it and a hit area worth tapping on a
+   phone, which a bare <input> beside text does not give. */
+.bulk-price-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: var(--space-xs) 0;
+}
+
+.bulk-price-check input {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}

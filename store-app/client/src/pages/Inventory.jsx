@@ -14,7 +14,6 @@ import ThresholdModal from '../features/inventory/components/ThresholdModal';
 import TransferModal from '../features/inventory/components/TransferModal';
 import BatchModal from '../features/inventory/components/BatchModal';
 import { useToast } from '../hooks/useToast';
-import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
@@ -66,14 +65,13 @@ export default function Inventory() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
-  const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
-  const { fmt } = useCurrency(business);
+  const { fmt, currencySymbol } = useCurrency(business);
   const { exportCsv } = useExportCsv();
   // The hook exports this as refreshProducts, so destructuring `fetchProducts`
   // silently produced undefined and the list never refreshed after a bulk
   // price change.
-  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, refreshProducts: fetchProducts } = useProducts();
+  const { products, loading: productsLoading, addProduct, refreshProducts: fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
   const { role, locationIds } = useAuthContext();
   const isManagerOrAdmin = ['Business Admin', 'Manager', 'Platform Admin'].includes(role);
@@ -86,7 +84,6 @@ export default function Inventory() {
   const [locationFilter, setLocationFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
   const [productFormError, setProductFormError] = useState('');
   const [isProductSubmitting, setIsProductSubmitting] = useState(false);
   // Adjust Modal
@@ -418,21 +415,15 @@ export default function Inventory() {
     return result;
   }, [products, productSearch, stockFilter, locationFilter, isManagerOrAdmin, visibleLocations]);
 
+  /* This modal only adds. Clicking a product opens its own page, which is
+     where editing and deleting one now live. */
   const openAddProductModal = () => {
-    setEditingProduct(null);
-    setProductFormError('');
-    setIsProductModalOpen(true);
-  };
-
-  const openEditProductModal = (product) => {
-    setEditingProduct(product);
     setProductFormError('');
     setIsProductModalOpen(true);
   };
 
   const closeProductModal = () => {
     setIsProductModalOpen(false);
-    setEditingProduct(null);
     setProductFormError('');
   };
 
@@ -440,40 +431,25 @@ export default function Inventory() {
     setProductFormError('');
     setIsProductSubmitting(true);
     try {
-      if (editingProduct) {
-        const result = await updateProduct(editingProduct.id, {
-          name: data.name,
-          sku: data.sku,
-          category: data.category,
-          price: parseFloat(data.price),
-          qr_code_data: data.qr_code_data
-        });
-        if (!result.success) throw new Error(result.error || 'Failed to update product');
-      } else {
-        const result = await addProduct({
-          name: data.name,
-          sku: data.sku,
-          category: data.category,
-          price: parseFloat(data.price),
-          initialQuantity: data.initialQuantity ? parseInt(data.initialQuantity, 10) : 0,
-          locationId: data.locationId,
-          qr_code_data: data.qr_code_data
-        });
-        if (!result.success) throw new Error(result.error || 'Failed to add product');
-      }
+      const result = await addProduct({
+        name: data.name,
+        sku: data.sku,
+        category: data.category,
+        price: parseFloat(data.price),
+        /* The form has always collected a cost price and this call has always
+           dropped it, so every product created here started with a cost of 0
+           and the stock was valued at nothing. */
+        cost_price: data.cost_price === '' || data.cost_price === undefined ? 0 : parseFloat(data.cost_price),
+        initialQuantity: data.initialQuantity ? parseInt(data.initialQuantity, 10) : 0,
+        locationId: data.locationId,
+        qr_code_data: data.qr_code_data
+      });
+      if (!result.success) throw new Error(result.error || 'Failed to add product');
       closeProductModal();
     } catch (err) {
       setProductFormError(err.message);
     } finally {
       setIsProductSubmitting(false);
-    }
-  };
-
-  const handleDeleteProduct = async (id, name) => {
-    const confirmed = await confirm({ title: 'Delete Product', message: `Delete ${name}? This cannot be undone.`, variant: 'danger', confirmText: 'Delete' });
-    if (confirmed) {
-      await deleteProduct(id);
-      closeProductModal();
     }
   };
 
@@ -645,8 +621,8 @@ export default function Inventory() {
                         <tr 
                           key={product.id} 
                           className={isLowStock ? 'row-warning' : ''}
-                          style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
-                          onClick={() => hasPermission('manage_products') && openEditProductModal(product)}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/inventory/products/${product.id}`)}
                         >
                           <td><code className="text-mono">{product.sku}</code></td>
                           <td>
@@ -694,8 +670,8 @@ export default function Inventory() {
                     <div 
                       key={product.id} 
                       className="m-card"
-                      style={{ cursor: hasPermission('manage_products') ? 'pointer' : 'default' }}
-                      onClick={() => hasPermission('manage_products') && openEditProductModal(product)}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/inventory/products/${product.id}`)}
                     >
                       <div className="m-card-top">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
@@ -1146,9 +1122,9 @@ export default function Inventory() {
         isOpen={isProductModalOpen} 
         onClose={closeProductModal} 
         onSubmit={handleProductSubmit} 
-        onDelete={handleDeleteProduct}
-        editingProduct={editingProduct} 
+        editingProduct={null} 
         locations={locations} 
+        currencySymbol={currencySymbol} 
         isSubmitting={isProductSubmitting} 
         error={productFormError} 
       />

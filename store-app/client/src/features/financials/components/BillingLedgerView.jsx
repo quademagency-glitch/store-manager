@@ -53,7 +53,7 @@ export default function BillingLedgerView({ kind, parties }) {
   const toast = useToast();
   const confirm = useConfirm();
   const { business } = usePrintDocument();
-  const { fmt } = useCurrency(business);
+  const { fmt, currencySymbol } = useCurrency(business);
 
   const [activeTab, setActiveTab] = useState('documents');
   const [statusFilter, setStatusFilter] = useState('');
@@ -275,6 +275,7 @@ export default function BillingLedgerView({ kind, parties }) {
         onSubmit={handleCreate}
         kind={kind}
         parties={parties}
+        currencySymbol={currencySymbol}
         isSubmitting={isSubmitting}
         error={error}
       />

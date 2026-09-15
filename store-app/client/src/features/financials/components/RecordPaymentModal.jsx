@@ -13,7 +13,7 @@ const TILL_METHODS = ['cash', 'mobile_money'];
  */
 export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document, outstanding = 0, locations, isSubmitting, error }) {
   const { business } = usePrintDocument();
-  const { fmt, currencySymbol } = useCurrency(business);
+  const { fmt, currencySymbol, prefixStyle } = useCurrency(business);
 
   const {
     register,
@@ -71,7 +71,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="pay-amount">Amount *</label>
-            <div className="input-prefix-wrapper">
+            <div className="input-prefix-wrapper" style={prefixStyle}>
               <span className="input-prefix">{currencySymbol}</span>
               <input
                 type="number"

@@ -13,7 +13,7 @@ export default function Products() {
   const { hasPermission } = useAuthContext();
   const confirm = useConfirm();
   const { business } = usePrintDocument();
-  const { fmt, currencySymbol } = useCurrency(business);
+  const { fmt, currencySymbol, prefixStyle } = useCurrency(business);
   const { products, loading, error, addProduct, updateProduct, deleteProduct } = useProducts();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -453,7 +453,7 @@ export default function Products() {
 
           <div className="form-group">
             <label htmlFor="price">Price ({currencySymbol}) *</label>
-            <div className="input-prefix-wrapper">
+            <div className="input-prefix-wrapper" style={prefixStyle}>
               <span className="input-prefix">{currencySymbol}</span>
               <input 
                 type="number" 

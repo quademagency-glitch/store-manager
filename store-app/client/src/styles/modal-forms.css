@@ -149,5 +149,8 @@
   color: var(--color-text-secondary);
 }
 .form-input.with-prefix {
-  padding-left: 2rem;
+  /* 2rem clears a one-character symbol like $. A currency whose symbol is
+     wider, GH₵ or F CFA, would sit on top of the value, so those callers
+     pass their own width in --prefix-pad. */
+  padding-left: var(--prefix-pad, 2rem);
 }

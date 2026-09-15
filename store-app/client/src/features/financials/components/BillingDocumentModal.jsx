@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
+import { currencyPrefixStyle } from '../../../hooks/useCurrency';
 
 /**
  * Create form for an AR invoice or AP bill. Shared between Accounts Receivable
  * and Accounts Payable since the two are structurally identical, only the
  * party list (customers vs suppliers) and labels differ.
  */
-export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, parties, isSubmitting, error }) {
+export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, parties, currencySymbol, isSubmitting, error }) {
   const partyLabel = kind === 'ar' ? 'Customer' : 'Supplier';
   const docLabel = kind === 'ar' ? 'Invoice' : 'Bill';
   const partyField = kind === 'ar' ? 'customer_id' : 'supplier_id';
@@ -90,8 +91,8 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="doc-amount">Amount *</label>
-            <div className="input-prefix-wrapper">
-              <span className="input-prefix">$</span>
+            <div className="input-prefix-wrapper" style={currencyPrefixStyle(currencySymbol)}>
+              <span className="input-prefix">{currencySymbol}</span>
               <input
                 type="number"
                 id="doc-amount"

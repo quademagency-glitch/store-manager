@@ -54,20 +54,70 @@ const envSchema = z.object({
 
 let _env;
 
+/**
+ * Required means "the schema will not accept this being absent", which is
+ * exactly SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY today. Read off the
+ * schema rather than listed here, so adding a field without a default cannot
+ * quietly become optional.
+ */
+function isRequired(key) {
+  const field = envSchema.shape[key];
+  return field ? !field.isOptional() : false;
+}
+
+const describe = (issues) => issues.map(i => `  ${i.path.join('.')}: ${i.message}`).join('\n');
+
+/**
+ * Validate the environment once, at startup.
+ *
+ * TWO THINGS THIS USED TO GET WRONG.
+ *
+ * The fallback was `envSchema.catch(ctx => ctx.input)`, and .catch() on an
+ * OBJECT schema replaces the whole object, not the field that failed. So one
+ * bad value returned raw process.env and threw away EVERY default: PORT,
+ * NODE_ENV, LOG_LEVEL, FROM_EMAIL, APP_URL, TRUST_PROXY_HOPS, API_RATE_LIMIT.
+ * The comment said "use defaults for any missing/invalid fields"; the code did
+ * the opposite. Dropping just the offending keys and re-parsing gives each
+ * remaining field its own default, which is what was meant.
+ *
+ * And a missing SUPABASE_SERVICE_ROLE_KEY logged a warning and carried on, so
+ * the process booted, answered the health check, and failed every real request
+ * against a database it could never reach. A service that cannot work should
+ * refuse to start and say why: Railway then shows a crashed deploy, which is
+ * the truth, instead of a green one serving errors.
+ *
+ * Note this returns config nothing currently reads, index.js and worker.js
+ * call it for the check alone. That is fine, but it does mean this function is
+ * the only thing standing between a typo in the Railway dashboard and a
+ * confusing outage, so it has to be honest about what it did.
+ */
 function getEnv() {
   if (_env) return _env;
+
   const result = envSchema.safeParse(process.env);
-  if (!result.success) {
-    const issues = result.error.issues
-      .map(i => `  ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
-    const logger = require('../utils/logger');
-    logger.warn(`Environment validation issues:\n${issues}`);
-    // Use defaults for any missing/invalid fields so the server still boots
-    _env = envSchema.catch((ctx) => ctx.input).parse(process.env);
-  } else {
+  if (result.success) {
     _env = result.data;
+    return _env;
   }
+
+  const logger = require('../utils/logger');
+  const fatal = result.error.issues.filter(i => isRequired(String(i.path[0])));
+
+  if (fatal.length > 0) {
+    const message = `Cannot start, required environment variables are missing or invalid:\n${describe(fatal)}`;
+    logger.fatal(message);
+    throw new Error(message);
+  }
+
+  /* Remove only what failed, then re-parse. Each dropped field falls back to
+     its own default, or stays absent if it is optional, and everything that
+     validated is untouched. */
+  const cleaned = { ...process.env };
+  for (const issue of result.error.issues) delete cleaned[String(issue.path[0])];
+  const retry = envSchema.safeParse(cleaned);
+  _env = retry.success ? retry.data : cleaned;
+
+  logger.warn(`Ignoring invalid environment values, using defaults instead:\n${describe(result.error.issues)}`);
   return _env;
 }
 

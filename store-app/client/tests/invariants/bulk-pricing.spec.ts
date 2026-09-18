@@ -86,6 +86,29 @@ test.describe('bulk pricing', () => {
     for (const price of newPrices) expect(price.trim()).toMatch(/99\.00$/);
   });
 
+  test('pricing to a margin is not the same as pricing to a markup', async ({ page }) => {
+    await gotoApp(page, '/inventory');
+    await page.getByRole('tab', { name: 'Pricing' }).click();
+
+    // 5,824 cost. A 20% MARGIN is 7,280; a 20% MARKUP is 6,988.80.
+    await page.getByRole('button', { name: /Target Margin %/ }).click();
+    await page.getByPlaceholder(/e\.g\. 15/).fill('20');
+
+    /* Said in cedis before anything is previewed, because the two words sound
+       interchangeable and the difference is otherwise invisible until after
+       the prices have been written. */
+    await expect(page.getByText('Cost 100 becomes GH₵125.00')).toBeVisible();
+
+    await page.getByRole('button', { name: /Preview Changes/ }).click();
+    const rows = page.locator('.glass-table tbody tr');
+    await expect(rows.first()).toContainText('7,280');
+    // And the margin column reports back exactly what was asked for.
+    await expect(rows.first()).toContainText('20.0%');
+
+    await page.getByRole('button', { name: /From Cost %/ }).click();
+    await expect(page.getByText('Cost 100 becomes GH₵120.00')).toBeVisible();
+  });
+
   test('the price history says what kind of change it was, and who made it', async ({ page }) => {
     await gotoApp(page, '/inventory');
     await page.getByRole('tab', { name: 'Pricing' }).click();

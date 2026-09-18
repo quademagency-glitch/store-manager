@@ -345,6 +345,107 @@ describe('rounding to the nearest 99', () => {
   });
 });
 
+/**
+ * Pricing to a margin, which is not pricing to a markup.
+ *
+ *   markup:  price = cost * (1 + rate)     20% on 100 -> 120, margin 16.7%
+ *   margin:  price = cost / (1 - rate)     20% on 100 -> 125, margin 20%
+ *
+ * A shop saying "I make 20%" almost always means the second. Getting the two
+ * confused costs real money on every sale and looks identical on the screen,
+ * so the arithmetic is pinned here from both directions: the price produced,
+ * and the margin that price actually earns.
+ */
+describe('pricing to a margin', () => {
+  it('divides rather than multiplies', async () => {
+    overrides.products = { data: [product({ cost_price: 100 })], error: null };
+
+    const res = await preview({ mode: 'cost_margin_percent', value: 20 });
+
+    expect(res.body.products[0].new_price).toBe(125);
+  });
+
+  it('produces exactly the margin that was asked for', async () => {
+    overrides.products = { data: [product({ cost_price: 13380 })], error: null };
+
+    const res = await preview({ mode: 'cost_margin_percent', value: 20 });
+
+    // The check that matters: the reported margin equals the input.
+    expect(res.body.products[0].new_price).toBe(16725);
+    expect(res.body.products[0].margin).toBe('20.0');
+  });
+
+  it('is not the same as the markup of the same number', async () => {
+    overrides.products = { data: [product({ cost_price: 27040 })], error: null };
+    const margin = await preview({ mode: 'cost_margin_percent', value: 20 });
+
+    overrides.products = { data: [product({ cost_price: 27040 })], error: null };
+    const markup = await preview({ mode: 'cost_markup_percent', value: 20 });
+
+    expect(margin.body.products[0].new_price).toBe(33800);
+    expect(markup.body.products[0].new_price).toBe(32448);
+    // And the markup run earns less than the number typed into it.
+    expect(markup.body.products[0].margin).toBe('16.7');
+  });
+
+  it('needs a cost, exactly as a markup on cost does', async () => {
+    overrides.products = { data: [product({ price: 500, cost_price: 0 })], error: null };
+
+    const res = await preview({ mode: 'cost_margin_percent', value: 20 });
+
+    expect(res.body.products[0].skipped).toBe(true);
+    expect(res.body.products[0].skip_reason).toMatch(/no cost price/i);
+  });
+
+  it('refuses 100%, which divides by zero', async () => {
+    overrides.products = { data: [product({ cost_price: 100 })], error: null };
+
+    const res = await preview({ mode: 'cost_margin_percent', value: 100 });
+
+    /* Silently clamping would hide a misunderstanding: whoever typed it
+       thinks margin means something it does not. */
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/100%/);
+  });
+
+  it('refuses more than 100%, which goes negative', async () => {
+    overrides.products = { data: [product({ cost_price: 100 })], error: null };
+    const res = await preview({ mode: 'cost_margin_percent', value: 120 });
+    expect(res.status).toBe(400);
+  });
+
+  it('rounds to 99 like any other mode', async () => {
+    overrides.products = { data: [product({ cost_price: 5824 })], error: null };
+
+    const res = await preview({ mode: 'cost_margin_percent', value: 20, rounding: 'charm-99' });
+
+    // 5,824 at a 20% margin is 7,280, whose nearest 99 is 7,299.
+    expect(res.body.products[0].new_price).toBe(7299);
+  });
+
+  it('writes the mode to the audit trail, which migration 081 allows', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 100 })], error: null };
+
+    await apply({ mode: 'cost_margin_percent', value: 20, reason: 'Target margin' });
+
+    const log = mock.mutations.find(m => m.table === 'price_change_log');
+    expect(log.payload[0]).toMatchObject({
+      change_type: 'cost_margin_percent',
+      change_value: 20,
+      new_price: 125,
+    });
+  });
+
+  it('refuses the bulk run too, not only the preview', async () => {
+    overrides.products = { data: [product({ cost_price: 100 })], error: null };
+
+    const res = await apply({ mode: 'cost_margin_percent', value: 100 });
+
+    expect(res.status).toBe(400);
+    expect(mock.mutations.filter(m => m.table === 'products' && m.op === 'update')).toHaveLength(0);
+  });
+});
+
 /* The four original modes have to behave exactly as they did. */
 describe('the existing modes still work off the selling price', () => {
   const cases = [

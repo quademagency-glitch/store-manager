@@ -682,8 +682,18 @@ const ROUTE_FIXTURES = {
     const source = filters.product_ids && filters.product_ids.length > 0
       ? COST_ONLY_PREVIEW.filter((r) => filters.product_ids.includes(r.id))
       : COST_ONLY_PREVIEW;
+    /* Mirrors roundPrice in routes/pricing.js. The panel offers a rounding
+       choice, and a fixture that ignored it would show prices the real run
+       would never produce. */
+    const round = (v) => {
+      if (body.rounding === 'charm-99') {
+        return v < 200 ? Math.round(v + 0.01) - 0.01 : Math.round((v + 1) / 100) * 100 - 1;
+      }
+      const step = parseFloat(body.rounding);
+      return step > 0 ? Math.round(v / step) * step : v;
+    };
     const rows = source.map((r) => {
-      const newPrice = fromCost ? Math.round(r.cost_price * (1 + value / 100)) : 0;
+      const newPrice = fromCost ? round(r.cost_price * (1 + value / 100)) : 0;
       return {
         ...r,
         current_price: 0,

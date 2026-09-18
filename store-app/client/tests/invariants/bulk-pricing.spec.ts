@@ -65,6 +65,27 @@ test.describe('bulk pricing', () => {
     await expect(page.getByRole('button', { name: /Apply to 0 Product/ })).toBeDisabled();
   });
 
+  test('prices can be rounded to end in 99', async ({ page }) => {
+    await gotoApp(page, '/inventory');
+    await page.getByRole('tab', { name: 'Pricing' }).click();
+    await page.getByRole('button', { name: /From Cost %/ }).click();
+    await page.getByPlaceholder(/e\.g\. 15/).fill('20');
+
+    await page.getByLabel('Rounding').selectOption('charm-99');
+    await page.getByRole('button', { name: /Preview Changes/ }).click();
+
+    /* 5,824 at 20% is 6,988.80, which lands on 6,999. Asserted as rendered,
+       because the point of the option is what the shopper sees on the tag. */
+    const rows = page.locator('.glass-table tbody tr');
+    await expect(rows.first()).toContainText('6,999');
+
+    // Sixth cell is New Price: tick box, product, SKU, category, current, new.
+    const newPrices = await rows.locator('td:nth-child(6)').allInnerTexts();
+    expect(newPrices).toHaveLength(3);
+    // Whole cedis ending in 99, pesewas zero: GH₵6,999.00, GH₵1,699.00 ...
+    for (const price of newPrices) expect(price.trim()).toMatch(/99\.00$/);
+  });
+
   test('the price history says what kind of change it was, and who made it', async ({ page }) => {
     await gotoApp(page, '/inventory');
     await page.getByRole('tab', { name: 'Pricing' }).click();

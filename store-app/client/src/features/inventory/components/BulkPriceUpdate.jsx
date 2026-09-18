@@ -57,6 +57,9 @@ export default function BulkPriceUpdate({ onComplete }) {
     { value: '0.10', label: 'Nearest 0.10' },
     { value: '0.50', label: 'Nearest 0.50' },
     { value: '1.00', label: 'Nearest 1.00' },
+    /* Not a step like the others: 99, 199, 299 are 100 apart, so the server
+       has a rule for it rather than a number. See roundToCharm99. */
+    { value: 'charm-99', label: 'Nearest 99 (16,099)' },
   ];
 
   /* Takes the mode explicitly so the "use From Cost %" button can switch and
@@ -84,7 +87,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         filters,
         mode: useMode,
         value: parseFloat(value),
-        rounding: parseFloat(rounding)
+        rounding
       });
       setPreview(result);
       setExcluded(new Set());
@@ -118,7 +121,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         filters,
         mode,
         value: parseFloat(value),
-        rounding: parseFloat(rounding),
+        rounding,
         reason
       });
       toast.success(result.message);
@@ -170,15 +173,15 @@ export default function BulkPriceUpdate({ onComplete }) {
         {/* Filters */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Filter by Category</label>
-            <select className="form-input" value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setPreview(null); }}>
+            <label className="form-label" htmlFor="bulk-price-category" style={{ fontSize: '0.8rem' }}>Filter by Category</label>
+            <select className="form-input" id="bulk-price-category" value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setPreview(null); }}>
               <option value="">All Categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Filter by SKU (contains)</label>
-            <input className="form-input" placeholder="e.g. ELEC or PHN" value={filterSku} onChange={e => { setFilterSku(e.target.value); setPreview(null); }} />
+            <label className="form-label" htmlFor="bulk-price-sku" style={{ fontSize: '0.8rem' }}>Filter by SKU (contains)</label>
+            <input className="form-input" id="bulk-price-sku" placeholder="e.g. ELEC or PHN" value={filterSku} onChange={e => { setFilterSku(e.target.value); setPreview(null); }} />
           </div>
         </div>
 
@@ -222,7 +225,7 @@ export default function BulkPriceUpdate({ onComplete }) {
         {/* Value + Rounding */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>
+            <label className="form-label" htmlFor="bulk-price-value" style={{ fontSize: '0.8rem' }}>
               {mode === 'markup_percent' ? 'Markup (%)' :
                mode === 'markdown_percent' ? 'Markdown (%)' :
                mode === 'cost_markup_percent' ? 'Markup on cost (%)' :
@@ -230,6 +233,7 @@ export default function BulkPriceUpdate({ onComplete }) {
             </label>
             <input
               type="number"
+              id="bulk-price-value"
               className="form-input"
               value={value}
               onChange={e => { setValue(e.target.value); setPreview(null); }}
@@ -241,14 +245,14 @@ export default function BulkPriceUpdate({ onComplete }) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Rounding</label>
-            <select className="form-input" value={rounding} onChange={e => { setRounding(e.target.value); setPreview(null); }}>
+            <label className="form-label" htmlFor="bulk-price-rounding" style={{ fontSize: '0.8rem' }}>Rounding</label>
+            <select className="form-input" id="bulk-price-rounding" value={rounding} onChange={e => { setRounding(e.target.value); setPreview(null); }}>
               {roundingOptions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Reason (optional)</label>
-            <input className="form-input" placeholder="e.g. Q3 price review" value={reason} onChange={e => setReason(e.target.value)} />
+            <label className="form-label" htmlFor="bulk-price-reason" style={{ fontSize: '0.8rem' }}>Reason (optional)</label>
+            <input className="form-input" id="bulk-price-reason" placeholder="e.g. Q3 price review" value={reason} onChange={e => setReason(e.target.value)} />
           </div>
         </div>
 

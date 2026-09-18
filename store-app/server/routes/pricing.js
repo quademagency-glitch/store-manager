@@ -77,6 +77,47 @@ function skipReasonFor(mode, currentPrice, costPrice) {
 }
 
 /**
+ * Charm pricing, a price that ends in 99.
+ *
+ * Every other rounding choice is a step to land on, and 99 is not one: 99,
+ * 199, 299 are 100 apart, not 99 apart, so `Math.round(v / 99) * 99` gives
+ * multiples of 99 (198, 297) which is a different and useless thing.
+ *
+ * WHICH 99 DEPENDS ON THE PRICE, and that is the whole difficulty. A 100-wide
+ * grid is right for an appliance: 16,056 becomes 16,099, a move of 43. Applied
+ * to a 120 cedi item it would give 99, a 17% cut, and to a 6.50 bottle of
+ * water it would give either 99 or, without a guard, a negative number. So
+ * below CHARM_GRID_FLOOR the price ends in .99 instead, which is what a shop
+ * means by "99" at that size: 6.50 -> 6.99, 120 -> 119.99.
+ *
+ * The floor sits at 200 rather than 100 so the coarse grid only starts where
+ * a move of at most 50 is a quarter of the price or less.
+ */
+const CHARM_99 = 'charm-99';
+const CHARM_GRID_FLOOR = 200;
+
+function roundToCharm99(value) {
+  if (value < CHARM_GRID_FLOOR) {
+    const ends99 = Math.round(value + 0.01) - 0.01;
+    // Anything under about 0.50 has no sensible .99 below it; leave it alone
+    // rather than multiplying a trivial price several times over.
+    return ends99 > 0 ? parseFloat(ends99.toFixed(2)) : value;
+  }
+  return Math.round((value + 1) / 100) * 100 - 1;
+}
+
+/**
+ * Apply the caller's rounding choice. Numbers are a step to land on, as
+ * before; CHARM_99 is the rule above. Arrives as a string from the form,
+ * which is why it is not coerced before it gets here.
+ */
+function roundPrice(value, rounding) {
+  if (rounding === CHARM_99) return roundToCharm99(value);
+  const step = parseFloat(rounding);
+  return step > 0 ? Math.round(value / step) * step : value;
+}
+
+/**
  * Helper: Calculate new price based on mode
  */
 function calculateNewPrice(currentPrice, mode, value, rounding = 0.01) {
@@ -104,10 +145,7 @@ function calculateNewPrice(currentPrice, mode, value, rounding = 0.01) {
   // Ensure non-negative
   newPrice = Math.max(0, newPrice);
 
-  // Round to nearest increment
-  if (rounding > 0) {
-    newPrice = Math.round(newPrice / rounding) * rounding;
-  }
+  newPrice = roundPrice(newPrice, rounding);
 
   // Fix floating point
   return parseFloat(newPrice.toFixed(2));
@@ -143,7 +181,7 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
       const skipped = !!skipReason;
       const newPrice = skipped
         ? currentPrice
-        : calculateNewPrice(priceBaseFor(mode, currentPrice, costPrice), mode, parseFloat(value), parseFloat(rounding));
+        : calculateNewPrice(priceBaseFor(mode, currentPrice, costPrice), mode, parseFloat(value), rounding);
       const margin = newPrice > 0 && costPrice > 0 ? ((newPrice - costPrice) / newPrice * 100).toFixed(1) : null;
 
       return {
@@ -230,7 +268,7 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
         continue;
       }
 
-      const newPrice = calculateNewPrice(priceBaseFor(mode, oldPrice, costPrice), mode, parseFloat(value), parseFloat(rounding));
+      const newPrice = calculateNewPrice(priceBaseFor(mode, oldPrice, costPrice), mode, parseFloat(value), rounding);
 
       if (newPrice === oldPrice) continue;
 

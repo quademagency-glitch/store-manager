@@ -277,6 +277,74 @@ describe('choosing which products to reprice', () => {
   });
 });
 
+/**
+ * Prices that end in 99.
+ *
+ * Not a step to land on like the other rounding choices: 99, 199 and 299 are
+ * 100 apart, so treating it as a step would give multiples of 99 (198, 297),
+ * which is a different and useless thing. Which 99 to use depends on the size
+ * of the price, and that is what these pin down.
+ */
+describe('rounding to the nearest 99', () => {
+  const charm = (cost, markup = 20) =>
+    preview({ mode: 'cost_markup_percent', value: markup, rounding: 'charm-99' });
+
+  it('lands an appliance price on the nearest whole 99', async () => {
+    // 27,040 at 20% is 32,448. 32,399 is 49 away, 32,499 is 51 away.
+    overrides.products = { data: [product({ cost_price: 27040 })], error: null };
+    const res = await charm(27040);
+    expect(res.body.products[0].new_price).toBe(32399);
+  });
+
+  it('rounds up when up is nearer', async () => {
+    // 13,380 at 20% is 16,056, which is nearer 16,099 than 15,999.
+    overrides.products = { data: [product({ cost_price: 13380 })], error: null };
+    const res = await charm(13380);
+    expect(res.body.products[0].new_price).toBe(16099);
+  });
+
+  it('uses .99 for small prices, where a 100-wide grid would be absurd', async () => {
+    /* A bottle of water at 5.42 cost marks up to 6.50. On the appliance grid
+       the nearest 99 is 99, which is fifteen times the price. */
+    overrides.products = { data: [product({ cost_price: 5.4167 })], error: null };
+    const res = await charm(5.4167);
+    expect(res.body.products[0].new_price).toBe(6.99);
+  });
+
+  it('does not drop a mid-priced item to 99', async () => {
+    // 100 at 20% is 120. Not 99, which would be a 17% cut.
+    overrides.products = { data: [product({ cost_price: 100 })], error: null };
+    const res = await charm(100);
+    expect(res.body.products[0].new_price).toBe(119.99);
+  });
+
+  it('never produces a negative or zero price', async () => {
+    /* Rounding 0.20 down to the nearest .99 goes below zero. The guard leaves
+       trivial prices alone rather than multiplying them several times over. */
+    overrides.products = { data: [product({ price: 0.2, cost_price: 0 })], error: null };
+    const res = await preview({ mode: 'set_price', value: 0.2, rounding: 'charm-99' });
+    expect(res.body.products[0].new_price).toBeGreaterThan(0);
+  });
+
+  it('leaves the numeric rounding choices working exactly as before', async () => {
+    overrides.products = { data: [product({ cost_price: 33.33 })], error: null };
+    const half = await preview({ mode: 'cost_markup_percent', value: 30, rounding: 0.5 });
+    expect(half.body.products[0].new_price).toBe(43.5);
+
+    overrides.products = { data: [product({ cost_price: 33.33 })], error: null };
+    const whole = await preview({ mode: 'cost_markup_percent', value: 30, rounding: '1.00' });
+    expect(whole.body.products[0].new_price).toBe(43);
+  });
+
+  it('applies to a real bulk run, not just the preview', async () => {
+    overrides.products = { data: [product({ price: 0, cost_price: 13380 })], error: null };
+    await apply({ mode: 'cost_markup_percent', value: 20, rounding: 'charm-99' });
+
+    const update = mock.mutations.find(m => m.table === 'products' && m.op === 'update');
+    expect(update.payload).toEqual({ price: 16099 });
+  });
+});
+
 /* The four original modes have to behave exactly as they did. */
 describe('the existing modes still work off the selling price', () => {
   const cases = [

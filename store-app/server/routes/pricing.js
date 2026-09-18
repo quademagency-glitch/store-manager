@@ -35,16 +35,21 @@ function applyProductFilters(query, filters, businessId) {
   return query;
 }
 
+/* Modes that work from what you PAID rather than from the current shelf
+   price. Both are useless without a cost, and both can price a product that
+   has no selling price yet, which is the whole reason they exist. */
+const COST_BASED_MODES = ['cost_markup_percent', 'cost_margin_percent'];
+
 /**
  * Which number a mode works from.
  *
  * Every mode here used to start from the current selling price, which made
  * an unpriced product impossible to price: 0 * 1.3 is still 0. Bulk import
- * now accepts sheets that carry only what you paid, so cost_markup_percent
- * starts from cost_price instead. Everything else is unchanged.
+ * now accepts sheets that carry only what you paid, so the cost-based modes
+ * start from cost_price instead. Everything else is unchanged.
  */
 function priceBaseFor(mode, currentPrice, costPrice) {
-  return mode === 'cost_markup_percent' ? costPrice : currentPrice;
+  return COST_BASED_MODES.includes(mode) ? costPrice : currentPrice;
 }
 
 /* A percentage OF the selling price cannot move a price of 0: 0 + 30% is 0.
@@ -71,7 +76,7 @@ const NO_PRICE = 'No selling price to work from. Use "From Cost %" to price this
  *   and the mode that does work is the whole fix.
  */
 function skipReasonFor(mode, currentPrice, costPrice) {
-  if (mode === 'cost_markup_percent') return costPrice > 0 ? null : NO_COST;
+  if (COST_BASED_MODES.includes(mode)) return costPrice > 0 ? null : NO_COST;
   if (PERCENT_OF_PRICE_MODES.includes(mode) && !(currentPrice > 0)) return NO_PRICE;
   return null;
 }
@@ -118,6 +123,22 @@ function roundPrice(value, rounding) {
 }
 
 /**
+ * The one input that can produce nonsense rather than a wrong number.
+ *
+ * price = cost / (1 - rate). At a margin of 100% that divides by zero and
+ * every product in the run becomes Infinity; above 100% it goes negative.
+ * Neither is a price, so the request is refused rather than quietly clamped:
+ * someone typing 120 into a margin box has misunderstood something, and a
+ * silently capped result would hide that.
+ */
+function validationErrorFor(mode, value) {
+  if (mode !== 'cost_margin_percent') return null;
+  if (!(value < 100)) return 'A margin of 100% or more has no price: the margin is a share of the selling price, so 100% would mean the whole of it is profit.';
+  if (value < 0) return 'A negative margin would price below cost. Use Markdown % to cut prices.';
+  return null;
+}
+
+/**
  * Helper: Calculate new price based on mode
  */
 function calculateNewPrice(currentPrice, mode, value, rounding = 0.01) {
@@ -128,6 +149,14 @@ function calculateNewPrice(currentPrice, mode, value, rounding = 0.01) {
     case 'cost_markup_percent':
     case 'markup_percent':
       newPrice = currentPrice * (1 + value / 100);
+      break;
+    /* Margin is a share of what the CUSTOMER pays, so it divides rather than
+       multiplies. 20% margin on a cost of 100 is 125, not 120: the 25 of
+       profit is a fifth of the 125 the customer hands over. A markup of 20%
+       on the same cost gives 120, on which the margin is only 16.7%, and a
+       shop that says "I make 20%" almost always means the former. */
+    case 'cost_margin_percent':
+      newPrice = currentPrice / (1 - value / 100);
       break;
     case 'markdown_percent':
       newPrice = currentPrice * (1 - value / 100);
@@ -163,6 +192,8 @@ router.post('/preview', authGuard, permissionCheck('manage_products'), async (re
     if (!mode || value === undefined || value === null) {
       return res.status(400).json({ error: 'mode and value are required' });
     }
+    const invalid = validationErrorFor(mode, parseFloat(value));
+    if (invalid) return res.status(400).json({ error: invalid });
 
     let query = supabaseAdmin
       .from('products')
@@ -234,6 +265,8 @@ router.put('/bulk-update', authGuard, permissionCheck('manage_products'), async 
     if (!mode || value === undefined || value === null) {
       return res.status(400).json({ error: 'mode and value are required' });
     }
+    const invalid = validationErrorFor(mode, parseFloat(value));
+    if (invalid) return res.status(400).json({ error: invalid });
 
     // Fetch products to update
     let query = supabaseAdmin

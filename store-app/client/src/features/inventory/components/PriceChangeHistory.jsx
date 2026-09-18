@@ -50,6 +50,7 @@ export default function PriceChangeHistory() {
       case 'manual': return { label: 'Manual', color: 'var(--color-text-secondary)' };
       // Added by migration 079. Without it this rendered the raw column value.
       case 'cost_markup_percent': return { label: 'From Cost %', color: 'var(--color-primary)' };
+      case 'cost_margin_percent': return { label: 'Target Margin %', color: 'var(--color-success)' };
       default: return { label: type, color: 'var(--color-text-muted)' };
     }
   };

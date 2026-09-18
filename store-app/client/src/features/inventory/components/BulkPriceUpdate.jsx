@@ -49,6 +49,10 @@ export default function BulkPriceUpdate({ onComplete }) {
     // still 0. This one starts from cost instead, which is what a cost-only
     // import needs afterwards.
     { id: 'cost_markup_percent', label: 'From Cost %', icon: '⤢', hint: 'Set price = cost + this percentage', color: 'var(--color-info, var(--color-primary))' },
+    /* Margin is a share of what the CUSTOMER pays, markup a share of what you
+       paid, and 20% of one is not 20% of the other. The hints say which is
+       which in money, because the words alone have not been enough. */
+    { id: 'cost_margin_percent', label: 'Target Margin %', icon: '◑', hint: 'Set price so this % of it is profit', color: 'var(--color-success)' },
   ];
 
   const roundingOptions = [
@@ -144,6 +148,14 @@ export default function BulkPriceUpdate({ onComplete }) {
   /* A row is in the run when it would change something AND has not been
      unticked. Skipped rows are never in it: the server refuses them anyway,
      and offering a tick box that does nothing is worse than offering none. */
+  /* Worked in cedis on a round 100, because "markup" and "margin" sound
+     interchangeable and are not: 20% markup gives 120, 20% margin gives 125. */
+  const rate = parseFloat(value);
+  const costModeExample = !Number.isFinite(rate) || rate <= 0 ? null
+    : mode === 'cost_markup_percent' ? `Cost 100 becomes ${fmt(100 * (1 + rate / 100))}`
+    : mode === 'cost_margin_percent' && rate < 100 ? `Cost 100 becomes ${fmt(100 / (1 - rate / 100))}`
+    : null;
+
   const changeableProducts = preview ? preview.products.filter(p => !p.skipped && p.change !== 0) : [];
   const selectedProducts = changeableProducts.filter(p => !excluded.has(p.id));
   const changedCount = selectedProducts.length;
@@ -229,6 +241,7 @@ export default function BulkPriceUpdate({ onComplete }) {
               {mode === 'markup_percent' ? 'Markup (%)' :
                mode === 'markdown_percent' ? 'Markdown (%)' :
                mode === 'cost_markup_percent' ? 'Markup on cost (%)' :
+               mode === 'cost_margin_percent' ? 'Margin to earn (%)' :
                mode === 'fixed_amount' ? 'Amount (+/-)' : 'New Price'}
             </label>
             <input
@@ -243,6 +256,14 @@ export default function BulkPriceUpdate({ onComplete }) {
               max={mode === 'markdown_percent' ? '100' : undefined}
               style={{ fontSize: '1.1rem', fontWeight: 600 }}
             />
+            {/* The same number means two different prices depending on which
+                of these is selected, and the difference is invisible until
+                the preview. Spell it out in cedis at the point of typing. */}
+            {costModeExample && (
+              <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>
+                {costModeExample}
+              </small>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="bulk-price-rounding" style={{ fontSize: '0.8rem' }}>Rounding</label>

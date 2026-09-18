@@ -674,7 +674,11 @@ const ROUTE_FIXTURES = {
   'POST /pricing/preview': (body) => {
     const mode = body.mode;
     const value = Number(body.value) || 0;
-    const fromCost = mode === 'cost_markup_percent';
+    const fromCost = mode === 'cost_markup_percent' || mode === 'cost_margin_percent';
+    // Margin divides, markup multiplies. See routes/pricing.js.
+    const fromCostPrice = (cost) => (mode === 'cost_margin_percent'
+      ? cost / (1 - value / 100)
+      : cost * (1 + value / 100));
     const filters = body.filters || {};
     /* Every fixture row here is unpriced, so the filter can only narrow by
        the other criteria; what matters is that it is honoured at all rather
@@ -693,7 +697,7 @@ const ROUTE_FIXTURES = {
       return step > 0 ? Math.round(v / step) * step : v;
     };
     const rows = source.map((r) => {
-      const newPrice = fromCost ? round(r.cost_price * (1 + value / 100)) : 0;
+      const newPrice = fromCost ? round(fromCostPrice(r.cost_price)) : 0;
       return {
         ...r,
         current_price: 0,

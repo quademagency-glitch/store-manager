@@ -80,18 +80,19 @@ export function useAuth() {
     setUserContext({ id: userId, business_id: userBusinessId });
 
     // Initialize active location if none set or if invalid
-    const currentActive = localStorage.getItem('active_location_id');
+    const branchKey = `active_location:${userBusinessId}:${userId}`;
+    const currentActive = localStorage.getItem(branchKey);
+    let selectedLocation = currentActive;
     if (roleName !== 'Platform Admin' && roleName !== 'Business Admin') {
       if (!currentActive || !userLocations.includes(currentActive)) {
-        if (userLocations.length > 0) {
-          setActiveLocationId(userLocations[0]);
-          localStorage.setItem('active_location_id', userLocations[0]);
-        } else {
-          setActiveLocationId(null);
-          localStorage.removeItem('active_location_id');
-        }
+        selectedLocation = userLocations[0] || null;
       }
     }
+    setActiveLocationId(selectedLocation);
+    if (selectedLocation) {
+      localStorage.setItem('active_location_id', selectedLocation);
+      localStorage.setItem(branchKey, selectedLocation);
+    } else localStorage.removeItem('active_location_id');
 
     roleLoadedFor.current = userId;
 
@@ -364,8 +365,10 @@ export function useAuth() {
   }, [permissions, role]);
 
   const switchLocation = useCallback((locationId, { silent = false } = {}) => {
+    if (!user?.id || !businessId) return;
     setActiveLocationId(locationId);
     localStorage.setItem('active_location_id', locationId);
+    localStorage.setItem(`active_location:${businessId}:${user.id}`, locationId);
     // Pages fetch their data keyed off the location header rather than
     // watching activeLocationId, so a reload is needed to refresh them, // except for the automatic first-login default assignment, where
     // there's no stale data on screen yet and reloading just causes a
@@ -373,7 +376,7 @@ export function useAuth() {
     if (!silent) {
       window.location.reload();
     }
-  }, []);
+  }, [businessId, user?.id]);
 
   return {
     user: user ? { ...user, business_id: businessId } : null,

@@ -5,6 +5,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const { invalidateUserCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { canAssignRole } = require('../utils/roleDelegation');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
@@ -80,10 +81,7 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
 
       if (roleErr) throw roleErr;
 
-      const grantedPermissions = targetRole?.permissions || [];
-      const exceedsOwnPermissions = grantedPermissions.some(p => !req.user.permissions.includes(p));
-
-      if (!targetRole || exceedsOwnPermissions) {
+      if (!canAssignRole(req.user, targetRole)) {
         return res.status(403).json({ error: `You cannot assign the "${requestedRoleName}" role because it grants permissions you do not have.` });
       }
     }
@@ -177,7 +175,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     if (req.user.role !== 'Platform Admin') {
       const { data: targetRole, error: roleErr } = await supabaseAdmin
         .from('roles')
-        .select('name, permissions')
+        .select('name, permissions, business_id')
         .eq('id', role_id)
         .single();
 
@@ -185,8 +183,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
         return res.status(400).json({ error: 'Invalid role_id.' });
       }
 
-      const exceedsOwnPermissions = (targetRole.permissions || []).some(p => !req.user.permissions.includes(p));
-      if (exceedsOwnPermissions) {
+      if (!canAssignRole(req.user, targetRole)) {
         return res.status(403).json({ error: `You cannot assign the "${targetRole.name}" role because it grants permissions you do not have.` });
       }
     }
@@ -195,9 +192,14 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     // from/to, and after the UPDATE the previous state is gone.
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('role_id, status')
+      .select('role_id, status, business_id')
       .eq('id', req.params.id)
       .maybeSingle();
+
+    if (!existingUser) return res.status(404).json({ error: 'User not found' });
+    if (req.user.role !== 'Platform Admin' && existingUser.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'You can only update users in your own business.' });
+    }
 
     const updates = { name, role_id };
     if (status) updates.status = status;

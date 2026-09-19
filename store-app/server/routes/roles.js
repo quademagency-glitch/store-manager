@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const { invalidateRoleCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { canGrantPermissions } = require('../utils/roleDelegation');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
@@ -49,8 +50,7 @@ router.post('/', authGuard, permissionCheck('manage_users'), async (req, res) =>
     }
 
     if (req.user.role !== 'Platform Admin') {
-      const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
-      if (exceedsOwnPermissions) {
+      if (!canGrantPermissions(req.user, permissions)) {
         return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });
       }
 
@@ -121,8 +121,7 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     }
 
     if (req.user.role !== 'Platform Admin') {
-      const exceedsOwnPermissions = permissions.some(p => !req.user.permissions.includes(p));
-      if (exceedsOwnPermissions) {
+      if (!canGrantPermissions(req.user, permissions)) {
         return res.status(403).json({ error: 'You cannot grant permissions you do not have.' });
       }
 

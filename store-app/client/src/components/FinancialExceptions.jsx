@@ -35,8 +35,8 @@ export default function FinancialExceptions() {
     finally { setBusy(false); }
   }
   const field = (name, label, type = 'number') => <div className="form-group" key={name}>
-    <label htmlFor={`review-${name}`}>{label}</label>
-    <input id={`review-${name}`} className="input" type={type} min={type === 'number' ? '0' : undefined} step={type === 'number' ? (name === 'points' ? '1' : '0.01') : undefined}
+    <label className="form-label" htmlFor={`review-${name}`}>{label}</label>
+    <input id={`review-${name}`} className="form-input" type={type} min={type === 'number' ? '0' : undefined} step={type === 'number' ? (name === 'points' ? '1' : '0.01') : undefined}
       required value={form.values[name] ?? ''} onChange={e => setForm(p => ({ ...p, values: { ...p.values, [name]: type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value } }))} />
   </div>;
   return <section className="glass-panel mt-xl" aria-labelledby="financial-exceptions-title" style={{ padding: 'var(--space-xl)' }}>
@@ -54,16 +54,17 @@ export default function FinancialExceptions() {
         <span>Page {page} of {Math.max(1, data.totalPages || 1)}</span><button className="btn btn-secondary" disabled={page >= (data.totalPages || 1)} onClick={() => setPage(p => p + 1)}>Next exceptions</button></div>
     </>}
     <Modal isOpen={!!selected} onClose={() => { if (!busy) setSelected(null); }} title="Review financial evidence">
-      {selected && <form onSubmit={save}>
+      {selected && <form onSubmit={save} style={{ display: 'grid', gap: '12px' }}>
         <p>{selected.reference}: {selected.reason}</p>
-        <label htmlFor="review-action">Review action</label>
-        <select id="review-action" className="input" value={form.action} onChange={e => setForm(p => ({ ...p, action: e.target.value, values: {} }))}>
+        {error && <p role="alert" className="alert alert-error">{error}</p>}
+        <label className="form-label" htmlFor="review-action">Review action</label>
+        <select id="review-action" className="form-input" value={form.action} onChange={e => setForm(p => ({ ...p, action: e.target.value, values: {} }))}>
           <option value="record_evidence">Record evidence / request further review</option>
           {actions[selected.kind] && <option value={actions[selected.kind][0]}>{actions[selected.kind][1]}</option>}
         </select>
         {form.action === 'confirm_settlement' && <>
-          <label htmlFor="review-method">Payment method shown on the receipt</label>
-          <select id="review-method" className="input" required value={form.values.payment_method || ''} onChange={e => setForm(p => ({ ...p, values: { ...p.values, payment_method: e.target.value } }))}>
+          <label className="form-label" htmlFor="review-method">Payment method shown on the receipt</label>
+          <select id="review-method" className="form-input" required value={form.values.payment_method || ''} onChange={e => setForm(p => ({ ...p, values: { ...p.values, payment_method: e.target.value } }))}>
             <option value="">Select method</option><option value="cash">Cash</option><option value="card">Card</option><option value="mobile">Mobile money</option><option value="transfer">Bank transfer</option>
           </select>
           {field('amount_paid', 'Amount tendered')}{field('store_credit', 'Customer credit used')}{field('points', 'Points redeemed')}{field('points_value', 'Value of redeemed points')}
@@ -73,8 +74,8 @@ export default function FinancialExceptions() {
         {form.action === 'confirm_cost' && field('unit_cost', 'Actual unit cost')}
         {form.action === 'link_payout' && field('ledger_reference', 'Original expense reference', 'text')}
         {selected.kind === 'return' && <p>Provide the original receipt, returned items and payment evidence. Further refunds remain blocked until their allocation has been reconciled.</p>}
-        <label htmlFor="review-evidence">Evidence reference</label><input id="review-evidence" className="input" required minLength={3} maxLength={1000} value={form.evidence} onChange={e => setForm(p => ({ ...p, evidence: e.target.value }))} />
-        <label htmlFor="review-note">What was verified or remains missing?</label><textarea id="review-note" className="input" required minLength={10} maxLength={2000} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+        <label className="form-label" htmlFor="review-evidence">Evidence reference</label><input id="review-evidence" className="form-input" required minLength={3} maxLength={1000} value={form.evidence} onChange={e => setForm(p => ({ ...p, evidence: e.target.value }))} />
+        <label className="form-label" htmlFor="review-note">What was verified or remains missing?</label><textarea id="review-note" className="form-input" required minLength={10} maxLength={2000} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
         <button className="btn btn-primary mt-md" disabled={busy}>{busy ? 'Saving…' : 'Save documented review'}</button>
         {history.length > 0 && <><h3>Previous reviews</h3><ul>{history.map(entry => <li key={entry.id}>{entry.actor?.name || 'Former staff'} · {new Date(entry.created_at).toLocaleString()}: {entry.note} (Evidence: {entry.evidence})</li>)}</ul></>}
       </form>}

@@ -474,7 +474,7 @@ const FIXTURES = {
   '/reports/pnl': {
     period: { startDate: '2026-07-01', endDate: '2026-07-31', locationId: null },
     revenue: 412800, cogs: 318600, grossProfit: 94200,
-    expenses: 41500, netProfit: 52700, grossMargin: 22.8, netMargin: 12.8,
+    commissions: 0, expenses: 41500, netProfit: 52700, grossMargin: 22.8, netMargin: 12.8,
   },
   /* `aging` is four *bucket arrays* keyed current/days_30/days_60/days_90_plus,
      and `summary` totals them under those same keys plus `totalOutstanding`, see GET /api/reports/ar-aging. The old fixture made `aging` a flat array of
@@ -503,7 +503,7 @@ const FIXTURES = {
           due_date: '2026-04-22', issued_date: '2026-03-22', days_overdue: 100 },
       ],
     },
-    summary: { current: 1640, days_30: 1165, days_60: 640, days_90_plus: 380, totalOutstanding: 3825 },
+    summary: { current: 1640, days_30: 1165, days_60: 640, days_90: 0, days_90_plus: 380, totalOutstanding: 3825 },
   },
 
   // ── CRM / loyalty ──
@@ -547,6 +547,7 @@ const FIXTURES = {
     ],
     total: 1, page: 1, limit: 20, totalPages: 1,
   },
+  '/hr/schedule-staff': [{ id: 'u1', name: 'Ama Mensah' }, { id: 'u2', name: 'Kofi Boateng' }],
   '/hr/schedules': [
     { id: 'sc1', shift_date: '2026-07-31', start_time: '08:00', end_time: '17:00',
       user: { name: 'Ama Mensah' }, location: { name: 'Adom Superstore, Osu' } },
@@ -749,6 +750,11 @@ const ROUTE_FIXTURES = {
   /* The harness has no SMS, so any 4-digit code is accepted here. The real
      endpoint checks it against verification_code and its expiry; what is
      mocked is the outcome, not the check. */
+  'GET /customers/:id/purchase-summary': (_b, p) => {
+    const sales = CUSTOMER_SALES.filter(sale => sale.customer_id === p.id && ['completed', 'void_pending'].includes(sale.status));
+    const total = sales.reduce((sum, sale) => sum + Number(sale.total_amount), 0);
+    return { purchaseCount: sales.length, grossSpent: total, refunds: 0, netSpent: total, scope: 'Selected location', period: 'Lifetime' };
+  },
   'GET /customers/:id/notes': (_b, p) => ({ data: CUSTOMER_NOTES[p.id] || [] }),
   'POST /customers/:id/notes': (body, p) => {
     const note = {

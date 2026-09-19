@@ -8,7 +8,7 @@ const { resolveCountry } = require('../utils/phone');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 const rateLimit = require('express-rate-limit');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const { appendBusinessData } = require('../services/businessExport');
 
 const router = express.Router();
@@ -336,7 +336,7 @@ router.get('/me/export', authGuard, permissionCheck('manage_business'), exportLi
   // level 6, not 9. routes/ledger.js uses 9, but on text-heavy CSV the extra
   // compression buys a few percent for substantially more CPU, and this runs
   // on a worker that is also serving the POS.
-  const archive = archiver('zip', { zlib: { level: 6 } });
+  const archive = new ZipArchive({ zlib: { level: 6 } });
 
   archive.on('warning', (err) => logger.warn({ err, reqId: req.id, businessId }, 'Export archive warning'));
   archive.on('error', (err) => {

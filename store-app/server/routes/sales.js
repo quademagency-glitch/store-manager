@@ -14,7 +14,18 @@ const { computeTax } = require('../utils/tax');
 const { reversePendingSale } = require('../services/pendingSales');
 const { runChecks } = require('../services/lossPreventionEngine');
 
+const { reportRange, applyReportRange } = require('../utils/reportDates');
+const { fetchAllRows } = require('../utils/fetchAllRows');
+
 const router = express.Router();
+
+function scopeSales(query, user) {
+  if (user.role !== 'Platform Admin') query = query.eq('business_id', user.business_id);
+  if (user.active_location_id) return query.eq('location_id', user.active_location_id);
+  if (!['Platform Admin', 'Business Admin'].includes(user.role)) return query.in('location_id', user.location_ids?.length ? user.location_ids : ['00000000-0000-0000-0000-000000000000']);
+  return query;
+}
+
 
 const createSaleSchema = z.object({
   items: z.array(z.object({
@@ -112,6 +123,29 @@ router.get('/', authGuard, permissionCheck('view_sales'), apiCache(5), async (re
  * Fetch historical sales with date range filtering.
  * Access: All authenticated staff (scoped to their location)
  */
+router.get('/export', authGuard, permissionCheck('view_sales'), async (req, res) => {
+  try {
+    const range = reportRange(req.query.startDate, req.query.endDate, { defaults: true });
+    const sales = await fetchAllRows(() => applyReportRange(scopeSales(supabaseAdmin.from('sales')
+      .select('id, created_at, receipt_number, status, total_amount, payment_method, customer:customers!customer_id(name), salesperson:users!salesperson_id(name)'), req.user), range)
+      .order('created_at', { ascending: false }).order('id'));
+    // Quote every cell and neutralize spreadsheet formulas from user-entered names.
+    const cell = value => {
+      let text = String(value ?? '');
+      if (/^[=+@\-\t\r]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const rows = [['Sale ID', 'Date', 'Receipt #', 'Customer', 'Status', 'Total', 'Payment Method', 'Salesperson'],
+      ...sales.map(sale => [sale.id, sale.created_at, sale.receipt_number, sale.customer?.name, sale.status,
+        Number(sale.total_amount).toFixed(2), sale.payment_method, sale.salesperson?.name])];
+    res.attachment(`sales_${range.startDate.slice(0, 10)}_${range.endDate.slice(0, 10)}.csv`);
+    res.type('text/csv').send('\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n'));
+  } catch (err) {
+    logger.error({ err }, 'Sales export failed');
+    res.status(err.status === 400 ? 400 : 500).json({ error: err.status === 400 ? err.message : 'Failed to export sales' });
+  }
+});
+
 router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -147,12 +181,7 @@ router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), as
       }
     }
 
-    if (startDate) {
-      query = query.gte('created_at', startDate);
-    }
-    if (endDate) {
-      query = query.lte('created_at', endDate);
-    }
+    query = applyReportRange(query, reportRange(startDate, endDate));
 
     const { data, error, count } = await query;
 
@@ -165,7 +194,7 @@ router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), as
     });
   } catch (err) {
     logger.error({ err: err }, 'Error fetching sales history:');
-    res.status(500).json({ error: 'Failed to fetch sales history' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: err.status === 400 ? err.message : 'Failed to fetch sales history' });
   }
 });
 

@@ -10,6 +10,32 @@ import { PageHeader, TabPanel, Tabs } from '../components/ui';
 export default function UserProfile() {
   const { user, role } = useAuthContext();
   const confirm = useConfirm();
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const changePassword = async event => {
+    event.preventDefault();
+    setPasswordError('');
+    setPasswordMessage('');
+    if (passwords.next !== passwords.confirm) { setPasswordError('New passwords do not match.'); return; }
+    if (passwords.next === passwords.current) { setPasswordError('Choose a different new password.'); return; }
+    setPasswordBusy(true);
+    try {
+      // Re-authenticate so the current password is checked even when the
+      // project's optional current-password policy is disabled.
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: passwords.current });
+      if (signInError) throw new Error('Current password could not be verified. Please try again.');
+      const { error: updateError } = await supabase.auth.updateUser({ password: passwords.next, current_password: passwords.current });
+      if (updateError) throw updateError;
+      setPasswords({ current: '', next: '', confirm: '' });
+      setPasswordMessage('Password updated successfully. Use your new password the next time you sign in.');
+    } catch (err) {
+      setPasswordError(err.message || 'Password could not be changed.');
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab') || 'profile';
   
@@ -76,6 +102,7 @@ export default function UserProfile() {
   };
 
   useEffect(() => {
+    if (activeTab !== 'scanner') return;
     const initialize = async () => {
       const linked = await fetchStatus();
       if (!linked) {
@@ -85,15 +112,17 @@ export default function UserProfile() {
       }
     };
     initialize();
-  }, [fetchStatus, generateToken]);
+  }, [fetchStatus, generateToken, activeTab]);
 
   // SSE connection for immediate status updates
   useEffect(() => {
+    if (activeTab !== 'scanner') return;
     let eventSource;
+    let cancelled = false;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       const token = session?.access_token;
-      if (!token) return;
+      if (!token || cancelled) return;
 
       eventSource = new EventSource(`${API_BASE}/scanner/events?token=${token}`);
 
@@ -118,11 +147,12 @@ export default function UserProfile() {
     });
 
     return () => {
+      cancelled = true;
       if (eventSource) {
         eventSource.close();
       }
     };
-  }, [generateToken]);
+  }, [generateToken, activeTab]);
 
   return (
     <div className="page-container">
@@ -144,7 +174,7 @@ export default function UserProfile() {
           items={[
             { id: 'profile', label: 'My Profile' },
             { id: 'password', label: 'Change Password' },
-            { id: 'payslip', label: 'Download Payslip' },
+            { id: 'payslip', label: 'Payslips' },
             { id: 'scanner', label: 'Scanner Setup' },
           ]}
           value={activeTab}
@@ -173,33 +203,30 @@ export default function UserProfile() {
           <TabPanel idPrefix="profile" id="password" value={activeTab}>
             <div style={{ maxWidth: '400px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>Change Password</h3>
-              <div className="glass-panel p-lg">
-                <div className="form-group">
-                  <label>Current Password</label>
-                  <input type="password" className="input" placeholder="••••••••" />
-                </div>
-                <div className="form-group">
-                  <label>New Password</label>
-                  <input type="password" className="input" placeholder="••••••••" />
-                </div>
-                <div className="form-group">
-                  <label>Confirm New Password</label>
-                  <input type="password" className="input" placeholder="••••••••" />
-                </div>
-                <button className="btn btn-primary w-full">Update Password</button>
-              </div>
+              <form className="glass-panel p-lg" onSubmit={changePassword}>
+                {passwordError && <p role="alert" className="alert alert-error">{passwordError}</p>}
+                {passwordMessage && <p role="status">{passwordMessage}</p>}
+                {[
+                  ['current', 'Current Password', 'current-password'],
+                  ['next', 'New Password', 'new-password'],
+                  ['confirm', 'Confirm New Password', 'new-password'],
+                ].map(([key, label, autoComplete]) => <div className="form-group" key={key}>
+                  <label htmlFor={`profile-password-${key}`}>{label}</label>
+                  <input id={`profile-password-${key}`} type="password" className="input" autoComplete={autoComplete}
+                    value={passwords[key]} onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))}
+                    required minLength={key === 'current' ? undefined : 8} disabled={passwordBusy} />
+                </div>)}
+                <button type="submit" className="btn btn-primary w-full" disabled={passwordBusy}>{passwordBusy ? 'Updating…' : 'Update Password'}</button>
+              </form>
             </div>
           </TabPanel>
 
           <TabPanel idPrefix="profile" id="payslip" value={activeTab}>
             <div style={{ maxWidth: '600px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '16px' }}>Payslips & Documents</h3>
-              <div className="glass-panel p-lg flex justify-between items-center">
-                <div>
-                  <div className="font-bold">May 2026 Payslip</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Generated on June 1, 2026</div>
-                </div>
-                <button className="btn btn-outline">Download PDF</button>
+              <div className="glass-panel p-lg">
+                <p>No payslip documents are available in this system yet.</p>
+                <p className="text-secondary">Contact your payroll administrator for your payslip.</p>
               </div>
             </div>
           </TabPanel>

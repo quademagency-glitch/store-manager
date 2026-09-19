@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
@@ -15,7 +15,7 @@ const Icons = {
 };
 
 export default function TillAccount() {
-  const { role } = useAuthContext();
+  const { role, activeLocationId } = useAuthContext();
   const { business, printElement } = usePrintDocument();
   const { fmt: fmtCurrency, currencySymbol } = useCurrency(business);
   const [data, setData] = useState(null);
@@ -44,35 +44,34 @@ export default function TillAccount() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  const requestId = useRef(0);
   const fetchData = async () => {
+    const id = ++requestId.current;
     setLoading(true);
     setError('');
+    setData(null);
+    setFinSummary(null);
     try {
-      const res = await api.get(`/ledger/till-balance?start_date=${startDate}&end_date=${endDate}`);
-      setData(res);
+      if (!startDate || !endDate || startDate > endDate) throw new Error('Select a valid start and end date.');
+      const qs = new URLSearchParams({ start_date: startDate, end_date: endDate });
+      const [till, summary] = await Promise.all([
+        api.get(`/ledger/till-balance?${qs}`),
+        isAdmin ? api.get(`/ledger/financial-summary?${qs}`) : Promise.resolve(null),
+      ]);
+      if (id !== requestId.current) return;
+      setData(till);
+      setFinSummary(summary);
     } catch (err) {
-      setError(err.message || 'Failed to fetch till account ledger');
+      if (id === requestId.current) setError(err.message || 'Failed to fetch till account ledger');
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
-
-  const fetchFinSummary = async () => {
-    if (!isAdmin) return;
-    try {
-      const res = await api.get(`/ledger/financial-summary?start_date=${startDate}&end_date=${endDate}`);
-      setFinSummary(res);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Financial summary error:', err);
-      setError(err);
-    }
-  };
-
   useEffect(() => {
     fetchData();
-    if (isAdmin) fetchFinSummary();
+    return () => { requestId.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [startDate, endDate, activeLocationId, isAdmin]);
 
   const fmt = (val) => fmtCurrency(val);
 
@@ -185,7 +184,7 @@ export default function TillAccount() {
     <div className="w-full h-full flex flex-col p-4 md:p-6" style={{ background: 'var(--color-bg-primary)' }}>
       <ErrorBanner
         error={error}
-        onRetry={() => { fetchData(); if (isAdmin) fetchFinSummary(); }}
+        onRetry={() => { fetchData(); }}
       />
 
       {/* Header Controls */}
@@ -200,14 +199,16 @@ export default function TillAccount() {
         
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <div className="flex items-center bg-transparent p-0.5 flex-1 md:flex-initial justify-between" style={{ border: '1px solid var(--color-border)' }}>
-            <input 
+            <label htmlFor="till-start">Start Date</label>
+            <input id="till-start"
               type="date" 
               className="bg-transparent text-sm px-1 py-1 outline-none font-mono w-[45%] md:w-auto text-primary"
               value={startDate} 
               onChange={e => setStartDate(e.target.value)} 
             />
             <span className="px-1 font-mono text-muted">-</span>
-            <input 
+            <label htmlFor="till-end">End Date</label>
+            <input id="till-end"
               type="date" 
               className="bg-transparent text-sm px-1 py-1 outline-none font-mono w-[45%] md:w-auto text-primary"
               value={endDate} 

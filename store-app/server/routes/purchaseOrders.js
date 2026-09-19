@@ -32,7 +32,7 @@ async function generatePoNumber(businessId) {
  * List purchase orders (paginated, filterable by status).
  * Access: Inventory managers
  */
-router.get('/', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.get('/', authGuard, permissionCheck('view_purchases', 'manage_purchases'), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req.query);
     const statusFilter = req.query.status; // optional: draft, sent, partial, received, cancelled
@@ -95,7 +95,7 @@ router.get('/', authGuard, permissionCheck('manage_inventory'), async (req, res)
  * Get a single PO with full details.
  * Access: Inventory managers
  */
-router.get('/:id', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.get('/:id', authGuard, permissionCheck('view_purchases', 'manage_purchases'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -134,7 +134,7 @@ router.get('/:id', authGuard, permissionCheck('manage_inventory'), async (req, r
  * PO number is auto-generated.
  * Access: Inventory managers
  */
-router.post('/', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.post('/', authGuard, permissionCheck('manage_purchases'), async (req, res) => {
   try {
     const { supplier_id, items, expected_date, notes } = req.body;
 
@@ -226,7 +226,7 @@ router.post('/', authGuard, permissionCheck('manage_inventory'), async (req, res
  * Update PO details and items (only if draft).
  * Access: Inventory managers
  */
-router.put('/:id', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.put('/:id', authGuard, permissionCheck('manage_purchases'), async (req, res) => {
   try {
     const { id } = req.params;
     const { supplier_id, items, expected_date, notes } = req.body;
@@ -316,7 +316,7 @@ router.put('/:id', authGuard, permissionCheck('manage_inventory'), async (req, r
  * Mark a draft PO as "sent" to the supplier.
  * Access: Inventory managers
  */
-router.put('/:id/send', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.put('/:id/send', authGuard, permissionCheck('manage_purchases'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -359,7 +359,7 @@ router.put('/:id/send', authGuard, permissionCheck('manage_inventory'), async (r
  * Cancel a PO (only if draft or sent).
  * Access: Inventory managers
  */
-router.put('/:id/cancel', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.put('/:id/cancel', authGuard, permissionCheck('manage_purchases'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -406,7 +406,7 @@ router.put('/:id/cancel', authGuard, permissionCheck('manage_inventory'), async 
  * - Updates PO status (partial / received)
  * Access: Inventory managers
  */
-router.post('/:id/receive', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.post('/:id/receive', authGuard, permissionCheck('manage_purchases', 'receive_goods'), async (req, res) => {
   try {
     const { id } = req.params;
     const { items, location_id, notes } = req.body;

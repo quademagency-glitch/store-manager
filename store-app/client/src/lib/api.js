@@ -61,7 +61,7 @@ function apiError(message, { endpoint, status, cause, body } = {}) {
  * Base fetch wrapper that injects the Supabase JWT token.
  * This ensures the server can authenticate the request.
  */
-async function fetchWithAuth(endpoint, options = {}) {
+async function fetchWithAuth(endpoint, options = {}, scope) {
   // Fixture short-circuit for the visual harness. Compiled out unless
   // VITE_USE_MOCKS is set, see src/lib/mockMode.js.
   if (IS_MOCK) {
@@ -78,14 +78,14 @@ async function fetchWithAuth(endpoint, options = {}) {
   }
 
   // Get current session token
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = scope ? scope.session : (await supabase.auth.getSession()).data.session;
   const token = session?.access_token;
 
   if (!token) {
     throw new Error('No authentication token found. Please sign in again.');
   }
 
-  const activeLocationId = localStorage.getItem('active_location_id');
+  const activeLocationId = scope ? scope.locationId : localStorage.getItem('active_location_id');
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers = {
@@ -149,14 +149,15 @@ async function fetchWithAuth(endpoint, options = {}) {
  */
 const inFlightGets = new Map();
 
-function dedupedGet(endpoint) {
-  const pending = inFlightGets.get(endpoint);
+async function dedupedGet(endpoint) {
+  const session = IS_MOCK ? null : (await supabase.auth.getSession()).data.session;
+  const locationId = localStorage.getItem('active_location_id');
+  const key = `${session?.access_token || 'mock'}:${locationId || ''}:${endpoint}`;
+  const pending = inFlightGets.get(key);
   if (pending) return pending;
-
-  const request = fetchWithAuth(endpoint, { method: 'GET' })
-    .finally(() => inFlightGets.delete(endpoint));
-
-  inFlightGets.set(endpoint, request);
+  const request = fetchWithAuth(endpoint, { method: 'GET' }, { session, locationId })
+    .finally(() => inFlightGets.delete(key));
+  inFlightGets.set(key, request);
   return request;
 }
 
@@ -194,7 +195,7 @@ async function fetchBlobWithAuth(endpoint) {
   try {
     response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...(localStorage.getItem('active_location_id') ? { 'X-Location-Id': localStorage.getItem('active_location_id') } : {}) },
     });
   } catch (cause) {
     // Same wording as fetchWithAuth, so a network failure reads identically
@@ -212,7 +213,7 @@ async function fetchBlobWithAuth(endpoint) {
     let message = HTTP_MESSAGES[response.status] || `Request failed (${response.status}).`;
     try {
       const body = await response.json();
-      if (body?.message) message = body.message;
+      if (body?.message || body?.error) message = body.message || body.error;
     } catch { /* not JSON, keep the status-based message */ }
     throw apiError(message, { endpoint, status: response.status });
   }

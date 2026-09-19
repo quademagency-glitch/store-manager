@@ -3,10 +3,10 @@ import { useReports } from '../../hooks/useReports';
 import { usePrintDocument } from '../../hooks/usePrintDocument';
 import { useCurrency } from '../../hooks/useCurrency';
 import '../../styles/reports.css';
-import { EmptyStateRow } from '../../components/ui';
+import { EmptyStateRow, ErrorBanner } from '../../components/ui';
 
 export default function AccountsReceivable() {
-  const { loading, arAging, fetchArAging } = useReports();
+  const { loading, error, arAging, fetchArAging } = useReports();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
 
@@ -35,6 +35,7 @@ export default function AccountsReceivable() {
     ...(buckets?.current || []),
     ...(buckets?.days_30 || []),
     ...(buckets?.days_60 || []),
+    ...(buckets?.days_90 || []),
     ...(buckets?.days_90_plus || []),
   ];
 
@@ -50,6 +51,9 @@ export default function AccountsReceivable() {
         </button>
       </div>
 
+      <ErrorBanner error={error} onRetry={fetchArAging} />
+      {loading && <p role="status">Loading accounts receivable…</p>}
+      {arAging?.asOf && <p>As of {arAging.asOf} · All locations · Missing due dates use 30 days after issue.</p>}
       {/* Aging Buckets */}
       {arAging && (
         <>
@@ -70,7 +74,12 @@ export default function AccountsReceivable() {
               <span className="ar-bucket-count">{buckets?.days_60?.length || 0} invoices</span>
             </div>
             <div className="ar-bucket-card ar-90">
-              <span className="ar-bucket-label">90+ Days</span>
+              <span className="ar-bucket-label">61-90 Days</span>
+              <span className="ar-bucket-value">{fmt(summary.days_90)}</span>
+              <span className="ar-bucket-count">{buckets?.days_90?.length || 0} invoices</span>
+            </div>
+            <div className="ar-bucket-card ar-90">
+              <span className="ar-bucket-label">Over 90 Days</span>
               <span className="ar-bucket-value">{fmt(summary.days_90_plus)}</span>
               <span className="ar-bucket-count">{buckets?.days_90_plus?.length || 0} invoices</span>
             </div>
@@ -108,7 +117,7 @@ export default function AccountsReceivable() {
                       <td>{fmt(inv.total_amount)}</td>
                       <td>{fmt(inv.amount_paid)}</td>
                       <td className="font-semibold">{fmt(inv.outstanding)}</td>
-                      <td>{new Date(inv.due_date).toLocaleDateString()}</td>
+                      <td>{inv.effective_due_date ? new Date(inv.effective_due_date).toLocaleDateString() : 'Not set'}</td>
                       <td>
                         {inv.days_overdue > 0 ? (
                           <span className={`badge ${inv.days_overdue > 60 ? 'badge-error' : inv.days_overdue > 30 ? 'badge-warning' : 'badge-info'}`}>
@@ -132,9 +141,9 @@ export default function AccountsReceivable() {
         </>
       )}
 
-      {!arAging && !loading && (
+      {!arAging && !loading && !error && (
         <div className="empty-state-card" style={{ marginTop: '32px' }}>
-          <p>Loading accounts receivable data...</p>
+          <p>No accounts receivable report available. Use Refresh to try again.</p>
         </div>
       )}
     </div>

@@ -14,7 +14,8 @@
     "migrate:up": "node db/migrate.js up",
     "db:drift": "node db/schema-drift.js",
     "seed:demo": "node scripts/seed-demo-data.js",
-    "seed:demo:if-empty": "node scripts/seed-demo-data.js --if-empty"
+    "seed:demo:if-empty": "node scripts/seed-demo-data.js --if-empty",
+    "test:financial-db": "node --test __tests__/financial-integrity.db.cjs"
   },
   "keywords": [],
   "author": "",
@@ -49,6 +50,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "jest": "^30.4.2",
     "supertest": "^7.2.2"
   },

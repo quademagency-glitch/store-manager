@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuthContext } from '../lib/AuthContext';
 import { usePurchaseOrders } from '../hooks/usePurchaseOrders';
 import { useSuppliers } from '../hooks/useSuppliers';
 import { useProducts } from '../hooks/useProducts';
@@ -15,6 +16,9 @@ import { EmptyStateRow, SkeletonTable } from '../components/ui';
 
 export default function PurchaseOrders() {
   const toast = useToast();
+  const { hasPermission } = useAuthContext();
+  const canManage = hasPermission('manage_purchases');
+  const canReceive = canManage || hasPermission('receive_goods');
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
@@ -212,10 +216,10 @@ export default function PurchaseOrders() {
           <h1 className="page-title">Purchase Orders</h1>
           <p className="page-subtitle">Create, track, and receive purchase orders from suppliers.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreate} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px var(--color-accent-glow)' }}>
+        {canManage && <button className="btn btn-primary" onClick={handleCreate} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-hover))', border: 'none', boxShadow: '0 4px 12px var(--color-accent-glow)' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           Create PO
-        </button>
+        </button>}
       </div>
 
       {/* Status Filter */}
@@ -270,16 +274,16 @@ export default function PurchaseOrders() {
                         </td>
                         <td className="text-right" onClick={e => e.stopPropagation()}>
                           <div className="action-buttons justify-end">
-                            {po.status === 'draft' && (
+                            {canManage && po.status === 'draft' && (
                               <>
                                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)} title="Edit">Edit</button>
                                 <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none', cursor: 'pointer' }}>Send</button>
                               </>
                             )}
-                            {(po.status === 'sent' || po.status === 'partial') && (
+                            {canReceive && (po.status === 'sent' || po.status === 'partial') && (
                               <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                             )}
-                            {['draft', 'sent'].includes(po.status) && (
+                            {canManage && ['draft', 'sent'].includes(po.status) && (
                               <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none', cursor: 'pointer' }}>Cancel</button>
                             )}
                           </div>
@@ -308,14 +312,14 @@ export default function PurchaseOrders() {
                       <span className="m-card-amount">{fmt(po.total_amount)}</span>
                     </div>
                     <div className="m-card-actions" onClick={e => e.stopPropagation()}>
-                      {po.status === 'draft' && (<>
+                      {canManage && po.status === 'draft' && (<>
                         <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)}>Edit</button>
                         <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none' }}>Send</button>
                       </>)}
-                      {(po.status === 'sent' || po.status === 'partial') && (
+                      {canReceive && (po.status === 'sent' || po.status === 'partial') && (
                         <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
                       )}
-                      {['draft', 'sent'].includes(po.status) && (
+                      {canManage && ['draft', 'sent'].includes(po.status) && (
                         <button className="btn btn-sm" onClick={() => handleCancel(po)} style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none' }}>Cancel</button>
                       )}
                     </div>
@@ -424,10 +428,10 @@ export default function PurchaseOrders() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                  {selectedPO.status === 'draft' && (
+                  {canManage && selectedPO.status === 'draft' && (
                     <button className="btn btn-primary btn-sm" onClick={() => handleSend(selectedPO)}>Send to Supplier</button>
                   )}
-                  {(selectedPO.status === 'sent' || selectedPO.status === 'partial') && (
+                  {canReceive && (selectedPO.status === 'sent' || selectedPO.status === 'partial') && (
                     <button className="btn btn-primary btn-sm" onClick={() => handleReceiveOpen(selectedPO)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive Goods</button>
                   )}
                 </div>

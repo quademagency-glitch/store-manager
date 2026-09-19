@@ -28,3 +28,5 @@ function archiver() {
 
 module.exports = archiver;
 module.exports.default = archiver;
+
+module.exports.ZipArchive = archiver;

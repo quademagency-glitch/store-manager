@@ -9,6 +9,9 @@ const { validateBody } = require('../middleware/validate');
 const { getPagination } = require('../utils/paginate');
 const { resolveCurrency } = require('../utils/currency');
 
+const { ageInvoices, OPEN_AR_STATUSES } = require('../utils/arAging');
+const { fetchAllRows } = require('../utils/fetchAllRows');
+
 const router = express.Router();
 
 // Field names here (total_amount, issued_date, status values) match the
@@ -76,41 +79,15 @@ router.get('/invoices', authGuard, permissionCheck('manage_financials'), async (
  */
 router.get('/aging', authGuard, permissionCheck('manage_financials'), async (req, res) => {
   try {
-    let query = supabaseAdmin
-      .from('ar_invoices')
-      .select('id, invoice_number, total_amount, amount_paid, due_date, issued_date, customer:customers!customer_id(id, name, phone)')
-      .in('status', ['sent', 'partial']);
-
-    if (req.user.role !== 'Platform Admin') {
-      query = query.eq('business_id', req.user.business_id);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const today = new Date();
-    const buckets = { current: [], '1_30': [], '31_60': [], '61_90': [], over_90: [] };
-
-    (data || []).forEach(inv => {
-      const outstanding = Number(inv.total_amount) - Number(inv.amount_paid);
-      const dueDate = inv.due_date
-        ? new Date(inv.due_date)
-        : new Date(new Date(inv.issued_date).getTime() + 30 * 24 * 60 * 60 * 1000);
-      const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-
-      const row = { ...inv, outstanding, days_overdue: daysOverdue };
-      if (daysOverdue <= 0) buckets.current.push(row);
-      else if (daysOverdue <= 30) buckets['1_30'].push(row);
-      else if (daysOverdue <= 60) buckets['31_60'].push(row);
-      else if (daysOverdue <= 90) buckets['61_90'].push(row);
-      else buckets.over_90.push(row);
+    const data = await fetchAllRows(() => {
+      let query = supabaseAdmin.from('ar_invoices')
+        .select('id, invoice_number, total_amount, amount_paid, status, due_date, issued_date, customer:customers!customer_id(id, name, phone)')
+        .in('status', OPEN_AR_STATUSES).order('id');
+      if (req.user.role !== 'Platform Admin') query = query.eq('business_id', req.user.business_id);
+      return query;
     });
-
-    const totals = Object.fromEntries(
-      Object.entries(buckets).map(([k, rows]) => [k, rows.reduce((s, r) => s + r.outstanding, 0)])
-    );
-
-    res.json({ buckets, totals });
+    const { buckets, totals, asOf } = ageInvoices(data);
+    res.json({ buckets, totals, asOf });
   } catch (err) {
     logger.error({ err }, 'Error fetching AR aging:');
     res.status(500).json({ error: 'Failed to fetch aging report' });

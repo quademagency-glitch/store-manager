@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCustomers } from '../hooks/useCustomers';
 import { useLoyalty } from '../hooks/useLoyalty';
@@ -24,7 +24,7 @@ const TABS = [
 export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role, hasPermission, user } = useAuthContext();
+  const { role, hasPermission, user, activeLocationId } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
@@ -41,6 +41,11 @@ export default function CustomerDetail() {
   const [activeTab, setActiveTab] = useState('purchases');
 
   const [sales, setSales] = useState([]);
+  const [purchaseSummary, setPurchaseSummary] = useState(null);
+  const [salesPage, setSalesPage] = useState(1);
+  const [salesPages, setSalesPages] = useState(1);
+  const [salesError, setSalesError] = useState('');
+  const salesRequest = useRef(0);
   const [salesLoading, setSalesLoading] = useState(false);
 
   const [storeCreditLedger, setStoreCreditLedger] = useState([]);
@@ -87,16 +92,27 @@ export default function CustomerDetail() {
   }, [fetchCustomer, id]);
 
   const loadSales = useCallback(async () => {
+    const request = ++salesRequest.current;
     setSalesLoading(true);
+    setSalesError('');
+    setPurchaseSummary(null);
     try {
-      const data = await api.get(`/sales?customer_id=${id}&limit=50`);
+      const [data, summary] = await Promise.all([
+        api.get(`/sales?customer_id=${id}&limit=50&page=${salesPage}`),
+        api.get(`/customers/${id}/purchase-summary`),
+      ]);
+      if (request !== salesRequest.current) return;
       setSales(data.data || []);
-    } catch {
-      setSales([]);
+      setSalesPages(data.totalPages || 1);
+      setPurchaseSummary(summary);
+    } catch (err) {
+      if (request === salesRequest.current) { setSales([]); setSalesError(err.message || 'Could not load purchases.'); }
     } finally {
-      setSalesLoading(false);
+      if (request === salesRequest.current) setSalesLoading(false);
     }
-  }, [id]);
+  // Location changes must invalidate a response even though the API adds the header.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, salesPage, activeLocationId]);
 
   const loadStoreCredit = useCallback(async () => {
     await loyalty.fetchStoreCredit(id);
@@ -125,7 +141,8 @@ export default function CustomerDetail() {
   }, [id]);
 
   useEffect(() => { loadCustomer(); }, [loadCustomer]);
-  useEffect(() => { loadSales(); }, [loadSales]);
+  useEffect(() => { loadSales(); return () => { salesRequest.current += 1; }; }, [loadSales]);
+  useEffect(() => { setSalesPage(1); }, [id, activeLocationId]);
   useEffect(() => { loadStoreCredit(); }, [loadStoreCredit]);
   useEffect(() => { loyalty.fetchBalance(id); loyalty.fetchLedger(id); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -394,7 +411,7 @@ export default function CustomerDetail() {
     );
   }
 
-  const totalSpent = sales.reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
+  const totalSpent = purchaseSummary?.netSpent;
   const arOutstanding = ar.documents.reduce((sum, d) => sum + (Number(d.total_amount) - Number(d.amount_paid)), 0);
   const hasCreditLimit = customer.credit_limit !== null && customer.credit_limit !== undefined;
   const overLimit = hasCreditLimit && arOutstanding > Number(customer.credit_limit);
@@ -437,10 +454,13 @@ export default function CustomerDetail() {
         }
       />
 
+      {salesError && <p role="alert" className="alert alert-error">{salesError}</p>}
+      <p>{purchaseSummary?.scope || 'Selected location'} · Lifetime purchases less refunds. Statements cover all locations.</p>
       <div className="stats-grid mt-xl mb-xl" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-lg)' }}>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
-          <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Total Spent</span>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(totalSpent)}</div>
+          <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Net Spent</span>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{purchaseSummary ? fmt(totalSpent) : '—'}</div>
+          <span className="text-secondary">{purchaseSummary?.purchaseCount ?? '—'} settled purchases · after refunds</span>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
           <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Deposit Balance</span>
@@ -484,6 +504,11 @@ export default function CustomerDetail() {
 
       <TabPanel idPrefix="customer" id="purchases" value={activeTab}>
         <div className="glass-panel">
+          <div className="flex gap-sm items-center mb-md">
+            <span>Purchase history · Page {salesPage} of {salesPages}</span>
+            <button className="btn btn-secondary btn-sm" disabled={salesLoading || salesPage <= 1} onClick={() => setSalesPage(p => p - 1)}>Previous</button>
+            <button className="btn btn-secondary btn-sm" disabled={salesLoading || salesPage >= salesPages} onClick={() => setSalesPage(p => p + 1)}>Next</button>
+          </div>
           {salesLoading ? (
             <div className="text-center p-xl"><div className="spinner mx-auto"></div></div>
           ) : sales.length === 0 ? (
@@ -804,14 +829,14 @@ export default function CustomerDetail() {
               {statement.customer.phone ? ` · ${statement.customer.phone}` : ''}
             </p>
             <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-              Purchases and deposits from {new Date(statement.period.from).toLocaleDateString()} to{' '}
+              All locations · Purchases and deposits from {new Date(statement.period.from).toLocaleDateString()} to{' '}
               {new Date(statement.period.to).toLocaleDateString()}. Balances are as at{' '}
               {new Date(statement.period.asAtDate).toLocaleString()}.
             </p>
 
             <table className="glass-table" style={{ marginTop: 'var(--space-lg)' }}>
               <tbody>
-                <tr><td>Purchases in period ({statement.summary.purchaseCount})</td>
+                <tr><td>Gross purchases in period ({statement.summary.purchaseCount})</td>
                     <td className="font-bold text-right">{fmt(statement.summary.purchaseTotal)}</td></tr>
                 <tr><td>Deposits paid in</td>
                     <td className="text-right">{fmt(statement.summary.depositsIn)}</td></tr>

@@ -55,7 +55,7 @@ export default function Schedules() {
     // Both populate the shift-assignment selectors. Failing silently leaves
     // empty dropdowns and no way to add a shift, with nothing on screen to
     // explain it.
-    api.get('/users').then(res => {
+    api.get('/hr/schedule-staff').then(res => {
       if (Array.isArray(res)) setUsers(res);
       else if (res?.data) setUsers(res.data);
     }).catch(() => {
@@ -108,7 +108,7 @@ export default function Schedules() {
     return Object.values(grid);
   }, [schedules]);
 
-  const canManage = hasPermission('manage_users');
+  const canManage = hasPermission('manage_hr_schedules');
 
   return (
     <div className="hr-page">

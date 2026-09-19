@@ -6,8 +6,12 @@ const authGuard = require('../middleware/authGuard');
 const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const { resolveCountry, normalizePhone, toSmsFormat, phoneSearchDigits } = require('../utils/phone');
 const crypto = require('crypto');
+const { fetchAllRows } = require('../utils/fetchAllRows');
 
 const router = express.Router();
+
+const CUSTOMER_FIELDS = ['id', 'business_id', 'name', 'phone', 'email', 'customer_code', 'created_at', 'is_verified', 'loyalty_points', 'store_credit_balance', 'credit_limit'];
+const publicCustomer = row => row && Object.fromEntries(CUSTOMER_FIELDS.filter(key => key in row).map(key => [key, row[key]]));
 
 /**
  * GET /api/customers
@@ -31,7 +35,7 @@ router.get('/', authGuard, apiCache(5), async (req, res) => {
     if (error) throw error;
 
     res.json({
-      data,
+      data: (data || []).map(publicCustomer),
       total: count,
       page,
       totalPages: Math.ceil(count / limit)
@@ -85,7 +89,7 @@ router.get('/search', authGuard, apiCache(5), async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json(data);
+    res.json(Array.isArray(data) ? data.map(publicCustomer) : publicCustomer(data));
   } catch (err) {
     logger.error({ err: err }, 'Error searching customers:');
     res.status(500).json({ error: 'Failed to search customers' });
@@ -111,7 +115,7 @@ router.get('/:id', authGuard, apiCache(5), async (req, res) => {
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Customer not found' });
 
-    res.json(data);
+    res.json(Array.isArray(data) ? data.map(publicCustomer) : publicCustomer(data));
   } catch (err) {
     logger.error({ err: err }, 'Error fetching customer:');
     res.status(500).json({ error: 'Failed to fetch customer' });
@@ -211,7 +215,7 @@ router.post('/', authGuard, async (req, res) => {
     }
 
     invalidateCachePrefix('/api/customers');
-    res.status(201).json({ message: 'Customer created successfully and OTP sent', customer: data });
+    res.status(201).json({ message: 'Customer created successfully and OTP sent', customer: publicCustomer(data) });
   } catch (err) {
     logger.error({ err: err }, 'Error creating customer:');
     res.status(500).json({ error: 'Failed to create customer' });
@@ -315,7 +319,7 @@ router.put('/:id', authGuard, async (req, res) => {
     }
 
     invalidateCachePrefix('/api/customers');
-    res.json({ message: 'Customer updated successfully', customer: data });
+    res.json({ message: 'Customer updated successfully', customer: publicCustomer(data) });
   } catch (err) {
     logger.error({ err: err }, 'Error updating customer:');
     res.status(500).json({ error: 'Failed to update customer' });
@@ -513,6 +517,32 @@ async function loadOwnedCustomer(req, res, columns = 'id, business_id, name') {
   }
   return data;
 }
+
+// Lifetime aggregate is independent of the paginated purchase-history list.
+router.get('/:id/purchase-summary', authGuard, async (req, res) => {
+  try {
+    const customer = await loadOwnedCustomer(req, res);
+    if (!customer) return;
+    const scope = query => {
+      query = query.eq('business_id', customer.business_id);
+      if (req.user.active_location_id) return query.eq('location_id', req.user.active_location_id);
+      if (!['Business Admin', 'Platform Admin'].includes(req.user.role)) return query.in('location_id', req.user.location_ids?.length ? req.user.location_ids : ['00000000-0000-0000-0000-000000000000']);
+      return query;
+    };
+    const sales = await fetchAllRows(() => scope(supabaseAdmin.from('sales')
+      .select('id, total_amount, returns(total_refund_amount)')
+      .eq('customer_id', customer.id).in('status', ['completed', 'void_pending'])).order('id'));
+    const gross = sales.reduce((sum, sale) => sum + Number(sale.total_amount), 0);
+    const refunds = sales.reduce((sum, sale) => sum + (sale.returns || []).reduce((n, row) => n + Number(row.total_refund_amount), 0), 0);
+    res.json({ purchaseCount: sales.length, grossSpent: Math.round(gross * 100) / 100,
+      refunds: Math.round(refunds * 100) / 100, netSpent: Math.round((gross - refunds) * 100) / 100,
+      scope: req.user.active_location_id ? 'Selected location' : ['Business Admin', 'Platform Admin'].includes(req.user.role) ? 'All locations' : 'Assigned locations',
+      locationId: req.user.active_location_id || null, period: 'Lifetime' });
+  } catch (err) {
+    logger.error({ err }, 'Customer purchase summary failed');
+    res.status(500).json({ error: 'Failed to load customer purchase summary' });
+  }
+});
 
 /* Migration 075 creates customer_notes. Until it runs, PostgREST answers with
    42P01 (undefined_table). Notes then read as empty and writing one says so,

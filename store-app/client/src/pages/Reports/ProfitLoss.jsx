@@ -5,10 +5,11 @@ import { usePrintDocument } from '../../hooks/usePrintDocument';
 import { useCurrency } from '../../hooks/useCurrency';
 import { api } from '../../lib/api';
 import '../../styles/reports.css';
+import { ErrorBanner } from '../../components/ui';
 
 export default function ProfitLoss() {
   const toast = useToast();
-  const { loading, pnl, fetchPnl } = useReports();
+  const { loading, error, pnl, fetchPnl } = useReports();
   const { business } = usePrintDocument();
   const { fmt: fmtCurrency } = useCurrency(business);
   const [locations, setLocations] = useState([]);
@@ -37,10 +38,12 @@ export default function ProfitLoss() {
   };
 
   const handleExport = () => {
-    if (!pnl) return;
+    if (!pnl || loading) return;
     const rows = [
       ['Profit & Loss Report'],
-      [`Period: ${filters.startDate} to ${filters.endDate}`],
+      [`Period: ${pnl.period.startDate} to ${pnl.period.endDate}`],
+      [`Location: ${locations.find(l => l.id === pnl.period.locationId)?.name || 'All Locations'}`],
+      [`Cost basis: ${pnl.costQuality?.missingItems ? 'Incomplete' : pnl.costQuality?.estimatedItems ? 'Includes estimated historical costs' : 'Recorded costs'}`],
       [''],
       ['Category', 'Amount'],
       ['Revenue', pnl.revenue.toFixed(2)],
@@ -53,12 +56,12 @@ export default function ProfitLoss() {
       ['Gross Margin', `${pnl.grossMargin}%`],
       ['Net Margin', `${pnl.netMargin}%`],
     ];
-    const csv = rows.map(r => r.join(',')).join('\n');
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `pnl_${filters.startDate}_${filters.endDate}.csv`;
+    a.download = `pnl_${pnl.period.startDate}_${pnl.period.endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('P&L exported!');
@@ -75,7 +78,7 @@ export default function ProfitLoss() {
           <h1>Profit & Loss</h1>
           <p className="page-subtitle">Income statement for your business</p>
         </div>
-        <button className="btn btn-secondary" onClick={handleExport} disabled={!pnl}>
+        <button className="btn btn-secondary" onClick={handleExport} disabled={!pnl || loading}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
@@ -88,13 +91,15 @@ export default function ProfitLoss() {
       {/* Filters */}
       <div className="hr-filter-bar">
         <div className="hr-filters">
-          <input type="date" className="form-input" value={filters.startDate} onChange={e => setFilters(p => ({ ...p, startDate: e.target.value }))} />
-          <input type="date" className="form-input" value={filters.endDate} onChange={e => setFilters(p => ({ ...p, endDate: e.target.value }))} />
+          <label htmlFor="pnl-start">Start Date</label>
+          <input id="pnl-start" type="date" className="form-input" value={filters.startDate} onChange={e => setFilters(p => ({ ...p, startDate: e.target.value }))} />
+          <label htmlFor="pnl-end">End Date</label>
+          <input id="pnl-end" type="date" className="form-input" value={filters.endDate} onChange={e => setFilters(p => ({ ...p, endDate: e.target.value }))} />
           {locations.length > 1 && (
-            <select className="form-input" value={filters.locationId} onChange={e => setFilters(p => ({ ...p, locationId: e.target.value }))}>
+            <><label htmlFor="pnl-location">Location</label><select id="pnl-location" className="form-input" value={filters.locationId} onChange={e => setFilters(p => ({ ...p, locationId: e.target.value }))}>
               <option value="">All Locations</option>
               {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </select></>
           )}
           <button className="btn btn-primary" onClick={handleApply} disabled={loading}>
             {loading ? 'Loading...' : 'Generate'}
@@ -102,12 +107,18 @@ export default function ProfitLoss() {
         </div>
       </div>
 
+      <ErrorBanner error={error} onRetry={handleApply} />
+      {loading && <p role="status">Generating report…</p>}
+      {pnl && <p>Showing {pnl.period.startDate} to {pnl.period.endDate} · {locations.find(l => l.id === pnl.period.locationId)?.name || 'All Locations'}</p>}
+      {pnl && (filters.startDate !== pnl.period.startDate || filters.endDate !== pnl.period.endDate || (filters.locationId || null) !== pnl.period.locationId) && <p role="status">Filters changed. Generate to update the report. Export uses the period shown above.</p>}
+      {pnl?.costQuality?.estimatedItems > 0 && <p className="alert alert-warning">Includes estimated costs for sales made before cost recording began.</p>}
+      {pnl?.costQuality?.missingItems > 0 && <p className="alert alert-error" role="alert">Some item costs are missing. Profit and margins are incomplete.</p>}
       {/* P&L Statement */}
       {pnl && (
         <div className="pnl-statement">
           <div className="pnl-row pnl-header">
             <span>Revenue</span>
-            <span className="pnl-amount positive">{fmt(pnl.revenue)}</span>
+            <span className="pnl-amount positive">{fmtCurrency(pnl.revenue)}</span>
           </div>
 
           <div className="pnl-row pnl-deduction">
@@ -118,7 +129,7 @@ export default function ProfitLoss() {
           <div className="pnl-divider"></div>
           <div className="pnl-row pnl-subtotal">
             <span>Gross Profit</span>
-            <span className={`pnl-amount ${pnl.grossProfit >= 0 ? 'positive' : 'negative'}`}>{fmt(pnl.grossProfit)}</span>
+            <span className={`pnl-amount ${pnl.grossProfit >= 0 ? 'positive' : 'negative'}`}>{fmtCurrency(pnl.grossProfit)}</span>
           </div>
           <div className="pnl-row pnl-margin">
             <span>Gross Margin</span>
@@ -150,7 +161,7 @@ export default function ProfitLoss() {
         </div>
       )}
 
-      {!pnl && !loading && (
+      {!pnl && !loading && !error && (
         <div className="empty-state-card" style={{ marginTop: '32px' }}>
           <p>Select a date range and click Generate to view your P&L.</p>
         </div>

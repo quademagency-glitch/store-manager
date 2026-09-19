@@ -48,7 +48,7 @@ export default function AccountingApprovals() {
 
   useEffect(() => {
     fetchPendingEntries();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApprove = async (id) => {
     try {
@@ -97,18 +97,19 @@ export default function AccountingApprovals() {
   const downloadAllReceipts = async () => {
     try {
       // Using the new API endpoint
-      const response = await api.get('/ledger/download-receipts', { responseType: 'blob' });
+      const response = await api.getBlob('/ledger/download-receipts');
       
-      const url = window.URL.createObjectURL(new Blob([response]));
+      const url = window.URL.createObjectURL(response);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `receipts_${new Date().toISOString().split('T')[0]}.zip`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to download receipts', err);
-      toast.error('Failed to download receipts. There might be no receipts to download.');
+      toast.error(err.message || 'Failed to download receipts.');
     }
   };
 

@@ -12,7 +12,7 @@ const router = express.Router();
  * GET /api/crm-communications/templates
  * Fetch saved templates for the business
  */
-router.get('/templates', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.get('/templates', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('crm_communication_templates')
@@ -32,7 +32,7 @@ router.get('/templates', authGuard, permissionCheck('manage_business'), async (r
  * POST /api/crm-communications/templates
  * Create or update a template for the business
  */
-router.post('/templates', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.post('/templates', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { id, name, type, subject, content } = req.body;
 
@@ -66,7 +66,7 @@ router.post('/templates', authGuard, permissionCheck('manage_business'), async (
  * DELETE /api/crm-communications/templates/:id
  * Delete a template for the business
  */
-router.delete('/templates/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.delete('/templates/:id', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { error } = await supabaseAdmin
       .from('crm_communication_templates')
@@ -86,7 +86,7 @@ router.delete('/templates/:id', authGuard, permissionCheck('manage_business'), a
  * GET /api/crm-communications/gateways
  * Fetch all communication gateways for the business
  */
-router.get('/gateways', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.get('/gateways', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('communication_gateways')
@@ -114,7 +114,7 @@ router.get('/gateways', authGuard, permissionCheck('manage_business'), async (re
  * POST /api/crm-communications/gateways
  * Create a new communication gateway for the business
  */
-router.post('/gateways', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.post('/gateways', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { provider, type, display_name, api_key, secret_key, sender_id, config } = req.body;
     
@@ -165,7 +165,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_business'), async (r
  * PUT /api/crm-communications/gateways/:id
  * Update a communication gateway for the business
  */
-router.put('/gateways/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.put('/gateways/:id', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = { ...req.body, updated_at: new Date().toISOString() };
@@ -221,7 +221,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_business'), async
  * DELETE /api/crm-communications/gateways/:id
  * Delete a communication gateway for the business
  */
-router.delete('/gateways/:id', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.delete('/gateways/:id', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { error } = await supabaseAdmin
       .from('communication_gateways')
@@ -241,7 +241,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_business'), as
  * POST /api/crm-communications/send
  * Dispatch SMS or Emails to target audience (Customers)
  */
-router.post('/send', authGuard, permissionCheck('manage_business'), async (req, res) => {
+router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
   try {
     const { targetAudience, customerId, type, subject, message } = req.body;
 

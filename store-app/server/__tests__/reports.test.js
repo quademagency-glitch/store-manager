@@ -17,8 +17,8 @@ const mockUser = {
 };
 
 const MOCK_SALES = [
-  { total_amount: 100, sale_items: [{ quantity: 2, unit_price: 50, product: { cost_price: 20 } }] }, // revenue = 100, cogs = 40
-  { total_amount: 50, sale_items: [{ quantity: 1, unit_price: 50, product: { cost_price: 15 } }] }  // revenue = 50, cogs = 15
+  { total_amount: 100, sale_items: [{ quantity: 2, unit_price: 50, unit_cost: 20, cost_basis: 'recorded' }] }, // revenue = 100, cogs = 40
+  { total_amount: 50, sale_items: [{ quantity: 1, unit_price: 50, unit_cost: 15, cost_basis: 'recorded' }] }  // revenue = 50, cogs = 15
 ]; // total revenue = 150, total cogs = 55. gross profit = 95.
 
 const MOCK_EXPENSES = [

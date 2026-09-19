@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import { useToast } from '../../hooks/useToast';
@@ -386,19 +387,8 @@ export default function Organization() {
               </div>
             </div>
             <div className="org-section-body">
-              <div className="org-billing-info">
-                <div className="org-billing-plan">
-                  <span className="org-billing-plan-name">{business.billing_plan || 'Free'}</span>
-                  {business.billing_status === 'Active' || business.status === 'active' ? (
-                    <span className="org-billing-badge active">Active</span>
-                  ) : (
-                    <span className="org-billing-badge inactive">{business.billing_status || business.status || 'Unknown'}</span>
-                  )}
-                </div>
-              </div>
-              <p className="org-billing-note">
-                Billing is managed by the Platform Administrator. Contact support to change your subscription tier.
-              </p>
+              <p className="org-billing-note">View your current plan, subscription status, invoices, and payment options in Billing & Subscription.</p>
+              <Link className="btn btn-secondary" to="/business-admin/billing">Open Billing & Subscription</Link>
             </div>
           </div>
 

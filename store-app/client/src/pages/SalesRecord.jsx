@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
@@ -8,15 +8,15 @@ import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
-import { useExportCsv } from '../hooks/useExportCsv';
 
 export default function SalesRecord() {
-  const { hasPermission } = useAuthContext();
+  const { hasPermission, activeLocationId } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const { exportCsv } = useExportCsv();
+  const [exporting, setExporting] = useState(false);
+  const requestId = useRef(0);
   const [searchParams] = useSearchParams();
   
   // Date range state (default to today or URL param)
@@ -45,31 +45,47 @@ export default function SalesRecord() {
   const [selectedReceiptSale, setSelectedReceiptSale] = useState(null);
 
   const fetchHistory = async () => {
-    if (!startDate || !endDate) return;
+    const id = ++requestId.current;
     setLoading(true);
     setError('');
-    
-    // Append time to dates for full day coverage
-    const startIso = new Date(`${startDate}T00:00:00.000Z`).toISOString();
-    const endIso = new Date(`${endDate}T23:59:59.999Z`).toISOString();
-
+    setSales([]);
     try {
-      const data = await api.get(`/sales/history?startDate=${startIso}&endDate=${endIso}&page=${page}&limit=50`);
+      if (!startDate || !endDate || startDate > endDate) throw new Error('Select a valid start and end date.');
+      const qs = new URLSearchParams({ startDate, endDate, page, limit: 50 });
+      const data = await api.get(`/sales/history?${qs}`);
+      if (id !== requestId.current) return;
       setSales(data.data || []);
       setTotalPages(data.totalPages || 1);
       setTotalSales(data.total || 0);
     } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
-      setError('Failed to fetch sales history.');
+      if (id === requestId.current) setError(err.message || 'Failed to fetch sales history.');
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchHistory();
+    return () => { requestId.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, page]);
+  }, [startDate, endDate, page, activeLocationId]);
+
+  const exportSales = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob(`/sales/export?${new URLSearchParams({ startDate, endDate })}`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `sales_${startDate}_${endDate}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('All matching sales exported.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to export sales.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Currency formatting handled by useCurrency hook above
 
@@ -177,7 +193,7 @@ export default function SalesRecord() {
 
   const canReturn = hasPermission('manage_business');
 
-  if (!hasPermission('create_sales')) {
+  if (!hasPermission('view_sales')) {
     return (
       <div className="page-header">
         <h1 className="page-title text-error">Access Denied</h1>
@@ -199,37 +215,31 @@ export default function SalesRecord() {
               : "View today's sales data."}
           </p>
         </div>
-        <button className="btn btn-secondary" onClick={() => exportCsv(sales, [
-          { key: 'created_at', label: 'Date', format: (v) => new Date(v).toLocaleDateString() },
-          { key: 'receipt_number', label: 'Receipt #' },
-          { key: 'customer.name', label: 'Customer' },
-          { key: 'status', label: 'Status' },
-          { key: 'total_amount', label: 'Total', format: (v) => Number(v).toFixed(2) },
-          { key: 'payment_method', label: 'Payment Method' },
-          { key: 'salesperson.name', label: 'Salesperson' },
-        ], 'sales_record')} disabled={sales.length === 0}>
-          Export CSV
+        <button className="btn btn-secondary" onClick={exportSales} disabled={loading || exporting || !!error || !sales.length}>
+          {exporting ? 'Exporting…' : 'Export All CSV'}
         </button>
       </div>
 
       <div className="glass-panel sr-date-filter-row p-lg mb-lg flex gap-md items-end flex-wrap">
         <div className="form-group mb-0">
-          <label>Start Date</label>
+          <label htmlFor="sales-start">Start Date</label>
           <input 
             type="date" 
             className="form-input" 
+            id="sales-start"
             value={startDate} 
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
             disabled={!canViewHistory}
           />
         </div>
         <div className="form-group mb-0">
-          <label>End Date</label>
+          <label htmlFor="sales-end">End Date</label>
           <input 
             type="date" 
             className="form-input" 
+            id="sales-end"
             value={endDate} 
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
             disabled={!canViewHistory}
           />
         </div>

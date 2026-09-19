@@ -1,11 +1,14 @@
 const express = require('express');
 const logger = require('../utils/logger');
-const archiver = require('archiver');
+const { ZipArchive } = require('archiver');
 const { z } = require('zod');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const { validateBody } = require('../middleware/validate');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+
+const { reportRange, applyReportRange } = require('../utils/reportDates');
+const { fetchAllRows } = require('../utils/fetchAllRows');
 
 const router = express.Router();
 
@@ -16,7 +19,7 @@ const ledgerEntrySchema = z.object({
   location_id: z.string().uuid('Location ID is required and must be a valid UUID'),
   template_id: z.string().uuid().optional().nullable(),
   receipt_url: z.string().url().optional().nullable(),
-  metadata: z.record(z.any()).optional().nullable(),
+  metadata: z.record(z.string(), z.any()).optional().nullable(),
   date: z.string().optional().nullable(),
 });
 
@@ -51,25 +54,16 @@ router.get('/till-balance', authGuard, async (req, res) => {
     const hasHistoryPerm = req.user.permissions?.includes('view_till_history') || 
                            ['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role);
 
-    // Determine the date range
-    let startD = new Date();
-    startD.setDate(1); // Default to start of current month
-    startD.setHours(0, 0, 0, 0);
-    
-    let endD = new Date();
-    endD.setHours(23, 59, 59, 999);
-
-    if (start_date) startD = new Date(start_date);
-    if (end_date) endD = new Date(end_date);
+    const range = reportRange(start_date, end_date, { defaults: true });
 
     // 1. Fetch Sales (Cash only)
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('id, total_amount, created_at, location_id')
       .eq('payment_method', 'cash')
-      .neq('status', 'voided')
-      .gte('created_at', startD.toISOString())
-      .lte('created_at', endD.toISOString());
+      .in('status', ['completed', 'void_pending'])
+      .gte('created_at', range.from)
+      .lt('created_at', range.until);
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
@@ -80,8 +74,8 @@ router.get('/till-balance', authGuard, async (req, res) => {
     let ledgerQuery = supabaseAdmin
       .from('business_ledger')
       .select('id, type, amount, description, created_at, location_id, status, user:users!user_id(name)')
-      .gte('created_at', startD.toISOString())
-      .lte('created_at', endD.toISOString());
+      .gte('created_at', range.from)
+      .lt('created_at', range.until);
 
     if (req.user.role !== 'Platform Admin') {
       ledgerQuery = ledgerQuery.eq('business_id', req.user.business_id);
@@ -104,6 +98,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
 
     if (salesRes.error) throw salesRes.error;
     if (ledgerRes.error) throw ledgerRes.error;
+    if (locRes.error) throw locRes.error;
 
     const sales = salesRes.data || [];
     const entries = ledgerRes.data || [];
@@ -232,7 +227,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
 
   } catch (err) {
     logger.error({ err: err }, 'Error fetching ledger:');
-    res.status(500).json({ error: 'Failed to fetch ledger data' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to fetch ledger data' });
   }
 });
 
@@ -252,9 +247,11 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
         .from('accounting_templates')
         .select('require_receipt, account_category, gl_code')
         .eq('id', template_id)
+        .eq('business_id', req.user.business_id)
         .single();
 
-      if (!tplErr && template) {
+      if (tplErr || !template) return res.status(400).json({ error: 'Accounting template not found for this business.' });
+      if (template) {
         // Enforce receipt requirement
         if (template.require_receipt !== false && !receipt_url) {
           return res.status(400).json({ error: 'This template requires a receipt/evidence document.' });
@@ -266,9 +263,9 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
 
     // Permissions logic
     // Admin & Managers = approved automatically
-    // Cashiers = pending
-    const isCashier = req.user.role === 'Salesperson' || req.user.role === 'Cashier';
-    const status = isCashier ? 'pending' : 'approved';
+    // Every other role requires review, including custom staff roles.
+    const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    const status = canApprove ? 'approved' : 'pending';
 
     // Merge account category into metadata
     const enrichedMetadata = {
@@ -306,7 +303,7 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error creating ledger entry:');
-    res.status(500).json({ error: 'Failed to create entry' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to create entry' });
   }
 });
 
@@ -349,7 +346,7 @@ router.get('/pending', authGuard, async (req, res) => {
     res.json(data || []);
   } catch (err) {
     logger.error({ err: err }, 'Error fetching pending ledger entries:');
-    res.status(500).json({ error: 'Failed to fetch pending entries' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to fetch pending entries' });
   }
 });
 
@@ -372,7 +369,7 @@ router.put('/:id/approve', authGuard, async (req, res) => {
     res.json({ message: 'Approved successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error approving entry:');
-    res.status(500).json({ error: 'Failed to approve entry' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to approve entry' });
   }
 });
 
@@ -397,7 +394,7 @@ router.put('/:id/reject', authGuard, async (req, res) => {
     res.json({ message: 'Rejected successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error rejecting entry:');
-    res.status(500).json({ error: 'Failed to reject entry' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to reject entry' });
   }
 });
 
@@ -412,71 +409,47 @@ router.get('/download-receipts', authGuard, async (req, res) => {
 
     const { start_date, end_date } = req.query;
 
-    let query = supabaseAdmin
+    const range = reportRange(start_date, end_date);
+    const data = await fetchAllRows(() => applyLocationFilter(applyReportRange(supabaseAdmin
       .from('business_ledger')
       .select('id, type, created_at, receipt_url')
       .eq('business_id', req.user.business_id)
-      .not('receipt_url', 'is', null);
+      .not('receipt_url', 'is', null), range), req).order('id'));
+    if (!data.length) return res.status(404).json({ error: 'No receipts found in this date range.' });
 
-    if (start_date) query = query.gte('created_at', new Date(start_date).toISOString());
-    if (end_date) query = query.lte('created_at', new Date(end_date).toISOString());
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'No receipts found in this date range.' });
-    }
-
-    // Logged before the stream starts: once headers are flushed this response
-    // can't report an error, and a bulk pull of financial evidence is worth
-    // recording whether or not the transfer completes.
-    logAuditEvent(req, AUDIT_ACTIONS.RECEIPTS_DOWNLOADED, 'ledger', null, {
-      receipt_count: data.length,
-      start_date: start_date || null,
-      end_date: end_date || null,
-    });
-
-    res.attachment(`receipts_${new Date().toISOString().split('T')[0]}.zip`);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    archive.on('error', (err) => { throw err; });
-    archive.pipe(res);
-
+    // Validate every source before sending ZIP headers. A missing receipt must
+    // not turn into a plausible, incomplete archive.
+    const files = [];
+    let bytes = 0;
     for (const entry of data) {
-      // The receipt_url should be the storage path or full public URL.
-      // If it's a full URL or a storage path, we need to fetch it.
-      // Assuming it's a storage path like 'folder/image.png' in the 'receipts' bucket.
-      const urlMatch = entry.receipt_url.match(/receipts\/(.+)$/);
-      const storagePath = urlMatch ? urlMatch[1] : entry.receipt_url;
-
-      try {
-        const { data: fileData, error: downloadError } = await supabaseAdmin
-          .storage
-          .from('receipts')
-          .download(storagePath);
-          
-        if (downloadError) {
-          logger.error({ err: downloadError, storagePath }, 'Failed to download receipt');
-          continue;
-        }
-
-        const buffer = Buffer.from(await fileData.arrayBuffer());
-        // Use extension from the url
-        const ext = storagePath.split('.').pop() || 'jpg';
-        const filename = `${entry.type}_${entry.id.substring(0,8)}.${ext}`;
-        archive.append(buffer, { name: filename });
-      } catch (err) {
-        logger.error({ err, storagePath }, 'Error processing receipt');
+      const match = entry.receipt_url.match(/receipts\/(.+)$/);
+      const path = decodeURIComponent((match ? match[1] : entry.receipt_url).split('?')[0]);
+      const { data: file, error } = await supabaseAdmin.storage.from('receipts').download(path);
+      if (error || !file) {
+        logger.error({ err: error, receiptId: entry.id }, 'Receipt archive source unavailable');
+        return res.status(502).json({ error: 'A receipt could not be downloaded. No archive was created. Please retry.' });
       }
+      const buffer = Buffer.from(await file.arrayBuffer());
+      bytes += buffer.length;
+      if (bytes > 64 * 1024 * 1024) return res.status(413).json({ error: 'Receipts exceed the 64 MB download limit. Select a shorter date range.' });
+      const extension = path.match(/\.([a-zA-Z0-9]{1,8})$/)?.[1] || 'bin';
+      files.push({ buffer, name: `${entry.type}_${entry.id}.${extension}` });
     }
-
-    archive.finalize();
+    logAuditEvent(req, AUDIT_ACTIONS.RECEIPTS_DOWNLOADED, 'ledger', null, {
+      receipt_count: files.length, start_date: start_date || null, end_date: end_date || null,
+    });
+    res.attachment(`receipts_${new Date().toISOString().slice(0, 10)}.zip`);
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    archive.on('error', err => { logger.error({ err }, 'Receipt archive stream failed'); res.destroy(err); });
+    res.on('close', () => { if (!res.writableFinished) archive.abort(); });
+    archive.pipe(res);
+    for (const file of files) archive.append(file.buffer, { name: file.name });
+    await archive.finalize();
 
   } catch (err) {
     logger.error({ err: err }, 'Error zipping receipts:');
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to generate ZIP file' });
+      res.status(err.status === 400 ? 400 : 500).json({ error: 'Failed to generate ZIP file' });
     }
   }
 });
@@ -493,22 +466,15 @@ router.get('/financial-summary', authGuard, async (req, res) => {
 
     const { start_date, end_date } = req.query;
 
-    let startD = new Date();
-    startD.setDate(1);
-    startD.setHours(0, 0, 0, 0);
-    let endD = new Date();
-    endD.setHours(23, 59, 59, 999);
-
-    if (start_date) startD = new Date(start_date);
-    if (end_date) endD = new Date(end_date);
+    const range = reportRange(start_date, end_date, { defaults: true });
 
     // Fetch approved ledger entries with metadata
     let ledgerQuery = supabaseAdmin
       .from('business_ledger')
       .select('id, type, amount, description, metadata, created_at')
       .eq('status', 'approved')
-      .gte('created_at', startD.toISOString())
-      .lte('created_at', endD.toISOString());
+      .gte('created_at', range.from)
+      .lt('created_at', range.until);
 
     if (req.user.role !== 'Platform Admin') {
       ledgerQuery = ledgerQuery.eq('business_id', req.user.business_id);
@@ -518,9 +484,9 @@ router.get('/financial-summary', authGuard, async (req, res) => {
     let salesQuery = supabaseAdmin
       .from('sales')
       .select('id, total_amount, created_at')
-      .neq('status', 'voided')
-      .gte('created_at', startD.toISOString())
-      .lte('created_at', endD.toISOString());
+      .in('status', ['completed', 'void_pending'])
+      .gte('created_at', range.from)
+      .lt('created_at', range.until);
 
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
@@ -564,8 +530,8 @@ router.get('/financial-summary', authGuard, async (req, res) => {
 
     res.json({
       period: {
-        start: startD.toISOString().split('T')[0],
-        end: endD.toISOString().split('T')[0]
+        start: range.startDate,
+        end: range.endDate
       },
       income: {
         total_sales: totalSales,
@@ -586,7 +552,7 @@ router.get('/financial-summary', authGuard, async (req, res) => {
 
   } catch (err) {
     logger.error({ err: err }, 'Error fetching financial summary:');
-    res.status(500).json({ error: 'Failed to fetch financial summary' });
+    res.status(err.status === 400 ? 400 : 500).json({ error: err.status === 400 ? err.message : 'Failed to fetch financial summary' });
   }
 });
 

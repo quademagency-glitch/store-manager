@@ -26,6 +26,7 @@ export const PERMISSION_TREE = [
         id: 'sales_module',
         label: 'Sales & Returns',
         children: [
+          { id: 'manage_returns', label: 'Process Sales Returns' },
           { id: 'create_sales', label: 'Create POS Sales' },
           { id: 'view_sales', label: 'View Sales History' },
           { id: 'apply_discounts', label: 'Apply Custom Discounts' },

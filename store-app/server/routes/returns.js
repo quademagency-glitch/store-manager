@@ -2,6 +2,7 @@ const express = require('express');
 const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const permissionCheck = require('../middleware/permissionCheck');
 
 const router = express.Router();
 
@@ -10,11 +11,8 @@ const router = express.Router();
  * Search for completed sales by customer name, phone, or receipt number
  * Admin only
  */
-router.get('/search', authGuard, async (req, res) => {
+router.get('/search', authGuard, permissionCheck('manage_returns'), async (req, res) => {
   try {
-    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Unauthorized. Only Admins can access returns.' });
-    }
 
     const { query } = req.query; 
     if (!query) {
@@ -67,11 +65,8 @@ router.get('/search', authGuard, async (req, res) => {
  * Process a return
  * Admin only
  */
-router.post('/', authGuard, async (req, res) => {
+router.post('/', authGuard, permissionCheck('manage_returns'), async (req, res) => {
   try {
-    if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
-      return res.status(403).json({ error: 'Unauthorized. Only Admins can process returns.' });
-    }
 
     const { sale_id, items, reason } = req.body; 
     // items: [{ sale_item_id, product_id, quantity, unit_price, unit_ids: [] }]

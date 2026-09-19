@@ -366,6 +366,18 @@ router.get('/attendance', authGuard, permissionCheck('manage_users'), async (req
  * GET /api/hr/schedules
  * Fetch shift schedules for a date range
  */
+router.get('/schedule-staff', authGuard, permissionCheck('manage_hr_schedules'), async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from('users')
+      .select('id, name').eq('business_id', req.user.business_id).eq('status', 'active').order('name');
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    logger.error({ err }, 'Schedule staff lookup failed');
+    res.status(500).json({ error: 'Failed to load staff for scheduling' });
+  }
+});
+
 router.get('/schedules', authGuard, async (req, res) => {
   try {
     const { startDate, endDate, locationId } = req.query;
@@ -402,7 +414,7 @@ router.get('/schedules', authGuard, async (req, res) => {
  * POST /api/hr/schedules
  * Create a shift schedule (manager/admin)
  */
-router.post('/schedules', authGuard, permissionCheck('manage_users'), validateBody(createShiftSchema), async (req, res) => {
+router.post('/schedules', authGuard, permissionCheck('manage_hr_schedules'), validateBody(createShiftSchema), async (req, res) => {
   try {
     const { user_id, location_id, date, start_time, end_time, role_label } = req.body;
 
@@ -439,7 +451,7 @@ router.post('/schedules', authGuard, permissionCheck('manage_users'), validateBo
  * PATCH /api/hr/schedules/:id
  * Update a shift schedule
  */
-router.patch('/schedules/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
+router.patch('/schedules/:id', authGuard, permissionCheck('manage_hr_schedules'), async (req, res) => {
   try {
     const { id } = req.params;
     const allowedFields = ['start_time', 'end_time', 'role_label', 'location_id', 'date'];
@@ -469,7 +481,7 @@ router.patch('/schedules/:id', authGuard, permissionCheck('manage_users'), async
  * DELETE /api/hr/schedules/:id
  * Delete a shift schedule
  */
-router.delete('/schedules/:id', authGuard, permissionCheck('manage_users'), async (req, res) => {
+router.delete('/schedules/:id', authGuard, permissionCheck('manage_hr_schedules'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -660,41 +672,16 @@ router.get('/commissions', authGuard, async (req, res) => {
 router.post('/commissions/payout', authGuard, permissionCheck('manage_business'), validateBody(payoutSchema), async (req, res) => {
   try {
     const { user_id, commission_ids } = req.body;
-    const paidAt = new Date().toISOString();
-
-    const { data, error } = await supabaseAdmin
-      .from('commission_ledger')
-      .update({ paid_at: paidAt })
-      .in('id', commission_ids)
-      .eq('user_id', user_id)
-      .eq('business_id', req.user.business_id)
-      .is('paid_at', null)
-      .select();
-
-    if (error) throw error;
-
-    const totalPaid = (data || []).reduce((sum, c) => sum + Number(c.amount), 0);
-
-    // Create a ledger entry for the payout
-    if (totalPaid > 0 && req.user.active_location_id) {
-      await supabaseAdmin
-        .from('business_ledger')
-        .insert({
-          business_id: req.user.business_id,
-          location_id: req.user.active_location_id,
-          entry_type: 'expense',
-          amount: totalPaid,
-          description: `Commission payout to staff`,
-          created_by: req.user.id,
-        })
-        .select();
-    }
-
-    res.json({
-      message: `${data.length} commission(s) marked as paid`,
-      total_paid: totalPaid,
-      records: data,
+    if (!req.user.active_location_id) return res.status(400).json({ error: 'Select a location for the payout.' });
+    const { data, error } = await supabaseAdmin.rpc('pay_commissions', {
+      p_business_id: req.user.business_id,
+      p_location_id: req.user.active_location_id,
+      p_actor_id: req.user.id,
+      p_user_id: user_id,
+      p_commission_ids: commission_ids,
     });
+    if (error) throw error;
+    res.json(data);
   } catch (err) {
     logger.error({ err }, 'Commission payout error');
     res.status(500).json({ error: 'Failed to process payout' });

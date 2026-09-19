@@ -161,6 +161,25 @@ async function dedupedGet(endpoint) {
   return request;
 }
 
+// Bind every replay request to the identity that owns its saved payload. Never
+// take a later login or branch from ambient storage after an await.
+export function scopedApi(expected) {
+  // The explicit visual fixture uses the same replaceable API adapter as the
+  // rest of the app. Production always executes the identity checks below.
+  if (IS_MOCK) return api;
+  async function request(endpoint, method, body) {
+    if (!expected?.userId || !expected?.businessId || !expected?.locationId) throw new Error('Select a branch and sign in first.');
+    const session = IS_MOCK ? null : (await supabase.auth.getSession()).data.session;
+    if (!IS_MOCK && (session?.user?.id !== expected.userId || localStorage.getItem('active_location_id') !== expected.locationId)) {
+      const error = new Error('Session or branch changed. Return to the original account and branch to sync.');
+      error.scopeChanged = true; throw error;
+    }
+    return fetchWithAuth(endpoint, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      headers: { 'X-Expected-Business-Id': expected.businessId } }, { session, locationId: expected.locationId });
+  }
+  return { get: endpoint => request(endpoint, 'GET'), post: (endpoint, body) => request(endpoint, 'POST', body) };
+}
+
 export const api = {
   get: (endpoint) => dedupedGet(endpoint),
   post: (endpoint, body) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),

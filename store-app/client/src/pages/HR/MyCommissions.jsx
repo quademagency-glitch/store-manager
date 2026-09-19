@@ -40,6 +40,8 @@ export default function MyCommissions() {
       </div>
 
       {/* Summary Cards */}
+      {summary.recoveryDue > 0 && <p role="status" className="alert alert-warning">Paid commission affected by returns: {fmt(summary.recoveryDue)} needs reconciliation.</p>}
+      {summary.unlinkedPaidEntries > 0 && <p role="status" className="alert alert-warning">{summary.unlinkedPaidEntries} historical payouts need matching cash records.</p>}
       <div className="hr-summary-grid">
         <div className="hr-summary-card">
           <div className="hr-summary-icon" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-text)' }}>

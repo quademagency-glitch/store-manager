@@ -5,14 +5,15 @@ import { useCustomers } from '../hooks/useCustomers';
 import { useLoyalty } from '../hooks/useLoyalty';
 import Modal from '../components/Modal';
 import SalesHistory from '../components/SalesHistory';
-import { api } from '../lib/api';
+import { api, scopedApi } from '../lib/api';
+import { useOfflineScope } from '../hooks/useOfflineScope';
 import QrScanner from '../components/QrScanner';
 
 import NewCustomerModal from '../features/sales/components/NewCustomerModal';
 import VerifyModal from '../features/sales/components/VerifyModal';
 import PaymentModal from '../features/sales/components/PaymentModal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
-import { addToOfflineQueue } from '../lib/idb';
+import { addToOfflineQueue, saveCheckoutDraft, getCheckoutDraft, clearCheckoutDraft, withCheckoutLock } from '../lib/idb';
 import { useToast } from '../hooks/useToast';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
@@ -30,7 +31,15 @@ const SCAN_FIELD_LABELS = {
 };
 
 export default function Sales() {
-  const { user } = useAuthContext();
+  const { activeLocationId } = useAuthContext();
+  const scope = useOfflineScope();
+  const [savedCheckout, setSavedCheckout] = useState(null);
+  const checkoutDraft = useRef(null);
+  useEffect(() => {
+    let active = true;
+    if (scope) getCheckoutDraft(scope).then(draft => { if (active) setSavedCheckout(draft); }).catch(() => {});
+    return () => { active = false; };
+  }, [scope]);
   const toast = useToast();
   const confirm = useConfirm();
   const { business } = usePrintDocument();
@@ -79,7 +88,7 @@ export default function Sales() {
   const [saleError, setSaleError] = useState('');
   const settlementAttempt = useRef(null);
   const [paymentUnconfirmed, setPaymentUnconfirmed] = useState(false);
-  
+
   // Two-Stage Checkout State
   const [pendingSale, setPendingSale] = useState(null); // Holds the sale object from Stage 1
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -150,8 +159,8 @@ export default function Sales() {
 
      The modal closes first so the till stays responsive, and the request goes
      after it. If it fails, the server's sweeper reverses the sale within the
-     hour, so there is nothing here worth blocking a queue for. An offline sale
-     has no row on the server yet, so there is nothing to cancel. */
+     hour. Even an offline-looking request may have reached the server, so
+     retain its draft until cancellation is confirmed by operation reference. */
   const abandonPendingSale = useCallback(async () => {
     if (isProcessing || paymentUnconfirmed) return;
     settlementAttempt.current = null;
@@ -160,13 +169,20 @@ export default function Sales() {
     setPendingSale(null);
     setAmountPaid('');
     setSaleError('');
-    if (!sale || sale._isOffline) return;
+    if (!sale) return;
     try {
-      await api.post(`/sales/${sale.id}/cancel`);
+      await withCheckoutLock(scope, async () => {
+        const current = await getCheckoutDraft(scope);
+        if (current?.payment) throw new Error('A payment needs confirmation. Resume the saved checkout.');
+        if (current?.request.operation_id) await scopedApi(scope).post(`/sales/reservations/${current.request.operation_id}/cancel`, {});
+        else await scopedApi(scope).post(`/sales/${sale.id}/cancel`);
+        await clearCheckoutDraft(scope); setSavedCheckout(null); checkoutDraft.current = null;
+      });
     } catch (err) {
+      setSaleError('Cancellation is unconfirmed. Resume or cancel the saved checkout when connected.');
       if (import.meta.env.DEV) console.error('Could not cancel abandoned sale:', err);
     }
-  }, [pendingSale, isProcessing, paymentUnconfirmed]);
+  }, [pendingSale, isProcessing, paymentUnconfirmed, scope]);
 
   // Fetch the selected customer's reward balances so they can be redeemed at checkout
   useEffect(() => {
@@ -247,7 +263,7 @@ export default function Sales() {
 
   const isCheckoutReady = () => {
     if (wizardItems.length === 0) return false;
-    
+
     // Ensure all required QR boxes are filled
     for (const item of wizardItems) {
       if (item.scans.length !== item.quantity) return false;
@@ -261,55 +277,44 @@ export default function Sales() {
     return true;
   };
 
-  const handleHoldSale = async () => {
-    if (!isCheckoutReady()) return;
-    setSaleError('');
-    setIsProcessing(true);
-
-    let payload;
+  const handleHoldSale = async (resume) => {
+    if (isProcessing || !scope) return;
+    const existing = resume?.request ? resume : savedCheckout;
+    if (!existing && (!isCheckoutReady() || !selectedCustomer)) return;
+    setSaleError(''); setIsProcessing(true);
+    let draft = existing || { request: {
+      operation_id: crypto.randomUUID(), expected_total: taxLine.total,
+      items: wizardItems.map(item => ({ product_id:item.product.id, quantity:item.quantity, unit_price:item.product.price, scans:item.scans })),
+      payment_method: paymentMethod || 'cash', total_amount: totalAmount, discount:0, customer_id:selectedCustomer.id,
+    }, cart: wizardItems, customer: selectedCustomer };
     try {
-      payload = {
-        items: wizardItems.map(item => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-          unit_price: item.product.price,
-          scans: item.scans,
-        })),
-        payment_method: paymentMethod || 'cash', // Default fallback for stage 1
-        total_amount: totalAmount,
-        subtotal: totalAmount,
-        tax: 0,
-        discount: 0,
-        customer_id: selectedCustomer.id,
-      };
-
-      const response = await api.post('/sales', payload);
-      const saleData = response.sale || response;
-
-      setPendingSale(saleData);
-      setShowPaymentModal(true);
-    } catch (err) {
-      if (err.message === 'Failed to fetch' || !navigator.onLine) {
-        // Offline: hold the sale locally and proceed to payment
-        toast.warning('You are offline. Proceeding to payment locally. The transaction will be synced later.');
-        setPendingSale({
-          id: `offline-${crypto.randomUUID()}`,
-          total_amount: taxLine.total,
-          status: 'pending',
-          _isOffline: true,
-          _settlementId: crypto.randomUUID(),
-          _payload: payload
-        });
-        setShowPaymentModal(true);
-      } else {
-        setSaleError(err.message || 'Failed to hold sale');
+      await withCheckoutLock(scope, async () => {
+      draft = await getCheckoutDraft(scope) || draft;
+      checkoutDraft.current = draft;
+      await saveCheckoutDraft(draft, scope); setSavedCheckout(draft);
+      setWizardItems(draft.cart); setSelectedCustomer(draft.customer);
+      const response = await scopedApi(scope).post('/sales', draft.request);
+      const saleData = response.sale;
+      if (saleData.status === 'voided') throw Object.assign(new Error('This saved checkout expired or was cancelled. Clear it before creating another sale.'), { status:409 });
+      if (saleData.status === 'completed' && !draft.payment) {
+        setReceiptData(saleData); setShowReceipt(true); await clearCheckoutDraft(scope); setSavedCheckout(null); setWizardItems([]); setSelectedCustomer(null); checkoutDraft.current = null; return;
       }
-    } finally {
-      setIsProcessing(false);
-    }
+      setPendingSale(saleData);
+      if (draft.payment) {
+        settlementAttempt.current = draft.payment; setPaymentUnconfirmed(true);
+        setAmountPaid(String(draft.payment.amount_paid)); setPaymentMethod(draft.payment.payment_method);
+      }
+      setShowPaymentModal(true);
+      });
+    } catch (err) {
+      if (err.endpoint && !err.status && !err.scopeChanged && !draft.payment) {
+        toast.warning('Checkout is saved on this device. Payment will need to sync when connected.');
+        setPendingSale({ id:`offline-${draft.request.operation_id}`, total_amount:draft.request.expected_total,
+          status:'pending', _isOffline:true, _settlementId:draft.request.operation_id, _payload:draft.request });
+        setShowPaymentModal(true);
+      } else setSaleError(err.message || 'Could not resume checkout');
+    } finally { setIsProcessing(false); }
   };
-
-
 
   const handleFinalizeSale = async (e) => {
     if (e) e.preventDefault();
@@ -338,16 +343,21 @@ export default function Sales() {
       }
 
       let fullReceipt = null;
-
+      await withCheckoutLock(scope, async () => {
+      const latest = await getCheckoutDraft(scope);
+      if (!latest || latest.request.operation_id !== checkoutDraft.current?.request.operation_id) {
+        throw new Error('This checkout changed in another tab. Reload to see its current result before taking payment.');
+      }
       if (pendingSale._isOffline) {
+        if (latest.payment) throw new Error('A saved payment needs confirmation online. Resume the checkout before taking another payment.');
         // Offline transaction
         const offlineData = {
           stage1: pendingSale._payload,
           stage2: payload,
           paymentMethod
         };
-        await addToOfflineQueue('/sales/offline-sync', 'POST', offlineData);
-        
+        await addToOfflineQueue('/sales/offline-sync', 'POST', offlineData, scope);
+
         fullReceipt = {
           ...pendingSale,
           payment_method: paymentMethod,
@@ -369,11 +379,21 @@ export default function Sales() {
           })),
         };
       } else {
-        settlementAttempt.current ||= payload;
-        const result = await api.post(`/sales/${pendingSale.id}/finalize`, settlementAttempt.current);
-        fullReceipt = result.sale;
+        settlementAttempt.current = latest.payment || settlementAttempt.current || payload;
+        await saveCheckoutDraft({ ...latest, payment:settlementAttempt.current }, scope);
+        try {
+          const result = await scopedApi(scope).post(`/sales/${pendingSale.id}/finalize`, settlementAttempt.current);
+          fullReceipt = result.sale;
+        } catch (err) {
+          if (!latest.payment && err.status >= 400 && err.status < 500 && ![401,403,409].includes(err.status)) {
+            await saveCheckoutDraft(latest, scope); settlementAttempt.current = null;
+          }
+          throw err;
+        }
       }
 
+      await clearCheckoutDraft(scope); setSavedCheckout(null); checkoutDraft.current = null;
+      });
       settlementAttempt.current = null;
       setPaymentUnconfirmed(false);
       setReceiptData(fullReceipt);
@@ -388,8 +408,7 @@ export default function Sales() {
       setPendingSale(null);
     } catch (err) {
       if (settlementAttempt.current) {
-        if (err.status >= 400 && err.status < 500 && err.status !== 409) settlementAttempt.current = null;
-        else setPaymentUnconfirmed(true);
+        setPaymentUnconfirmed(true);
       }
       setSaleError(err.message || 'Failed to finalize sale');
     } finally {
@@ -405,8 +424,8 @@ export default function Sales() {
 
   // ─── POS Actions ───
   const handleAddFromCatalog = (product) => {
-    const userLocationId = user?.user_metadata?.location_id;
-    const localStock = userLocationId 
+    const userLocationId = activeLocationId;
+    const localStock = userLocationId
       ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
       : (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0);
 
@@ -416,7 +435,7 @@ export default function Sales() {
     }
 
     const isDoubleMode = business?.qr_tracking_mode === 'double';
-    
+
     // Check if already in cart
     const existingIndex = wizardItems.findIndex(i => i.product.id === product.id);
     if (existingIndex >= 0) {
@@ -534,6 +553,20 @@ export default function Sales() {
 
   return (
     <div className="sales-page">
+      {savedCheckout && !showPaymentModal && <div role="status" className="alert alert-warning" style={{ gridColumn: '1 / -1' }}>
+        A checkout is saved for this account and branch. Resume it before starting another payment.
+        <button className="btn btn-secondary" disabled={isProcessing} onClick={() => handleHoldSale(savedCheckout)}>Resume saved checkout</button>
+        {!savedCheckout.payment && <button className="btn btn-secondary" disabled={isProcessing} onClick={async () => {
+          try {
+            await withCheckoutLock(scope, async () => {
+            const current = await getCheckoutDraft(scope);
+            if (current?.payment) throw new Error('A payment needs confirmation. Resume the saved checkout.');
+            await scopedApi(scope).post(`/sales/reservations/${savedCheckout.request.operation_id}/cancel`, {});
+            await clearCheckoutDraft(scope); setSavedCheckout(null); checkoutDraft.current = null;
+            });
+          } catch (err) { setSaleError(err.message); }
+        }}>Cancel saved checkout</button>}
+      </div>}
       {/* ─── Left Panel: Catalog ─── */}
       <div className="sales-catalog">
         <div className="catalog-header">
@@ -572,9 +605,9 @@ export default function Sales() {
 
         <div className="catalog-search">
           <svg className="catalog-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" strokeWidth="2"/></svg>
-          <input 
+          <input
              ref={productSearchRef}
-             className="catalog-search-input" 
+             className="catalog-search-input"
              placeholder="Search products by name, SKU...  (F1)"
              value={productSearchTerm}
              onChange={e => setProductSearchTerm(e.target.value)}
@@ -644,14 +677,14 @@ export default function Sales() {
                        <button className="btn-icon text-error" onClick={() => removeWizardItem(item.id)}>✕</button>
                      </div>
                    </div>
-                   
+
                    {/* QR Scanners */}
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                       {item.scans.map((scan, idx) => {
                          const isComplete = isDoubleMode
                           ? (scan.pack_code && scan.item_code && (!(item.product?.requires_serial !== false) || scan.serial_number))
                           : !!scan.item_code;
-                         
+
                          return (
                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: isComplete ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isComplete ? '#10b981' : 'var(--color-border)'}`, borderRadius: '6px' }}>
                              <span style={{ fontSize: '0.7rem', color: isComplete ? '#10b981' : 'var(--color-text-muted)' }}>Unit {idx + 1} {isComplete ? '✓' : ''}</span>
@@ -684,11 +717,11 @@ export default function Sales() {
                <span className="cart-summary-value">{fmt(taxLine.total)}</span>
              </div>
            </div>
-           
+
            {saleError && <div style={{ color: 'var(--color-error)', fontSize: '0.8rem', marginBottom: '8px', textAlign: 'center' }}>{saleError}</div>}
 
-           <button 
-             className="complete-sale-btn" 
+           <button
+             className="complete-sale-btn"
              disabled={!isCheckoutReady() || isProcessing || !selectedCustomer}
              onClick={handleHoldSale}
            >
@@ -710,8 +743,8 @@ export default function Sales() {
           />
           <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
             {searchResults.map(c => (
-              <div 
-                key={c.id} 
+              <div
+                key={c.id}
                 className="glass-panel mb-sm"
                 style={{ padding: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
                 onClick={() => { setSelectedCustomer(c); setSearchResults([]); setCustomerSearchTerm(''); setShowCustomerDrawer(false); }}

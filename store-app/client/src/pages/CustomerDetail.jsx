@@ -9,6 +9,8 @@ import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
 import { api } from '../lib/api';
+import { walletPost } from '../lib/walletOperations';
+import { useOfflineScope } from '../hooks/useOfflineScope';
 import Modal from '../components/Modal';
 import RecordPaymentModal from '../features/financials/components/RecordPaymentModal';
 import { PageHeader, TabPanel, Tabs } from '../components/ui';
@@ -34,6 +36,7 @@ export default function CustomerDetail() {
 
   const { fetchCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const loyalty = useLoyalty();
+  const walletScope = useOfflineScope();
   const ar = useBillingLedger('ar');
 
   const [customer, setCustomer] = useState(null);
@@ -156,12 +159,12 @@ export default function CustomerDetail() {
   }, [activeTab, id]);
 
   useEffect(() => {
-    api.get('/locations').then(res => { 
+    api.get('/locations').then(res => {
       if (Array.isArray(res)) {
         const userLocs = user?.user_metadata?.location_ids || [];
         const userLoc = user?.user_metadata?.location_id;
         const isAdmin = role === 'Platform Admin' || role === 'Business Admin';
-        
+
         let filtered = res;
         if (!isAdmin && userLocs.length <= 1) {
           filtered = res.filter(l => l.id === userLoc || userLocs.includes(l.id));
@@ -229,7 +232,7 @@ export default function CustomerDetail() {
     if (!amount || amount <= 0) return;
     setIsSubmittingDeposit(true);
     try {
-      await loyalty.issueStoreCredit(id, amount, 'issue', undefined, depositForm.note || 'Cash deposit');
+      await loyalty.issueStoreCredit(id, amount, 'deposit', undefined, depositForm.note || 'Cash deposit');
       await loadStoreCredit();
       setIsDepositOpen(false);
       setDepositForm({ amount: '', note: '' });
@@ -249,7 +252,7 @@ export default function CustomerDetail() {
       toast.error('Withdrawal amount exceeds available deposit balance.');
       return;
     }
-    if (!withdrawForm.location_id) {
+    if (!activeLocationId) {
       toast.error('Please select a till location to withdraw cash from.');
       return;
     }
@@ -270,11 +273,11 @@ export default function CustomerDetail() {
     if (!withdrawForm.code) return;
     setIsSubmittingWithdraw(true);
     try {
-      await api.post(`/loyalty/store-credit/withdraw`, {
+      await walletPost(walletScope, 'wallet:withdrawal', '/loyalty/store-credit/withdraw', {
         customer_id: id,
         amount: Number(withdrawForm.amount),
         code: withdrawForm.code,
-        location_id: withdrawForm.location_id,
+        location_id: activeLocationId,
         note: withdrawForm.note || 'Cash Withdrawal'
       });
       await loadStoreCredit();
@@ -466,8 +469,8 @@ export default function CustomerDetail() {
           <span className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Deposit Balance</span>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>{fmt(loyalty.storeCreditBalance)}</div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-            <button className="btn btn-sm btn-primary" onClick={() => setIsDepositOpen(true)}>Deposit</button>
-            <button className="btn btn-sm btn-outline" onClick={() => setIsWithdrawOpen(true)}>Withdraw</button>
+            <button className="btn btn-sm btn-primary" disabled={!hasPermission('record_payments') || !activeLocationId} onClick={() => setIsDepositOpen(true)}>Deposit</button>
+            <button className="btn btn-sm btn-outline" disabled={!hasPermission('record_payments') || !activeLocationId} onClick={() => setIsWithdrawOpen(true)}>Withdraw</button>
           </div>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
@@ -921,16 +924,16 @@ export default function CustomerDetail() {
       <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Customer">
         <form onSubmit={handleEditSubmit}>
           <div className="form-group">
-            <label>Full Name</label>
-            <input type="text" className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+            <label htmlFor="loyalty-field-8">Full Name</label>
+            <input id="loyalty-field-8" type="text" className="input" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
           </div>
           <div className="form-group">
-            <label>Phone Number</label>
-            <input type="tel" className="input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
+            <label htmlFor="loyalty-field-9">Phone Number</label>
+            <input id="loyalty-field-9" type="tel" className="input" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} required />
           </div>
           <div className="form-group">
-            <label>Email</label>
-            <input
+            <label htmlFor="loyalty-field-10">Email</label>
+            <input id="loyalty-field-10"
               type="email"
               className="input"
               value={editForm.email}
@@ -939,8 +942,8 @@ export default function CustomerDetail() {
             />
           </div>
           <div className="form-group">
-            <label>Credit Limit</label>
-            <input
+            <label htmlFor="loyalty-field-11">Credit Limit</label>
+            <input id="loyalty-field-11"
               type="number"
               min="0"
               step="0.01"
@@ -985,8 +988,8 @@ export default function CustomerDetail() {
               An SMS with a 4-digit code has been sent to {customer.phone}.
             </div>
             <div className="form-group">
-              <label>Verification Code *</label>
-              <input
+              <label htmlFor="loyalty-field-12">Verification Code *</label>
+              <input id="loyalty-field-12"
                 type="text"
                 maxLength="4"
                 className="input"
@@ -1014,8 +1017,8 @@ export default function CustomerDetail() {
             Record cash received from {customer.name} as a deposit they can spend on future purchases.
           </p>
           <div className="form-group">
-            <label>Amount *</label>
-            <input
+            <label htmlFor="loyalty-field-13">Amount *</label>
+            <input id="loyalty-field-13"
               type="number"
               min="0.01"
               step="0.01"
@@ -1027,8 +1030,8 @@ export default function CustomerDetail() {
             />
           </div>
           <div className="form-group">
-            <label>Note</label>
-            <input type="text" className="input" value={depositForm.note} onChange={(e) => setDepositForm({ ...depositForm, note: e.target.value })} placeholder="Optional" />
+            <label htmlFor="loyalty-field-14">Note</label>
+            <input id="loyalty-field-14" type="text" className="input" value={depositForm.note} onChange={(e) => setDepositForm({ ...depositForm, note: e.target.value })} placeholder="Optional" />
           </div>
           <div className="modal-actions mt-xl flex justify-end gap-md">
             <button type="button" className="btn btn-outline" onClick={() => setIsDepositOpen(false)}>Cancel</button>
@@ -1046,8 +1049,8 @@ export default function CustomerDetail() {
               Initiate a cash withdrawal from {customer.name}'s deposit balance. They will receive an SMS code to verify.
             </p>
             <div className="form-group">
-              <label>Amount * (Max: {fmt(loyalty.storeCreditBalance)})</label>
-              <input
+              <label htmlFor="loyalty-field-15">Amount * (Max: {fmt(loyalty.storeCreditBalance)})</label>
+              <input id="loyalty-field-15"
                 type="number"
                 min="0.01"
                 step="0.01"
@@ -1060,23 +1063,23 @@ export default function CustomerDetail() {
               />
             </div>
             <div className="form-group">
-              <label>Till Location (Cash Source) *</label>
-              <select 
-                className="input" 
-                value={withdrawForm.location_id} 
-                onChange={(e) => setWithdrawForm({ ...withdrawForm, location_id: e.target.value })} 
+              <label htmlFor="loyalty-field-16">Till Location (Cash Source) *</label>
+              <select id="loyalty-field-16"
+                className="input"
+                value={activeLocationId || ''}
+                onChange={(e) => setWithdrawForm({ ...withdrawForm, location_id: e.target.value })}
                 required
-                disabled={locations.length === 1}
+                disabled
               >
                 {locations.length !== 1 && <option value="">Select a location...</option>}
-                {locations.map(loc => (
+                {locations.filter(loc => loc.id === activeLocationId).map(loc => (
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
             </div>
             <div className="form-group">
-              <label>Note</label>
-              <input type="text" className="input" value={withdrawForm.note} onChange={(e) => setWithdrawForm({ ...withdrawForm, note: e.target.value })} placeholder="Optional" />
+              <label htmlFor="loyalty-field-17">Note</label>
+              <input id="loyalty-field-17" type="text" className="input" value={withdrawForm.note} onChange={(e) => setWithdrawForm({ ...withdrawForm, note: e.target.value })} placeholder="Optional" />
             </div>
             <div className="modal-actions mt-xl flex justify-end gap-md">
               <button type="button" className="btn btn-outline" onClick={() => setIsWithdrawOpen(false)}>Cancel</button>
@@ -1091,8 +1094,8 @@ export default function CustomerDetail() {
               An SMS with a 4-digit code has been sent to {customer.phone}.
             </div>
             <div className="form-group">
-              <label>Verification Code *</label>
-              <input
+              <label htmlFor="loyalty-field-18">Verification Code *</label>
+              <input id="loyalty-field-18"
                 type="text"
                 maxLength="4"
                 className="input"

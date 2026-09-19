@@ -67,30 +67,6 @@ export default function Alerts() {
     }
   };
 
-  const handleApproveVoid = async (alertObj) => {
-    const saleId = alertObj.reference_id;
-    if (!saleId) return;
-    try {
-      await api.put(`/sales/${saleId}/approve-void`);
-      toast.success('Void approved. Sale voided and stock restored.');
-      fetchAlerts();
-    } catch (err) {
-      toast.error(err.message || 'Failed to approve void');
-    }
-  };
-
-  const handleRejectVoid = async (alertObj) => {
-    const saleId = alertObj.reference_id;
-    if (!saleId) return;
-    try {
-      await api.put(`/sales/${saleId}/reject-void`);
-      toast.info('Void rejected. Sale remains completed.');
-      fetchAlerts();
-    } catch (err) {
-      toast.error(err.message || 'Failed to reject void');
-    }
-  };
-
   const formatDate = (iso) => {
     const d = new Date(iso);
     return d.toLocaleString('en-US', {
@@ -259,8 +235,7 @@ export default function Alerts() {
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                           {alertItem.type === 'VOID_REQUEST' ? (
                             <>
-                              <button className="btn btn-sm" style={{ background: 'var(--color-success)', color: 'white', fontSize: '0.75rem' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
-                              <button className="btn btn-sm" style={{ background: 'var(--color-error)', color: 'white', fontSize: '0.75rem' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
+                              <span>Historical void request: review the original receipt in Reconciliation before making a correction.</span>
                             </>
                           ) : (
                             <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>
@@ -310,8 +285,7 @@ export default function Alerts() {
                 <div className="m-card-actions">
                   {alertItem.type === 'VOID_REQUEST' ? (
                     <>
-                      <button className="btn btn-sm" style={{ background: 'var(--color-success-text)', color: 'white' }} onClick={() => handleApproveVoid(alertItem)}>Approve</button>
-                      <button className="btn btn-sm" style={{ background: 'var(--color-error-text)', color: 'white' }} onClick={() => handleRejectVoid(alertItem)}>Reject</button>
+                      <span>Historical void request: review the original receipt in Reconciliation before making a correction.</span>
                     </>
                   ) : (
                     <button className="btn btn-sm btn-outline" onClick={() => handleResolve(alertItem.id)}>Resolve</button>

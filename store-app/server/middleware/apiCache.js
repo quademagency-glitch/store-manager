@@ -13,7 +13,7 @@ setInterval(() => {
 /**
  * Express middleware to cache JSON responses in memory.
  * Best used for expensive analytics/dashboard queries.
- * 
+ *
  * @param {number} durationSec - How long to cache the response in seconds
  */
 function apiCache(durationSec) {
@@ -30,8 +30,9 @@ function apiCache(durationSec) {
     const locId = req.user?.active_location_id || 'all';
     const role = req.user?.role || (req.business ? 'api-key' : 'none');
     const url = req.originalUrl || req.url;
-    
-    const key = `__cache__${url}__biz_${bizId}__loc_${locId}__role_${role}`;
+
+    const identity = JSON.stringify([req.user?.id, req.user?.location_ids || [], req.user?.permissions || []]);
+    const key = `__cache__${url}__biz_${bizId}__loc_${locId}__role_${role}__identity_${identity}`;
 
     const cachedEntry = mcache.get(key);
     if (cachedEntry && cachedEntry.expiresAt > Date.now()) {

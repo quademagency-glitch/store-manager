@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { api } from '../lib/api';
+import { api, scopedApi } from '../lib/api';
 
 export function usePurchaseOrders() {
   const [orders, setOrders] = useState([]);
@@ -77,13 +77,13 @@ export function usePurchaseOrders() {
     }
   }, [fetchOrders]);
 
-  const receiveGoods = useCallback(async (id, receiveData) => {
+  const receiveGoods = useCallback(async (id, receiveData, scope) => {
     try {
-      const result = await api.post(`/purchase-orders/${id}/receive`, receiveData);
+      const result = await scopedApi(scope).post(`/purchase-orders/${id}/receive`, receiveData);
       await fetchOrders();
       return { success: true, data: result };
     } catch (err) {
-      return { success: false, error: err.message || 'Failed to receive goods' };
+      return { success: false, error: err.message || 'Failed to receive goods', status:err.status };
     }
   }, [fetchOrders]);
 

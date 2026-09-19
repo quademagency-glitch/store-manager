@@ -19,8 +19,8 @@ export default function Loyalty() {
   const { fmt, currencySymbol } = useCurrency(business);
   const {
     loading, rules, pointsBalance, pointsLedger, giftCards, storeCreditBalance,
-    fetchRules, saveRules, fetchBalance, fetchLedger, redeemPoints,
-    fetchGiftCards, issueGiftCard, lookupGiftCard,
+    fetchRules, saveRules, fetchBalance, fetchLedger,
+    fetchGiftCards, issueGiftCard, lookupGiftCard, redeemGiftCard,
     fetchStoreCredit, issueStoreCredit,
   } = useLoyalty();
 
@@ -35,12 +35,11 @@ export default function Loyalty() {
   });
 
   // Gift card form
-  const [gcForm, setGcForm] = useState({ amount: '', customer_id: '', expires_at: '' });
+  const [gcForm, setGcForm] = useState({ amount: '', customer_id: '', expires_at: '', funding: 'cash', note: '' });
   const [gcLookupCode, setGcLookupCode] = useState('');
   const [gcLookupResult, setGcLookupResult] = useState(null);
 
-  // Redeem form
-  const [redeemForm, setRedeemForm] = useState({ points: '' });
+  const [transferAmount, setTransferAmount] = useState('');
 
   // Store credit form
   const [scForm, setScForm] = useState({ amount: '', type: 'issue', note: '' });
@@ -95,23 +94,20 @@ export default function Loyalty() {
     }
   };
 
-  const handleRedeem = async () => {
-    if (!selectedCustomer) return toast.error('Select a customer first');
+  const handleTransferGiftCard = async () => {
+    if (!selectedCustomer) return toast.error('Select the customer on the Store Credit tab first.');
     try {
-      const result = await redeemPoints(selectedCustomer.id, Number(redeemForm.points));
-      toast.success(`Redeemed! Cash value: ${fmt(result.cash_value)}`);
-      setRedeemForm({ points: '' });
-      fetchLedger(selectedCustomer.id);
-    } catch (err) {
-      toast.error(err.message || 'Failed to redeem');
-    }
+      const result = await redeemGiftCard(gcLookupCode, Number(transferAmount), selectedCustomer.id);
+      setGcLookupResult(result.card); setTransferAmount(''); fetchGiftCards();
+      toast.success('Gift card value transferred to customer credit. Apply it at checkout.');
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleIssueGiftCard = async () => {
     try {
-      const card = await issueGiftCard(Number(gcForm.amount), gcForm.customer_id || undefined, gcForm.expires_at || undefined);
+      const { card } = await issueGiftCard(Number(gcForm.amount), gcForm.customer_id || undefined, gcForm.expires_at || undefined, gcForm.funding, gcForm.note);
       toast.success(`Gift card issued! Code: ${card.code}`);
-      setGcForm({ amount: '', customer_id: '', expires_at: '' });
+      setGcForm({ amount: '', customer_id: '', expires_at: '', funding: 'cash', note: '' });
       fetchGiftCards();
     } catch (err) {
       toast.error(err.message || 'Failed to issue gift card');
@@ -132,7 +128,7 @@ export default function Loyalty() {
     if (!selectedCustomer) return toast.error('Select a customer first');
     try {
       await issueStoreCredit(selectedCustomer.id, Number(scForm.amount), scForm.type, undefined, scForm.note);
-      toast.success(`Store credit ${scForm.type}d!`);
+      toast.success('Credit adjustment recorded.');
       setScForm({ amount: '', type: 'issue', note: '' });
       fetchStoreCredit(selectedCustomer.id);
     } catch (err) {
@@ -163,20 +159,20 @@ export default function Loyalty() {
             <h3>Loyalty Program Configuration</h3>
             <p className="text-muted mb-lg">Configure how customers earn and redeem loyalty points.</p>
             <div className="form-group">
-              <label>Points per {currencySymbol}1 spent</label>
-              <input type="number" step="0.1" className="form-input" value={ruleForm.points_per_currency_unit}
+              <label htmlFor="loyalty-field-1">Points per {currencySymbol}1 spent</label>
+              <input id="loyalty-field-1" type="number" step="0.1" className="form-input" value={ruleForm.points_per_currency_unit}
                 onChange={e => setRuleForm(p => ({ ...p, points_per_currency_unit: e.target.value }))} />
               <span className="form-hint">How many points customers earn per dollar spent</span>
             </div>
             <div className="form-row">
               <div className="form-group flex-1">
-                <label>Minimum Points to Redeem</label>
-                <input type="number" className="form-input" value={ruleForm.min_points_to_redeem}
+                <label htmlFor="loyalty-field-2">Minimum Points to Redeem</label>
+                <input id="loyalty-field-2" type="number" className="form-input" value={ruleForm.min_points_to_redeem}
                   onChange={e => setRuleForm(p => ({ ...p, min_points_to_redeem: e.target.value }))} />
               </div>
               <div className="form-group flex-1">
-                <label>Point Value ({currencySymbol})</label>
-                <input type="number" step="0.001" className="form-input" value={ruleForm.point_value}
+                <label htmlFor="loyalty-field-3">Point Value ({currencySymbol})</label>
+                <input id="loyalty-field-3" type="number" step="0.001" className="form-input" value={ruleForm.point_value}
                   onChange={e => setRuleForm(p => ({ ...p, point_value: e.target.value }))} />
                 <span className="form-hint">Each point = {fmt(ruleForm.point_value)}</span>
               </div>
@@ -188,7 +184,7 @@ export default function Loyalty() {
                 Enable loyalty program
               </label>
             </div>
-            {hasPermission('manage_business') && (
+            {hasPermission('manage_loyalty') && (
               <button className="btn btn-primary" onClick={handleSaveRules} disabled={loading}>
                 {loading ? 'Saving...' : 'Save Rules'}
               </button>
@@ -229,22 +225,9 @@ export default function Loyalty() {
                 </div>
               </div>
 
-              {/* Redeem */}
               <div className="loyalty-card">
-                <h4>Redeem Points</h4>
-                <div className="form-row items-end">
-                  <div className="form-group flex-1">
-                    <label>Points to Redeem</label>
-                    <input type="number" className="form-input" value={redeemForm.points}
-                      onChange={e => setRedeemForm({ points: e.target.value })} />
-                  </div>
-                  <button className="btn btn-primary" onClick={handleRedeem} disabled={loading || !redeemForm.points}>
-                    Redeem
-                  </button>
-                </div>
-                {redeemForm.points && rules && (
-                  <p className="form-hint">Cash value: {fmt(Number(redeemForm.points) * Number(rules.point_value || 0))}</p>
-                )}
+                <h4>Use points at checkout</h4>
+                <p>Select this customer in Sales and apply their points when completing payment. Points are deducted only when the purchase succeeds.</p>
               </div>
 
               {/* Points History */}
@@ -277,18 +260,24 @@ export default function Loyalty() {
       <TabPanel idPrefix="loyalty" id="gift-cards" value={activeTab}>
         <div className="loyalty-section">
           {/* Issue Card */}
-          {hasPermission('manage_business') && (
+          {hasPermission('manage_loyalty') && (
             <div className="loyalty-card">
               <h3>Issue Gift Card</h3>
+              <label htmlFor="gift-funding">Funding</label>
+              <select id="gift-funding" className="form-input" value={gcForm.funding} onChange={e => setGcForm(p => ({ ...p, funding: e.target.value }))}>
+                <option value="cash">Cash received at the active till</option><option value="promotional">Promotional gift (no cash received)</option>
+              </select>
+              <label htmlFor="gift-note">Reason / note</label>
+              <input id="gift-note" className="form-input" value={gcForm.note} onChange={e => setGcForm(p => ({ ...p, note: e.target.value }))} />
               <div className="form-row items-end">
                 <div className="form-group flex-1">
-                  <label>Amount</label>
-                  <input type="number" step="0.01" className="form-input" placeholder="50.00"
+                  <label htmlFor="loyalty-field-4">Amount</label>
+                  <input id="loyalty-field-4" type="number" step="0.01" className="form-input" placeholder="50.00"
                     value={gcForm.amount} onChange={e => setGcForm(p => ({ ...p, amount: e.target.value }))} />
                 </div>
                 <div className="form-group flex-1">
-                  <label>Expires (optional)</label>
-                  <input type="date" className="form-input"
+                  <label htmlFor="loyalty-field-5">Expires (optional)</label>
+                  <input id="loyalty-field-5" type="date" className="form-input"
                     value={gcForm.expires_at} onChange={e => setGcForm(p => ({ ...p, expires_at: e.target.value }))} />
                 </div>
                 <button className="btn btn-primary" onClick={handleIssueGiftCard} disabled={loading || !gcForm.amount}>
@@ -303,7 +292,7 @@ export default function Loyalty() {
             <h3>Look Up Gift Card</h3>
             <div className="form-row items-end">
               <div className="form-group flex-1">
-                <input type="text" className="form-input" placeholder="Enter gift card code..."
+                <input type="text" className="form-input" aria-label="Gift card code" placeholder="Enter gift card code..."
                   value={gcLookupCode} onChange={e => setGcLookupCode(e.target.value)} />
               </div>
               <button className="btn btn-secondary" onClick={handleLookup} disabled={loading || !gcLookupCode}>
@@ -312,6 +301,10 @@ export default function Loyalty() {
             </div>
             {gcLookupResult && (
               <div className="gc-lookup-result">
+                <p>Transfer gift card value to {selectedCustomer?.name || 'a customer selected on the Store Credit tab'} for use at checkout.</p>
+                <label htmlFor="gift-transfer-amount">Amount to transfer</label>
+                <input id="gift-transfer-amount" type="number" min="0.01" step="0.01" max={gcLookupResult.current_balance} className="form-input" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} />
+                <button className="btn btn-primary" disabled={loading || !selectedCustomer || !transferAmount} onClick={handleTransferGiftCard}>Transfer to customer credit</button>
                 <div className="gc-result-row"><span>Code:</span><strong>{gcLookupResult.code}</strong></div>
                 <div className="gc-result-row"><span>Balance:</span><strong>{fmt(gcLookupResult.current_balance)}</strong></div>
                 <div className="gc-result-row"><span>Initial:</span><span>{fmt(gcLookupResult.initial_balance)}</span></div>
@@ -363,7 +356,7 @@ export default function Loyalty() {
       <TabPanel idPrefix="loyalty" id="store-credit" value={activeTab}>
         <div className="loyalty-section">
           <div className="loyalty-customer-search">
-            <input type="text" className="form-input" placeholder="Search customer..."
+            <input type="text" className="form-input" aria-label="Search customer" placeholder="Search customer..."
               value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} />
             {customerSearch && customers.length > 0 && (
               <div className="customer-dropdown">
@@ -392,18 +385,18 @@ export default function Loyalty() {
               </div>
 
               <div className="loyalty-card">
-                <h4>Issue / Refund Store Credit</h4>
+                <h4>Credit adjustment</h4><p>Use Customer Details to record cash deposits. Use Returns to refund a sale.</p>
                 <div className="form-row items-end">
                   <div className="form-group flex-1">
-                    <label>Type</label>
-                    <select className="form-input" value={scForm.type} onChange={e => setScForm(p => ({ ...p, type: e.target.value }))}>
+                    <label htmlFor="loyalty-field-6">Type</label>
+                    <select id="loyalty-field-6" className="form-input" value={scForm.type} onChange={e => setScForm(p => ({ ...p, type: e.target.value }))}>
                       <option value="issue">Issue Credit</option>
-                      <option value="refund">Refund to Credit</option>
+
                     </select>
                   </div>
                   <div className="form-group flex-1">
-                    <label>Amount</label>
-                    <input type="number" step="0.01" className="form-input" value={scForm.amount}
+                    <label htmlFor="loyalty-field-7">Amount</label>
+                    <input id="loyalty-field-7" type="number" step="0.01" className="form-input" value={scForm.amount}
                       onChange={e => setScForm(p => ({ ...p, amount: e.target.value }))} />
                   </div>
                   <button className="btn btn-primary" onClick={handleStoreCredit} disabled={loading || !scForm.amount}>
@@ -411,7 +404,7 @@ export default function Loyalty() {
                   </button>
                 </div>
                 <div className="form-group" style={{ marginTop: '12px' }}>
-                  <input type="text" className="form-input" placeholder="Note (optional)" value={scForm.note}
+                  <input type="text" className="form-input" aria-label="Reason for credit adjustment" placeholder="Reason for adjustment (required)" value={scForm.note}
                     onChange={e => setScForm(p => ({ ...p, note: e.target.value }))} />
                 </div>
               </div>

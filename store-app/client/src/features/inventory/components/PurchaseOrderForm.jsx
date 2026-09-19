@@ -45,7 +45,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
       if (field === 'product_id' && value) {
         const product = products.find(p => p.id === value);
         if (product && !item.unit_cost) {
-          updated.unit_cost = String(product.price);
+          updated.unit_cost = String(product.cost_price ?? '');
         }
       }
       return updated;
@@ -89,8 +89,8 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
         {/* Header Fields */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
           <div className="form-group">
-            <label className="form-label">Supplier *</label>
-            <select className="form-input" value={supplierId} onChange={e => setSupplierId(e.target.value)} required>
+            <label className="form-label" htmlFor="po-supplier">Supplier *</label>
+            <select id="po-supplier" className="form-input" value={supplierId} onChange={e => setSupplierId(e.target.value)} required>
               <option value="">Select supplier...</option>
               {suppliers.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -98,9 +98,9 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Expected Delivery Date</label>
+            <label className="form-label" htmlFor="po-expected-date">Expected Delivery Date</label>
             <input
-              type="date"
+              id="po-expected-date" type="date"
               className="form-input"
               value={expectedDate}
               onChange={e => setExpectedDate(e.target.value)}
@@ -133,7 +133,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
               <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 100px 100px 36px', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                 <select
                   className="form-input"
-                  value={item.product_id}
+                  aria-label={`Product for purchase line ${idx + 1}`} value={item.product_id}
                   onChange={e => updateItem(idx, 'product_id', e.target.value)}
                   style={{ fontSize: '0.9rem' }}
                 >
@@ -145,7 +145,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
                 <input
                   type="number"
                   className="form-input"
-                  value={item.quantity}
+                  aria-label={`Quantity for purchase line ${idx + 1}`} step="1" value={item.quantity}
                   onChange={e => updateItem(idx, 'quantity', e.target.value)}
                   placeholder="0"
                   min="1"
@@ -154,7 +154,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
                 <input
                   type="number"
                   className="form-input"
-                  value={item.unit_cost}
+                  aria-label={`Unit cost for purchase line ${idx + 1}`} value={item.unit_cost}
                   onChange={e => updateItem(idx, 'unit_cost', e.target.value)}
                   placeholder="0.00"
                   min="0"
@@ -194,8 +194,8 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
 
         {/* Notes */}
         <div className="form-group mb-lg">
-          <label className="form-label">Notes</label>
-          <textarea
+          <label className="form-label" htmlFor="po-notes">Notes</label>
+          <textarea id="po-notes"
             className="form-input"
             value={notes}
             onChange={e => setNotes(e.target.value)}

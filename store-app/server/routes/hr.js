@@ -1,4 +1,6 @@
 const express = require('express');
+const { reportRange, applyReportRange } = require('../utils/reportDates');
+const { fetchAllRows } = require('../utils/fetchAllRows');
 const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { z } = require('zod');
@@ -619,49 +621,35 @@ router.get('/commissions', authGuard, async (req, res) => {
     const { page, limit, offset } = getPagination(req.query);
     const { userId, startDate, endDate, unpaidOnly } = req.query;
 
-    let query = supabaseAdmin
-      .from('commission_ledger')
-      .select(`
-        *,
-        user:users!user_id(id, name, email),
-        rule:commission_rules!rule_id(id, name, type, value),
-        sale:sales!sale_id(id, receipt_number, total_amount)
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (req.user.role !== 'Platform Admin') {
+    const range = reportRange(startDate, endDate);
+    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role) || req.user.permissions?.includes('manage_business');
+    if (!isManager && !req.user.permissions?.includes('view_my_commissions')) return res.status(403).json({ error: 'Commission access denied' });
+    const filtered = query => {
       query = query.eq('business_id', req.user.business_id);
-    }
-
-    // Non-managers can only see their own commissions
-    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role);
-    if (!isManager) {
-      query = query.eq('user_id', req.user.id);
-    } else if (userId) {
-      query = query.eq('user_id', userId);
-    }
-
-    if (startDate) query = query.gte('created_at', startDate);
-    if (endDate) query = query.lte('created_at', endDate);
-    if (unpaidOnly === 'true') query = query.is('paid_at', null);
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    // Compute summary
-    const totalEarned = (data || []).reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalPaid = (data || []).filter(c => c.paid_at).reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalUnpaid = totalEarned - totalPaid;
+      if (!isManager) query = query.eq('user_id', req.user.id);
+      else if (userId) query = query.eq('user_id', userId);
+      if (unpaidOnly === 'true') query = query.is('paid_at', null);
+      return applyReportRange(query, range);
+    };
+    const [pageResult, all] = await Promise.all([
+      filtered(supabaseAdmin.from('commission_ledger').select('*,user:users!user_id(id,name,email),rule:commission_rules!rule_id(id,name,type,value),sale:sales!sale_id(id,receipt_number,total_amount)', {count:'exact'})).order('created_at',{ascending:false}).order('id').range(offset,offset+limit-1),
+      fetchAllRows(()=>filtered(supabaseAdmin.from('commission_ledger').select('id,amount,paid_at,reversed_amount,payout_ledger_id')).order('id')),
+    ]);
+    const {data,error,count}=pageResult;if(error) throw error;
+    const totalPaid=all.filter(c=>c.paid_at).reduce((n,c)=>n+Number(c.amount),0);
+    const totalUnpaid=all.filter(c=>!c.paid_at).reduce((n,c)=>n+Number(c.amount),0);
+    const recoveryDue=all.filter(c=>c.paid_at).reduce((n,c)=>n+Number(c.reversed_amount || 0),0);
+    const totalEarned=totalPaid+totalUnpaid-recoveryDue;
+    const unlinkedPaidEntries=all.filter(c=>c.paid_at&&!c.payout_ledger_id).length;
 
     res.json({
       data,
-      summary: { totalEarned, totalPaid, totalUnpaid },
+      summary: { totalEarned, totalPaid, totalUnpaid, recoveryDue, unlinkedPaidEntries },
       ...buildPaginationMeta(count, page, limit),
     });
   } catch (err) {
     logger.error({ err }, 'Commission list error');
-    res.status(500).json({ error: 'Failed to fetch commissions' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to fetch commissions' });
   }
 });
 

@@ -11,7 +11,7 @@ const router = express.Router();
  * List all suppliers for the business. Optionally filter by active status.
  * Access: Inventory managers
  */
-router.get('/', authGuard, permissionCheck('manage_inventory', 'manage_financials'), async (req, res) => {
+router.get('/', authGuard, permissionCheck('manage_inventory', 'manage_financials', 'manage_suppliers', 'manage_purchases'), async (req, res) => {
   try {
     const showArchived = req.query.archived === 'true';
 
@@ -53,7 +53,7 @@ router.get('/', authGuard, permissionCheck('manage_inventory', 'manage_financial
  * Get a single supplier with purchase history summary.
  * Access: Inventory managers
  */
-router.get('/:id', authGuard, permissionCheck('manage_inventory', 'manage_financials'), async (req, res) => {
+router.get('/:id', authGuard, permissionCheck('manage_inventory', 'manage_financials', 'manage_suppliers', 'manage_purchases'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -100,7 +100,7 @@ router.get('/:id', authGuard, permissionCheck('manage_inventory', 'manage_financ
  * Create a new supplier.
  * Access: Inventory managers
  */
-router.post('/', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.post('/', authGuard, permissionCheck('manage_inventory', 'manage_suppliers'), async (req, res) => {
   try {
     const { name, contact_person, phone, email, address, notes, payment_terms, lead_time_days } = req.body;
 
@@ -138,7 +138,7 @@ router.post('/', authGuard, permissionCheck('manage_inventory'), async (req, res
  * Update supplier details.
  * Access: Inventory managers
  */
-router.put('/:id', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.put('/:id', authGuard, permissionCheck('manage_inventory', 'manage_suppliers'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, contact_person, phone, email, address, notes, payment_terms, lead_time_days } = req.body;
@@ -183,7 +183,7 @@ router.put('/:id', authGuard, permissionCheck('manage_inventory'), async (req, r
  * Toggle the is_active flag (soft-delete / reactivate).
  * Access: Inventory managers
  */
-router.put('/:id/archive', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
+router.put('/:id/archive', authGuard, permissionCheck('manage_inventory', 'manage_suppliers'), async (req, res) => {
   try {
     const { id } = req.params;
 

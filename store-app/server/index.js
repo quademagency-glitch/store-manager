@@ -549,6 +549,7 @@ app.use('/api/loyalty', loyaltyRoutes);
 
 // Reports routes
 app.use('/api/reports', reportsRoutes);
+app.use('/api/financial-reviews', require('./routes/financialReviews'));
 
 // Security audit trail, read-only, manage_business gated
 app.use('/api/audit-logs', auditLogsRoutes);

@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 
 export function useAnalytics() {
   const [summary, setSummary] = useState(null);
   const [shrinkageEvents, setShrinkageEvents] = useState([]);
+  const reconciliationRequest = useRef(0);
   const [reconciliationData, setReconciliationData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -15,7 +16,7 @@ export function useAnalytics() {
   const [topProducts, setTopProducts] = useState([]);
   const [inventoryHealth, setInventoryHealth] = useState([]);
   const [staffPerformance, setStaffPerformance] = useState([]);
-  
+
   const fetchRecentActivity = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -65,19 +66,21 @@ export function useAnalytics() {
   }, []);
 
   const fetchReconciliation = useCallback(async (dateString) => {
+    const request = ++reconciliationRequest.current;
+    setReconciliationData([]);
     setLoading(true);
     setError(null);
     try {
       const url = dateString ? `/analytics/reconciliation?date=${dateString}` : '/analytics/reconciliation';
       const data = await api.get(url);
-      setReconciliationData(data);
+      if (request === reconciliationRequest.current) setReconciliationData(data);
       return data;
     } catch (err) {
       const message = err.message || 'Failed to fetch reconciliation data';
-      setError(message);
+      if (request === reconciliationRequest.current) setError(message);
       return [];
     } finally {
-      setLoading(false);
+      if (request === reconciliationRequest.current) setLoading(false);
     }
   }, []);
 

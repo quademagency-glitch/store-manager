@@ -178,12 +178,15 @@ async function authGuard(req, res, next) {
     if (CACHE_TTL_MS > 0) {
       const cached = userCache.get(userId);
       if (cached && cached.expiresAt > Date.now()) {
-        req.user = cached.user;
+        req.user = { ...cached.user };
         tagSentryScope(req);
         if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
         const cachedRefusal = demoWriteRefusal(req);
         if (cachedRefusal) return respondDemoRefusal(res, cachedRefusal);
-        attachLocation(req);
+        if (req.get('X-Expected-Business-Id') && req.get('X-Expected-Business-Id') !== req.user.business_id) {
+          return res.status(409).json({ error: 'The saved transaction belongs to another business. Sign in to its original business.' });
+        }
+        if (!attachLocation(req)) return res.status(403).json({ error: 'Access to the selected branch was removed. Select an assigned branch.' });
         return next();
       }
     }
@@ -228,7 +231,7 @@ async function authGuard(req, res, next) {
         };
         return { user };
       })();
-      
+
       fetchPromises.set(userId, promise);
       userDataObj = await promise;
       fetchPromises.delete(userId);
@@ -242,7 +245,7 @@ async function authGuard(req, res, next) {
       });
     }
 
-    req.user = userDataObj.user;
+    req.user = { ...userDataObj.user };
     tagSentryScope(req);
 
     if (CACHE_TTL_MS > 0) {
@@ -254,7 +257,10 @@ async function authGuard(req, res, next) {
     const refusal = demoWriteRefusal(req);
     if (refusal) return respondDemoRefusal(res, refusal);
 
-    attachLocation(req);
+    if (req.get('X-Expected-Business-Id') && req.get('X-Expected-Business-Id') !== req.user.business_id) {
+          return res.status(409).json({ error: 'The saved transaction belongs to another business. Sign in to its original business.' });
+        }
+        if (!attachLocation(req)) return res.status(403).json({ error: 'Access to the selected branch was removed. Select an assigned branch.' });
     next();
   } catch (err) {
     logger.error({ err }, 'Auth guard error');
@@ -292,11 +298,14 @@ function attachLocation(req) {
     req.user.active_location_id = requestedLocationId;
   } else if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
     req.user.active_location_id = requestedLocationId;
+  } else if (requestedLocationId) {
+    return false;
   } else if (req.user.location_ids.length > 0) {
     req.user.active_location_id = req.user.location_ids[0];
   } else {
     req.user.active_location_id = null;
   }
+  return true;
 }
 
 module.exports = authGuard;

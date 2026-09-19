@@ -1,194 +1,72 @@
-import { useState, useEffect } from 'react';
-import {
-  getOfflineQueue,
-  removeFromOfflineQueue,
-  updateOfflineQueueItem,
-  MAX_SYNC_ATTEMPTS,
-} from '../lib/idb';
-import { api } from '../lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { getOfflineQueue, getUnscopedQueueCount, removeFromOfflineQueue, updateOfflineQueueItem, MAX_SYNC_ATTEMPTS, scopeKey } from '../lib/idb';
+import { scopedApi } from '../lib/api';
+import { useOfflineScope } from '../hooks/useOfflineScope';
+import WalletPending from './WalletPending';
 import { useToast } from '../hooks/useToast';
 
 export default function OfflineStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const scope = useOfflineScope();
   const toast = useToast();
-  const [pendingCount, setPendingCount] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
-  const [failedDetail, setFailedDetail] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [queue, setQueue] = useState([]);
+  const [legacyCount, setLegacyCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-
-  const checkQueue = async () => {
-    try {
-      const q = await getOfflineQueue();
-      const failed = q.filter((i) => i.status === 'failed');
-      setPendingCount(q.length - failed.length);
-      setFailedCount(failed.length);
-      setFailedDetail(
-        failed.length
-          ? failed.map((i) => `• ${i.endpoint}: ${i.errorMsg || 'Unknown error'}`).join('\n')
-          : '',
-      );
-    } catch (e) {
-      if (import.meta.env.DEV) console.error('Error checking offline queue', e);
-    }
-  };
-
+  const checkQueue = useCallback(async () => {
+    setQueue(scope ? await getOfflineQueue(scope) : []);
+    setLegacyCount(await getUnscopedQueueCount());
+  }, [scope]);
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    checkQueue();
-    // Periodically check queue
-    const interval = setInterval(checkQueue, 5000);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const handleSync = async () => {
-    if (!isOnline) {
-      toast.warning('You are currently offline.');
-      return;
-    }
-    
+    const online = () => setIsOnline(true), offline = () => setIsOnline(false);
+    window.addEventListener('online', online); window.addEventListener('offline', offline);
+    const check = () => checkQueue().catch(() => {});
+    check(); const interval = setInterval(check, 5000);
+    return () => { clearInterval(interval); window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+  }, [checkQueue]);
+  async function sync() {
+    if (!scope || !navigator.onLine || isSyncing) return;
+    if (!navigator.locks) { toast.error('This browser cannot safely sync payments. Use a current browser on this device.'); return; }
     setIsSyncing(true);
     try {
-      const queue = await getOfflineQueue();
-      // Dead-lettered items are not retried automatically, they need a
-      // deliberate retry so a permanently-failing item can't block the queue.
-      const replayable = queue.filter((i) => i.status !== 'failed');
-
-      if (replayable.length === 0) {
-        await checkQueue();
-        return;
-      }
-
-      let successCount = 0;
-      let retryCount = 0;
-      let deadCount = 0;
-
-      for (const item of replayable) {
-        try {
-          if (item.endpoint === '/sales/offline-sync') {
-            const { stage1, stage2 } = item.payload;
-            if (!stage2.settlement_id || !stage2.payment_method) {
-              throw new Error('This older offline payment needs reconciliation before it can be synced. Its original payment details are incomplete.');
+      await navigator.locks.request(`quaderp-sync:${scopeKey(scope)}`, { ifAvailable: true }, async lock => {
+        if (!lock) { toast.warning('Another tab is syncing this branch.'); return; }
+        const api = scopedApi(scope); let synced = 0, failed = 0;
+        for (const item of await getOfflineQueue(scope)) {
+          try {
+            if (item.endpoint !== '/sales/offline-sync' || !item.payload?.stage1?.operation_id || !item.payload?.stage2?.settlement_id) {
+              throw new Error('This older saved payment needs reconciliation before it can be synced.');
             }
-            // Resume at stage 2 if stage 1 already succeeded on an earlier
-            // attempt. Replaying stage 1 would create a duplicate sale, the
-            // remote id is persisted the moment it exists, so a failure
-            // between the two stages can never double-post.
-            let saleId = item.remoteSaleId;
-            if (!saleId) {
-              const res = await api.post('/sales', stage1);
-              saleId = res.sale?.id || res.id;
-              await updateOfflineQueueItem(item.id, { remoteSaleId: saleId });
+            if (item.remoteSaleId) {
+              await api.post(`/sales/${item.remoteSaleId}/finalize`, item.payload.stage2);
+            } else {
+              // Creation and payment commit together, with durable operation IDs.
+              await api.post('/sales/offline-sync', item.payload);
             }
-            // Only the settlement service can confirm an identical retry. A
-            // generic completed status does not prove these payment details
-            // were recorded, and a voided reservation must not be recreated.
-            await api.post(`/sales/${saleId}/finalize`, stage2);
-          } else {
-            await api[item.method.toLowerCase()](item.endpoint, item.payload);
+            await removeFromOfflineQueue(item.id, scope); synced++;
+          } catch (err) {
+            if (err.scopeChanged) break;
+            const attempts = (item.attempts || 0) + 1;
+            await updateOfflineQueueItem(item.id, { attempts, status: attempts >= MAX_SYNC_ATTEMPTS ? 'failed' : 'pending',
+              errorMsg: err.message, lastAttemptAt: Date.now() }, scope);
+            failed++;
+            if (err.status === 401 || err.status === 403 || err.status === 409) break;
           }
-          await removeFromOfflineQueue(item.id);
-          successCount++;
-        } catch (err) {
-          const attempts = (item.attempts || 0) + 1;
-          const deadLettered = attempts >= MAX_SYNC_ATTEMPTS;
-          await updateOfflineQueueItem(item.id, {
-            attempts,
-            status: deadLettered ? 'failed' : 'pending',
-            errorMsg: err?.userMessage || err?.message || 'Unknown error',
-            lastAttemptAt: Date.now(),
-          });
-          if (deadLettered) deadCount++;
-          else retryCount++;
-          if (import.meta.env.DEV) console.error('Failed to sync item', item, err);
         }
-      }
-
-      // Report what actually happened. A partial sync is not a success.
-      if (deadCount > 0) {
-        toast.error(
-          `${deadCount} transaction${deadCount === 1 ? '' : 's'} could not be synced after ${MAX_SYNC_ATTEMPTS} attempts and need attention. ${successCount} synced.`,
-        );
-      } else if (retryCount > 0) {
-        toast.warning(
-          `Synced ${successCount} of ${replayable.length}. ${retryCount} will be retried, they are still saved on this device.`,
-        );
-      } else {
-        toast.success(
-          `Synced ${successCount} offline transaction${successCount === 1 ? '' : 's'}.`,
-        );
-      }
-      await checkQueue();
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Sync process failed', err);
-      toast.error("Couldn't sync offline transactions. They are still saved on this device.");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Retry dead-lettered items: reset their counters and run a normal sync.
-  const handleRetryFailed = async () => {
-    const queue = await getOfflineQueue();
-    await Promise.all(
-      queue
-        .filter((i) => i.status === 'failed')
-        .map((i) => updateOfflineQueueItem(i.id, { status: 'pending', attempts: 0 })),
-    );
-    await checkQueue();
-    handleSync();
-  };
-
-  // Dead-lettered items take priority, this is the state a user must not miss.
-  if (failedCount > 0) {
-    return (
-      <button
-        onClick={handleRetryFailed}
-        disabled={!isOnline || isSyncing}
-        className="offline-status-pill offline-status-pill--error"
-        title={`These transactions are still saved on this device.\n\n${failedDetail}\n\nClick to retry.`}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        {isSyncing ? 'Retrying…' : `${failedCount} failed to sync, retry`}
-      </button>
-    );
+        await checkQueue();
+        if (failed) toast.warning(`${synced} synced; ${failed} need attention and remain saved on this device.`);
+        else if (synced) toast.success(`${synced} offline payments synced.`);
+      });
+    } catch (err) { toast.error(err.message || 'Saved payments could not be synced.'); }
+    finally { setIsSyncing(false); }
   }
-
-  if (!isOnline && pendingCount === 0) {
-    return (
-      <div className="offline-status-pill offline-status-pill--offline">
-        <span className="offline-status-dot" aria-hidden="true"></span>
-        <span>Offline</span>
-      </div>
-    );
-  }
-
-  if (pendingCount > 0) {
-    return (
-      <button
-        onClick={handleSync}
-        disabled={!isOnline || isSyncing}
-        className={`offline-status-pill ${isOnline ? 'offline-status-pill--ready' : 'offline-status-pill--offline'}`}
-        title={isOnline ? 'Click to sync now' : 'Waiting for connection to sync'}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        {isSyncing ? 'Syncing…' : `Sync pending (${pendingCount})`}
-      </button>
-    );
-  }
-
-  return null;
+  const failed = queue.filter(i => i.status === 'failed');
+  return <>
+    <WalletPending />
+    {legacyCount > 0 && <span role="status" className="offline-status-pill offline-status-pill--error" title="These older payments have no saved account or branch identity. They are preserved on this device and cannot be replayed automatically. Ask your administrator to reconcile them before clearing browser storage.">{legacyCount} older saved payments need review</span>}
+    {queue.length > 0 ? <button onClick={sync} disabled={!isOnline || isSyncing || !scope}
+      className={`offline-status-pill ${failed.length ? 'offline-status-pill--error' : 'offline-status-pill--ready'}`}
+      title={failed.map(i => i.errorMsg).join('\n') || 'Saved payments for your account and selected branch'}>
+      {isSyncing ? 'Syncing…' : failed.length ? `${failed.length} need attention — retry sync` : `Sync pending (${queue.length})`}
+    </button> : !isOnline && <span className="offline-status-pill offline-status-pill--offline">Offline</span>}
+  </>;
 }

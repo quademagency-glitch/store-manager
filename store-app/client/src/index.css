@@ -122,6 +122,7 @@
 @import './styles/organization-settings.css' layer(pages);
 @import './styles/hr.css' layer(pages);
 @import './styles/loyalty.css' layer(pages);
+@import './styles/returns.css' layer(pages);
 @import './styles/reports.css' layer(pages);
 @import './styles/qr-print-label.css' layer(pages);
 @import './styles/help-center.css' layer(pages);

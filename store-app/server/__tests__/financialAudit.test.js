@@ -11,6 +11,8 @@ jest.mock('../utils/auditLog', () => ({ logAuditEvent: jest.fn(), AUDIT_ACTIONS:
 const app = express();
 app.use(express.json());
 app.use('/reports', require('../routes/reports'));
+app.use('/analytics', require('../routes/analytics'));
+app.use('/reviews', require('../routes/financialReviews'));
 app.use('/ledger', require('../routes/ledger'));
 app.use('/customers', require('../routes/customers'));
 app.use('/sales', require('../routes/sales'));
@@ -21,7 +23,7 @@ app.use('/marketing', require('../routes/crmCommunications'));
 let rows, queries, mutations;
 beforeEach(() => {
   rows = {}; queries = []; mutations = [];
-  mockUser.role = 'Business Admin'; mockUser.permissions = [];
+  mockUser.role = 'Business Admin'; mockUser.permissions = []; mockUser.location_ids = [];
   mockDb.from.mockImplementation(table => {
     const calls = []; queries.push({ table, calls });
     let range;
@@ -74,7 +76,7 @@ describe('owner financial reports', () => {
   test('uses recorded costs, reverses refunds, excludes duplicate commission expense and scopes paid date', async () => {
     rows.sales = { data: [{ total_amount: 110, tax_amount: 10, sale_items: [{ quantity: 2, unit_cost: 20, cost_basis: 'recorded' }] }] };
     rows.returns = { data: [{ total_refund_amount: 55, sale: { total_amount: 110, tax_amount: 10 }, return_items: [{ quantity: 1, sale_item: { unit_cost: 20, cost_basis: 'recorded' } }] }] };
-    rows.business_ledger = { data: [{ amount: 5 }, { id: 'payout-1', amount: 10, commission_payouts: [{ id: 'c1' }] }] };
+    rows.business_ledger = { data: [{ amount: 5 }, { id: 'payout-1', amount: 10, commission_payouts: [{ id: 'c1', amount: 10 }] }] };
     rows.commission_ledger = { data: [{ id: 'c1', amount: 10, payout_ledger_id: 'payout-1' }] };
     const res = await request(app).get('/reports/pnl?startDate=2026-09-18&endDate=2026-09-18&locationId=branch-1');
     expect(res.status).toBe(200);
@@ -151,7 +153,7 @@ test('customer lifetime total is independent of the 50-row history page and nets
 });
 
 test('commission payout made at another branch is not counted again as an operating expense', async () => {
-  rows.business_ledger = { data: [{ id: 'paid-here', amount: 10, commission_payouts: [{ id: 'earned-elsewhere' }] }] };
+  rows.business_ledger = { data: [{ id: 'paid-here', amount: 10, commission_payouts: [{ id: 'earned-elsewhere', amount: 10 }] }] };
   rows.commission_ledger = { data: [] };
   const res = await request(app).get('/reports/pnl?startDate=2026-09-01&endDate=2026-09-19&locationId=payout-branch');
   expect(res.status).toBe(200);
@@ -200,4 +202,50 @@ test('P&L uses saved refund tax and settlement date',async()=>{
   const res=await request(app).get('/reports/pnl?startDate=2026-09-18&endDate=2026-09-18');
   expect(res.body).toMatchObject({revenue:79.96,refunds:0.04});
   expect(queries.find(q=>q.table==='sales').calls).toContainEqual(['lt','accounting_at','2026-09-19T00:00:00.000Z']);
+});
+
+test('commission summaries cover every page and expose paid reversals separately',async()=>{
+  rows.commission_ledger={data:Array.from({length:1201},(_,i)=>({id:String(i),amount:10,paid_at:i%2?'2026-09-18T12:00:00Z':null,reversed_amount:i===1?3:0,payout_ledger_id:i%2?'payout':null})),count:1201};
+  const res=await request(app).get('/hr/commissions?page=2&limit=25&startDate=2026-09-18&endDate=2026-09-18');
+  expect(res.status).toBe(200);expect(res.body.data).toHaveLength(25);
+  expect(res.body.summary).toMatchObject({totalEarned:12007,totalPaid:6000,totalUnpaid:6010,recoveryDue:3});
+  expect(queries.filter(q=>q.table==='commission_ledger').every(q=>q.calls.some(c=>c[0]==='lt'&&c[1]==='created_at'&&c[2]==='2026-09-19T00:00:00.000Z'))).toBe(true);
+});
+test('reconciliation uses settled receipts and dated refunds, with net cash separate from sales',async()=>{
+  rows.users={data:[{id:mockUser.id,name:'Operator',roles:{name:'Sales'}}]};
+  rows.sales={data:[{id:'sale',salesperson_id:mockUser.id,total_amount:100,discount_amount:0,payment_method:'cash',cash_received:70,accounting_at:'2026-09-18T12:00:00Z'}]};
+  rows.returns={data:[{id:'return',total_refund_amount:40,cash_refund_amount:28,created_at:'2026-09-18T14:00:00Z',sale:{salesperson_id:mockUser.id,payment_method:'cash'}}]};
+  const res=await request(app).get('/analytics/reconciliation?date=2026-09-18');
+  expect(res.status).toBe(200);expect(res.body[0]).toMatchObject({totalSalesRevenue:60,cashReceived:70,cashRefunds:28,netCash:42,refundCount:1});
+  const settled=queries.find(q=>q.table==='sales'&&q.calls.some(c=>c[0]==='in'));
+  expect(settled.calls).toEqual(expect.arrayContaining([['in','status',['completed','void_pending']],['gte','accounting_at','2026-09-18T00:00:00.000Z'],['lt','accounting_at','2026-09-19T00:00:00.000Z']]));
+});
+test('cash withdrawal from a customer liability is not an operating expense',async()=>{
+  rows.business_ledger={data:[{id:'wallet',amount:20,metadata:{liability_movement:true}},{id:'expense',amount:5}]};
+  const res=await request(app).get('/reports/pnl?startDate=2026-09-18&endDate=2026-09-18');
+  expect(res.status).toBe(200);expect(res.body.expenses).toBe(5);
+});
+test('ordinary ledger writes cannot impersonate wallet liability entries',async()=>{
+  const res=await request(app).post('/ledger').send({location_id:mockUser.active_location_id,type:'expense',amount:20,metadata:{liability_movement:true}});
+  expect(res.status).toBe(400);expect(mutations).toEqual([]);
+});
+test('documented financial corrections require delegated reconciliation permission',async()=>{
+  mockUser.role='Cashier';mockUser.permissions=['create_sales'];mockDb.rpc.mockClear();
+  expect((await request(app).post('/reviews').send({})).status).toBe(403);expect(mockDb.rpc).not.toHaveBeenCalled();
+});
+
+
+test('partial historical payout links preserve the rest of the operating expense', async () => {
+  rows.business_ledger = { data: [{ amount: 25, commission_payouts: [{ id: 'c1', amount: 10 }] }] };
+  rows.commission_ledger = { data: [{ id: 'c1', amount: 10 }] };
+  const res = await request(app).get('/reports/pnl?startDate=2026-09-01&endDate=2026-09-19');
+  expect(res.status).toBe(200);
+  expect(res.body).toMatchObject({ expenses: 15, commissions: 10, netProfit: -25 });
+});
+
+test('delegated financial reports scope commissions to assigned branches without a branch filter', async () => {
+  mockUser.role = 'Salesperson'; mockUser.permissions = ['view_financial_reports']; mockUser.location_ids = ['branch-a'];
+  const res = await request(app).get('/reports/pnl?startDate=2026-09-01&endDate=2026-09-19');
+  expect(res.status).toBe(200);
+  expect(queries.find(q => q.table === 'commission_ledger').calls).toContainEqual(['in', 'sale.location_id', ['branch-a']]);
 });

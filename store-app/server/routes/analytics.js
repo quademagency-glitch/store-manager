@@ -5,6 +5,9 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { apiCache } = require('../middleware/apiCache');
 const { resolveCurrency } = require('../utils/currency');
+const { reportRange, applyReportRange } = require('../utils/reportDates');
+const { fetchAllRows } = require('../utils/fetchAllRows');
+const { loadSettledMoney, saleCash, refundCash, roundMoney } = require('../utils/settledMoney');
 
 const router = express.Router();
 
@@ -27,25 +30,9 @@ function applyLocationFilter(query, req) {
  */
 router.get('/summary', authGuard, apiCache(60), async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date().toISOString().slice(0, 10);
+    const moneyPromise = loadSettledMoney(supabaseAdmin, req.user, reportRange(today, today));
 
-    // 1. Today's Sales Total
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('total_amount', { count: 'exact' })
-      .gte('created_at', today.toISOString())
-      /* Money actually taken: completed, plus void_pending, which is a
-         finished sale whose void a manager has not yet approved. The cash is
-         in the drawer until they decide, and the row becomes 'voided' if they
-         approve it.
-
-         'pending' was being counted and should not be. The RPC writes the
-         sale before the payment screen, so a customer who changes their mind
-         at the till leaves a pending row behind, and it was landing in Today's
-         Sales, the trend, the top-products list and every cashier's total. */
-      .in('status', ['completed', 'void_pending']);
-    
     // 2. Total Products
     let productsQuery = supabaseAdmin
       .from('products')
@@ -68,29 +55,26 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
       .select('quantity, low_stock_threshold, location_id, products!inner(business_id)');
 
     if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
       productsQuery = productsQuery.eq('business_id', req.user.business_id);
       alertsQuery = alertsQuery.eq('business_id', req.user.business_id);
       lowStockQuery = lowStockQuery.eq('products.business_id', req.user.business_id);
     }
 
-    salesQuery = applyLocationFilter(salesQuery, req);
     alertsQuery = applyLocationFilter(alertsQuery, req);
     lowStockQuery = applyLocationFilter(lowStockQuery, req);
 
-    const [salesRes, productsRes, alertsRes, lowStockRes] = await Promise.all([
-      salesQuery,
+    const [money, productsRes, alertsRes, lowStockRes] = await Promise.all([
+      moneyPromise,
       productsQuery,
       alertsQuery,
       lowStockQuery
     ]);
 
-    if (salesRes.error) throw salesRes.error;
     if (productsRes.error) throw productsRes.error;
     if (alertsRes.error) throw alertsRes.error;
     if (lowStockRes.error) throw lowStockRes.error;
 
-    const todaySalesTotal = salesRes.data.reduce((sum, s) => sum + Number(s.total_amount), 0);
+    const todaySalesTotal = roundMoney(money.sales.reduce((sum, s) => sum + Number(s.total_amount), 0) - money.refunds.reduce((sum, r) => sum + Number(r.total_refund_amount), 0));
     const totalProducts = productsRes.count || 0;
 
     const lowStockCount = (lowStockRes.data || []).filter(
@@ -120,43 +104,13 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
  */
 router.get('/sales-trend', authGuard, apiCache(60), async (req, res) => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
-
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('total_amount, created_at')
-      .gte('created_at', sevenDaysAgo.toISOString())
-      .in('status', ['completed', 'void_pending']);
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-    salesQuery = applyLocationFilter(salesQuery, req);
-
-    const { data, error } = await salesQuery;
-    if (error) throw error;
-
-    const trendMap = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      trendMap[dateStr] = 0;
-    }
-
-    data.forEach(sale => {
-      const dateStr = new Date(sale.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      if (trendMap[dateStr] !== undefined) {
-        trendMap[dateStr] += Number(sale.total_amount);
-      }
-    });
-
-    const trendData = Object.keys(trendMap).map(date => ({
-      date,
-      revenue: trendMap[date]
-    }));
+    const today = new Date().toISOString().slice(0,10);
+    const start = new Date(Date.parse(today)-6*86400000).toISOString().slice(0,10);
+    const {sales,refunds}=await loadSettledMoney(supabaseAdmin,req.user,reportRange(start,today));
+    const buckets=Object.fromEntries(Array.from({length:7},(_,i)=>[new Date(Date.parse(start)+i*86400000).toISOString().slice(0,10),0]));
+    for(const sale of sales) { const day=sale.accounting_at?.slice(0,10); if(day in buckets) buckets[day]+=Number(sale.total_amount); }
+    for(const refund of refunds) { const day=refund.created_at?.slice(0,10); if(day in buckets) buckets[day]-=Number(refund.total_refund_amount); }
+    const trendData=Object.entries(buckets).map(([day,total])=>({date:new Date(day).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}),revenue:roundMoney(total)}));
 
     res.json(trendData);
   } catch (err) {
@@ -203,94 +157,35 @@ router.get('/shrinkage', authGuard, apiCache(60), async (req, res) => {
 /**
  * GET /api/analytics/reconciliation
  */
-router.get('/reconciliation', authGuard, apiCache(60), async (req, res) => {
+router.get('/reconciliation', authGuard, permissionCheck('manage_reconciliation'), apiCache(60), async (req, res) => {
   try {
-    const dateParam = req.query.date;
-    const targetDate = dateParam ? new Date(dateParam) : new Date();
-    
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    let usersQuery = supabaseAdmin
-      .from('users')
-      .select('id, name, email, role_id, roles:role_id (name)');
-      
-    if (req.user.role !== 'Platform Admin') {
-      usersQuery = usersQuery.eq('business_id', req.user.business_id);
-    }
-
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('id, salesperson_id, total_amount, discount_amount, status')
-      .gte('created_at', startOfDay.toISOString())
-      .lte('created_at', endOfDay.toISOString());
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-    salesQuery = applyLocationFilter(salesQuery, req);
-
-    let shrinkageQuery = supabaseAdmin
-      .from('stock_movements')
-      .select('user_id, quantity_change, product:products!product_id(price)')
-      .eq('movement_type', 'SHRINKAGE')
-      .gte('created_at', startOfDay.toISOString())
-      .lte('created_at', endOfDay.toISOString());
-
-    if (req.user.role !== 'Platform Admin') {
-      shrinkageQuery = shrinkageQuery.eq('business_id', req.user.business_id);
-    }
-    shrinkageQuery = applyLocationFilter(shrinkageQuery, req);
-
-    const [usersRes, salesRes, shrinkageRes] = await Promise.all([
-      usersQuery,
-      salesQuery,
-      shrinkageQuery
+    const day=req.query.date || new Date().toISOString().slice(0,10),range=reportRange(day,day);
+    const [{sales,refunds},users,voided,shrinkage]=await Promise.all([
+      loadSettledMoney(supabaseAdmin,req.user,range),
+      fetchAllRows(()=>supabaseAdmin.from('users').select('id,name,email,roles:role_id(name)').eq('business_id',req.user.business_id).order('id')),
+      fetchAllRows(()=>applyReportRange(applyLocationFilter(supabaseAdmin.from('sales').select('id,salesperson_id,total_amount,discount_amount').eq('business_id',req.user.business_id).eq('status','voided'),req),range).order('id')),
+      fetchAllRows(()=>applyReportRange(applyLocationFilter(supabaseAdmin.from('stock_movements').select('id,user_id,quantity_change,product:products!product_id(price)').eq('business_id',req.user.business_id).eq('movement_type','SHRINKAGE'),req),range).order('id')),
     ]);
-
-    if (usersRes.error) throw usersRes.error;
-    if (salesRes.error) throw salesRes.error;
-    if (shrinkageRes.error) throw shrinkageRes.error;
-
-    const users = usersRes.data;
-    const sales = salesRes.data;
-    const shrinkage = shrinkageRes.data;
-
-    const reconciliationData = users.map(user => {
-      const userSales = sales.filter(s => s.salesperson_id === user.id);
-      const completedSales = userSales.filter(s => s.status !== 'voided');
-      const voidedSales = userSales.filter(s => s.status === 'voided');
-
-      const totalSalesRevenue = completedSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
-      const totalDiscounts = completedSales.reduce((sum, s) => sum + Number(s.discount_amount || 0), 0);
-      const totalVoidValue = voidedSales.reduce((sum, s) => sum + Number(s.total_amount) + Number(s.discount_amount || 0), 0);
-
-      const userShrinkage = shrinkage.filter(s => s.user_id === user.id);
-      const totalShrinkageValue = userShrinkage.reduce((sum, s) => sum + (Math.abs(s.quantity_change) * (s.product?.price || 0)), 0);
-
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.roles ? user.roles.name : 'Unknown',
-        salesCount: completedSales.length,
-        totalSalesRevenue,
-        totalDiscounts,
-        voidCount: voidedSales.length,
-        totalVoidValue,
-        shrinkageCount: userShrinkage.length,
-        totalShrinkageValue
-      };
-    }).filter(data => data.salesCount > 0 || data.voidCount > 0 || data.shrinkageCount > 0);
-
-    reconciliationData.sort((a, b) => b.totalSalesRevenue - a.totalSalesRevenue);
+    const members=new Map(users.map(u=>[u.id,u]));
+    for(const id of [...sales.map(s=>s.salesperson_id),...refunds.map(r=>r.sale?.salesperson_id)]) if(id&&!members.has(id)) members.set(id,{id,name:'Former staff'});
+    const reconciliationData=[...members.values()].map(user=>{
+      const paid=sales.filter(s=>s.salesperson_id===user.id),returned=refunds.filter(r=>r.sale?.salesperson_id===user.id);
+      const cancelled=voided.filter(s=>s.salesperson_id===user.id),lost=shrinkage.filter(s=>s.user_id===user.id);
+      return {id:user.id,name:user.name,email:user.email,role:user.roles?.name || 'Former staff',salesCount:paid.length,
+        totalSalesRevenue:roundMoney(paid.reduce((n,s)=>n+Number(s.total_amount),0)-returned.reduce((n,r)=>n+Number(r.total_refund_amount),0)),
+        cashReceived:roundMoney(paid.reduce((n,s)=>n+saleCash(s),0)),cashRefunds:roundMoney(returned.reduce((n,r)=>n+refundCash(r),0)),
+        netCash:roundMoney(paid.reduce((n,s)=>n+saleCash(s),0)-returned.reduce((n,r)=>n+refundCash(r),0)),
+        totalRefunds:roundMoney(returned.reduce((n,r)=>n+Number(r.total_refund_amount),0)),refundCount:returned.length,
+        estimatedCashEntries:paid.filter(s=>s.payment_method==='cash'&&s.cash_received==null).length+returned.filter(r=>r.cash_refund_amount==null).length,
+        totalDiscounts:roundMoney(paid.reduce((n,s)=>n+Number(s.discount_amount || 0),0)),voidCount:cancelled.length,
+        totalVoidValue:roundMoney(cancelled.reduce((n,s)=>n+Number(s.total_amount),0)),shrinkageCount:lost.length,
+        totalShrinkageValue:roundMoney(lost.reduce((n,s)=>n+Math.abs(Number(s.quantity_change))*Number(s.product?.price || 0),0))};
+    }).filter(r=>r.salesCount||r.refundCount||r.voidCount||r.shrinkageCount).sort((a,b)=>b.totalSalesRevenue-a.totalSalesRevenue);
 
     res.json(reconciliationData);
   } catch (err) {
     logger.error({ err: err }, 'Error fetching reconciliation data:');
-    res.status(500).json({ error: 'Failed to fetch reconciliation data' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to fetch reconciliation data' });
   }
 });
 
@@ -304,7 +199,7 @@ router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
       .select('id, created_at, total_amount, status')
       .order('created_at', { ascending: false })
       .limit(10);
-      
+
     if (req.user.role !== 'Platform Admin') {
       salesQuery = salesQuery.eq('business_id', req.user.business_id);
     }
@@ -371,7 +266,7 @@ router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
     const combined = [...formattedSales, ...formattedMovements]
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
-    
+
     res.json(combined);
   } catch (err) {
     logger.error({ err: err }, 'Error fetching recent activity:');
@@ -453,55 +348,17 @@ router.delete('/reset', authGuard, async (req, res) => {
  */
 router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    let query = supabaseAdmin
-      .from('sale_items')
-      .select('quantity, unit_price, product:products!product_id(id, name)')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    // sale_items doesn't have business_id directly, so filter via sales join
-    // Instead, query sales first to get IDs
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('id')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .in('status', ['completed', 'void_pending']);
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
+    const start=new Date(Date.now()-30*86400000).toISOString();
+    const {sales,refunds}=await loadSettledMoney(supabaseAdmin,req.user,reportRange(start,null),{items:true});
+    const productMap={};
+    const add=(product,qty,amount)=>{if(!product?.id)return;const row=productMap[product.id] ||= {name:product.name,quantity:0,revenue:0};row.quantity+=qty;row.revenue+=amount;};
+    for(const sale of sales){
+      const lines=[...(sale.sale_items || [])].sort((a,b)=>a.id.localeCompare(b.id));
+      const weight=lines.reduce((n,i)=>n+Number(i.quantity)*Number(i.unit_price),0);let running=0,allocated=0;
+      for(const item of lines){running+=Number(item.quantity)*Number(item.unit_price);const next=weight?roundMoney(Number(sale.total_amount)*running/weight):0;add(item.product,Number(item.quantity),next-allocated);allocated=next;}
     }
-    salesQuery = applyLocationFilter(salesQuery, req);
-
-    const { data: salesIds } = await salesQuery;
-    if (!salesIds || salesIds.length === 0) return res.json([]);
-
-    const ids = salesIds.map(s => s.id);
-
-    const { data: items, error } = await supabaseAdmin
-      .from('sale_items')
-      .select('quantity, unit_price, product:products!product_id(id, name)')
-      .in('sale_id', ids);
-
-    if (error) throw error;
-
-    // Aggregate by product
-    const productMap = {};
-    (items || []).forEach(item => {
-      const pId = item.product?.id;
-      if (!pId) return;
-      if (!productMap[pId]) {
-        productMap[pId] = { name: item.product.name, revenue: 0, quantity: 0 };
-      }
-      productMap[pId].revenue += Number(item.quantity) * Number(item.unit_price);
-      productMap[pId].quantity += Number(item.quantity);
-    });
-
-    const topProducts = Object.values(productMap)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
-      .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }));
+    for(const refund of refunds) for(const item of refund.return_items || []) add(item.sale_item?.product,-Number(item.quantity),-Number(item.refund_amount || 0));
+    const topProducts=Object.values(productMap).sort((a,b)=>b.revenue-a.revenue).slice(0,5).map(p=>({...p,revenue:roundMoney(p.revenue)}));
 
     res.json(topProducts);
   } catch (err) {
@@ -560,49 +417,16 @@ router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
  */
 router.get('/staff-performance', authGuard, apiCache(60), async (req, res) => {
   try {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('salesperson_id, total_amount')
-      .gte('created_at', weekStart.toISOString())
-      .in('status', ['completed', 'void_pending']);
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-    salesQuery = applyLocationFilter(salesQuery, req);
-
-    const { data: sales, error: salesErr } = await salesQuery;
-    if (salesErr) throw salesErr;
-
-    // Get user names
-    let usersQuery = supabaseAdmin.from('users').select('id, name, email');
-    if (req.user.role !== 'Platform Admin') {
-      usersQuery = usersQuery.eq('business_id', req.user.business_id);
-    }
-    const { data: users } = await usersQuery;
-
-    const userMap = {};
-    (users || []).forEach(u => { userMap[u.id] = u; });
-
-    const staffMap = {};
-    (sales || []).forEach(s => {
-      const uid = s.salesperson_id;
-      if (!uid) return;
-      if (!staffMap[uid]) {
-        const user = userMap[uid] || {};
-        staffMap[uid] = { name: user.name || 'Unknown', email: user.email || '', sales: 0, revenue: 0 };
-      }
-      staffMap[uid].sales += 1;
-      staffMap[uid].revenue += Number(s.total_amount);
-    });
-
-    const performance = Object.values(staffMap)
-      .sort((a, b) => b.revenue - a.revenue)
-      .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }));
+    const weekStart=new Date();weekStart.setUTCDate(weekStart.getUTCDate()-weekStart.getUTCDay());weekStart.setUTCHours(0,0,0,0);
+    const [{sales,refunds},users]=await Promise.all([
+      loadSettledMoney(supabaseAdmin,req.user,reportRange(weekStart.toISOString(),null)),
+      fetchAllRows(()=>supabaseAdmin.from('users').select('id,name,email').eq('business_id',req.user.business_id).order('id')),
+    ]);
+    const userMap=Object.fromEntries(users.map(u=>[u.id,u])),staffMap={};
+    const row=id=>staffMap[id] ||= {name:userMap[id]?.name || 'Former staff',email:userMap[id]?.email || '',sales:0,revenue:0};
+    for(const sale of sales){const r=row(sale.salesperson_id);r.sales++;r.revenue+=Number(sale.total_amount);}
+    for(const refund of refunds){const r=row(refund.sale?.salesperson_id);r.revenue-=Number(refund.total_refund_amount);}
+    const performance=Object.values(staffMap).sort((a,b)=>b.revenue-a.revenue).map(p=>({...p,revenue:roundMoney(p.revenue)}));
 
     res.json(performance);
   } catch (err) {

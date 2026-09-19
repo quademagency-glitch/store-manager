@@ -145,7 +145,7 @@ const Icons = {
 };
 
 export default function MainLayout() {
-  const { user, role, signOut, hasPermission, locationIds, activeLocationId, switchLocation } = useAuthContext();
+  const { user, businessId, role, signOut, hasPermission, locationIds, activeLocationId, switchLocation } = useAuthContext();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -294,7 +294,7 @@ export default function MainLayout() {
         { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('view_products') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory'), tour: 'inventory' },
         { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers'), tour: 'suppliers' },
-        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: hasPermission('view_purchases') },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: ['view_purchases', 'manage_purchases', 'receive_goods'].some(hasPermission) },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
         { path: '/returns', label: 'Returns & Reversals', icon: Icons.reconciliation, visible: hasPermission('manage_returns') },
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: canSeeAlerts },
@@ -413,7 +413,7 @@ export default function MainLayout() {
         <div className="font-bold text-primary">{user?.email?.split('@')[0] || 'User'}</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{role || 'Unknown Role'}</div>
       </div>
-      
+
       <button className="dropdown-link" style={{ width: '100%', textAlign: 'left', padding: '8px 16px', color: 'var(--color-text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => { navigate('/profile'); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}>
         Profile
       </button>
@@ -432,9 +432,9 @@ export default function MainLayout() {
       </button>
 
       <div style={{ margin: '8px 0', borderTop: '1px solid var(--color-border)' }}></div>
-      <button 
-        className="dropdown-link text-error" 
-        style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} 
+      <button
+        className="dropdown-link text-error"
+        style={{ width: '100%', textAlign: 'left', padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
         onClick={() => { handleSignOut(); setIsUserMenuOpen(false); setIsMobileMenuOpen(false); }}
       >
         {Icons.signout} Sign Out
@@ -444,7 +444,7 @@ export default function MainLayout() {
 
   const renderBranchSelector = (positionStyle, isMobileDrawer = false) => (
     <div data-dropdown="branch" style={{ position: 'relative', width: isMobileDrawer ? '100%' : 'auto', ...positionStyle }}>
-      <button 
+      <button
         className="branch-selector"
         onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
         aria-expanded={isBranchMenuOpen}
@@ -458,7 +458,7 @@ export default function MainLayout() {
           <path d={isBranchMenuOpen ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      
+
       <div style={{
         position: 'absolute',
         top: isMobileDrawer ? 'auto' : '100%',
@@ -674,7 +674,7 @@ export default function MainLayout() {
           <NotificationBell enabled={canSeeAlerts} />
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '0 16px' }}>
-            <button 
+            <button
               onClick={toggleTheme}
               style={{ flex: 1, background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
@@ -708,10 +708,10 @@ export default function MainLayout() {
               {renderBranchSelector({}, true)}
             </div>
           )}
-          
+
           <div data-dropdown="user" style={{ position: 'relative', width: '100%' }}>
-            <button 
-              className="sidebar-signout" 
+            <button
+              className="sidebar-signout"
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               aria-expanded={isUserMenuOpen}
               aria-haspopup="menu"
@@ -751,7 +751,7 @@ export default function MainLayout() {
         <DemoBanner />
         <div className="page-shell">
           <div className="offline-status-slot">
-            <OfflineStatus />
+            <OfflineStatus key={`${businessId}:${user?.id}:${activeLocationId}`} />
           </div>
           {/* Inside the shell, so a page that throws takes only the content
               area with it. The single boundary in App.jsx wraps <Routes>, and
@@ -759,7 +759,7 @@ export default function MainLayout() {
               blank screen whose only exit was a reload. On a till mid-sale
               that costs the cart. */}
           <RouteErrorBoundary>
-            <Outlet />
+            <Outlet key={`${businessId}:${user?.id}:${activeLocationId}`} />
           </RouteErrorBoundary>
         </div>
       </main>

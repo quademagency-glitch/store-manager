@@ -9,6 +9,7 @@ const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const { reportRange, applyReportRange } = require('../utils/reportDates');
 const { fetchAllRows } = require('../utils/fetchAllRows');
+const { SETTLED_STATUSES, saleCash, refundCash } = require('../utils/settledMoney');
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ function applyLocationFilter(query, req) {
   if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
     return query; // Admins see all locations in the business
   }
-  
+
   if (req.user.active_location_id) {
     return query.eq('location_id', req.user.active_location_id);
   } else if (req.user.location_ids && req.user.location_ids.length > 0) {
@@ -52,7 +53,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     const { start_date, end_date } = req.query;
 
     // Check permissions manually or explicitly allow Admins and Managers
-    const hasHistoryPerm = req.user.permissions?.includes('view_till_history') || 
+    const hasHistoryPerm = req.user.permissions?.includes('view_till_history') ||
                            ['Platform Admin', 'Business Admin', 'Manager'].includes(req.user.role);
 
     const range = reportRange(start_date, end_date, { defaults: true });
@@ -61,7 +62,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     const [sales, entries, locations, refunds] = await Promise.all([
       fetchAllRows(() => scoped(supabaseAdmin.from('sales')
         .select('id,total_amount,cash_received,accounting_at,location_id')
-        .eq('payment_method','cash').in('status',['completed','void_pending'])
+        .eq('payment_method','cash').in('status',SETTLED_STATUSES)
         .gte('accounting_at',range.from).lt('accounting_at',range.until)).order('id')),
       fetchAllRows(() => scoped(supabaseAdmin.from('business_ledger')
         .select('id,type,amount,description,created_at,location_id,status,user:users!user_id(name)')
@@ -75,8 +76,8 @@ router.get('/till-balance', authGuard, async (req, res) => {
         .select('id,location_id,created_at,cash_refund_amount,total_refund_amount,sale:sales!original_sale_id(payment_method)')
         .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
     ]);
-    const cashSale = sale => Number(sale.cash_received ?? sale.total_amount);
-    const cashRefund = refund => Number(refund.cash_refund_amount ?? (refund.sale?.payment_method === 'cash' ? refund.total_refund_amount : 0));
+    const cashSale = saleCash;
+    const cashRefund = refundCash;
 
     // Map location IDs to names
     const locMap = {};
@@ -185,7 +186,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
     // Sort transactions by date descending and calculate running balance
     Object.values(branches).forEach(b => {
       b.transactions.sort((x, y) => new Date(y.date) - new Date(x.date));
-      
+
       let runningBalance = 0;
       for (let i = b.transactions.length - 1; i >= 0; i--) {
         const t = b.transactions[i];
@@ -224,6 +225,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
 router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) => {
   try {
     const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
+    if (metadata && ['liability_movement','flow_kind','operation_id'].some(key => key in metadata)) return res.status(400).json({error:'Customer wallet entries must be recorded through the customer wallet workflow.'});
 
     // If a template is specified, enforce receipt requirement and pull account category
     let accountCategory = null;
@@ -447,7 +449,7 @@ router.get('/download-receipts', authGuard, async (req, res) => {
  */
 router.get('/financial-summary', authGuard, async (req, res) => {
   try {
-    const canView = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
+    const canView = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role) || req.user.permissions?.includes('view_financial_reports');
     if (!canView) return res.status(403).json({ error: 'Unauthorized to view financial summary.' });
 
     const { start_date, end_date } = req.query;
@@ -460,7 +462,7 @@ router.get('/financial-summary', authGuard, async (req, res) => {
         .select('id,type,amount,description,metadata,created_at').eq('status','approved')
         .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
       fetchAllRows(() => scoped(supabaseAdmin.from('sales').select('id,total_amount')
-        .in('status',['completed','void_pending']).gte('accounting_at',range.from).lt('accounting_at',range.until)).order('id')),
+        .in('status',SETTLED_STATUSES).gte('accounting_at',range.from).lt('accounting_at',range.until)).order('id')),
       fetchAllRows(() => scoped(supabaseAdmin.from('returns').select('id,total_refund_amount')
         .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
     ]);
@@ -475,6 +477,7 @@ router.get('/financial-summary', authGuard, async (req, res) => {
     let totalOtherIncome = 0;
 
     entries.forEach(entry => {
+      if (entry.metadata?.liability_movement === true) return;
       const category = entry.metadata?.account_category || 'Uncategorized';
       const amt = Number(entry.amount);
 

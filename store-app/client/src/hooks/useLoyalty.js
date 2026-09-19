@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
 import { api } from '../lib/api';
+import { walletPost } from '../lib/walletOperations';
+import { useOfflineScope } from './useOfflineScope';
 
 export function useLoyalty() {
+  const scope = useOfflineScope();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -109,11 +112,12 @@ export function useLoyalty() {
     }
   }, []);
 
-  const issueGiftCard = useCallback(async (amount, customerId, expiresAt) => {
+  const issueGiftCard = useCallback(async (amount, customerId, expiresAt, funding, note) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post('/loyalty/gift-cards', {
+      const data = await walletPost(scope, 'wallet:gift-issue', '/loyalty/gift-cards', {
+        funding, note,
         amount,
         customer_id: customerId || undefined,
         expires_at: expiresAt || undefined,
@@ -125,7 +129,7 @@ export function useLoyalty() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   const lookupGiftCard = useCallback(async (code) => {
     setLoading(true);
@@ -141,11 +145,11 @@ export function useLoyalty() {
     }
   }, []);
 
-  const redeemGiftCard = useCallback(async (code, amount) => {
+  const redeemGiftCard = useCallback(async (code, amount, customerId) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post('/loyalty/gift-cards/redeem', { code, amount });
+      const data = await walletPost(scope, 'wallet:gift-transfer', '/loyalty/gift-cards/redeem', { code, amount, customer_id: customerId });
       return data;
     } catch (err) {
       setError(err.message);
@@ -153,7 +157,7 @@ export function useLoyalty() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   // ─── Store Credit ───
 
@@ -172,7 +176,7 @@ export function useLoyalty() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post('/loyalty/store-credit', {
+      const data = await walletPost(scope, 'wallet:credit', '/loyalty/store-credit', {
         customer_id: customerId,
         amount,
         type,
@@ -187,7 +191,7 @@ export function useLoyalty() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   return {
     loading,

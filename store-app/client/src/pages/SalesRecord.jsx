@@ -17,15 +17,15 @@ export default function SalesRecord() {
   const [exporting, setExporting] = useState(false);
   const requestId = useRef(0);
   const [searchParams] = useSearchParams();
-  
+
   // Date range state (default to today or URL param)
   const today = new Date().toISOString().split('T')[0];
   const urlDate = searchParams.get('date');
   const highlightId = searchParams.get('highlight');
-  
+
   const [startDate, setStartDate] = useState(urlDate || today);
   const [endDate, setEndDate] = useState(urlDate || today);
-  
+
   const [sales, setSales] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -96,34 +96,17 @@ export default function SalesRecord() {
   };
 
   const handleVoidSale = async (sale) => {
-    const confirmed = await confirm({ title: 'Void Sale', message: `Are you sure you want to void sale #${sale.receipt_number || sale.id.substring(0,8)}?`, variant: 'danger', confirmText: 'Void Sale' });
+    const confirmed = await confirm({ title: 'Cancel Reservation', message: `Are you sure you want to void sale #${sale.receipt_number || sale.id.substring(0,8)}?`, variant: 'danger', confirmText: 'Cancel Reservation' });
     if (!confirmed) return;
     setIsProcessing(true);
     try {
       await api.put(`/sales/${sale.id}/void`);
-      toast.success('Sale voided successfully!');
+      toast.success('Reservation cancelled; stock restored.');
       closeReceiptModal();
       fetchHistory();
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       toast.error(err.message || 'Failed to void sale');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleDeleteSale = async (sale) => {
-    const confirmed = await confirm({ title: 'Delete Sale', message: `CRITICAL: Are you sure you want to PERMANENTLY delete sale #${sale.receipt_number || sale.id.substring(0,8)}? This action cannot be undone.`, variant: 'danger', confirmText: 'Delete Permanently' });
-    if (!confirmed) return;
-    setIsProcessing(true);
-    try {
-      await api.delete(`/sales/${sale.id}`);
-      toast.success('Sale deleted successfully!');
-      closeReceiptModal();
-      fetchHistory();
-    } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
-      toast.error(err.message || 'Failed to delete sale');
     } finally {
       setIsProcessing(false);
     }
@@ -148,8 +131,8 @@ export default function SalesRecord() {
         <div>
           <h1 className="page-title">Sales Record</h1>
           <p className="page-subtitle">
-            {canViewHistory 
-              ? "View historical sales data and process returns." 
+            {canViewHistory
+              ? "View historical sales data and process returns."
               : "View today's sales data."}
           </p>
         </div>
@@ -161,22 +144,22 @@ export default function SalesRecord() {
       <div className="glass-panel sr-date-filter-row p-lg mb-lg flex gap-md items-end flex-wrap">
         <div className="form-group mb-0">
           <label htmlFor="sales-start">Start Date</label>
-          <input 
-            type="date" 
-            className="form-input" 
+          <input
+            type="date"
+            className="form-input"
             id="sales-start"
-            value={startDate} 
+            value={startDate}
             onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
             disabled={!canViewHistory}
           />
         </div>
         <div className="form-group mb-0">
           <label htmlFor="sales-end">End Date</label>
-          <input 
-            type="date" 
-            className="form-input" 
+          <input
+            type="date"
+            className="form-input"
             id="sales-end"
-            value={endDate} 
+            value={endDate}
             onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
             disabled={!canViewHistory}
           />
@@ -289,9 +272,9 @@ export default function SalesRecord() {
           actions={
             <>
               {canReturn && selectedReceiptSale.status === 'completed' && selectedReceiptSale.return_status !== 'full' && (
-                <button 
-                  type="button" 
-                  className="btn" 
+                <button
+                  type="button"
+                  className="btn"
                   onClick={() => { closeReceiptModal(); navigate(`/returns?sale=${selectedReceiptSale.id}`); }}
                   style={{ background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
@@ -299,30 +282,20 @@ export default function SalesRecord() {
                   Process Return
                 </button>
               )}
-              {hasPermission('manage_business') && !selectedReceiptSale.settlement_id && !['partial','full'].includes(selectedReceiptSale.return_status) && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.status !== 'void_pending' && (
-                <button 
-                  type="button" 
-                  className="btn" 
+              {hasPermission('create_sales') && selectedReceiptSale.status === 'pending' && (
+                <button
+                  type="button"
+                  className="btn"
                   onClick={() => handleVoidSale(selectedReceiptSale)}
                   disabled={isProcessing}
                   style={{ background: 'var(--color-accent-glow)', color: 'var(--color-accent-text)', border: '1px solid var(--color-accent-glow)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                  Void Sale
+                  Cancel Reservation
                 </button>
               )}
-              {hasPermission('manage_business') && !selectedReceiptSale.settlement_id && !['partial','full'].includes(selectedReceiptSale.return_status) && selectedReceiptSale.status !== 'pending' && (
-                <button 
-                  type="button" 
-                  className="btn" 
-                  onClick={() => handleDeleteSale(selectedReceiptSale)}
-                  disabled={isProcessing}
-                  style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', color: 'var(--color-error)', border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  Delete Sale
-                </button>
-              )}
+              {selectedReceiptSale.status === 'void_pending' && <p>This historical void request needs review in Reconciliation.</p>}
+              <p className="text-muted">Settled receipts are retained. Use Returns to record a reversal.</p>
             </>
           }
         />

@@ -47,13 +47,27 @@ test('reward balance endpoints use ledger sums for both currencies',async()=>{
   expect((await request(app).get(`/loyalty/balance/${ID(8)}`)).body.points).toBe(80.5);
   expect((await request(app).get(`/loyalty/store-credit/${ID(8)}`)).body.balance).toBe(10);
 });
-test('administrative credit issue remains available with trigger-calculated balance',async()=>{
-  const res=await request(app).post('/loyalty/store-credit').send({customer_id:ID(8),amount:15,type:'issue'});
-  expect(res.status).toBe(201);expect(res.body.new_balance).toBe(45);expect(mockDb.mutations[0].payload).toMatchObject({amount:15,type:'issue',business_id:ID(2)});
-  expect(mockDb.mutations[0].payload).not.toHaveProperty('balance_after');
+test('administrative credit issue uses one identified transaction and its authoritative balance',async()=>{
+  mockDb.rpc.mockResolvedValue({data:{new_balance:45}});
+  const body={operation_id:ID(9),customer_id:ID(8),amount:15,type:'issue',note:'Goodwill adjustment'};
+  const res=await request(app).post('/loyalty/store-credit').send(body);
+  expect(res.status).toBe(201);expect(res.body.new_balance).toBe(45);
+  expect(mockDb.rpc).toHaveBeenCalledWith('process_wallet_transaction',{p_business_id:ID(2),p_location_id:ID(3),p_actor_id:ID(1),p_kind:'credit_adjustment',p_request:body});
+  expect(mockDb.mutations).toEqual([]);
 });
 test('old client separate sale reward deductions are refused',async()=>{
-  expect((await request(app).post('/loyalty/store-credit').send({customer_id:ID(8),sale_id:ID(4),amount:15,type:'redeem'})).status).toBe(409);
+  expect((await request(app).post('/loyalty/store-credit').send({customer_id:ID(8),sale_id:ID(4),amount:15,type:'redeem'})).status).toBe(400);
   expect((await request(app).post('/loyalty/redeem').send({customer_id:ID(8),sale_id:ID(4),points:100})).status).toBe(409);
   expect(mockDb.mutations).toEqual([]);
+});
+
+test.each(['/loyalty/store-credit','/loyalty/store-credit/withdraw','/loyalty/gift-cards','/loyalty/gift-cards/redeem'])('ordinary cashier cannot change wallet value through %s',async endpoint=>{
+  mockUser.role='Cashier';mockUser.permissions=['create_sales'];
+  expect((await request(app).post(endpoint).send({operation_id:ID(9),customer_id:ID(8),amount:10,type:'deposit'})).status).toBe(403);
+  expect(mockDb.rpc).not.toHaveBeenCalled();
+});
+test('cash deposits record server-owned scope even when the client supplies a foreign business',async()=>{
+  mockUser.role='Payments Clerk';mockUser.permissions=['record_payments'];mockDb.rpc.mockResolvedValue({data:{new_balance:40}});
+  expect((await request(app).post('/loyalty/store-credit').send({operation_id:ID(9),customer_id:ID(8),amount:10,type:'deposit',business_id:ID(99)})).status).toBe(201);
+  expect(mockDb.rpc.mock.calls[0][1]).toMatchObject({p_business_id:ID(2),p_location_id:ID(3),p_kind:'deposit'});
 });

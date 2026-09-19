@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
-import { api } from '../lib/api';
+import { api, scopedApi } from '../lib/api';
+import { useOfflineScope } from './useOfflineScope';
 import { saveCustomersToIDB, getCustomersFromIDB } from '../lib/idb';
 import { reportError } from '../lib/errorReporting';
 
 export function useCustomers() {
+  const scope = useOfflineScope();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,18 +18,19 @@ export function useCustomers() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get(`/customers?page=${pageNum}&limit=50`);
+      const data = await (scope ? scopedApi(scope) : api).get(`/customers?page=${pageNum}&limit=50`);
       setCustomers(data.data || []);
       setPage(data.page || 1);
       setTotalPages(data.totalPages || 1);
       setTotalCustomers(data.total || 0);
       // See useProducts, offline-cache write failure, reported not surfaced.
-      saveCustomersToIDB(data.data || []).catch(err => reportError(err, { context: 'idb:save-customers' }));
+      if (scope) saveCustomersToIDB(data.data || [], scope).catch(err => reportError(err, { context: 'idb:save-customers' }));
       return data;
     } catch (err) {
+      if (err.status || err.scopeChanged) { setError(err.message); return []; }
       if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);
       try {
-        const cached = await getCustomersFromIDB();
+        const cached = await getCustomersFromIDB(scope);
         if (cached && cached.length > 0) {
           setCustomers(cached);
           return cached;
@@ -41,7 +44,7 @@ export function useCustomers() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   const fetchCustomer = useCallback(async (id) => {
     try {
@@ -55,20 +58,23 @@ export function useCustomers() {
   const searchCustomers = useCallback(async (query) => {
     if (!query) return [];
     try {
-      const data = await api.get(`/customers/search?q=${encodeURIComponent(query)}`);
+      const data = await (scope ? scopedApi(scope) : api).get(`/customers/search?q=${encodeURIComponent(query)}`);
+      if (scope) saveCustomersToIDB(data, scope).catch(err => reportError(err, { context: 'idb:search-customers' }));
       return data;
     } catch (err) {
-      if (import.meta.env.DEV) console.error('Search failed:', err);
-      return [];
+      if (err.status || err.scopeChanged || !scope) return [];
+      const cached = await getCustomersFromIDB(scope).catch(() => []);
+      const term = query.toLowerCase();
+      return cached.filter(c => [c.name, c.phone, c.customer_code].some(v => String(v || '').toLowerCase().includes(term)));
     }
-  }, []);
+  }, [scope]);
 
   const createCustomer = async (customerData) => {
     setLoading(true);
     setError(null);
     try {
       const data = await api.post('/customers', customerData);
-      
+
       setCustomers(prev => [...prev, data.customer].sort((a, b) => a.name.localeCompare(b.name)));
       return { success: true, customer: data.customer };
     } catch (err) {

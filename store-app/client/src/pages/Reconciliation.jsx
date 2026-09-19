@@ -5,11 +5,12 @@ import { useCurrency } from '../hooks/useCurrency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Icons } from '../components/icons/Icons';
 import { EmptyStateRow, HelpHint, SkeletonRows } from '../components/ui';
+import FinancialExceptions from '../components/FinancialExceptions';
 import { IS_MOCK } from '../lib/mockMode';
 
 export default function Reconciliation() {
   const { reconciliationData, loading, fetchReconciliation, error } = useAnalytics();
-  
+
   // Default to today
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -52,13 +53,13 @@ export default function Reconciliation() {
             End-of-day Reconciliation
             <HelpHint article="understanding-ledger" label="How your ledger fits together" />
           </h1>
-          <p className="page-subtitle">Daily summary of sales and shrinkage per staff member.</p>
+          <p className="page-subtitle">Settled receipts less refunds, by settlement date (UTC) and selected branch. Cash excludes card and electronic payments.</p>
         </div>
-        
+
         <div className="flex gap-md items-center">
-          <label className="text-sm text-muted font-medium">Select Date:</label>
-          <input 
-            type="date" 
+          <label htmlFor="reconciliation-date" className="text-sm text-muted font-medium">Select Date:</label>
+          <input
+            id="reconciliation-date" type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="input"
@@ -71,7 +72,7 @@ export default function Reconciliation() {
       {/* Totals Summary */}
       <div className="stats-grid mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-lg)' }}>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
-          <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Day Sales</span>
+          <span className="stat-label" style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Settled sales less refunds</span>
           <span className="stat-value text-success" style={{ fontSize: 'clamp(1.25rem, 10.5cqi, 2.25rem)', fontWeight: 800, color: 'var(--color-success)' }}>{fmt(totals.salesTotal)}</span>
         </div>
         <div className="pos-glass-card" style={{ padding: 'var(--space-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', containerType: 'inline-size' }}>
@@ -97,7 +98,7 @@ export default function Reconciliation() {
       {/* Analytics Bento Grid */}
       <div className="bento-grid mb-xl">
         <div className="pos-glass-card" style={{ minHeight: '350px', padding: 'var(--space-xl)' }}>
-          <h3 className="bento-title mb-lg" style={{ fontSize: '1.25rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Net Contribution by Staff</h3>
+          <h3 className="bento-title mb-lg" style={{ fontSize: '1.25rem', fontWeight: 600, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>Sales and shrinkage by staff</h3>
           {chartData.length > 0 ? (
             <div style={{ width: '100%', height: 280, minWidth: 0 }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
@@ -105,7 +106,7 @@ export default function Reconciliation() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis stroke="var(--color-text-secondary)" tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(value) => `${currencySymbol}${value}`} />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: 'var(--color-bg-tertiary)' }}
                     contentStyle={{ backgroundColor: 'var(--color-bg-card)', backdropFilter: 'blur(10px)', borderColor: 'var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-md)', padding: '12px' }}
                     itemStyle={{ color: 'var(--color-text-primary)' }}
@@ -137,7 +138,7 @@ export default function Reconciliation() {
                 <th style={{ padding: '1rem', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Discounts</th>
                 <th style={{ padding: '1rem', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Voids (Val/Cnt)</th>
                 <th style={{ padding: '1rem', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shrinkage (Val/Cnt)</th>
-                <th style={{ padding: '1rem var(--space-xl)', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Contribution</th>
+                <th style={{ padding: '1rem var(--space-xl)', color: 'var(--color-text-secondary)', fontWeight: 500, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sales less shrinkage</th>
               </tr>
             </thead>
             <tbody>
@@ -151,7 +152,7 @@ export default function Reconciliation() {
                   <tr key={row.id} className="border-b">
                     <td style={{ padding: '1rem var(--space-xl)' }}><div className="font-medium">{row.name || 'Unknown'}</div><div className="text-sm text-muted">{row.email}</div></td>
                     <td className="p-md"><span className={`badge ${row.role?.toLowerCase() === 'manager' ? 'badge-primary' : 'badge-secondary'}`}>{row.role}</span></td>
-                    <td className="p-md"><div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div><div className="text-sm text-muted">{row.salesCount} trans.</div></td>
+                    <td className="p-md"><div className="font-medium text-success">{fmt(row.totalSalesRevenue)}</div><div className="text-sm text-muted">{row.salesCount} receipts · {row.refundCount || 0} refunds</div><div className="text-sm">Cash net: {fmt(row.netCash || 0)}</div>{row.estimatedCashEntries > 0 && <div className="text-warning">{row.estimatedCashEntries} cash estimates need review</div>}</td>
                     <td className="font-medium text-warning p-md">{fmt(row.totalDiscounts)}</td>
                     <td className="p-md"><div className="font-medium text-error">{fmt(row.totalVoidValue)}</div><div className="text-sm text-muted">{row.voidCount} void(s)</div></td>
                     <td className="p-md"><div className="font-medium text-error">{fmt(row.totalShrinkageValue)}</div><div className="text-sm text-muted">{row.shrinkageCount} item(s)</div></td>
@@ -205,6 +206,7 @@ export default function Reconciliation() {
           })}
         </div>
       </div>
+      <FinancialExceptions />
     </div>
   );
 }

@@ -193,7 +193,7 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_suppliers"><Suppliers /></ProtectedRoute>
                     } />
                     <Route path="/purchase-orders" element={
-                      <ProtectedRoute requiredPermission="view_purchases"><PurchaseOrders /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission={['view_purchases', 'manage_purchases', 'receive_goods']}><PurchaseOrders /></ProtectedRoute>
                     } />
                     {/* Protected sub-routes handled within components or layout level */}
                     <Route path="/reconciliation" element={

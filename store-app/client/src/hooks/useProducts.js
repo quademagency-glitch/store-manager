@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
+import { api, scopedApi } from '../lib/api';
+import { useOfflineScope } from './useOfflineScope';
 import { saveProductsToIDB, getProductsFromIDB } from '../lib/idb';
 import { reportError } from '../lib/errorReporting';
 
 export function useProducts() {
+  const scope = useOfflineScope();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,15 +14,16 @@ export function useProducts() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get('/products');
+      const data = await (scope ? scopedApi(scope) : api).get('/products');
       setProducts(data);
       // Cache for offline. A failed IDB write degrades offline mode only,
       // report it, don't surface it.
-      saveProductsToIDB(data).catch(err => reportError(err, { context: 'idb:save-products' }));
+      if (scope) saveProductsToIDB(data, scope).catch(err => reportError(err, { context: 'idb:save-products' }));
     } catch (err) {
+      if (err.status || err.scopeChanged) { setError(err.message); return []; }
       if (import.meta.env.DEV) console.warn('Network fetch failed, trying offline cache...', err);
       try {
-        const cached = await getProductsFromIDB();
+        const cached = await getProductsFromIDB(scope);
         if (cached && cached.length > 0) {
           setProducts(cached);
           // Don't show error if we have cached data
@@ -33,7 +36,7 @@ export function useProducts() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scope]);
 
   useEffect(() => {
     fetchProducts();

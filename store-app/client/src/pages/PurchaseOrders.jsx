@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useOfflineScope } from '../hooks/useOfflineScope';
+import { scopeKey, saveOperationDraft, getOperationDraft, clearOperationDraft, getReceivingDrafts } from '../lib/idb';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { usePurchaseOrders } from '../hooks/usePurchaseOrders';
 import { useSuppliers } from '../hooks/useSuppliers';
@@ -34,9 +36,14 @@ export default function PurchaseOrders() {
 
   // Receive goods
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
+  const scope = useOfflineScope();
+  const receiveAttempt = useRef(null);
+  const [receiveRequest, setReceiveRequest] = useState(null);
+  const [receiveLocked, setReceiveLocked] = useState(false);
   const [receivePO, setReceivePO] = useState(null);
   const [isReceiving, setIsReceiving] = useState(false);
   const [receiveError, setReceiveError] = useState('');
+  const [pendingDeliveries, setPendingDeliveries] = useState([]);
   const [locations, setLocations] = useState([]);
 
   // GRN print
@@ -48,8 +55,17 @@ export default function PurchaseOrders() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    const refresh = () => (scope ? getReceivingDrafts(scope) : Promise.resolve([]))
+      .then(rows => { if (active) setPendingDeliveries(rows); }).catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, 5000);
+    return () => { active = false; clearInterval(timer); };
+  }, [scope, isReceiving]);
+
+  useEffect(() => {
     fetchOrders(1, statusFilter);
-    fetchSuppliers();
+    if (canManage) fetchSuppliers();
     api.get('/locations')
       .then(res => setLocations(res || []))
       .catch(() => {
@@ -59,7 +75,7 @@ export default function PurchaseOrders() {
     // toast is provider-memoized and stable; listing it here would add nothing
     // but is flagged because the linter can't see that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchOrders, fetchSuppliers, statusFilter]);
+  }, [fetchOrders, fetchSuppliers, statusFilter, canManage]);
 
   const statusFilters = [
     { value: '', label: 'All', count: totalOrders },
@@ -150,6 +166,8 @@ export default function PurchaseOrders() {
   const handleReceiveOpen = async (po) => {
     try {
       const detail = await api.get(`/purchase-orders/${po.id}`);
+      receiveAttempt.current = scope ? await getOperationDraft(`receive:${po.id}`, scope) : null;
+      setReceiveRequest(receiveAttempt.current); setReceiveLocked(!!receiveAttempt.current);
       setReceivePO(detail);
       setReceiveError('');
       setIsReceiveOpen(true);
@@ -162,8 +180,27 @@ export default function PurchaseOrders() {
     setIsReceiving(true);
     setReceiveError('');
     try {
-      const result = await receiveGoods(receivePO.id, data);
-      if (!result.success) throw new Error(result.error);
+      if (!navigator.locks) throw new Error('Use a current browser to receive goods safely.');
+      const result = await navigator.locks.request(`quaderp:${scopeKey(scope)}:receive:${receivePO.id}`, { ifAvailable: true }, async lock => {
+        if (!lock) throw new Error('Another tab is processing this delivery.');
+        const previous = await getOperationDraft(`receive:${receivePO.id}`, scope);
+        receiveAttempt.current = previous || receiveAttempt.current || { ...data, operation_id: crypto.randomUUID() };
+        setReceiveRequest(receiveAttempt.current);
+        await saveOperationDraft(`receive:${receivePO.id}`, receiveAttempt.current, scope);
+        const response = await receiveGoods(receivePO.id, receiveAttempt.current, scope);
+        response.rejectedBeforeAmbiguity = !previous && response.status >= 400 && response.status < 500 && ![401,403,409].includes(response.status);
+        if (response.success || response.rejectedBeforeAmbiguity) {
+          await clearOperationDraft(`receive:${receivePO.id}`, scope);
+        }
+        return response;
+      });
+      if (!result.success) {
+        if (result.rejectedBeforeAmbiguity) {
+          receiveAttempt.current = null; setReceiveRequest(null); setReceiveLocked(false);
+        } else setReceiveLocked(true);
+        throw new Error(result.error);
+      }
+      receiveAttempt.current = null; setReceiveLocked(false);
 
       toast.success(result.data?.message || 'Goods received successfully');
       setIsReceiveOpen(false);
@@ -221,6 +258,14 @@ export default function PurchaseOrders() {
           Create PO
         </button>}
       </div>
+
+      {canReceive && pendingDeliveries.length > 0 && <div className="alert alert-warning" role="status" style={{ marginBottom: 16 }}>
+        <p>A delivery needs confirmation. Resume its saved request even if the order already shows Received.</p>
+        {pendingDeliveries.map(draft => <button key={draft.purchaseOrderId} className="btn btn-secondary btn-sm"
+          disabled={isReceiving} onClick={() => handleReceiveOpen({ id: draft.purchaseOrderId })}>
+          Resume delivery {orders.find(po => po.id === draft.purchaseOrderId)?.po_number || draft.purchaseOrderId.slice(0, 8)}
+        </button>)}
+      </div>}
 
       {/* Status Filter */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -459,6 +504,9 @@ export default function PurchaseOrders() {
         onClose={() => setIsReceiveOpen(false)}
         onSubmit={handleReceiveSubmit}
         purchaseOrder={receivePO}
+        locked={receiveLocked}
+        savedRequest={receiveRequest}
+        activeLocationId={scope?.locationId}
         locations={locations}
         isSubmitting={isReceiving}
         error={receiveError}

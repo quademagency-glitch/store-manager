@@ -24,6 +24,7 @@ export function useAuth() {
      exactly what we already had. The saving was real but invisible, because
      the round trip simply moved from signInAsDemo into the effect. */
   const roleLoadedFor = useRef(null);
+  const identityUserId = useRef(null);
 
   /**
    * Commit a resolved identity to state.
@@ -46,6 +47,8 @@ export function useAuth() {
       role: roleName, permissions: userPermissions,
       locationIds: userLocations, businessId: userBusinessId, isDemo: demoFlag,
     } = identity;
+
+    if (identityUserId.current !== userId) return null;
 
     const clear = () => {
       setRole(null);
@@ -119,6 +122,7 @@ export function useAuth() {
         .eq('id', userId)
         .single();
 
+      if (identityUserId.current !== userId) return null;
       if (error) {
         if (import.meta.env.DEV) console.error('Error fetching user role:', error.message);
         setRole(null);
@@ -140,6 +144,7 @@ export function useAuth() {
         isDemo: data.businesses?.is_demo === true,
       });
     } catch (err) {
+      if (identityUserId.current !== userId) return null;
       if (import.meta.env.DEV) console.error('Unexpected error fetching role:', err);
       setRole(null);
       setPermissions([]);
@@ -161,9 +166,16 @@ export function useAuth() {
           }
         }
 
+        const nextUserId = newSession?.user?.id ?? null;
+        if (identityUserId.current !== nextUserId) {
+          identityUserId.current = nextUserId;
+          setRole(null); setPermissions([]); setLocationIds([]); setBusinessId(null); setIsDemo(false);
+          setActiveLocationId(null); localStorage.removeItem('active_location_id');
+          setLoading(Boolean(nextUserId));
+        }
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        
+
         if (!newSession?.user) {
           setRole(null);
           setPermissions([]);
@@ -221,10 +233,11 @@ export function useAuth() {
         setLoading(false);
         return { error };
       }
-      
+
       // Eagerly update state to avoid race condition with onAuthStateChange
       let roleResult = null;
       if (data.session) {
+        identityUserId.current = data.user?.id ?? null;
         setSession(data.session);
         setUser(data.user);
         if (data.user) {
@@ -286,6 +299,7 @@ export function useAuth() {
       }
 
       if (data.session) {
+        identityUserId.current = data.user?.id ?? null;
         setSession(data.session);
         setUser(data.user);
 
@@ -325,6 +339,7 @@ export function useAuth() {
       if (error) {
         if (import.meta.env.DEV) console.error('Error signing out:', error.message);
       }
+      identityUserId.current = null;
       setUser(null);
       setUserContext(null);
       setSession(null);

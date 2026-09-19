@@ -525,11 +525,12 @@ const FIXTURES = {
     { id: 'g2', provider: 'resend', type: 'email', display_name: 'Resend Email',
       sender_id: 'noreply@quaderp.app', api_key: '••••••••', is_active: true, is_default: true },
   ],
-  '/loyalty/rules': { id: 'lr1', points_per_currency: 1, redemption_rate: 0.01, is_active: true },
+  '/financial-reviews': {data:[],total:0,page:1,totalPages:1},
+  '/loyalty/rules': { id: 'lr1', points_per_currency_unit: 1, min_points_to_redeem:100, point_value:0.01, active:true },
   '/loyalty/gift-cards': {
     data: [
-      { id: 'gc1', code: 'GIFT-ABCD', balance: 250, initial_value: 500, status: 'active', created_at: T0 },
-      { id: 'gc2', code: 'GIFT-EFGH', balance: 0, initial_value: 200, status: 'redeemed', created_at: T0 },
+      { id: 'gc1', code: 'GIFT-ABCD', current_balance:250,initial_balance:500,active:true,issued_at:T0,created_at:T0 },
+      { id: 'gc2', code: 'GIFT-EFGH', current_balance:0,initial_balance:200,active:true,issued_at:T0,created_at:T0 },
     ],
     total: 2, page: 1, totalPages: 1,
   },

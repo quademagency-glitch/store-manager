@@ -7,6 +7,7 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { reportRange, applyReportRange } = require('../utils/reportDates');
 const { ageInvoices, OPEN_AR_STATUSES } = require('../utils/arAging');
 const { fetchAllRows } = require('../utils/fetchAllRows');
+const { SETTLED_STATUSES, saleRevenue, refundRevenue, scopeMoney } = require('../utils/settledMoney');
 
 const router = express.Router();
 
@@ -28,24 +29,22 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
     }
 
     const range = reportRange(startDate, endDate);
-    const businessId = req.user.business_id;
     const scoped = (query, dateColumn = 'created_at') => {
-      query = query.eq('business_id', businessId);
-      if (locationId) query = query.eq('location_id', locationId);
+      query = scopeMoney(query, req.user, locationId || null);
       return applyReportRange(query, range, dateColumn).order('id');
     };
     const [sales, expenses, commissions, returns] = await Promise.all([
       fetchAllRows(() => scoped(supabaseAdmin.from('sales')
         .select('id, total_amount, tax_amount, sale_items(quantity, unit_cost, cost_basis)')
-        .in('status', ['completed', 'void_pending']), 'accounting_at')),
+        .in('status', SETTLED_STATUSES), 'accounting_at')),
       fetchAllRows(() => scoped(supabaseAdmin.from('business_ledger')
-        .select('id, amount, commission_payouts:commission_ledger!payout_ledger_id(id)')
+        .select('id, amount, metadata, commission_payouts:commission_ledger!payout_ledger_id(id,amount)')
         .eq('type', 'expense').eq('status', 'approved'))),
       fetchAllRows(() => {
         let query = supabaseAdmin.from('commission_ledger')
           .select('id, amount, payout_ledger_id, sale:sales!sale_id!inner(location_id)')
-          .eq('business_id', businessId).not('paid_at', 'is', null);
-        if (locationId) query = query.eq('sale.location_id', locationId);
+          .not('paid_at', 'is', null);
+        query = scopeMoney(query, req.user, locationId || null, 'sale.location_id');
         return applyReportRange(query, range, 'paid_at').order('id');
       }),
       fetchAllRows(() => scoped(supabaseAdmin.from('returns')
@@ -62,22 +61,21 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
       return Number(item?.unit_cost || 0) * Number(quantity);
     };
     for (const sale of sales) {
-      revenue += Number(sale.total_amount || 0) - Number(sale.tax_amount || 0);
+      revenue += saleRevenue(sale);
       for (const item of sale.sale_items || []) cogs += itemCost(item, item.quantity);
     }
     let refunds = 0;
     for (const returned of returns) {
-      const gross = Number(returned.sale?.total_amount || 0);
-      const taxShare = gross > 0 ? Number(returned.sale?.tax_amount || 0) / gross : 0;
-      const refund = Number(returned.total_refund_amount || 0) - Number(returned.tax_refund_amount ?? (Number(returned.total_refund_amount || 0) * taxShare));
+      const refund = refundRevenue(returned);
       refunds += refund;
       revenue -= refund;
       for (const item of returned.return_items || []) cogs -= itemCost(item.sale_item, item.quantity);
     }
     // Commission payouts are posted to the ledger too. Count the expense once,
     // under its own statement line; other approved expenses stay operating costs.
-    const totalExpenses = expenses.filter(e => !e.commission_payouts?.length)
-      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const totalExpenses = expenses.filter(e => e.metadata?.liability_movement !== true)
+      .reduce((sum, e) => sum + Math.max(0, Number(e.amount || 0)
+        - (e.commission_payouts || []).reduce((paid, c) => paid + Number(c.amount || 0), 0)), 0);
     const totalCommissions = commissions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
     const grossProfit = revenue - cogs;
     const netProfit = grossProfit - totalExpenses - totalCommissions;
@@ -98,7 +96,7 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
     });
   } catch (err) {
     logger.error({ err }, 'P&L report error');
-    res.status(err.status === 400 ? 400 : 500).json({ error: err.status === 400 ? err.message : 'Failed to generate P&L report' });
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to generate P&L report' });
   }
 });
 

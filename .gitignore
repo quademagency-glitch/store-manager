@@ -46,3 +46,11 @@ __pycache__/
 backups/
 *.ndjson
 *.ndjson.gz
+
+# Audit working directories. Kept out of git deliberately, not incidentally:
+# this repo is public, and docs/audits describes open defects in the live
+# system with the endpoints named, which is a to-do list for anyone who
+# wants to abuse it. It is also ~180MB of screenshots, and git keeps blobs
+# forever, so committing it once would weigh on every clone from then on.
+# The reports live on the owner's machine; share them directly if needed.
+docs/audits/

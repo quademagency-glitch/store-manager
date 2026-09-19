@@ -99,6 +99,24 @@ jobs:
             exit 1
           fi
           echo "No snapshots tracked."
+      # Same reasoning, different payload. An audit report names open defects
+      # and the endpoints they affect, which is a map for anyone who wants to
+      # abuse a system handling real money, and the evidence folders run to
+      # ~180MB of screenshots that git would then carry forever. .gitignore
+      # covers the accident; this covers `git add -f`.
+      - name: Fail if audit working directories are tracked
+        run: |
+          found=$(git ls-files | grep -E '(^|/)docs/audits/' || true)
+          if [ -n "$found" ]; then
+            echo "::error::Audit working directories are tracked in this PUBLIC repository:"
+            echo "$found"
+            echo ""
+            echo "These describe unfixed defects in the live system and include"
+            echo "screenshots of real data. Remove them from the index and from"
+            echo "the history. Keep audits outside the repo and share them directly."
+            exit 1
+          fi
+          echo "No audit directories tracked."
 
   server:
     runs-on: ubuntu-latest

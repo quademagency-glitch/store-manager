@@ -135,19 +135,11 @@ router.get('/balance/:customerId', authGuard, async (req, res) => {
   try {
     const { customerId } = req.params;
 
-    // Get the last ledger entry to get balance
-    const { data, error } = await supabaseAdmin
-      .from('loyalty_ledger')
-      .select('balance_after')
-      .eq('customer_id', customerId)
-      .eq('business_id', req.user.business_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
+    const { data, error } = await supabaseAdmin.rpc('customer_reward_balances', {
+      p_business_id: req.user.business_id, p_customer_id: customerId,
+    });
     if (error) throw error;
-
-    res.json({ customer_id: customerId, points: data?.balance_after || 0 });
+    res.json({ customer_id: customerId, points: Number(data.points) });
   } catch (err) {
     logger.error({ err }, 'Loyalty balance error');
     res.status(500).json({ error: 'Failed to fetch loyalty balance' });
@@ -183,19 +175,14 @@ router.get('/ledger/:customerId', authGuard, async (req, res) => {
  */
 router.post('/redeem', authGuard, validateBody(redeemPointsSchema), async (req, res) => {
   try {
+    if (req.body.sale_id) return res.status(409).json({ error: 'Apply sale rewards through Complete Payment. Reload the till if it is using an older version.' });
     const { customer_id, points, sale_id, note } = req.body;
 
-    // Get current balance
-    const { data: lastEntry } = await supabaseAdmin
-      .from('loyalty_ledger')
-      .select('balance_after')
-      .eq('customer_id', customer_id)
-      .eq('business_id', req.user.business_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const currentBalance = lastEntry?.balance_after || 0;
+    const { data: balances, error: balanceError } = await supabaseAdmin.rpc('customer_reward_balances', {
+      p_business_id:req.user.business_id, p_customer_id:customer_id,
+    });
+    if (balanceError) throw balanceError;
+    const currentBalance = Number(balances.points);
     if (currentBalance < points) {
       return res.status(400).json({ error: 'Insufficient points', current: currentBalance, requested: points });
     }
@@ -234,7 +221,7 @@ router.post('/redeem', authGuard, validateBody(redeemPointsSchema), async (req, 
       .single();
 
     if (error) throw error;
-    res.json({ message: 'Points redeemed', cash_value: cashValue, new_balance: newBalance, entry: data });
+    res.json({ message: 'Points redeemed', cash_value: cashValue, new_balance: Number(data.balance_after), entry: data });
   } catch (err) {
     logger.error({ err }, 'Points redemption error');
     res.status(500).json({ error: 'Failed to redeem points' });
@@ -381,16 +368,11 @@ router.get('/store-credit/:customerId', authGuard, async (req, res) => {
   try {
     const { customerId } = req.params;
 
-    const { data } = await supabaseAdmin
-      .from('store_credit_ledger')
-      .select('balance_after')
-      .eq('customer_id', customerId)
-      .eq('business_id', req.user.business_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    res.json({ customer_id: customerId, balance: data?.balance_after || 0 });
+    const { data, error } = await supabaseAdmin.rpc('customer_reward_balances', {
+      p_business_id: req.user.business_id, p_customer_id: customerId,
+    });
+    if (error) throw error;
+    res.json({ customer_id: customerId, balance: Number(data.credit) });
   } catch (err) {
     logger.error({ err }, 'Store credit balance error');
     res.status(500).json({ error: 'Failed to fetch store credit balance' });
@@ -426,46 +408,18 @@ router.get('/store-credit/:customerId/ledger', authGuard, async (req, res) => {
  */
 router.post('/store-credit', authGuard, validateBody(storeCreditSchema), async (req, res) => {
   try {
+    if (req.body.sale_id) return res.status(409).json({ error: 'Apply sale rewards through Complete Payment. Reload the till if it is using an older version.' });
     const { customer_id, amount, type, sale_id, note } = req.body;
 
-    // Get current balance
-    const { data: lastEntry } = await supabaseAdmin
-      .from('store_credit_ledger')
-      .select('balance_after')
-      .eq('customer_id', customer_id)
-      .eq('business_id', req.user.business_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const currentBalance = Number(lastEntry?.balance_after || 0);
-    let newBalance;
-
-    if (type === 'redeem') {
-      if (currentBalance < amount) {
-        return res.status(400).json({ error: 'Insufficient store credit', balance: currentBalance, requested: amount });
-      }
-      newBalance = currentBalance - amount;
-    } else {
-      newBalance = currentBalance + amount;
+    const { data, error } = await supabaseAdmin.from('store_credit_ledger').insert({
+      customer_id, business_id: req.user.business_id, sale_id: sale_id || null,
+      type, amount: type === 'redeem' ? -amount : amount, note,
+    }).select().single();
+    if (error) {
+      if (error.code === 'P0001') return res.status(400).json({ error:error.message });
+      throw error;
     }
-
-    const { data, error } = await supabaseAdmin
-      .from('store_credit_ledger')
-      .insert({
-        customer_id,
-        business_id: req.user.business_id,
-        sale_id: sale_id || null,
-        type,
-        amount: type === 'redeem' ? -amount : amount,
-        balance_after: newBalance,
-        note: note || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.status(201).json({ message: `Store credit ${type}d`, new_balance: newBalance, entry: data });
+    res.status(201).json({ message:'Store credit updated', new_balance:Number(data.balance_after), entry:data });
   } catch (err) {
     logger.error({ err }, 'Store credit error');
     res.status(500).json({ error: 'Failed to process store credit' });

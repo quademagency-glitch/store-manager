@@ -28,6 +28,7 @@ const ledgerEntrySchema = z.object({
  * For ledger, Managers and Staff can only see their assigned locations.
  */
 function applyLocationFilter(query, req) {
+  if (req.user.active_location_id) return query.eq('location_id', req.user.active_location_id);
   if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
     return query; // Admins see all locations in the business
   }
@@ -56,53 +57,26 @@ router.get('/till-balance', authGuard, async (req, res) => {
 
     const range = reportRange(start_date, end_date, { defaults: true });
 
-    // 1. Fetch Sales (Cash only)
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('id, total_amount, created_at, location_id')
-      .eq('payment_method', 'cash')
-      .in('status', ['completed', 'void_pending'])
-      .gte('created_at', range.from)
-      .lt('created_at', range.until);
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-    salesQuery = applyLocationFilter(salesQuery, req);
-
-    // 2. Fetch Ledger Entries (Expenses, Deposits)
-    let ledgerQuery = supabaseAdmin
-      .from('business_ledger')
-      .select('id, type, amount, description, created_at, location_id, status, user:users!user_id(name)')
-      .gte('created_at', range.from)
-      .lt('created_at', range.until);
-
-    if (req.user.role !== 'Platform Admin') {
-      ledgerQuery = ledgerQuery.eq('business_id', req.user.business_id);
-    }
-    ledgerQuery = applyLocationFilter(ledgerQuery, req);
-
-    // 3. Fetch Locations (for grouping)
-    let locQuery = supabaseAdmin
-      .from('locations')
-      .select('id, name');
-    if (req.user.role !== 'Platform Admin') {
-      locQuery = locQuery.eq('business_id', req.user.business_id);
-    }
-
-    const [salesRes, ledgerRes, locRes] = await Promise.all([
-      salesQuery,
-      ledgerQuery,
-      locQuery
+    const scoped = query => applyLocationFilter(query.eq('business_id', req.user.business_id), req);
+    const [sales, entries, locations, refunds] = await Promise.all([
+      fetchAllRows(() => scoped(supabaseAdmin.from('sales')
+        .select('id,total_amount,cash_received,accounting_at,location_id')
+        .eq('payment_method','cash').in('status',['completed','void_pending'])
+        .gte('accounting_at',range.from).lt('accounting_at',range.until)).order('id')),
+      fetchAllRows(() => scoped(supabaseAdmin.from('business_ledger')
+        .select('id,type,amount,description,created_at,location_id,status,user:users!user_id(name)')
+        .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
+      fetchAllRows(() => {
+        let query = supabaseAdmin.from('locations').select('id,name').eq('business_id',req.user.business_id);
+        if (req.user.active_location_id) query=query.eq('id',req.user.active_location_id);
+        return query.order('id');
+      }),
+      fetchAllRows(() => scoped(supabaseAdmin.from('returns')
+        .select('id,location_id,created_at,cash_refund_amount,total_refund_amount,sale:sales!original_sale_id(payment_method)')
+        .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
     ]);
-
-    if (salesRes.error) throw salesRes.error;
-    if (ledgerRes.error) throw ledgerRes.error;
-    if (locRes.error) throw locRes.error;
-
-    const sales = salesRes.data || [];
-    const entries = ledgerRes.data || [];
-    const locations = locRes.data || [];
+    const cashSale = sale => Number(sale.cash_received ?? sale.total_amount);
+    const cashRefund = refund => Number(refund.cash_refund_amount ?? (refund.sale?.payment_method === 'cash' ? refund.total_refund_amount : 0));
 
     // Map location IDs to names
     const locMap = {};
@@ -110,14 +84,14 @@ router.get('/till-balance', authGuard, async (req, res) => {
 
     // If the user does not have history permission (Basic view for cashiers)
     if (!hasHistoryPerm && req.user.role !== 'Platform Admin') {
-      const totalCashSales = sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+      const totalCashSales = sales.reduce((sum, s) => sum + cashSale(s), 0);
       const totalExpenses = entries.filter(e => e.type === 'expense' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
       const totalDeposits = entries.filter(e => e.type === 'deposit_to_bank' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
       const totalApPayments = entries.filter(e => e.type === 'ap_payment' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
 
       const totalPayIns = entries.filter(e => e.type === 'pay_in' && e.status === 'approved').reduce((sum, e) => sum + Number(e.amount), 0);
 
-      const currentBalance = totalCashSales + totalPayIns - totalExpenses - totalDeposits - totalApPayments;
+      const currentBalance = totalCashSales + totalPayIns - totalExpenses - totalDeposits - totalApPayments - refunds.reduce((sum,r) => sum + cashRefund(r),0);
 
       return res.json({
         view: 'basic',
@@ -137,6 +111,8 @@ router.get('/till-balance', authGuard, async (req, res) => {
           location_id: l.id,
           location_name: l.name,
           total_sales: 0,
+          total_refunds: 0,
+          estimated_cash_entries: 0,
           total_expenses: 0,
           total_deposits: 0,
           total_pay_ins: 0,
@@ -151,17 +127,27 @@ router.get('/till-balance', authGuard, async (req, res) => {
     sales.forEach(s => {
       const b = branches[s.location_id];
       if (b) {
-        b.total_sales += Number(s.total_amount);
-        b.current_balance += Number(s.total_amount);
+        if (s.cash_received == null) b.estimated_cash_entries += 1;
+        b.total_sales += cashSale(s);
+        b.current_balance += cashSale(s);
         b.transactions.push({
           id: s.id,
-          date: s.created_at,
+          date: s.accounting_at,
           type: 'sale',
           description: 'Cash Sale',
-          amount: Number(s.total_amount),
+          amount: cashSale(s),
           user: 'System'
         });
       }
+    });
+
+    refunds.forEach(r => {
+      const b = branches[r.location_id], amount = cashRefund(r);
+      if (!b || !amount) return;
+      b.total_refunds += amount;
+      b.current_balance -= amount;
+      if (r.cash_refund_amount == null) b.estimated_cash_entries += 1;
+      b.transactions.push({ id:r.id, date:r.created_at, type:'refund', description:'Cash refund', amount, user:'System' });
     });
 
     // Populate Ledger Entries
@@ -208,7 +194,7 @@ router.get('/till-balance', authGuard, async (req, res) => {
         } else if (t.type === 'sale' || t.type === 'pay_in') {
           runningBalance += t.amount;
           t.balance = runningBalance;
-        } else if (t.type === 'expense' || t.type === 'deposit_to_bank' || t.type === 'ap_payment') {
+        } else if (t.type === 'expense' || t.type === 'deposit_to_bank' || t.type === 'ap_payment' || t.type === 'refund') {
           runningBalance -= t.amount;
           t.balance = runningBalance;
         } else {
@@ -468,40 +454,18 @@ router.get('/financial-summary', authGuard, async (req, res) => {
 
     const range = reportRange(start_date, end_date, { defaults: true });
 
-    // Fetch approved ledger entries with metadata
-    let ledgerQuery = supabaseAdmin
-      .from('business_ledger')
-      .select('id, type, amount, description, metadata, created_at')
-      .eq('status', 'approved')
-      .gte('created_at', range.from)
-      .lt('created_at', range.until);
-
-    if (req.user.role !== 'Platform Admin') {
-      ledgerQuery = ledgerQuery.eq('business_id', req.user.business_id);
-    }
-
-    // Fetch cash sales for the period
-    let salesQuery = supabaseAdmin
-      .from('sales')
-      .select('id, total_amount, created_at')
-      .in('status', ['completed', 'void_pending'])
-      .gte('created_at', range.from)
-      .lt('created_at', range.until);
-
-    if (req.user.role !== 'Platform Admin') {
-      salesQuery = salesQuery.eq('business_id', req.user.business_id);
-    }
-
-    const [ledgerRes, salesRes] = await Promise.all([ledgerQuery, salesQuery]);
-
-    if (ledgerRes.error) throw ledgerRes.error;
-    if (salesRes.error) throw salesRes.error;
-
-    const entries = ledgerRes.data || [];
-    const sales = salesRes.data || [];
-
-    // Calculate total sales revenue
-    const totalSales = sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+    const scoped = query => applyLocationFilter(query.eq('business_id', req.user.business_id), req);
+    const [entries, sales, refunds] = await Promise.all([
+      fetchAllRows(() => scoped(supabaseAdmin.from('business_ledger')
+        .select('id,type,amount,description,metadata,created_at').eq('status','approved')
+        .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
+      fetchAllRows(() => scoped(supabaseAdmin.from('sales').select('id,total_amount')
+        .in('status',['completed','void_pending']).gte('accounting_at',range.from).lt('accounting_at',range.until)).order('id')),
+      fetchAllRows(() => scoped(supabaseAdmin.from('returns').select('id,total_refund_amount')
+        .gte('created_at',range.from).lt('created_at',range.until)).order('id')),
+    ]);
+    const totalSales = sales.reduce((sum,s) => sum + Number(s.total_amount),0)
+      - refunds.reduce((sum,r) => sum + Number(r.total_refund_amount),0);
 
     // Categorize ledger entries
     const expenseCategories = {};

@@ -36,7 +36,7 @@ export default function MyCommissions() {
     <div className="hr-page">
       <div className="page-header">
         <h1>My Commissions</h1>
-        <p className="page-subtitle">Track your sales commissions</p>
+        <p className="page-subtitle">Track your sales commissions. Summary totals cover the displayed page.</p>
       </div>
 
       {/* Summary Cards */}
@@ -127,6 +127,7 @@ export default function MyCommissions() {
                       ? <span className="badge badge-success">Paid {formatDate(c.paid_at)}</span>
                       : <span className="badge badge-warning">Pending</span>
                     }
+                    {Number(c.reversed_amount) > 0 && <div className="text-warning">{fmt(c.reversed_amount)} reversed by returns{c.paid_at ? ' — paid amount needs reconciliation' : ''}</div>}
                   </td>
                 </tr>
               ))

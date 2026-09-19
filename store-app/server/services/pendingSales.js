@@ -28,61 +28,10 @@ const logger = require('../utils/logger');
  * @returns {Promise<{reversed: boolean, skipped?: string}>}
  */
 async function reversePendingSale(saleId, opts = {}) {
-  const { data: sale, error: fetchError } = await supabaseAdmin
-    .from('sales')
-    .select('id, business_id, status, location_id, sale_items(product_id, quantity)')
-    .eq('id', saleId)
-    .single();
-
-  if (fetchError || !sale) return { reversed: false, skipped: 'not-found' };
-
-  /* Anything else has moved on: finalised, already reversed, or awaiting a
-     manager. Reversing one of those would return stock for a sale that really
-     happened. */
-  if (sale.status !== 'pending') return { reversed: false, skipped: sale.status };
-
-  for (const item of sale.sale_items || []) {
-    const { data: inv } = await supabaseAdmin
-      .from('product_inventory')
-      .select('quantity')
-      .eq('product_id', item.product_id)
-      .eq('location_id', sale.location_id)
-      .single();
-
-    if (inv) {
-      await supabaseAdmin
-        .from('product_inventory')
-        .update({ quantity: inv.quantity + item.quantity })
-        .eq('product_id', item.product_id)
-        .eq('location_id', sale.location_id);
-    }
-  }
-
-  await supabaseAdmin
-    .from('inventory_units')
-    .update({ status: 'in_stock', sold_in_sale_id: null })
-    .eq('sold_in_sale_id', saleId);
-
-  /* Conditional on the status still being 'pending'. Two reversals racing, the
-     cashier's cancel and the sweeper, would otherwise both restore the stock
-     and the shelf would gain a phantom unit. The second update matches nothing
-     and returns no row. */
-  const { data: updated, error: voidError } = await supabaseAdmin
-    .from('sales')
-    .update({ status: 'voided' })
-    .eq('id', saleId)
-    .eq('status', 'pending')
-    .select('id')
-    .maybeSingle();
-
-  if (voidError) throw voidError;
-  if (!updated) return { reversed: false, skipped: 'raced' };
-
-  logger.info(
-    { saleId, businessId: sale.business_id, reason: opts.reason || 'cancelled' },
-    'Pending sale reversed, stock restored',
-  );
-  return { reversed: true };
+  const { data, error } = await supabaseAdmin.rpc('cancel_pending_sale', { p_sale_id: saleId });
+  if (error) throw error;
+  if (data.reversed) logger.info({ saleId, reason: opts.reason || 'cancelled' }, 'Pending sale reversed, stock restored');
+  return data;
 }
 
 module.exports = { reversePendingSale };

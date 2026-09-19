@@ -15,7 +15,8 @@
     "db:drift": "node db/schema-drift.js",
     "seed:demo": "node scripts/seed-demo-data.js",
     "seed:demo:if-empty": "node scripts/seed-demo-data.js --if-empty",
-    "test:financial-db": "node --test __tests__/financial-integrity.db.cjs"
+    "test:financial-db": "node --test __tests__/financial-integrity.db.cjs",
+    "test:checkout-db": "node --test __tests__/checkout-transactions.db.cjs"
   },
   "keywords": [],
   "author": "",

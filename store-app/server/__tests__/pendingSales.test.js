@@ -1,108 +1,20 @@
-/**
- * Reversing an abandoned sale.
- *
- * The stock is taken down when the sale row is written, before the payment
- * screen, so a sale nobody paid for holds goods off the shelf until something
- * puts them back. These tests cover the guards rather than the arithmetic:
- * putting stock back for a sale that really happened is worse than leaving it.
- */
-const { buildMockSupabase } = require('./helpers/mockSupabase');
-
-const SALE = {
-  id: 'sale-uuid-1',
-  business_id: 'biz-uuid-123',
-  status: 'pending',
-  location_id: 'loc-uuid-1',
-  sale_items: [{ product_id: 'prod-1', quantity: 3 }],
-};
-
-function load(overrides) {
+// Database behavior, including races and rollback, is exercised against actual
+// PostgreSQL in checkout-transactions.db.cjs. These are the service contracts.
+function load(result) {
   jest.resetModules();
-  const mock = buildMockSupabase(overrides);
+  const mock = { rpc: jest.fn().mockResolvedValue(result) };
   jest.doMock('../db/supabase', () => ({ supabaseAdmin: mock }));
-  const { reversePendingSale } = require('../services/pendingSales');
-  return { reversePendingSale, mock };
+  return { mock, ...require('../services/pendingSales') };
 }
-
-describe('reversePendingSale', () => {
-  afterEach(() => jest.resetModules());
-
-  test('reverses a pending sale and reports it', async () => {
-    const { reversePendingSale } = load({
-      sales: [
-        { single: { data: SALE, error: null }, data: SALE, error: null },
-        { single: { data: { id: SALE.id }, error: null }, data: { id: SALE.id }, error: null },
-      ],
-      product_inventory: { single: { data: { quantity: 10 }, error: null }, data: { quantity: 10 }, error: null },
-      inventory_units: { data: null, error: null },
-    });
-
-    const result = await reversePendingSale(SALE.id, { reason: 'test' });
-    expect(result.reversed).toBe(true);
+for (const data of [{ reversed:true }, ...['completed','voided','void_pending','not-found'].map(skipped=>({reversed:false,skipped}))]) {
+  test(`forwards atomic cancellation outcome ${JSON.stringify(data)}`,async()=>{
+    const {mock,reversePendingSale}=load({data,error:null});
+    expect(await reversePendingSale('sale-id')).toEqual(data);
+    expect(mock.rpc).toHaveBeenCalledWith('cancel_pending_sale',{p_sale_id:'sale-id'});
   });
-
-  for (const status of ['completed', 'voided', 'void_pending']) {
-    test(`refuses to touch a ${status} sale`, async () => {
-      // The damaging case: returning stock for a sale that was really made.
-      const { reversePendingSale } = load({
-        sales: { single: { data: { ...SALE, status }, error: null }, data: { ...SALE, status }, error: null },
-      });
-
-      const result = await reversePendingSale(SALE.id);
-      expect(result.reversed).toBe(false);
-      expect(result.skipped).toBe(status);
-    });
-  }
-
-  test('a sale that is gone is not an error', async () => {
-    const { reversePendingSale } = load({
-      sales: { single: { data: null, error: { message: 'no rows' } }, data: null, error: { message: 'no rows' } },
-    });
-
-    const result = await reversePendingSale('missing-uuid');
-    expect(result.reversed).toBe(false);
-    expect(result.skipped).toBe('not-found');
-  });
-
-  test('loses the race rather than restoring stock twice', async () => {
-    /* Two reversals at once, the cashier's cancel and the sweeper. The status
-       update is conditional on the row still being pending, so the loser
-       matches nothing and must report it instead of claiming success. */
-    const { reversePendingSale } = load({
-      sales: [
-        { single: { data: SALE, error: null }, data: SALE, error: null },
-        { single: { data: null, error: null }, data: null, error: null },
-      ],
-      product_inventory: { single: { data: { quantity: 10 }, error: null }, data: { quantity: 10 }, error: null },
-      inventory_units: { data: null, error: null },
-    });
-
-    const result = await reversePendingSale(SALE.id);
-    expect(result.reversed).toBe(false);
-    expect(result.skipped).toBe('raced');
-  });
-
-  test('marks the sale voided, never void_pending', async () => {
-    /* void_pending means a finished sale awaiting a manager, and the reports
-       count it as money taken. A sale nobody paid for must not land there. */
-    jest.resetModules();
-    const mock = buildMockSupabase({
-      sales: [
-        { single: { data: SALE, error: null }, data: SALE, error: null },
-        { single: { data: { id: SALE.id }, error: null }, data: { id: SALE.id }, error: null },
-      ],
-      product_inventory: { single: { data: { quantity: 10 }, error: null }, data: { quantity: 10 }, error: null },
-      inventory_units: { data: null, error: null },
-    });
-    jest.doMock('../db/supabase', () => ({ supabaseAdmin: mock }));
-    const { reversePendingSale } = require('../services/pendingSales');
-
-    await reversePendingSale(SALE.id);
-
-    const statuses = mock.mutations
-      .filter((m) => m.table === 'sales' && m.op === 'update')
-      .map((m) => m.payload.status);
-    expect(statuses).toContain('voided');
-    expect(statuses).not.toContain('void_pending');
-  });
+}
+test('propagates a failed transaction instead of reporting restored inventory',async()=>{
+  const error={message:'Inventory record is missing',code:'P0001'};
+  const {reversePendingSale}=load({data:null,error});
+  await expect(reversePendingSale('sale-id')).rejects.toEqual(error);
 });

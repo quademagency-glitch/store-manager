@@ -14,6 +14,7 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
   const [width, setWidth] = useState(getReceiptWidth);
 
   if (!receiptData) return null;
+  const rewardsApplied = Number(receiptData.rewards_applied ?? (Number(receiptData.store_credit_used || 0) + Number(receiptData.loyalty_value_used || 0)));
 
   const chooseWidth = (w) => {
     setReceiptWidth(w);
@@ -69,7 +70,7 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
             />
             <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: '#64748b' }}>Receipt #{receiptData.receipt_number}</p>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
-              {new Date(receiptData.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+              {new Date(receiptData.settled_at || receiptData.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
             </p>
           </div>
           
@@ -125,16 +126,21 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
           </div>
           
           {/* Payment Method */}
-          {receiptData.rewards_applied > 0 && (
+          {rewardsApplied > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.9rem', color: '#475569' }}>
               <span>Rewards Applied:</span>
-              <span style={{ fontWeight: 600 }}>-{fmt(receiptData.rewards_applied)}</span>
+              <span style={{ fontWeight: 600 }}>-{fmt(rewardsApplied)}</span>
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.9rem', color: '#475569' }}>
             <span style={{ textTransform: 'capitalize' }}>Paid via {receiptData.payment_method}:</span>
-            <span style={{ fontWeight: 600 }}>{fmt(receiptData.total_amount - (receiptData.rewards_applied || 0))}</span>
+            <span style={{ fontWeight: 600 }}>{fmt(receiptData.total_amount - rewardsApplied)}</span>
           </div>
+
+          {receiptData.amount_paid != null && <>
+            <div className="flex justify-between"><span>Tendered:</span><span>{fmt(receiptData.amount_paid)}</span></div>
+            {receiptData.payment_method === 'cash' && <div className="flex justify-between"><span>Change:</span><span>{fmt(receiptData.change_due || 0)}</span></div>}
+          </>}
 
           {/* Return Policy (if business has one) */}
           {business?.return_policy && (

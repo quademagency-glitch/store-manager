@@ -96,7 +96,7 @@ describe('owner financial reports', () => {
   });
   test('till excludes pending sales and includes the entire end date', async () => {
     expect((await request(app).get('/ledger/till-balance?start_date=2026-09-18&end_date=2026-09-18')).status).toBe(200);
-    expect(queries.find(q => q.table === 'sales').calls).toEqual(expect.arrayContaining([['in', 'status', ['completed', 'void_pending']], ['lt', 'created_at', '2026-09-19T00:00:00.000Z']]));
+    expect(queries.find(q => q.table === 'sales').calls).toEqual(expect.arrayContaining([['in', 'status', ['completed', 'void_pending']], ['lt', 'accounting_at', '2026-09-19T00:00:00.000Z']]));
   });
   test.each(['Sales Executive', 'Cashier', 'Custom Staff'])('%s expenses require approval', async role => {
     mockUser.role = role;
@@ -181,4 +181,23 @@ describe('delegated permissions', () => {
     expect((await request(app).get('/returns/search?query=receipt')).status).toBe(403);
     expect((await request(app).get('/marketing/templates')).status).toBe(403);
   });
+});
+
+
+test('till uses net cash tender and cash refunds, preserving reported rewards and paging', async () => {
+  rows.locations = { data:[{id:mockUser.active_location_id,name:'Branch'}] };
+  rows.sales = { data:Array.from({length:601},(_,i)=>({id:String(i),location_id:mockUser.active_location_id,total_amount:90,cash_received:60,accounting_at:'2026-09-18T12:00:00Z'})) };
+  rows.returns = { data:[{id:'refund',location_id:mockUser.active_location_id,total_refund_amount:45,cash_refund_amount:30,created_at:'2026-09-18T13:00:00Z'}] };
+  const res=await request(app).get('/ledger/till-balance?start_date=2026-09-18&end_date=2026-09-18');
+  expect(res.status).toBe(200);
+  expect(res.body.branches[0]).toMatchObject({total_sales:36060,total_refunds:30,current_balance:36030,estimated_cash_entries:0});
+  expect(res.body.branches[0].transactions[0]).toMatchObject({type:'refund',amount:30,balance:36030});
+  expect(queries.filter(q=>q.table==='sales')).toHaveLength(2);
+});
+test('P&L uses saved refund tax and settlement date',async()=>{
+  rows.sales={data:[{id:'s',total_amount:90,tax_amount:10,sale_items:[]}]};
+  rows.returns={data:[{id:'r',total_refund_amount:0.05,tax_refund_amount:0.01,sale:{total_amount:90,tax_amount:10},return_items:[]}]};
+  const res=await request(app).get('/reports/pnl?startDate=2026-09-18&endDate=2026-09-18');
+  expect(res.body).toMatchObject({revenue:79.96,refunds:0.04});
+  expect(queries.find(q=>q.table==='sales').calls).toContainEqual(['lt','accounting_at','2026-09-19T00:00:00.000Z']);
 });

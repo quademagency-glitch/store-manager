@@ -29,15 +29,15 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
 
     const range = reportRange(startDate, endDate);
     const businessId = req.user.business_id;
-    const scoped = query => {
+    const scoped = (query, dateColumn = 'created_at') => {
       query = query.eq('business_id', businessId);
       if (locationId) query = query.eq('location_id', locationId);
-      return applyReportRange(query, range).order('id');
+      return applyReportRange(query, range, dateColumn).order('id');
     };
     const [sales, expenses, commissions, returns] = await Promise.all([
       fetchAllRows(() => scoped(supabaseAdmin.from('sales')
         .select('id, total_amount, tax_amount, sale_items(quantity, unit_cost, cost_basis)')
-        .in('status', ['completed', 'void_pending']))),
+        .in('status', ['completed', 'void_pending']), 'accounting_at')),
       fetchAllRows(() => scoped(supabaseAdmin.from('business_ledger')
         .select('id, amount, commission_payouts:commission_ledger!payout_ledger_id(id)')
         .eq('type', 'expense').eq('status', 'approved'))),
@@ -49,7 +49,7 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
         return applyReportRange(query, range, 'paid_at').order('id');
       }),
       fetchAllRows(() => scoped(supabaseAdmin.from('returns')
-        .select('id, total_refund_amount, sale:sales!original_sale_id(total_amount, tax_amount), return_items(quantity, sale_item:sale_items!sale_item_id(unit_cost, cost_basis))'))),
+        .select('id, total_refund_amount, tax_refund_amount, sale:sales!original_sale_id(total_amount, tax_amount), return_items(quantity, sale_item:sale_items!sale_item_id(unit_cost, cost_basis))'))),
     ]);
 
     let revenue = 0;
@@ -69,7 +69,7 @@ router.get('/pnl', authGuard, permissionCheck('view_financial_reports'), async (
     for (const returned of returns) {
       const gross = Number(returned.sale?.total_amount || 0);
       const taxShare = gross > 0 ? Number(returned.sale?.tax_amount || 0) / gross : 0;
-      const refund = Number(returned.total_refund_amount || 0) * (1 - taxShare);
+      const refund = Number(returned.total_refund_amount || 0) - Number(returned.tax_refund_amount ?? (Number(returned.total_refund_amount || 0) * taxShare));
       refunds += refund;
       revenue -= refund;
       for (const item of returned.return_items || []) cogs -= itemCost(item.sale_item, item.quantity);

@@ -16,6 +16,7 @@ const { runChecks } = require('../services/lossPreventionEngine');
 
 const { reportRange, applyReportRange } = require('../utils/reportDates');
 const { fetchAllRows } = require('../utils/fetchAllRows');
+const { transactionError } = require('../utils/transactionError');
 
 const router = express.Router();
 
@@ -44,7 +45,7 @@ const createSaleSchema = z.object({
       unit_id: z.string().uuid().nullable().optional(),
     })).optional()
   })).min(1, 'A sale must contain at least one item.'),
-  payment_method: z.enum(['cash', 'card', 'mobile']),
+  payment_method: z.enum(['cash', 'card', 'mobile', 'transfer']),
   total_amount: z.number().min(0),
   subtotal: z.number().min(0).optional(),
   tax: z.number().min(0).optional(),
@@ -57,7 +58,11 @@ const verifyPinSchema = z.object({
 });
 
 const finalizeSaleSchema = z.object({
-  amount_paid: z.number().min(0).optional(),
+  settlement_id: z.string().uuid(),
+  payment_method: z.enum(['cash', 'card', 'mobile', 'transfer']),
+  amount_paid: z.number().finite().min(0).max(9999999999.99),
+  store_credit: z.number().finite().min(0).max(9999999999.99).default(0),
+  points: z.number().int().min(0).max(2147483647).default(0),
 });
 
 /**
@@ -127,8 +132,8 @@ router.get('/export', authGuard, permissionCheck('view_sales'), async (req, res)
   try {
     const range = reportRange(req.query.startDate, req.query.endDate, { defaults: true });
     const sales = await fetchAllRows(() => applyReportRange(scopeSales(supabaseAdmin.from('sales')
-      .select('id, created_at, receipt_number, status, total_amount, payment_method, customer:customers!customer_id(name), salesperson:users!salesperson_id(name)'), req.user), range)
-      .order('created_at', { ascending: false }).order('id'));
+      .select('id, created_at, accounting_at, receipt_number, status, total_amount, payment_method, customer:customers!customer_id(name), salesperson:users!salesperson_id(name)'), req.user), range, 'accounting_at')
+      .order('accounting_at', { ascending: false }).order('id'));
     // Quote every cell and neutralize spreadsheet formulas from user-entered names.
     const cell = value => {
       let text = String(value ?? '');
@@ -136,7 +141,7 @@ router.get('/export', authGuard, permissionCheck('view_sales'), async (req, res)
       return `"${text.replace(/"/g, '""')}"`;
     };
     const rows = [['Sale ID', 'Date', 'Receipt #', 'Customer', 'Status', 'Total', 'Payment Method', 'Salesperson'],
-      ...sales.map(sale => [sale.id, sale.created_at, sale.receipt_number, sale.customer?.name, sale.status,
+      ...sales.map(sale => [sale.id, sale.accounting_at || sale.created_at, sale.receipt_number, sale.customer?.name, sale.status,
         Number(sale.total_amount).toFixed(2), sale.payment_method, sale.salesperson?.name])];
     res.attachment(`sales_${range.startDate.slice(0, 10)}_${range.endDate.slice(0, 10)}.csv`);
     res.type('text/csv').send('\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n'));
@@ -164,7 +169,7 @@ router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), as
           product:products!product_id(id, name, sku)
         )
       `, { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .order('accounting_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (req.user.role !== 'Platform Admin') {
@@ -181,7 +186,7 @@ router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), as
       }
     }
 
-    query = applyReportRange(query, reportRange(startDate, endDate));
+    query = applyReportRange(query, reportRange(startDate, endDate), 'accounting_at');
 
     const { data, error, count } = await query;
 
@@ -268,7 +273,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       }
     }
 
-    const validPaymentMethods = ['cash', 'card', 'mobile'];
+    const validPaymentMethods = ['cash', 'card', 'mobile', 'transfer'];
     if (!validPaymentMethods.includes(payment_method)) {
       console.log('400 Error: Invalid payment method', payment_method);
       return res.status(400).json({
@@ -587,86 +592,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
     // Trigger after-hours check for the sale
     runChecks('sale', { userId: req.user.id, businessId: req.user.business_id, locationId: location_id });
 
-    // ─── Commission Calculation (non-blocking) ───
-    // Compute applicable commissions and insert into commission_ledger
-    try {
-      const { data: commRules } = await supabaseAdmin
-        .from('commission_rules')
-        .select('id, type, value, min_sale_amount, product_category')
-        .eq('business_id', req.user.business_id)
-        .eq('active', true);
-
-      if (commRules && commRules.length > 0 && saleId) {
-        const saleTotal = Number(total_amount) || 0;
-        for (const rule of commRules) {
-          if (saleTotal < Number(rule.min_sale_amount || 0)) continue;
-          // TODO: product_category filtering can be added when category is tracked on sale_items
-          const commAmount = rule.type === 'percentage'
-            ? saleTotal * (Number(rule.value) / 100)
-            : Number(rule.value);
-
-          if (commAmount > 0) {
-            await supabaseAdmin.from('commission_ledger').insert({
-              user_id: req.user.id,
-              sale_id: saleId,
-              business_id: req.user.business_id,
-              rule_id: rule.id,
-              amount: Math.round(commAmount * 100) / 100,
-            });
-          }
-        }
-      }
-    } catch (commErr) {
-      // Commission calculation failure should not block the sale
-      logger.error({ err: commErr }, 'Commission calculation failed (non-critical)');
-    }
-
-    // ─── Loyalty Points Earn (non-blocking) ───
-    // Award loyalty points if customer is attached to the sale and rules exist
-    try {
-      if (customer_id && saleId) {
-        const { data: loyaltyRules } = await supabaseAdmin
-          .from('loyalty_rules')
-          .select('points_per_currency_unit')
-          .eq('business_id', req.user.business_id)
-          .eq('active', true)
-          .maybeSingle();
-
-        if (loyaltyRules && loyaltyRules.points_per_currency_unit > 0) {
-          /* Net of tax. Tax collected is not the shop's money, so it should
-             not buy the customer loyalty points. Identical to the old figure
-             for every business with tax switched off. */
-          const saleTotal = taxed.subtotal;
-          const pointsEarned = Math.floor(saleTotal * Number(loyaltyRules.points_per_currency_unit));
-
-          if (pointsEarned > 0) {
-            // Get current balance
-            const { data: lastEntry } = await supabaseAdmin
-              .from('loyalty_ledger')
-              .select('balance_after')
-              .eq('customer_id', customer_id)
-              .eq('business_id', req.user.business_id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            const currentBalance = lastEntry?.balance_after || 0;
-
-            await supabaseAdmin.from('loyalty_ledger').insert({
-              customer_id,
-              business_id: req.user.business_id,
-              sale_id: saleId,
-              type: 'earn',
-              points: pointsEarned,
-              balance_after: currentBalance + pointsEarned,
-              note: `Earned from sale`,
-            });
-          }
-        }
-      }
-    } catch (loyaltyErr) {
-      logger.error({ err: loyaltyErr }, 'Loyalty points earn failed (non-critical)');
-    }
+    // Earnings are posted by finalize_sale_transaction only after settlement.
 
     // Invalidate sales cache for this worker
     invalidateCachePrefix('/api/sales');
@@ -709,11 +635,22 @@ router.put('/:id/void', authGuard, permissionCheck('create_sales'), async (req, 
     // Fetch sale and its items
     const { data: sale, error: fetchError } = await supabaseAdmin
       .from('sales')
-      .select('id, status, location_id, business_id, total_amount, sale_items(product_id, quantity)')
+      .select('id, status, location_id, business_id, total_amount, settlement_id, return_status, sale_items(product_id, quantity)')
       .eq('id', saleId)
       .single();
 
     if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (sale.settlement_id || ['partial','full'].includes(sale.return_status)) {
+      return res.status(409).json({ error: 'Use Returns for a settled sale. Its payment and refund history must be preserved.' });
+    }
+
+    if (sale.status === 'pending') {
+      if (sale.business_id !== req.user.business_id || sale.location_id !== req.user.active_location_id) return res.status(403).json({ error:'Unauthorized' });
+      const result = await reversePendingSale(saleId, { reason:'voided pending checkout' });
+      invalidateCachePrefix('/api/sales');
+      return res.status(result.reversed ? 200 : 409).json({ message: result.reversed ? 'Pending sale cancelled' : 'Sale changed; reload before continuing' });
+    }
+
     if (sale.status === 'voided') return res.status(400).json({ error: 'Sale already voided' });
     if (sale.status === 'void_pending') return res.status(400).json({ error: 'Void already pending approval' });
 
@@ -849,11 +786,15 @@ router.put('/:id/approve-void', authGuard, async (req, res) => {
 
     const { data: sale, error: fetchErr } = await supabaseAdmin
       .from('sales')
-      .select('id, status, location_id, business_id, total_amount, sale_items(product_id, quantity)')
+      .select('id, status, location_id, business_id, total_amount, settlement_id, return_status, sale_items(product_id, quantity)')
       .eq('id', saleId)
       .single();
 
     if (fetchErr || !sale) return res.status(404).json({ error: 'Sale not found' });
+    if (sale.settlement_id || ['partial','full'].includes(sale.return_status)) {
+      return res.status(409).json({ error: 'Use Returns for a settled sale. Its payment and refund history must be preserved.' });
+    }
+
     if (sale.status !== 'void_pending') return res.status(400).json({ error: 'Sale is not pending void approval.' });
 
     if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
@@ -960,7 +901,7 @@ router.delete('/:id', authGuard, async (req, res) => {
     // Fetch sale and its items
     const { data: sale, error: fetchError } = await supabaseAdmin
       .from('sales')
-      .select('id, status, location_id, business_id, sale_items(product_id, quantity)')
+      .select('id, status, location_id, business_id, settlement_id, return_status, sale_items(product_id, quantity)')
       .eq('id', saleId)
       .single();
 
@@ -970,6 +911,12 @@ router.delete('/:id', authGuard, async (req, res) => {
     if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
+
+    if (sale.settlement_id || ['partial','full'].includes(sale.return_status)) {
+      return res.status(409).json({ error: 'Use Returns for a settled sale. Its payment and refund history must be preserved.' });
+    }
+
+    if (sale.status === 'pending') return res.status(409).json({ error: 'Cancel this pending checkout before deleting it.' });
 
     // If sale wasn't voided before deleting, restore inventory and create stock movements
     if (sale.status !== 'voided') {
@@ -1039,47 +986,26 @@ router.delete('/:id', authGuard, async (req, res) => {
  */
 router.post('/:id/finalize', authGuard, permissionCheck('create_sales'), validateBody(finalizeSaleSchema), async (req, res) => {
   try {
-    const saleId = req.params.id;
-    const { amount_paid } = req.body;
-
-    // Verify ownership
-    const { data: sale, error: fetchError } = await supabaseAdmin
-      .from('sales')
-      .select('business_id, status, total_amount')
-      .eq('id', saleId)
-      .single();
-
-    if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
-    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-
-    if (sale.status !== 'pending') {
-      return res.status(400).json({ error: 'Sale is not in a pending state' });
-    }
-
-    // Update sale status
-    const { data: updatedSale, error: updateError } = await supabaseAdmin
-      .from('sales')
-      .update({ status: 'completed' })
-      .eq('id', saleId)
-      .select()
-      .single();
-
-    if (updateError) throw updateError;
-
-    // Update inventory units to sold
-    await supabaseAdmin
-      .from('inventory_units')
-      .update({ status: 'sold' })
-      .eq('sold_in_sale_id', saleId)
-      .eq('status', 'pending_sale');
-
-    res.json({ message: 'Sale finalized successfully', sale: updatedSale });
+    if (!req.user.active_location_id) return res.status(400).json({ error: 'Select a branch before completing payment.' });
+    const { settlement_id, payment_method, amount_paid, store_credit, points } = req.body;
+    const { data, error } = await supabaseAdmin.rpc('finalize_sale_transaction', {
+      p_business_id: req.user.business_id,
+      p_location_id: req.user.active_location_id,
+      p_actor_id: req.user.id,
+      p_sale_id: req.params.id,
+      p_settlement_id: settlement_id,
+      p_payment_method: payment_method,
+      p_amount_paid: amount_paid,
+      p_store_credit: store_credit,
+      p_points: points,
+    });
+    if (error) return transactionError(res, error, 'Payment could not be completed. Retry the same payment.');
+    invalidateCachePrefix('/api/sales');
+    for (const prefix of ['/api/analytics','/api/ledger','/api/loyalty','/api/hr','/api/inventory']) invalidateCachePrefix(prefix);
+    return res.json(data);
   } catch (err) {
-    logger.error({ err: err }, 'Error finalizing sale:');
-    res.status(500).json({ error: 'Failed to finalize sale' });
+    logger.error({ err }, 'Error finalizing sale');
+    return transactionError(res, err, 'Payment could not be completed. Retry the same payment.');
   }
 });
 
@@ -1095,12 +1021,12 @@ router.post('/:id/cancel', authGuard, permissionCheck('create_sales'), async (re
        sweeper has no request and no user to check against. */
     const { data: sale, error: fetchError } = await supabaseAdmin
       .from('sales')
-      .select('business_id, status')
+      .select('business_id, status, location_id')
       .eq('id', saleId)
       .single();
 
     if (fetchError || !sale) return res.status(404).json({ error: 'Sale not found' });
-    if (req.user.role !== 'Platform Admin' && sale.business_id !== req.user.business_id) {
+    if (sale.business_id !== req.user.business_id || !req.user.active_location_id || sale.location_id !== req.user.active_location_id) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 

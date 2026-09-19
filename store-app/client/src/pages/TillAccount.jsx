@@ -235,7 +235,7 @@ export default function TillAccount() {
             {fmt(data.currentBalance)}
           </div>
           <div className="text-xs text-left uppercase pt-4 text-tertiary border-t">
-            Total cash sales minus expenses during your shift. Ensure physical cash exactly matches this balance.
+            Cash received, less recorded cash refunds and approved cash outflows, plus pay-ins for this period. Compare this with your physical drawer.
           </div>
         </div>
       ) : (
@@ -271,6 +271,7 @@ export default function TillAccount() {
                       <span className="text-[10px] uppercase tracking-widest text-muted">Cash Sales (In) ({currencySymbol})</span>
                       <span className="text-sm font-mono font-bold" style={{ color: 'var(--color-success)' }}>{fmt(branch.total_sales)}</span>
                     </div>
+                    {branch.total_refunds > 0 && <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-muted">Cash Refunds (Out)</span><span className="text-sm font-mono font-bold text-error">{fmt(branch.total_refunds)}</span></div>}
                     {branch.total_pay_ins > 0 && (
                       <div className="flex flex-col">
                         <span className="text-[10px] uppercase tracking-widest text-muted">Deposits (In) ({currencySymbol})</span>
@@ -300,6 +301,7 @@ export default function TillAccount() {
                   </div>
                 </div>
 
+                {branch.estimated_cash_entries > 0 && <p className="alert alert-warning">{branch.estimated_cash_entries} older cash entries have no saved tender breakdown. Their cash amounts are estimated from the receipt totals.</p>}
                 {/* Ledger Transactions Table */}
                 {branch.transactions.length > 0 ? (
                   <><div className="desktop-table-view">

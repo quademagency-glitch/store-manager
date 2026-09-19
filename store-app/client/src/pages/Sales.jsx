@@ -77,6 +77,8 @@ export default function Sales() {
   // Checkout state
   const [isProcessing, setIsProcessing] = useState(false);
   const [saleError, setSaleError] = useState('');
+  const settlementAttempt = useRef(null);
+  const [paymentUnconfirmed, setPaymentUnconfirmed] = useState(false);
   
   // Two-Stage Checkout State
   const [pendingSale, setPendingSale] = useState(null); // Holds the sale object from Stage 1
@@ -137,7 +139,7 @@ export default function Sales() {
   /* Off the taxed total, not the cart subtotal. Under exclusive pricing the
      two differ, and asking the cashier for the pre-tax figure would collect
      less than the sale records. Identical while tax is off. */
-  const netAmountDue = Math.max(0, taxLine.total - rewardsApplied);
+  const netAmountDue = Math.max(0, Math.round((Number(pendingSale?.total_amount ?? taxLine.total) - rewardsApplied) * 100) / 100);
 
   /* Backing out of the payment screen puts the goods back.
      The sale row is written, and the stock taken down, before this screen
@@ -151,6 +153,8 @@ export default function Sales() {
      hour, so there is nothing here worth blocking a queue for. An offline sale
      has no row on the server yet, so there is nothing to cancel. */
   const abandonPendingSale = useCallback(async () => {
+    if (isProcessing || paymentUnconfirmed) return;
+    settlementAttempt.current = null;
     const sale = pendingSale;
     setShowPaymentModal(false);
     setPendingSale(null);
@@ -162,7 +166,7 @@ export default function Sales() {
     } catch (err) {
       if (import.meta.env.DEV) console.error('Could not cancel abandoned sale:', err);
     }
-  }, [pendingSale]);
+  }, [pendingSale, isProcessing, paymentUnconfirmed]);
 
   // Fetch the selected customer's reward balances so they can be redeemed at checkout
   useEffect(() => {
@@ -293,6 +297,7 @@ export default function Sales() {
           total_amount: taxLine.total,
           status: 'pending',
           _isOffline: true,
+          _settlementId: crypto.randomUUID(),
           _payload: payload
         });
         setShowPaymentModal(true);
@@ -313,29 +318,24 @@ export default function Sales() {
        setSaleError('Please enter a valid amount paid.');
        return;
     }
-    if (!pendingSale) return;
+    if (!pendingSale || isProcessing) return;
+    if (!paymentUnconfirmed && (Math.round(tendered * 100) < Math.round(netAmountDue * 100) ||
+      (paymentMethod !== 'cash' && Math.round(tendered * 100) !== Math.round(netAmountDue * 100)))) {
+      setSaleError(paymentMethod === 'cash' ? 'Payment is below the amount due.' : 'Non-cash payment must equal the amount due.');
+      return;
+    }
     setIsProcessing(true);
     try {
-      // Redeem any applied customer rewards first, if this fails, the sale
-      // stays in 'pending' state so the cashier can retry without double-charging.
-      if (!pendingSale._isOffline) {
-        const storeCreditToRedeem = Number(appliedStoreCredit) || 0;
-        const pointsToRedeem = Number(appliedPoints) || 0;
-        try {
-          if (storeCreditToRedeem > 0) {
-            await loyalty.issueStoreCredit(selectedCustomer.id, storeCreditToRedeem, 'redeem', pendingSale.id, 'Redeemed at checkout');
-          }
-          if (pointsToRedeem > 0) {
-            await loyalty.redeemPoints(selectedCustomer.id, pointsToRedeem, pendingSale.id, 'Redeemed at checkout');
-          }
-        } catch (rewardErr) {
-          setSaleError(rewardErr.message || 'Failed to redeem customer rewards');
-          setIsProcessing(false);
-          return;
-        }
+      const payload = {
+        settlement_id: pendingSale._settlementId || pendingSale.id,
+        payment_method: paymentMethod,
+        amount_paid: tendered,
+        store_credit: Number(appliedStoreCredit) || 0,
+        points: Number(appliedPoints) || 0,
+      };
+      if (pendingSale._isOffline && (payload.store_credit > 0 || payload.points > 0)) {
+        throw new Error('Connect to the internet before redeeming customer rewards.');
       }
-
-      const payload = { amount_paid: tendered + rewardsApplied };
 
       let fullReceipt = null;
 
@@ -357,7 +357,8 @@ export default function Sales() {
           subtotal: taxLine.subtotal,
           tax_amount: taxLine.tax,
           tax_label_applied: taxLine.applies ? taxLine.label : null,
-          amount_paid: tendered + rewardsApplied,
+          amount_paid: tendered,
+          change_due: Math.max(0, tendered - netAmountDue),
           rewards_applied: rewardsApplied,
           receipt_number: `OFFLINE-${pendingSale.id.split('-')[1]}`,
           sale_items: wizardItems.map(item => ({
@@ -368,38 +369,28 @@ export default function Sales() {
           })),
         };
       } else {
-        // Online transaction
-        await api.post(`/sales/${pendingSale.id}/finalize`, payload);
-        fullReceipt = {
-          ...pendingSale,
-          payment_method: paymentMethod,
-          /* What was charged, so the printed receipt reconciles with the
-             drawer. Under exclusive pricing this is above the cart subtotal. */
-          total_amount: taxLine.total,
-          subtotal: taxLine.subtotal,
-          tax_amount: taxLine.tax,
-          tax_label_applied: taxLine.applies ? taxLine.label : null,
-          amount_paid: tendered + rewardsApplied,
-          rewards_applied: rewardsApplied,
-          sale_items: wizardItems.map(item => ({
-            id: item.product.id,
-            quantity: item.quantity,
-            unit_price: item.product.price,
-            product: { name: item.product.name, sku: item.product.sku },
-          })),
-        };
+        settlementAttempt.current ||= payload;
+        const result = await api.post(`/sales/${pendingSale.id}/finalize`, settlementAttempt.current);
+        fullReceipt = result.sale;
       }
 
+      settlementAttempt.current = null;
+      setPaymentUnconfirmed(false);
       setReceiptData(fullReceipt);
       setShowPaymentModal(false);
       setShowReceipt(true);
       // Reset wizard
       setWizardItems([]);
       setAmountPaid('');
+      setPaymentMethod('cash');
       setAppliedStoreCredit('');
       setAppliedPoints('');
       setPendingSale(null);
     } catch (err) {
+      if (settlementAttempt.current) {
+        if (err.status >= 400 && err.status < 500 && err.status !== 409) settlementAttempt.current = null;
+        else setPaymentUnconfirmed(true);
+      }
       setSaleError(err.message || 'Failed to finalize sale');
     } finally {
       setIsProcessing(false);
@@ -775,6 +766,7 @@ export default function Sales() {
         handleFinalizePayment={handleFinalizeSale}
         isProcessing={isProcessing}
         saleError={saleError}
+        paymentLocked={paymentUnconfirmed}
         rewardsEnabled={!pendingSale?._isOffline}
         storeCreditBalance={loyalty.storeCreditBalance}
         pointsBalance={loyalty.pointsBalance}

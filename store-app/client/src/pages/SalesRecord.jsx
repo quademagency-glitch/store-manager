@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
-import Modal from '../components/Modal';
 import ReceiptModal from '../features/sales/components/ReceiptModal';
 import { useToast } from '../hooks/useToast';
 import { useConfirm } from '../hooks/useConfirm';
@@ -34,10 +33,7 @@ export default function SalesRecord() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Return Modal State
-  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
-  const [selectedSale, setSelectedSale] = useState(null);
-  const [returnItems, setReturnItems] = useState({});
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Receipt Modal State
@@ -89,64 +85,6 @@ export default function SalesRecord() {
 
   // Currency formatting handled by useCurrency hook above
 
-  // --- Returns Logic ---
-  const openReturnModal = (sale) => {
-    setSelectedSale(sale);
-    setReturnItems({});
-    setIsReturnModalOpen(true);
-  };
-
-  const closeReturnModal = () => {
-    setIsReturnModalOpen(false);
-    setSelectedSale(null);
-    setReturnItems({});
-  };
-
-  const handleQuantityChange = (itemId, maxQty, val) => {
-    let num = parseInt(val, 10);
-    if (isNaN(num)) num = 0;
-    if (num < 0) num = 0;
-    if (num > maxQty) num = maxQty;
-    setReturnItems(prev => ({ ...prev, [itemId]: num }));
-  };
-
-  const calculateTotalRefund = () => {
-    if (!selectedSale) return 0;
-    let total = 0;
-    selectedSale.sale_items.forEach(item => {
-      const qty = returnItems[item.id] || 0;
-      total += qty * item.unit_price;
-    });
-    return total;
-  };
-
-  const handleReturnSubmit = async () => {
-    const itemsToReturn = Object.keys(returnItems)
-      .map(id => ({ sale_item_id: id, return_quantity: returnItems[id] }))
-      .filter(item => item.return_quantity > 0);
-
-    if (itemsToReturn.length === 0) {
-      toast.warning('Please select at least one item to return.');
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      await api.post(`/returns`, {
-        sale_id: selectedSale.id,
-        items: itemsToReturn
-      });
-      toast.success('Return processed successfully!');
-      closeReturnModal();
-      fetchHistory(); // Refresh
-    } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
-      toast.error(err.message || 'Failed to process return');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const openReceiptModal = (sale) => {
     setSelectedReceiptSale(sale);
     setIsReceiptModalOpen(true);
@@ -191,7 +129,7 @@ export default function SalesRecord() {
     }
   };
 
-  const canReturn = hasPermission('manage_business');
+  const canReturn = hasPermission('manage_returns');
 
   if (!hasPermission('view_sales')) {
     return (
@@ -275,7 +213,7 @@ export default function SalesRecord() {
                   return (
                     <tr key={sale.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: isHighlighted ? 'var(--color-accent-glow)' : 'transparent' }}>
                       <td className="p-md">
-                        {new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
+                        {new Date(sale.accounting_at || sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}
                         {isHighlighted && <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 'bold' }}>HIGHLIGHTED</div>}
                       </td>
                       <td className="p-md">
@@ -310,7 +248,7 @@ export default function SalesRecord() {
                       <button onClick={() => openReceiptModal(sale)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>
                         #{sale.receipt_number || sale.id.substring(0, 8)}
                       </button>
-                      <div className="m-card-meta">{new Date(sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</div>
+                      <div className="m-card-meta">{new Date(sale.accounting_at || sale.created_at).toLocaleDateString([], { dateStyle: 'medium' })}</div>
                       <div className="m-card-sub">{sale.customer ? `${sale.customer.name}${sale.customer.phone ? ' · ' + sale.customer.phone : ''}` : 'Walk-in Customer'}</div>
                     </div>
                     <span className={`badge ${sale.return_status === 'partial' ? 'badge-warning' : sale.return_status === 'full' ? 'badge-error' : 'badge-success'}`} style={{ flexShrink: 0, fontSize: '0.7rem' }}>
@@ -340,94 +278,6 @@ export default function SalesRecord() {
         )}
       </div>
 
-      {/* Returns Modal */}
-      {selectedSale && (
-        <Modal isOpen={isReturnModalOpen} onClose={closeReturnModal} title="Return Processing" size="large">
-          <div className="mb-lg">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>Receipt #{selectedSale.receipt_number || selectedSale.id.substring(0,8)}</h3>
-            <p className="text-muted">Select items below to process a return. You can return the full purchased quantity or just a partial amount.</p>
-          </div>
-
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table className="table" style={{ width: '100%', marginBottom: '0', minWidth: '480px' }}>
-              <thead style={{ background: 'var(--color-bg-primary)' }}>
-                <tr>
-                  <th style={{ width: '50px', textAlign: 'center', padding: '12px' }}>Select</th>
-                  <th style={{ padding: '12px' }}>Product</th>
-                  <th style={{ padding: '12px' }}>Price</th>
-                  <th style={{ padding: '12px' }}>Purchased</th>
-                  <th style={{ padding: '12px' }}>Return Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedSale.sale_items.map(item => {
-                  const currentQty = returnItems[item.id] !== undefined ? returnItems[item.id] : 0;
-                  const isChecked = currentQty > 0;
-                  
-                  const handleCheck = () => {
-                    if (isChecked) {
-                      handleQuantityChange(item.id, item.quantity, 0); // Uncheck
-                    } else {
-                      handleQuantityChange(item.id, item.quantity, item.quantity); // Check (max)
-                    }
-                  };
-
-                  return (
-                    <tr key={item.id} style={{ background: isChecked ? 'var(--color-error-bg)' : 'transparent', borderTop: '1px solid var(--color-border)' }}>
-                      <td style={{ textAlign: 'center', padding: '12px' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={handleCheck}
-                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                        />
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <div className="font-bold">{item.product?.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>SKU: {item.product?.sku}</div>
-                      </td>
-                      <td style={{ fontWeight: 500, padding: '12px' }}>{fmt(item.unit_price)}</td>
-                      <td style={{ fontWeight: 500, padding: '12px' }}>{item.quantity}</td>
-                      <td style={{ width: '120px', padding: '12px' }}>
-                        <input 
-                          type="number" 
-                          className="input" 
-                          min="0" 
-                          max={item.quantity}
-                          value={currentQty === 0 ? '' : currentQty}
-                          onChange={(e) => handleQuantityChange(item.id, item.quantity, e.target.value)}
-                          style={{ width: '100%', padding: '10px', fontSize: '1.1rem', textAlign: 'center', background: isChecked ? 'white' : 'var(--color-bg-primary)', border: '1px solid #cbd5e1' }}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', padding: '24px', borderRadius: '12px' }}>
-            <div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--color-error-text)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>Total Refund Amount</div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-error-text)' }}>{fmt(calculateTotalRefund())}</div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn btn-secondary" onClick={closeReturnModal} disabled={isProcessing}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleReturnSubmit} 
-                disabled={isProcessing || calculateTotalRefund() === 0}
-                style={{ background: 'var(--color-error-text)', color: 'white', border: 'none', padding: '0 24px', fontSize: '1.1rem' }}
-              >
-                {isProcessing ? 'Processing...' : 'Confirm Return'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* Receipt & Actions Modal */}
       {selectedReceiptSale && (
         <ReceiptModal
@@ -438,18 +288,18 @@ export default function SalesRecord() {
           business={business}
           actions={
             <>
-              {canReturn && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.return_status !== 'full' && (
+              {canReturn && selectedReceiptSale.status === 'completed' && selectedReceiptSale.return_status !== 'full' && (
                 <button 
                   type="button" 
                   className="btn" 
-                  onClick={() => { closeReceiptModal(); openReturnModal(selectedReceiptSale); }}
+                  onClick={() => { closeReceiptModal(); navigate(`/returns?sale=${selectedReceiptSale.id}`); }}
                   style={{ background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)', padding: '10px 16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                   Process Return
                 </button>
               )}
-              {canReturn && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.status !== 'void_pending' && (
+              {hasPermission('manage_business') && !selectedReceiptSale.settlement_id && !['partial','full'].includes(selectedReceiptSale.return_status) && selectedReceiptSale.status !== 'voided' && selectedReceiptSale.status !== 'void_pending' && (
                 <button 
                   type="button" 
                   className="btn" 
@@ -461,7 +311,7 @@ export default function SalesRecord() {
                   Void Sale
                 </button>
               )}
-              {hasPermission('manage_business') && (
+              {hasPermission('manage_business') && !selectedReceiptSale.settlement_id && !['partial','full'].includes(selectedReceiptSale.return_status) && selectedReceiptSale.status !== 'pending' && (
                 <button 
                   type="button" 
                   className="btn" 

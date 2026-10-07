@@ -1,0 +1,74 @@
+/* Retail work surfaces: clear actions, restrained colour, tabular business data. */
+.workspace-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin:16px 0; }
+.workspace-toolbar label { display:grid; gap:6px; font-size:.85rem; color:var(--color-text-secondary); }
+.workspace-toolbar .form-input { min-height:40px; }
+.workspace-saved-views { margin:12px 0; color:var(--color-text-secondary); }
+.workspace-saved-views summary { cursor:pointer; width:fit-content; }
+.workspace-saved-item { display:inline-flex; align-items:center; }
+.workspace-table td, .workspace-table th { font-variant-numeric:tabular-nums; }
+.workspace-table--compact td { padding-top:8px!important; padding-bottom:8px!important; }
+.workspace-link { color:var(--color-text-primary); text-decoration:underline; text-underline-offset:3px; }
+.workspace-status { font-size:.85rem; color:var(--color-text-secondary); margin:8px 0; }
+.workspace-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:16px 0; }
+.workspace-metrics > div { padding:16px; border:1px solid var(--color-border); border-radius:8px; background:var(--color-bg-secondary); }
+.workspace-metrics strong { display:block; font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.workspace-actions { display:grid; gap:8px; margin:16px 0; }
+.workspace-actions a { display:flex; justify-content:space-between; gap:16px; padding:14px 16px; border:1px solid var(--color-border); border-radius:8px; text-decoration:none; color:var(--color-text-primary); background:var(--color-bg-secondary); }
+.workspace-actions a:hover { border-color:var(--color-accent); }
+.workspace-actions small { color:var(--color-text-secondary); }
+.pos-catalog-tools { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+.pos-catalog-tools select { flex:1; min-width:130px; }
+button.product-card { text-align:left; font:inherit; color:inherit; width:100%; }
+.product-card .product-card-name { white-space:normal; overflow:visible; text-overflow:clip; line-height:1.35; }
+.pos-product-stock { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:.8rem; color:var(--color-text-secondary); }
+.pos-mobile-bar, .pos-cart-close { display:none; }
+.pos-basket-tools { display:flex; gap:8px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--color-border); }
+.dashboard-welcome-banner { padding:20px 24px; min-height:0; margin-bottom:20px; background:var(--color-bg-secondary); }
+.dashboard-welcome-banner .banner-glow-1, .dashboard-welcome-banner .banner-glow-2 { display:none; }
+.dashboard-welcome-banner .banner-title { font-size:1.5rem; }
+.dashboard-content .dashboard-quick-actions { margin-bottom:20px; }
+.dashboard-content .activity-item { padding:12px 16px; }
+.workspace-panel { padding:20px; margin-bottom:20px; background:var(--color-bg-secondary); border:1px solid var(--color-border); border-radius:10px; }
+.workspace-panel h2 { font-size:1.1rem; margin:0 0 12px; }
+.workspace-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+.workspace-form-grid label { display:grid; gap:6px; font-size:.875rem; }
+.workspace-form-grid input, .workspace-form-grid select, .workspace-form-grid textarea { width:100%; }
+.workspace-timeline { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
+.workspace-timeline span { border-left:3px solid var(--color-accent); padding:4px 12px; }
+button.fin-summary-header { width:100%; color:inherit; font:inherit; text-align:left; }
+.till-page .page-header h1 { font-size:1.65rem; text-transform:none; letter-spacing:normal; }
+.till-page .page-subtitle { text-transform:none; letter-spacing:normal; }
+@media (max-width:768px) {
+  .sales-page { padding-bottom:90px; }
+  .sales-page .sales-cart { display:none; }
+  .sales-page .sales-cart.pos-cart-open { display:flex; flex-direction:column; position:fixed; inset:56px 0 0; z-index:90; width:100%; background:var(--color-bg-primary); overflow-y:auto; padding-bottom:env(safe-area-inset-bottom); border-radius:0; }
+  .sales-cart.pos-cart-open .cart-items { overflow-y:visible; flex:1; }
+  .pos-mobile-bar { position:fixed; bottom:0; left:0; right:0; z-index:85; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--color-bg-secondary); border-top:1px solid var(--color-border); }
+  .pos-mobile-bar button { min-height:44px; }
+  .pos-cart-close { display:block; min-height:44px; }
+  .catalog-header { flex-wrap:wrap; }
+  .catalog-title { font-size:1.3rem; }
+  .catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .workspace-toolbar { align-items:stretch; }
+  .workspace-toolbar > label { flex:1 1 140px; }
+  .workspace-panel { padding:16px; }
+}
+@media print { .pos-mobile-bar,.workspace-saved-views,.workspace-toolbar { display:none!important; } }
+.workspace-fieldset { border:0; margin:0; padding:0; min-width:0; }
+.workspace-purchase-line { display:grid; grid-template-columns:minmax(160px,2fr) 90px 110px 100px auto; gap:12px; align-items:end; padding:12px 0; border-bottom:1px solid var(--color-border); }
+.workspace-purchase-line label { display:grid; gap:6px; }
+.workspace-purchase-line input,.workspace-purchase-line select { width:100%; }
+@media(max-width:768px) { .workspace-purchase-line { grid-template-columns:1fr 1fr; } .workspace-purchase-line label:first-child { grid-column:1 / -1; } .workspace-actions a { flex-direction:column; gap:4px; } }
+
+.sales-page > .alert, .sales-page > [role=alert] { grid-column:1 / -1; align-self:start; }
+.workspace-actions { grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+.workspace-actions small { margin-top:4px; line-height:1.45; }
+@media print { .workspace-panel button,.workspace-panel form { display:none!important; } }
+@media(max-width:768px) {
+ .sales-page .sales-cart.pos-cart-open { height:calc(100dvh - 56px); max-height:none; }
+ .sales-page .pos-cart-open .cart-checkout { flex-shrink:0; }
+ .sales-page .qty-btn,.sales-page .btn-icon,.sales-page .catalog-grid .btn-ghost { min-width:44px; min-height:44px; }
+}
+
+.till-ledger-total {font-size:clamp(1.65rem,6vw,3rem);overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+.workspace-form-grid > .btn { align-self:end; min-height:44px; }

@@ -60,6 +60,10 @@ router.get('/invoices', authGuard, permissionCheck('manage_financials'), async (
     }
     if (customer_id) query = query.eq('customer_id', customer_id);
     if (status) query = query.eq('status', status);
+    if (req.query.q) query = query.ilike('invoice_number', `%${String(req.query.q).slice(0,100).replace(/[%_]/g, '')}%`);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.due_from || '')) query = query.gte('due_date', req.query.due_from);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.due_to || '')) query = query.lte('due_date', req.query.due_to);
+
     if (is_opening_balance !== undefined) query = query.eq('is_opening_balance', is_opening_balance === 'true');
 
     const { data, error, count } = await query;

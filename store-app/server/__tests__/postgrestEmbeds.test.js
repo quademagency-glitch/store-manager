@@ -101,7 +101,8 @@ describe('PostgREST embeds', () => {
     expect(code).not.toMatch(/users!received_by/);
     // and the route still returns what the page renders
     for (const [, select] of selectsIn(code).filter(([t]) => t === 'purchase_orders')) {
-      if (select.includes('items:')) expect(select).toMatch(/supplier:suppliers!supplier_id/);
+      // The billing summary reads only receipt quantities and costs.
+      if (select.includes('items:') && select.includes('*')) expect(select).toMatch(/supplier:suppliers!supplier_id/);
     }
   });
 });

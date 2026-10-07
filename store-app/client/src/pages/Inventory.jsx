@@ -1,5 +1,9 @@
+import { stockAt } from '../lib/stockStatus';
+import { useQueryState } from '../hooks/useQueryState';
+import SavedViews from '../components/SavedViews';
+import { ErrorBanner } from '../components/ui';
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { useStock } from '../hooks/useStock';
@@ -27,7 +31,7 @@ import { EmptyStateRow, SkeletonRows, TabPanel, Tabs, SkeletonTable } from '../c
 import { reportError } from '../lib/errorReporting';
 
 function PricingTabContent({ refreshProducts }) {
-  const [activeSection, setActiveSection] = useState('bulk-update');
+  const [activeSection, setActiveSection] = useQueryState('pricing', 'bulk-update');
   const sections = [
     { id: 'bulk-update', label: 'Bulk Update' },
     { id: 'price-tags', label: 'Price Tags' },
@@ -63,7 +67,7 @@ function PricingTabContent({ refreshProducts }) {
 export default function Inventory() {
   const { hasPermission } = useAuthContext();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { business, printElement } = usePrintDocument();
   const { fmt, currencySymbol } = useCurrency(business);
@@ -71,19 +75,32 @@ export default function Inventory() {
   // The hook exports this as refreshProducts, so destructuring `fetchProducts`
   // silently produced undefined and the list never refreshed after a bulk
   // price change.
-  const { products, loading: productsLoading, addProduct, refreshProducts: fetchProducts } = useProducts();
+  const { products, loading: productsLoading, error: productsError, addProduct, refreshProducts: fetchProducts } = useProducts();
   const { movements, loading: stockLoading, fetchMovements, adjustStock, page: stockPage, totalPages: stockTotalPages, totalMovements } = useStock();
   const { role, locationIds } = useAuthContext();
   const isManagerOrAdmin = ['Business Admin', 'Manager', 'Platform Admin'].includes(role);
 
   const [locations, setLocations] = useState([]);
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'products');
+  const [activeTab, setActiveTab] = useQueryState('tab', 'products');
 
   // ─── Products Tab State ───
-  const [productSearch, setProductSearch] = useState('');
-  const [locationFilter, setLocationFilter] = useState('all');
-  const [stockFilter, setStockFilter] = useState('all');
+  const [productSearch, setProductSearch] = useQueryState('q');
+  const [locationFilter, setLocationFilter] = useQueryState('location', 'all');
+  const [stockFilter, setStockFilter] = useQueryState('stock', 'all');
+  const [sort, setSort] = useQueryState('sort', 'name');
+  const [density, setDensity] = useQueryState('density', 'comfortable');
+  const [columns, setColumns] = useQueryState('columns', 'price,threshold');
+  const [tabErrors, setTabErrors] = useState({});
+  const effectiveLocation = !isManagerOrAdmin && locationFilter === 'all' ? (locationIds[0] || '__none__') : locationFilter;
+  const showColumn = key => columns.split(',').includes(key);
+  const canSeeCosts = hasPermission('view_financial_reports') || hasPermission('manage_financials');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  useEffect(() => {
+    if (searchParams.get('action') === 'add' && hasPermission('manage_products')) {
+      setIsProductModalOpen(true);
+      setSearchParams(previous => { const next = new URLSearchParams(previous); next.delete('action'); return next; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams, hasPermission]);
   const [productFormError, setProductFormError] = useState('');
   const [isProductSubmitting, setIsProductSubmitting] = useState(false);
   // Adjust Modal
@@ -154,28 +171,31 @@ export default function Inventory() {
 
   const fetchTransfers = async () => {
     setTransfersLoading(true);
+    setTabErrors(prev => ({ ...prev, transfers: '' }));
     try {
       const data = await api.get('/stock/transfers');
       setTransfers(data);
-    } catch { setTransfers([]); }
+    } catch (err) { setTabErrors(prev => ({ ...prev, transfers: err.message || 'Could not load transfers.' })); }
     finally { setTransfersLoading(false); }
   };
 
   const fetchAudits = async () => {
     setAuditsLoading(true);
+    setTabErrors(prev => ({ ...prev, audits: '' }));
     try {
       const data = await api.get('/stock/audits');
       setAudits(data);
-    } catch { setAudits([]); }
+    } catch (err) { setTabErrors(prev => ({ ...prev, audits: err.message || 'Could not load audits.' })); }
     finally { setAuditsLoading(false); }
   };
 
   const fetchBatches = async () => {
     setBatchesLoading(true);
+    setTabErrors(prev => ({ ...prev, batches: '' }));
     try {
       const data = await api.get('/stock/batches');
       setBatches(data);
-    } catch { setBatches([]); }
+    } catch (err) { setTabErrors(prev => ({ ...prev, batches: err.message || 'Could not load batches.' })); }
     finally { setBatchesLoading(false); }
   };
 
@@ -184,20 +204,20 @@ export default function Inventory() {
     if (activeTab === 'transfers') fetchTransfers();
     if (activeTab === 'audits') fetchAudits();
     if (activeTab === 'batches') fetchBatches();
-  }, [activeTab]);  
+  }, [activeTab]);
 
   // Low stock products
   const lowStockProducts = useMemo(() => {
     const alerts = [];
     products.forEach(p => {
-      p.product_inventory?.forEach(inv => {
+      p.product_inventory?.filter(inv => effectiveLocation === 'all' || inv.location_id === effectiveLocation).forEach(inv => {
         if (inv.quantity <= inv.low_stock_threshold) {
           alerts.push({ ...p, loc_id: inv.location_id, quantity: inv.quantity, threshold: inv.low_stock_threshold });
         }
       });
     });
     return alerts;
-  }, [products]);
+  }, [products, effectiveLocation]);
 
   // Products at audit location
   const auditProducts = useMemo(() => {
@@ -232,7 +252,7 @@ export default function Inventory() {
             product_name: product?.name || 'Unknown',
             sku: product?.sku || '',
             quantity: Math.abs(finalQtyChange),
-            unit_cost: product?.price || 0,
+            unit_cost: product?.cost_price ?? null,
           }],
           notes: adjustData.notes,
           date: new Date().toISOString(),
@@ -368,6 +388,8 @@ export default function Inventory() {
   // ─── Products Tab Handlers ───
   const visibleLocations = isManagerOrAdmin ? locations : locations.filter(loc => locationIds.includes(loc.id));
 
+  const [pageLimit, setPageLimit] = useState(50);
+  const productPath = id => `/inventory/products/${id}?${new URLSearchParams({from:searchParams.toString()})}`;
   const filteredProducts = useMemo(() => {
     let result = products;
 
@@ -389,31 +411,17 @@ export default function Inventory() {
       result = result.filter(p => !(Number(p.price) > 0));
     }
 
-    if (!isManagerOrAdmin && locationFilter === 'all' && visibleLocations.length > 0) {
-      // Force filter to first assigned location if non-admin tries to view all
-      const forcedLocation = visibleLocations[0].id;
-      result = result.filter(p => {
-        const total = p.product_inventory?.find(inv => inv.location_id === forcedLocation)?.quantity || 0;
-        if (stockFilter === 'in_stock') return total > 0;
-        if (stockFilter === 'low_stock') return total > 0 && total <= 5;
-        if (stockFilter === 'out_of_stock') return total === 0;
-        return true;
-      });
-    } else if (stockFilter !== 'all' || locationFilter !== 'all') {
-      result = result.filter(p => {
-        const total = locationFilter === 'all' 
-          ? (p.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
-          : (p.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
-          
-        if (stockFilter === 'in_stock') return total > 0;
-        if (stockFilter === 'low_stock') return total > 0 && total <= 5;
-        if (stockFilter === 'out_of_stock') return total === 0;
-        return true;
-      });
-    }
-
-    return result;
-  }, [products, productSearch, stockFilter, locationFilter, isManagerOrAdmin, visibleLocations]);
+    result = result.filter(product => {
+      const stock = stockAt(product, effectiveLocation);
+      if (stockFilter === 'in_stock') return stock.quantity > 0;
+      if (stockFilter === 'low_stock') return stock.low;
+      if (stockFilter === 'out_of_stock') return stock.quantity === 0;
+      return true;
+    });
+    return [...result].sort((a, b) => sort === 'quantity'
+      ? stockAt(a, effectiveLocation).quantity - stockAt(b, effectiveLocation).quantity
+      : sort === 'price' ? Number(a.price) - Number(b.price) : String(a.name).localeCompare(String(b.name)));
+  }, [products, productSearch, stockFilter, effectiveLocation, sort]);
 
   /* This modal only adds. Clicking a product opens its own page, which is
      where editing and deleting one now live. */
@@ -506,6 +514,9 @@ export default function Inventory() {
         )}
       </div>
 
+      <ErrorBanner error={productsError} onRetry={fetchProducts} />
+      <ErrorBanner error={tabErrors[activeTab]} onRetry={() => ({ transfers: fetchTransfers, audits: fetchAudits, batches: fetchBatches })[activeTab]?.()} />
+      <SavedViews name="inventory" />
       {/* Low Stock Alerts */}
       {lowStockProducts.length > 0 && (
         <div style={{ marginBottom: '24px', padding: '16px', borderRadius: 'var(--radius-lg)', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -520,7 +531,7 @@ export default function Inventory() {
           <div className="flex flex-wrap gap-sm">
             {lowStockProducts.map((p, idx) => (
               <div key={`${p.id}-${idx}`} style={{ padding: '6px 10px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.825rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <span className="font-bold text-primary">{p.name}</span>
+                <Link className="workspace-link" to={`/inventory/products/${p.id}`}>{p.name}</Link>
                 <span style={{ color: p.quantity === 0 ? 'var(--color-error)' : 'var(--color-warning)', fontWeight: 700 }}>{p.quantity} left</span>
                 {locations.length > 1 && <span className="text-muted">@ {locations.find(l => l.id === p.loc_id)?.name || 'Unknown'}</span>}
               </div>
@@ -548,16 +559,16 @@ export default function Inventory() {
               </svg>
               <input
                 type="text"
-                placeholder="Search by name, SKU..."
+                aria-label="Search products" placeholder="Search by name, SKU…"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 className="search-input"
               />
             </div>
             <div className="filter-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1, margin: '0 10px' }}>
-              <select 
-                className="form-input" 
-                value={locationFilter} 
+              <select
+                className="form-input"
+                aria-label="Inventory location" value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 style={{ minWidth: '150px' }}
               >
@@ -566,15 +577,15 @@ export default function Inventory() {
                   <option key={loc.id} value={loc.id}>{loc.name}</option>
                 ))}
               </select>
-              <select  
-                className="form-input" 
-                value={stockFilter} 
+              <select
+                className="form-input"
+                aria-label="Stock status" value={stockFilter}
                 onChange={(e) => setStockFilter(e.target.value)}
                 style={{ minWidth: '150px' }}
               >
                 <option value="all">All Stock Levels</option>
                 <option value="in_stock">In Stock</option>
-                <option value="low_stock">Low Stock (≤5)</option>
+                <option value="low_stock">Low Stock (branch threshold)</option>
                 <option value="out_of_stock">Out of Stock</option>
                 {/* Where a cost-only import lands. Import no longer demands a
                     selling price, so these are the products still to price. */}
@@ -594,115 +605,32 @@ export default function Inventory() {
               )}
             </div>
           </div>
+          <div className="workspace-toolbar">
+            <label>Sort by<select className="form-input" value={sort} onChange={e => setSort(e.target.value)}><option value="name">Product name</option><option value="quantity">Lowest stock</option><option value="price">Lowest price</option></select></label>
+            <label>Density<select className="form-input" value={density} onChange={e => setDensity(e.target.value)}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+            <fieldset><legend>Columns</legend>{['price', 'threshold', ...(canSeeCosts ? ['cost', 'margin'] : [])].map(key => <label key={key} className="inline-flex"><input type="checkbox" checked={showColumn(key)} onChange={e => setColumns(e.target.checked ? [...columns.split(',').filter(Boolean), key].join(',') : columns.split(',').filter(c => c !== key).join(','))} /> {key}</label>)}</fieldset>
+          </div>
           <div className="glass-panel">
-            {productsLoading ? (
-              <SkeletonTable rows={6} cols={3} caption="Loading products" />
-            ) : (<>
-              <div className="desktop-table-view">
-              <table className="glass-table">
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Model</th>
-                    <th>Quantity available</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.length === 0 ? (
-                    <EmptyStateRow colSpan={3} icon="clipboard" title="No products found" />
-                  ) : (
-                    filteredProducts.map(product => {
-                      const displayStock = locationFilter === 'all'
-                        ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
-                        : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
-                      const isLowStock = displayStock <= 5;
-                      
-                      return (
-                        <tr 
-                          key={product.id} 
-                          className={isLowStock ? 'row-warning' : ''}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => navigate(`/inventory/products/${product.id}`)}
-                        >
-                          <td><code className="text-mono">{product.sku}</code></td>
-                          <td>
-                            <div className="product-cell">
-                              <div className="product-info">
-                                <span className="product-name">{product.name}</span>
-                                {product.product_code && (
-                                  <span className="text-muted text-sm block">{product.product_code}</span>
-                                )}
-                                {isLowStock && <span className="badge badge-warning badge-sm mt-xs">Low Stock</span>}
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="stock-cell">
-                              <span 
-                                className={`stock-count ${isLowStock ? 'text-warning font-bold' : ''}`}
-                                style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTrackingProduct(product);
-                                  setIsTrackingModalOpen(true);
-                                }}
-                              >
-                                {displayStock}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+            {productsLoading ? <SkeletonTable rows={6} cols={4} caption="Loading products" /> : productsError ? <p role="status">Product data is unavailable. Retry above.</p> : <>
+              <div className="desktop-table-view table-container">
+                <table className={`glass-table workspace-table workspace-table--${density}`}>
+                  <thead><tr><th>SKU</th><th>Product</th><th>Available</th>{showColumn('price') && <th>Selling price</th>}{showColumn('threshold') && <th>Reorder threshold</th>}{canSeeCosts && showColumn('cost') && <th>Unit cost</th>}{canSeeCosts && showColumn('margin') && <th>Margin</th>}<th>Actions</th></tr></thead>
+                  <tbody>{filteredProducts.length === 0 ? <EmptyStateRow colSpan={8} title="No products match these filters" /> : filteredProducts.slice(0,pageLimit).map(product => {
+                    const stock = stockAt(product, effectiveLocation);
+                    return <tr key={product.id} className={stock.low ? 'row-warning' : ''}>
+                      <td><code>{product.sku}</code></td><td><Link className="workspace-link" to={productPath(product.id)}>{product.name}</Link>{stock.low && <div className="badge badge-warning">{stock.quantity === 0 ? 'Out of stock' : 'Low stock'}</div>}{effectiveLocation === 'all' && stock.shortages.map(row => <small className="block" key={row.location_id}>{locations.find(l => l.id === row.location_id)?.name || 'Branch'}: {row.quantity} left</small>)}</td>
+                      <td><button className="btn btn-ghost" aria-label={`Track ${product.name} stock`} onClick={() => { setSelectedTrackingProduct(product); setIsTrackingModalOpen(true); }}>{stock.quantity}</button></td>
+                      {showColumn('price') && <td>{fmt(product.price)}</td>}{showColumn('threshold') && <td>{stock.threshold}{effectiveLocation === 'all' && <small className="block">Across branches</small>}</td>}
+                      {canSeeCosts && showColumn('cost') && <td>{product.cost_price == null ? 'Not recorded' : fmt(product.cost_price)}</td>}
+                      {canSeeCosts && showColumn('margin') && <td>{product.cost_price == null || !(Number(product.price) > 0) ? '—' : `${((Number(product.price) - Number(product.cost_price)) / Number(product.price) * 100).toFixed(1)}%`}</td>}
+                      <td><Link className="btn btn-secondary btn-sm" to={productPath(product.id)}>View product</Link></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
               </div>
-              <div className="mobile-card-view">
-                {filteredProducts.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No products found.</div>
-                ) : filteredProducts.map(product => {
-                  const displayStock = locationFilter === 'all'
-                    ? (product.product_inventory?.reduce((sum, inv) => sum + inv.quantity, 0) || 0)
-                    : (product.product_inventory?.find(inv => inv.location_id === locationFilter)?.quantity || 0);
-                  const isLowStock = displayStock <= 5;
-                  return (
-                    <div 
-                      key={product.id} 
-                      className="m-card"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/inventory/products/${product.id}`)}
-                    >
-                      <div className="m-card-top">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                          <div className="min-w-0">
-                            <div className="m-card-title">{product.name}</div>
-                            {isLowStock && <span className="badge badge-warning badge-sm">Low Stock</span>}
-                            <div className="m-card-meta">
-                              <code>{product.sku}</code>
-                              {product.product_code && <span style={{marginLeft: '8px', color: 'var(--color-text-secondary)'}}>{product.product_code}</span>}
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div 
-                            className="m-card-amount" 
-                            style={{ color: isLowStock ? 'var(--color-warning)' : undefined, cursor: 'pointer', textDecoration: 'underline' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTrackingProduct(product);
-                              setIsTrackingModalOpen(true);
-                            }}
-                          >
-                            {displayStock} in stock
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>)}
+              <div className="mobile-card-view">{filteredProducts.slice(0,pageLimit).map(product => { const stock = stockAt(product, effectiveLocation); return <article className="m-card" key={product.id}><Link className="workspace-link" to={productPath(product.id)}>{product.name}</Link><p>{product.sku} · {fmt(product.price)}</p><button className="btn btn-secondary" onClick={() => { setSelectedTrackingProduct(product); setIsTrackingModalOpen(true); }}>{stock.quantity} available · Track units</button>{stock.low && <span className="badge badge-warning">Low stock</span>}</article>; })}{!filteredProducts.length && <p>No products match these filters.</p>}</div>
+            </>}
+            {filteredProducts.length > pageLimit && <button className="btn btn-secondary" onClick={()=>setPageLimit(limit=>limit+50)}>Show more products ({filteredProducts.length-pageLimit} remaining)</button>}
           </div>
         </div>
       </TabPanel>
@@ -780,15 +708,15 @@ export default function Inventory() {
                 Showing {(stockPage - 1) * 50 + 1} to {Math.min(stockPage * 50, totalMovements)} of {totalMovements} movements
               </div>
               <div className="flex gap-sm">
-                <button 
-                  className="btn btn-secondary btn-sm" 
+                <button
+                  className="btn btn-secondary btn-sm"
                   onClick={() => fetchMovements(Math.max(1, stockPage - 1))}
                   disabled={stockPage === 1}
                 >
                   Previous
                 </button>
-                <button 
-                  className="btn btn-secondary btn-sm" 
+                <button
+                  className="btn btn-secondary btn-sm"
                   onClick={() => fetchMovements(Math.min(stockTotalPages, stockPage + 1))}
                   disabled={stockPage === stockTotalPages}
                 >
@@ -819,7 +747,7 @@ export default function Inventory() {
               <tbody>
                 {transfersLoading ? (
                   <SkeletonRows rows={3} cols={6} />
-                ) : transfers.length === 0 ? (
+                ) : tabErrors.transfers ? <tr><td colSpan={7}>Transfers could not be loaded. Retry above.</td></tr> : transfers.length === 0 ? (
                   <EmptyStateRow colSpan={6} icon="restore" title="No transfers found" />
                 ) : (
                   transfers.map(t => (
@@ -846,7 +774,7 @@ export default function Inventory() {
             <div className="mobile-card-view">
               {transfersLoading ? (
                 <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
-              ) : transfers.length === 0 ? (
+              ) : tabErrors.transfers ? <p className="p-md">This information could not be loaded. Retry above.</p> : transfers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No transfers found.</div>
               ) : transfers.map(t => (
                 <div key={t.id} className="m-card">
@@ -949,7 +877,7 @@ export default function Inventory() {
               <tbody>
                 {auditsLoading ? (
                   <SkeletonRows rows={3} cols={7} />
-                ) : audits.length === 0 ? (
+                ) : tabErrors.audits ? <tr><td colSpan={6}>Counts could not be loaded. Retry above.</td></tr> : audits.length === 0 ? (
                   <EmptyStateRow colSpan={7} icon="clipboard" title="No audits yet" />
                 ) : (
                   audits.map(a => (
@@ -974,7 +902,7 @@ export default function Inventory() {
             <div className="mobile-card-view">
               {auditsLoading ? (
                 <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
-              ) : audits.length === 0 ? (
+              ) : tabErrors.audits ? <p className="p-md">This information could not be loaded. Retry above.</p> : audits.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No audits yet.</div>
               ) : audits.map(a => (
                 <div key={a.id} className="m-card">
@@ -1014,7 +942,7 @@ export default function Inventory() {
               <tbody>
                 {batchesLoading ? (
                   <SkeletonRows rows={3} cols={6} />
-                ) : batches.length === 0 ? (
+                ) : tabErrors.batches ? <tr><td colSpan={8}>Batches could not be loaded. Retry above.</td></tr> : batches.length === 0 ? (
                   <EmptyStateRow colSpan={6} icon="clipboard" title="No batches registered" />
                 ) : (
                   batches.map(b => {
@@ -1037,7 +965,7 @@ export default function Inventory() {
             <div className="mobile-card-view">
               {batchesLoading ? (
                 <div className="text-center p-xl"><div className="spinner mx-auto" /><p className="mt-sm text-muted">Loading...</p></div>
-              ) : batches.length === 0 ? (
+              ) : tabErrors.batches ? <p className="p-md">This information could not be loaded. Retry above.</p> : batches.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>No batches registered.</div>
               ) : batches.map(b => {
                 const status = getExpiryStatus(b.expiry_date);
@@ -1079,59 +1007,59 @@ export default function Inventory() {
       {/* ═══ MODALS ═══ */}
 
       {/* Extracted Modals */}
-      <AdjustStockModal 
-        isOpen={isAdjustModalOpen} 
-        onClose={() => setIsAdjustModalOpen(false)} 
-        onSubmit={handleAdjustSubmit} 
-        locations={locations} 
-        products={products} 
-        adjusting={adjusting} 
+      <AdjustStockModal
+        isOpen={isAdjustModalOpen}
+        onClose={() => setIsAdjustModalOpen(false)}
+        onSubmit={handleAdjustSubmit}
+        locations={locations}
+        products={products}
+        adjusting={adjusting}
       />
 
-      <ThresholdModal 
-        isOpen={isThresholdModalOpen} 
-        onClose={() => setIsThresholdModalOpen(false)} 
-        onSubmit={handleThresholdSubmit} 
-        locations={locations} 
-        products={products} 
-        thresholding={thresholding} 
-        error={thresholdError} 
+      <ThresholdModal
+        isOpen={isThresholdModalOpen}
+        onClose={() => setIsThresholdModalOpen(false)}
+        onSubmit={handleThresholdSubmit}
+        locations={locations}
+        products={products}
+        thresholding={thresholding}
+        error={thresholdError}
       />
 
-      <TransferModal 
-        isOpen={isTransferModalOpen} 
-        onClose={() => setIsTransferModalOpen(false)} 
-        onSubmit={handleTransferSubmit} 
-        locations={locations} 
-        products={products} 
-        transferring={transferring} 
-        error={transferError} 
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSubmit={handleTransferSubmit}
+        locations={locations}
+        products={products}
+        transferring={transferring}
+        error={transferError}
       />
 
-      <BatchModal 
-        isOpen={isBatchModalOpen} 
-        onClose={() => setIsBatchModalOpen(false)} 
-        onSubmit={handleBatchSubmit} 
-        locations={locations} 
-        products={products} 
-        submitting={batchSubmitting} 
-        error={batchError} 
+      <BatchModal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        onSubmit={handleBatchSubmit}
+        locations={locations}
+        products={products}
+        submitting={batchSubmitting}
+        error={batchError}
       />
 
-      <ProductModal 
-        isOpen={isProductModalOpen} 
-        onClose={closeProductModal} 
-        onSubmit={handleProductSubmit} 
-        editingProduct={null} 
-        locations={locations} 
-        currencySymbol={currencySymbol} 
-        isSubmitting={isProductSubmitting} 
-        error={productFormError} 
+      <ProductModal
+        isOpen={isProductModalOpen}
+        onClose={closeProductModal}
+        onSubmit={handleProductSubmit}
+        editingProduct={null}
+        locations={locations}
+        currencySymbol={currencySymbol}
+        isSubmitting={isProductSubmitting}
+        error={productFormError}
       />
 
 
-      <TrackingModal 
-        isOpen={isTrackingModalOpen} 
+      <TrackingModal
+        isOpen={isTrackingModalOpen}
         onClose={() => {
           setIsTrackingModalOpen(false);
           setSelectedTrackingProduct(null);
@@ -1141,7 +1069,7 @@ export default function Inventory() {
         isDoubleMode={business?.qr_tracking_mode === 'double'}
         activeLocationFilter={locationFilter}
       />
-      
+
       <SoldUnitsModal
         isOpen={isSoldUnitsModalOpen}
         onClose={() => {

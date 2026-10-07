@@ -2,13 +2,27 @@ import { useEffect, useState } from 'react';
 import { useInventoryAnalytics } from '../../../hooks/useInventoryAnalytics';
 import { useCurrency } from '../../../hooks/useCurrency';
 import { usePrintDocument } from '../../../hooks/usePrintDocument';
-import { EmptyStateRow } from '../../../components/ui';
+import { useNavigate } from 'react-router-dom';
+import { useQueryState } from '../../../hooks/useQueryState';
+import { useAuthContext } from '../../../lib/AuthContext';
+import { EmptyStateRow, ErrorBanner } from '../../../components/ui';
 
 export default function InventoryAnalytics() {
-  const { summary, valuation, turnover, deadStock, reorderSuggestions, loading, fetchAll } = useInventoryAnalytics();
+  const { summary, valuation, turnover, deadStock, reorderSuggestions, loading, error, fetchAll } = useInventoryAnalytics();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useQueryState('analysis', 'overview');
+
+  const navigate = useNavigate();
+  const { hasPermission } = useAuthContext();
+  const [selected, setSelected] = useState([]);
+  const [selectionError, setSelectionError] = useState('');
+  const createDraft = () => {
+    const rows = (reorderSuggestions?.suggestions || []).filter(row => selected.includes(`${row.product_id}:${row.location_id}`));
+    if (!rows.length) return;
+    if (new Set(rows.map(row => row.location_id)).size > 1 || new Set(rows.map(row => row.preferred_supplier?.id || '')).size > 1) { setSelectionError('Select items for one branch and supplier at a time.'); return; }
+    navigate('/purchase-orders', { state: { reorderDraft: { supplier_id: rows[0].preferred_supplier?.id || '', notes: `Replenishment for ${rows[0].location}. Review quantities and costs before ordering.`, items: rows.map(row => ({ product_id: row.product_id, quantity: row.suggested_quantity, unit_cost: row.unit_cost ?? '', notes: '' })) } } });
+  };
 
   useEffect(() => {
     fetchAll();
@@ -33,6 +47,7 @@ export default function InventoryAnalytics() {
 
   return (
     <div className="mt-md">
+      <ErrorBanner error={error} onRetry={fetchAll} />
       {/* Section Pills */}
       <div className="flex gap-sm mb-lg flex-wrap">
         {sections.map(s => (
@@ -272,6 +287,8 @@ export default function InventoryAnalytics() {
       {/* ═══ REORDER SUGGESTIONS ═══ */}
       {activeSection === 'reorder' && reorderSuggestions && (
         <div>
+          {hasPermission('manage_purchases') && <div className="workspace-toolbar"><button className="btn btn-primary" disabled={!selected.length} onClick={createDraft}>Create PO from {selected.length || 'selected'} items</button><p>Select one supplier and branch per purchase order.</p></div>}
+          <ErrorBanner error={selectionError} />
           {reorderSuggestions.count > 0 && (
             <div className="alert alert-warning" style={{ marginBottom: '16px', padding: '16px', borderRadius: '8px', backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)' }}>
               <strong style={{ color: 'var(--color-warning)' }}>{reorderSuggestions.count} product(s)</strong> need reordering based on current stock levels and sales velocity.
@@ -281,7 +298,7 @@ export default function InventoryAnalytics() {
             <table className="glass-table">
               <thead>
                 <tr>
-                  <th>Product</th>
+                  {hasPermission('manage_purchases') && <th>Select</th>}<th>Product</th>
                   <th className="text-center">Stock</th>
                   <th className="text-center">Reorder Point</th>
                   <th className="text-center">Daily Sales</th>
@@ -300,6 +317,7 @@ export default function InventoryAnalytics() {
                   };
                   return (
                     <tr key={`${s.product_id}-${idx}`} style={s.urgency === 'critical' ? { background: 'var(--color-error-bg)' } : {}}>
+                      {hasPermission('manage_purchases') && <td><input type="checkbox" aria-label={`Reorder ${s.name} at ${s.location}`} checked={selected.includes(`${s.product_id}:${s.location_id}`)} onChange={e => { const key=`${s.product_id}:${s.location_id}`; setSelected(previous => e.target.checked ? [...previous,key] : previous.filter(id => id!==key)); setSelectionError(''); }} /></td>}
                       <td>
                         <div className="font-medium">{s.name}</div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>{s.sku}</div>
@@ -309,7 +327,7 @@ export default function InventoryAnalytics() {
                       <td className="text-center text-muted">{s.reorder_point}</td>
                       <td className="text-center">{s.daily_sales_rate}/day</td>
                       <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-primary)' }}>{s.suggested_quantity}</td>
-                      <td className="text-right font-bold">{fmt(s.estimated_cost)}</td>
+                      <td className="text-right font-bold">{s.estimated_cost == null ? 'Cost needed' : fmt(s.estimated_cost)}</td>
                       <td className="text-muted">{s.preferred_supplier?.name || '-'}</td>
                       <td>
                         <span
@@ -328,7 +346,7 @@ export default function InventoryAnalytics() {
                   );
                 })}
                 {(!reorderSuggestions.suggestions || reorderSuggestions.suggestions.length === 0) && (
-                  <EmptyStateRow colSpan={8} icon="checkCircle" variant="success" title="All stock levels are healthy" hint="Nothing is below its reorder threshold." />
+                  <EmptyStateRow colSpan={hasPermission('manage_purchases') ? 9 : 8} icon="checkCircle" variant="success" title="All stock levels are healthy" hint="Nothing is below its reorder threshold." />
                 )}
               </tbody>
             </table>

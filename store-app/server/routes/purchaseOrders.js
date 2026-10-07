@@ -117,13 +117,13 @@ router.get('/:id', authGuard, permissionCheck('view_purchases', 'manage_purchase
  * PO number is auto-generated.
  * Access: Inventory managers
  */
-const purchaseSchema = z.object({ supplier_id:z.string().uuid(), expected_date:z.string().nullable().optional(), notes:z.string().max(2000).nullable().optional(),
+const purchaseSchema = z.object({ operation_id:z.uuid().optional(), supplier_id:z.string().uuid(), expected_date:z.string().nullable().optional(), notes:z.string().max(2000).nullable().optional(),
   items:z.array(z.object({product_id:z.string().uuid(),quantity:z.number().int().positive().max(100000),unit_cost:z.number().finite().nonnegative(),notes:z.string().max(1000).nullable().optional()})).min(1).max(500) });
 async function saveOrder(req,res) {
   const parsed=purchaseSchema.safeParse(req.body);
   if (!parsed.success || (req.params.id && !z.uuid().safeParse(req.params.id).success)) return res.status(400).json({error:'Provide a supplier and valid purchase lines.'});
-  const {data,error}=await supabaseAdmin.rpc('save_purchase_order',{p_business_id:req.user.business_id,p_actor_id:req.user.id,p_po_id:req.params.id || null,p_request:parsed.data});
-  if(error) return transactionError(res,error,'Could not save the purchase order.');
+  const {data,error}=await supabaseAdmin.rpc(parsed.data.operation_id ? 'save_purchase_order_once' : 'save_purchase_order',{p_business_id:req.user.business_id,p_actor_id:req.user.id,p_po_id:req.params.id || null,p_request:parsed.data});
+  if(error) return transactionError(res,error,'Could not save the purchase order.', !!parsed.data.operation_id);
   res.status(req.params.id ? 200 : 201).json(data);
 }
 router.post('/',authGuard,permissionCheck('manage_purchases'),saveOrder);
@@ -157,6 +157,25 @@ router.post('/:id/receive', authGuard, permissionCheck('manage_purchases', 'rece
   if (error) return transactionError(res,error,'Delivery could not be recorded. Retry the same delivery.');
   for(const prefix of ['/api/products','/api/inventory','/api/purchase-orders']) invalidateCachePrefix(prefix);
   res.json(data);
+});
+
+// Linked liabilities are permission-gated separately from receiving stock.
+router.get('/:id/billing', authGuard, permissionCheck('manage_financials'), async (req,res) => {
+  const {data:po,error:poError}=await supabaseAdmin.from('purchase_orders').select('id,items:purchase_order_items(received_quantity,unit_cost)').eq('business_id',req.user.business_id).eq('id',req.params.id).single();
+  if(poError || !po) return res.status(404).json({error:'Purchase order not found.'});
+  const {data:bills,error}=await supabaseAdmin.from('ap_bills').select('id,bill_number,amount,amount_paid,status,due_date').eq('business_id',req.user.business_id).eq('purchase_order_id',po.id).order('created_at');
+  if(error) return res.status(500).json({error:'Supplier bills could not be loaded.'});
+  const active=(bills||[]).filter(b=>b.status!=='void');
+  const received=Number((po.items||[]).reduce((sum,line)=>sum+Number(line.received_quantity)*Number(line.unit_cost),0).toFixed(2));
+  const billed=Number(active.reduce((sum,b)=>sum+Number(b.amount),0).toFixed(2));
+  res.json({bills,received,billed,paid:active.reduce((sum,b)=>sum+Number(b.amount_paid),0),unbilled:Math.max(0,Number((received-billed).toFixed(2)))});
+});
+router.post('/:id/bills', authGuard, permissionCheck('manage_financials'), async(req,res)=>{
+  const parsed=z.object({operation_id:z.uuid(),amount:z.number().finite().positive().multipleOf(0.01),description:z.string().max(2000).default(''),due_date:z.iso.date().nullable().optional()}).safeParse(req.body);
+  if(!parsed.success || !z.uuid().safeParse(req.params.id).success) return res.status(400).json({error:'Enter a valid received amount, due date and billing reference.'});
+  const {data,error}=await supabaseAdmin.rpc('bill_received_purchase',{p_business_id:req.user.business_id,p_actor_id:req.user.id,p_po_id:req.params.id,p_request:parsed.data});
+  if(error) return transactionError(res,error,'The supplier bill could not be confirmed. Retry the same saved request.', true);
+  res.status(201).json(data);
 });
 
 module.exports = router;

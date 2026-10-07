@@ -1,3 +1,5 @@
+import { ErrorBanner } from '../components/ui';
+import DailyWork from '../components/DailyWork';
 import { useEffect } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -18,24 +20,20 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const { user, role, hasPermission } = useAuthContext();
+  const { user, role, hasPermission, activeLocationId } = useAuthContext();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const {
-    summary, recentActivity, loading,
+    summary, recentActivity, loading, error, resources,
     salesTrend, topProducts, inventoryHealth, staffPerformance,
     fetchSummary, fetchRecentActivity,
     fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance
   } = useAnalytics();
 
   useEffect(() => {
-    fetchSummary();
-    fetchRecentActivity();
-    fetchSalesTrend();
-    fetchTopProducts();
-    fetchInventoryHealth();
-    fetchStaffPerformance();
-  }, [fetchSummary, fetchRecentActivity, fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance]);
+    if (hasPermission('view_analytics') || hasPermission('view_sales')) { fetchSummary(); fetchRecentActivity(); }
+    if (hasPermission('view_analytics')) { fetchSalesTrend(); fetchTopProducts(); fetchInventoryHealth(); fetchStaffPerformance(); }
+  }, [fetchSummary, fetchRecentActivity, fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance, hasPermission, activeLocationId]);
 
   const timeAgo = (dateString) => {
     const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
@@ -81,6 +79,8 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-content">
+        <ErrorBanner error={error} onRetry={() => { fetchSummary(); fetchRecentActivity(); if (hasPermission('view_analytics')) { fetchSalesTrend(); fetchTopProducts(); fetchInventoryHealth(); fetchStaffPerformance(); } }} />
+        <DailyWork summary={resources?.summary?.error ? null : summary} updatedAt={resources?.summary?.updatedAt} />
 
         {/* Quick Actions Panel */}
         <div className="dashboard-quick-actions">
@@ -93,7 +93,7 @@ export default function Dashboard() {
             </Link>
           )}
           {hasPermission('manage_products') && (
-            <Link to="/products" className="action-btn">
+            <Link to="/inventory?action=add" className="action-btn">
               <div className="action-icon action-icon-secondary">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4v16m8-8H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
               </div>
@@ -108,8 +108,8 @@ export default function Dashboard() {
               <span>Check Stock</span>
             </Link>
           )}
-          {hasPermission('view_analytics') && (
-            <Link to="/reconciliation" className="action-btn">
+          {hasPermission('view_financial_reports') && (
+            <Link to="/reports/pnl" className="action-btn">
               <div className="action-icon action-icon-info">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 17H21M5 21H19M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
@@ -131,7 +131,7 @@ export default function Dashboard() {
         </div>
 
         {/* Enhanced Stats Grid */}
-        <div className="stats-grid">
+        {summary && !resources?.summary?.error && <div className="stats-grid">
           {hasPermission('view_sales') && (
             <Link to="/sales-record" className="stat-card" aria-label="View today's sales records">
               <div className="stat-icon stat-icon-sales">
@@ -174,7 +174,7 @@ export default function Dashboard() {
           )}
 
           {hasPermission('manage_inventory') && (
-            <Link to="/inventory" className="stat-card" aria-label="View stock and low-stock alerts">
+            <Link to="/inventory?stock=low_stock" className="stat-card" aria-label="View stock and low-stock alerts">
               <div className="stat-icon stat-icon-stock">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M9 17V7L12 3L15 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -196,7 +196,7 @@ export default function Dashboard() {
           )}
 
           {hasPermission('view_analytics') && (
-            <Link to="/alerts" className="stat-card" aria-label="View loss prevention and theft alerts">
+            <Link to="/alerts" className="stat-card" aria-label="Review stock discrepancies">
               <div className="stat-icon stat-icon-alerts">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path d="M12 3L21 20H3L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -205,7 +205,7 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div className="stat-details">
-                <span className="stat-label">Theft Alerts</span>
+                <span className="stat-label">Stock Discrepancies</span>
                 <div className="stat-value-row">
                   <span className="stat-value">{loading ? '...' : summary?.theftAlertsCount || 0}</span>
                   <span className={`stat-trend ${(summary?.theftAlertsCount > 0) ? 'trend-down' : 'trend-up'}`}>
@@ -216,7 +216,7 @@ export default function Dashboard() {
               </div>
             </Link>
           )}
-        </div>
+        </div>}
 
         {/* Recent Activity Feed */}
         <div className="dashboard-bento">
@@ -239,7 +239,7 @@ export default function Dashboard() {
                 ))
               ) : (
                 <div className="activity-item justify-center text-muted">
-                  No recent activity found.
+                  {resources?.recentActivity?.error ? 'Recent activity could not be loaded.' : resources?.recentActivity?.loading ? 'Loading activity…' : 'No recent activity found.'}
                 </div>
               )}
             </div>
@@ -274,7 +274,7 @@ export default function Dashboard() {
                       <Area isAnimationActive={!IS_MOCK} type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#salesGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
-                ) : <p className="chart-empty">No sales data yet</p>}
+                ) : <p className="chart-empty">{resources?.salesTrend?.error ? 'Data could not be loaded. Retry above.' : resources?.salesTrend?.loading ? 'Loading…' : 'No sales data yet'}</p>}
               </div>
             </div>
 
@@ -297,7 +297,7 @@ export default function Dashboard() {
                       <Bar isAnimationActive={!IS_MOCK} dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : <p className="chart-empty">No product data yet</p>}
+                ) : <p className="chart-empty">{resources?.topProducts?.error ? 'Data could not be loaded. Retry above.' : resources?.topProducts?.loading ? 'Loading…' : 'No product data yet'}</p>}
               </div>
             </div>
 
@@ -328,7 +328,7 @@ export default function Dashboard() {
                       <Legend iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
                     </PieChart>
                   </ResponsiveContainer>
-                ) : <p className="chart-empty">No inventory data</p>}
+                ) : <p className="chart-empty">{resources?.inventoryHealth?.error ? 'Data could not be loaded. Retry above.' : resources?.inventoryHealth?.loading ? 'Loading…' : 'No inventory data'}</p>}
               </div>
             </div>
 
@@ -356,7 +356,7 @@ export default function Dashboard() {
                       <Legend iconSize={10} wrapperStyle={{ fontSize: '12px' }} />
                     </BarChart>
                   </ResponsiveContainer>
-                ) : <p className="chart-empty">No sales data this week</p>}
+                ) : <p className="chart-empty">{resources?.staffPerformance?.error ? 'Data could not be loaded. Retry above.' : resources?.staffPerformance?.loading ? 'Loading…' : 'No sales data this week'}</p>}
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCustomers } from '../hooks/useCustomers';
 import { useAuthContext } from '../lib/AuthContext';
 import Modal from '../components/Modal';
@@ -13,6 +13,7 @@ export default function Customers() {
   const { loading, error, searchCustomers, createCustomer, updateCustomer, deleteCustomer } = useCustomers();
   const { role, hasPermission } = useAuthContext();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const confirm = useConfirm();
   // Country supplies the dialing code for numbers typed without one. Already
   // resolved against the active location server-side; the device locale
@@ -23,6 +24,7 @@ export default function Customers() {
   const canEdit = role === 'Business Admin' || role === 'Platform Admin';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  useEffect(() => { if (canEdit && params.get('action') === 'add') { setIsModalOpen(true); setParams(previous => { const next = new URLSearchParams(previous); next.delete('action'); return next; }, { replace: true }); } }, [canEdit, params, setParams]);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '' });
   // One parse per render, reused by the validity check and the echo below.

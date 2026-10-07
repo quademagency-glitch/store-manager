@@ -42,6 +42,7 @@ export default function PurchaseOrderDocument({
   );
 
   // Calculate totals
+  const incompleteCost = items.some(item => item.unit_cost == null);
   const subtotal = items.reduce((sum, item) => sum + ((item.unit_cost || 0) * (item.quantity || 0)), 0);
 
   // Supplier info from PO (future-proofed)
@@ -136,7 +137,7 @@ export default function PurchaseOrderDocument({
             <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>Product</th>
             <th style={{ textAlign: 'left', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>SKU</th>
             <th style={{ textAlign: 'center', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>Qty</th>
-            {items.some(i => i.unit_cost) && (
+            {items.some(i => i.unit_cost != null) && (
               <>
                 <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>Unit Cost</th>
                 <th style={{ textAlign: 'right', padding: '10px 8px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>Total</th>
@@ -151,13 +152,13 @@ export default function PurchaseOrderDocument({
               <td style={{ padding: '10px 8px', fontWeight: 600 }}>{item.product_name || 'Unknown'}</td>
               <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#64748b' }}>{item.sku || '-'}</td>
               <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700 }}>{item.quantity}</td>
-              {items.some(i => i.unit_cost) && (
+              {items.some(i => i.unit_cost != null) && (
                 <>
                   <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace' }}>
-                    {item.unit_cost ? fmt(item.unit_cost) : '-'}
+                    {item.unit_cost != null ? fmt(item.unit_cost) : 'Not recorded'}
                   </td>
                   <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace' }}>
-                    {item.unit_cost ? fmt(item.unit_cost * item.quantity) : '-'}
+                    {item.unit_cost != null ? fmt(item.unit_cost * item.quantity) : 'Not recorded'}
                   </td>
                 </>
               )}
@@ -187,10 +188,10 @@ export default function PurchaseOrderDocument({
             <span>Total Items:</span>
             <span style={{ fontWeight: 700 }}>{items.reduce((sum, i) => sum + (i.quantity || 0), 0)}</span>
           </div>
-          {subtotal > 0 && (
+          {items.length > 0 && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '0.85rem', color: '#64748b', borderTop: '1px solid #e2e8f0' }}>
-                <span>Subtotal:</span>
+                <span>{incompleteCost ? 'Known costs only:' : 'Subtotal:'}</span>
                 <span style={{ fontWeight: 600 }}>{fmt(subtotal)}</span>
               </div>
               <div style={{
@@ -203,7 +204,7 @@ export default function PurchaseOrderDocument({
                 color: '#0f172a',
               }}>
                 <span>Total:</span>
-                <span>{fmt(subtotal)}</span>
+                <span>{incompleteCost ? 'Incomplete cost record' : fmt(subtotal)}</span>
               </div>
             </>
           )}

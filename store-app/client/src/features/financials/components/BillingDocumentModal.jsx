@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { api } from '../../../lib/api';
+import { useConfirm } from '../../../hooks/useConfirm';
 import Modal from '../../../components/Modal';
 import { currencyPrefixStyle } from '../../../hooks/useCurrency';
 
@@ -9,6 +11,18 @@ import { currencyPrefixStyle } from '../../../hooks/useCurrency';
  * party list (customers vs suppliers) and labels differ.
  */
 export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, parties, currencySymbol, isSubmitting, error }) {
+  const confirm = useConfirm();
+  const [query, setQuery] = useState('');
+  const [matches, setMatches] = useState([]);
+  const [searchError, setSearchError] = useState('');
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (!isOpen || kind !== 'ar' || query.trim().length < 2) { setMatches([]); setSearchError(''); setSearching(false); return; }
+    setSearching(true);
+    const timer = setTimeout(() => api.get(`/customers/search?q=${encodeURIComponent(query.trim())}`).then(rows=>{if(active){setMatches(rows || []);setSearchError('');}}).catch(err=>{if(active) {setMatches([]);setSearchError(err.message);}}).finally(()=>{if(active)setSearching(false);}),250);
+    return ()=>{active=false;clearTimeout(timer);};
+  }, [query, kind, isOpen]);
   const partyLabel = kind === 'ar' ? 'Customer' : 'Supplier';
   const docLabel = kind === 'ar' ? 'Invoice' : 'Bill';
   const partyField = kind === 'ar' ? 'customer_id' : 'supplier_id';
@@ -21,7 +35,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
     handleSubmit,
     reset,
     control,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm({
     defaultValues: {
       [partyField]: '',
@@ -50,6 +64,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
     }
   }, [isOpen, reset, partyField, amountField]);
 
+  const close = async () => { if (isSubmitting) return; if (!isDirty || await confirm({title:'Discard unsaved document?',message:'The document has not been saved.',confirmText:'Discard'})) onClose(); };
   const onFormSubmit = (data) => {
     onSubmit({
       ...data,
@@ -60,10 +75,11 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`New ${docLabel}`}>
+    <Modal isOpen={isOpen} onClose={close} title={`New ${docLabel}`}>
       <form onSubmit={handleSubmit(onFormSubmit)} className="form-layout">
         {error && <div className="alert alert-error"><p>{error}</p></div>}
 
+        {kind==='ar' && <label>Find customer by phone (owners can also search name or code)<input className="form-input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search all customers" /><small>{searching ? 'Searching…' : searchError || (query.length>=2 && !matches.length ? 'No matching customers.' : 'Choose the matching customer below.')}</small></label>}
         <div className="form-group">
           <label htmlFor="doc-party">{partyLabel} *</label>
           <select
@@ -72,7 +88,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
             {...register(partyField, { required: `${partyLabel} is required` })}
           >
             <option value="">Select {partyLabel.toLowerCase()}...</option>
-            {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {Array.from(new Map([...parties,...matches].map(p=>[p.id,p])).values()).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {errors[partyField] && <small className="text-error">{errors[partyField].message}</small>}
         </div>
@@ -133,7 +149,7 @@ export default function BillingDocumentModal({ isOpen, onClose, onSubmit, kind, 
         )}
 
         <div className="modal-footer flex justify-end gap-sm w-full">
-          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+          <button type="button" className="btn btn-secondary" onClick={close} disabled={isSubmitting}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : `Save ${docLabel}`}
           </button>

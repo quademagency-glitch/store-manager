@@ -2,154 +2,37 @@ import { useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 
 export function useAnalytics() {
-  const [summary, setSummary] = useState(null);
-  const [shrinkageEvents, setShrinkageEvents] = useState([]);
-  const reconciliationRequest = useRef(0);
-  const [reconciliationData, setReconciliationData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [recentActivity, setRecentActivity] = useState([]);
-
-  // Chart data states
-  const [salesTrend, setSalesTrend] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [inventoryHealth, setInventoryHealth] = useState([]);
-  const [staffPerformance, setStaffPerformance] = useState([]);
-
-  const fetchRecentActivity = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [resources, setResources] = useState({});
+  const requests = useRef({});
+  const fetchResource = useCallback(async (key, path) => {
+    const request = (requests.current[key] || 0) + 1;
+    requests.current[key] = request;
+    setResources(prev => ({ ...prev, [key]: { data:null, updatedAt:null, loading:true, error:null } }));
     try {
-      const data = await api.get('/analytics/recent-activity');
-      setRecentActivity(data);
+      const data = await api.get(path);
+      if (requests.current[key] === request) setResources(prev => ({ ...prev, [key]: { data, loading: false, error: null, updatedAt: Date.now() } }));
       return data;
     } catch (err) {
-      const message = err.message || 'Failed to fetch recent activity';
-      setError(message);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.get('/analytics/summary');
-      setSummary(data);
-      return data;
-    } catch (err) {
-      const message = err.message || 'Failed to fetch analytics summary';
-      setError(message);
+      if (requests.current[key] === request) setResources(prev => ({ ...prev, [key]: { ...prev[key], loading: false, error: err.message || 'Could not load this information.' } }));
       return null;
-    } finally {
-      setLoading(false);
     }
   }, []);
-
-  const fetchShrinkageEvents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.get('/analytics/shrinkage');
-      setShrinkageEvents(data);
-      return data;
-    } catch (err) {
-      const message = err.message || 'Failed to fetch shrinkage events';
-      setError(message);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchReconciliation = useCallback(async (dateString) => {
-    const request = ++reconciliationRequest.current;
-    setReconciliationData([]);
-    setLoading(true);
-    setError(null);
-    try {
-      const url = dateString ? `/analytics/reconciliation?date=${dateString}` : '/analytics/reconciliation';
-      const data = await api.get(url);
-      if (request === reconciliationRequest.current) setReconciliationData(data);
-      return data;
-    } catch (err) {
-      const message = err.message || 'Failed to fetch reconciliation data';
-      if (request === reconciliationRequest.current) setError(message);
-      return [];
-    } finally {
-      if (request === reconciliationRequest.current) setLoading(false);
-    }
-  }, []);
-
-  // ─── Chart Data Fetchers ───
-
-  const fetchSalesTrend = useCallback(async () => {
-    try {
-      const data = await api.get('/analytics/sales-trend');
-      setSalesTrend(data);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      return [];
-    }
-  }, []);
-
-  const fetchTopProducts = useCallback(async () => {
-    try {
-      const data = await api.get('/analytics/top-products');
-      setTopProducts(data);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      return [];
-    }
-  }, []);
-
-  const fetchInventoryHealth = useCallback(async () => {
-    try {
-      const data = await api.get('/analytics/inventory-health');
-      setInventoryHealth(data);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      return [];
-    }
-  }, []);
-
-  const fetchStaffPerformance = useCallback(async () => {
-    try {
-      const data = await api.get('/analytics/staff-performance');
-      setStaffPerformance(data);
-      return data;
-    } catch (err) {
-      setError(err.message);
-      return [];
-    }
-  }, []);
-
+  const fetchSummary = useCallback(() => fetchResource('summary', '/analytics/summary'), [fetchResource]);
+  const fetchRecentActivity = useCallback(() => fetchResource('recentActivity', '/analytics/recent-activity'), [fetchResource]);
+  const fetchShrinkageEvents = useCallback(() => fetchResource('shrinkageEvents', '/analytics/shrinkage'), [fetchResource]);
+  const fetchReconciliation = useCallback(date => fetchResource('reconciliationData', `/analytics/reconciliation${date ? `?date=${encodeURIComponent(date)}` : ''}`), [fetchResource]);
+  const fetchSalesTrend = useCallback(() => fetchResource('salesTrend', '/analytics/sales-trend'), [fetchResource]);
+  const fetchTopProducts = useCallback(() => fetchResource('topProducts', '/analytics/top-products'), [fetchResource]);
+  const fetchInventoryHealth = useCallback(() => fetchResource('inventoryHealth', '/analytics/inventory-health'), [fetchResource]);
+  const fetchStaffPerformance = useCallback(() => fetchResource('staffPerformance', '/analytics/staff-performance'), [fetchResource]);
+  const data = key => resources[key]?.error ? null : resources[key]?.data;
   return {
-    summary,
-    shrinkageEvents,
-    reconciliationData,
-    recentActivity,
-    loading,
-    error,
-    fetchSummary,
-    fetchShrinkageEvents,
-    fetchReconciliation,
-    fetchRecentActivity,
-    // Charts
-    salesTrend,
-    topProducts,
-    inventoryHealth,
-    staffPerformance,
-    fetchSalesTrend,
-    fetchTopProducts,
-    fetchInventoryHealth,
-    fetchStaffPerformance,
+    resources, summary: data('summary') || null,
+    recentActivity: data('recentActivity') || [], shrinkageEvents: data('shrinkageEvents') || [],
+    reconciliationData: data('reconciliationData') || [], salesTrend: data('salesTrend') || [],
+    topProducts: data('topProducts') || [], inventoryHealth: data('inventoryHealth') || [], staffPerformance: data('staffPerformance') || [],
+    loading: Object.values(resources).some(row => row.loading),
+    error: Object.values(resources).map(row => row.error).filter(Boolean).join(' ') || null,
+    fetchSummary, fetchRecentActivity, fetchShrinkageEvents, fetchReconciliation, fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance,
   };
 }
-

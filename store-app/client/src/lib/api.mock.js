@@ -1,3 +1,4 @@
+import { resolveRetailMock } from './retail.mock';
 import { MOCK_MODE } from './mockMode';
 
 /**
@@ -323,7 +324,7 @@ const FIXTURES = {
   ],
   '/purchase-orders': {
     data: [
-      { id: 'po1', po_number: 'PO-1001', status: 'pending', total_amount: 12500, currency: 'GHS',
+      { id: 'po1', po_number: 'PO-1001', status: 'sent', total_amount: 12500, currency: 'GHS',
         created_at: T0, expected_date: T0, supplier: { name: 'Accra Wholesale Ltd' } },
       { id: 'po2', po_number: 'PO-1002', status: 'received', total_amount: 3400, currency: 'GHS',
         created_at: T0, received_date: T0, supplier: { name: 'Tema Distributors' } },
@@ -881,6 +882,8 @@ export function resolveMock(endpoint, method = 'GET', body = undefined) {
      asks for /sales?customer_id=<id>, and a purchase history that ignored it
      would list other people's sales. */
   const query = Object.fromEntries(new URLSearchParams(raw.split('?')[1] || ''));
+  const retail = resolveRetailMock(path, method, body, FIXTURES);
+  if (retail !== undefined) return { hit:true, data:MOCK_MODE === 'empty' ? emptyLike(retail) : retail };
 
   /* A write with no fixture is acknowledged rather than left to fall through.
      The harness has no Supabase session, so anything reaching the real network

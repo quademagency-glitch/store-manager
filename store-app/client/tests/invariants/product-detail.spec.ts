@@ -19,9 +19,9 @@ test.describe('product detail', () => {
 
   test('a product row opens its history page', async ({ page }) => {
     await gotoApp(page, '/inventory');
-    await page.locator('tbody tr').first().click();
+    await page.locator('.desktop-table-view').getByRole('link',{name:'Perfumed Rice 5kg',exact:true}).click();
 
-    await expect(page).toHaveURL(/\/inventory\/products\/p1$/);
+    await expect(page).toHaveURL(/\/inventory\/products\/p1(?:\?|$)/);
     await expect(page.getByRole('heading', { name: 'Perfumed Rice 5kg' })).toBeVisible();
 
     await expect(page.locator('.pd-event--stock')).toHaveCount(3);

@@ -510,6 +510,7 @@ app.use('/api/returns', returnsRoutes);
 
 // Ledger routes
 app.use('/api/ledger', ledgerRoutes);
+app.use('/api/till-sessions', require('./routes/tillSessions'));
 
 // Accounting Templates routes
 app.use('/api/accounting/templates', accountingTemplatesRoutes);

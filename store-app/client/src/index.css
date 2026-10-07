@@ -143,3 +143,5 @@
 
 /* --- a11y --- */
 @import './styles/a11y.css' layer(a11y);
+
+@import './styles/workspace.css' layer(responsive);

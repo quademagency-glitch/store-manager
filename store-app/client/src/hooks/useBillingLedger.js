@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 
 /**
@@ -9,6 +9,7 @@ export function useBillingLedger(kind) {
   const basePath = kind === 'ar' ? '/ar' : '/ap';
   const docKey = kind === 'ar' ? 'invoices' : 'bills';
 
+  const requestId = useRef(0);
   const [documents, setDocuments] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -18,6 +19,7 @@ export function useBillingLedger(kind) {
   const [error, setError] = useState(null);
 
   const fetchDocuments = useCallback(async (params = {}) => {
+    const id = ++requestId.current;
     setLoading(true);
     setError(null);
     try {
@@ -25,16 +27,17 @@ export function useBillingLedger(kind) {
         Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))
       ).toString();
       const res = await api.get(`${basePath}/${docKey}${query ? `?${query}` : ''}`);
+      if (id !== requestId.current) return null;
       setDocuments(res.data || []);
       setTotal(res.total || 0);
       setPage(res.page || 1);
       setTotalPages(res.totalPages || 1);
       return res;
     } catch (err) {
-      setError(err.message || `Failed to fetch ${docKey}`);
+      if (id === requestId.current) setError(err.message || `Failed to fetch ${docKey}`);
       return null;
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [basePath, docKey]);
 
@@ -84,6 +87,7 @@ export function useBillingLedger(kind) {
   }, [basePath, docKey]);
 
   const fetchAging = useCallback(async () => {
+    setAging(null); setError(null);
     try {
       const res = await api.get(`${basePath}/aging`);
       setAging(res);

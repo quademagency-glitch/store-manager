@@ -1,3 +1,4 @@
+import { useAuthContext } from '../../../lib/AuthContext';
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import Modal from '../../../components/Modal';
@@ -11,7 +12,8 @@ const TILL_METHODS = ['cash', 'mobile_money'];
  * Receivable and Accounts Payable, only the outstanding-balance context and
  * submit handler differ.
  */
-export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document, outstanding = 0, locations, isSubmitting, error }) {
+export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document, outstanding = 0, locations, isSubmitting, error, activeBranchOnly = false }) {
+  const {activeLocationId} = useAuthContext();
   const { business } = usePrintDocument();
   const { fmt, currencySymbol, prefixStyle } = useCurrency(business);
 
@@ -44,7 +46,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
         amount: outstanding > 0 ? outstanding.toFixed(2) : '',
         payment_method: 'cash',
         payment_date: new Date().toISOString().split('T')[0],
-        location_id: '',
+        location_id: activeBranchOnly ? activeLocationId : '',
         notes: '',
       });
     }
@@ -115,7 +117,7 @@ export default function RecordPaymentModal({ isOpen, onClose, onSubmit, document
                 {...register('location_id', { required: requiresLocation ? 'Location is required for cash/mobile money' : false })}
               >
                 <option value="">Select location...</option>
-                {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                {(activeBranchOnly ? locations.filter(location=>location.id===activeLocationId) : locations).map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
               </select>
               {errors.location_id && <small className="text-error">{errors.location_id.message}</small>}
             </div>

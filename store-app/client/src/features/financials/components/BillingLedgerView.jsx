@@ -1,3 +1,6 @@
+import { useRecordedAction } from '../../../hooks/useRecordedAction';
+import { useQueryState } from '../../../hooks/useQueryState';
+import SavedViews from '../../../components/SavedViews';
 import { useState, useEffect, useCallback } from 'react';
 import { useBillingLedger } from '../../../hooks/useBillingLedger';
 import { useToast } from '../../../hooks/useToast';
@@ -55,19 +58,24 @@ export default function BillingLedgerView({ kind, parties }) {
   const { business } = usePrintDocument();
   const { fmt, currencySymbol } = useCurrency(business);
 
-  const [activeTab, setActiveTab] = useState('documents');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [activeTab, setActiveTab] = useQueryState('tab','documents');
+  const [statusFilter, setStatusFilter] = useQueryState('status');
+  const [search, setSearch] = useQueryState('q');
+  const [dueFrom, setDueFrom] = useQueryState('due_from');
+  const [dueTo, setDueTo] = useQueryState('due_to');
+  const [purchaseId, setPurchaseId] = useQueryState('purchase_order_id');
   const [locations, setLocations] = useState([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState(null);
 
   const loadDocuments = useCallback((pageNum = 1) => {
-    fetchDocuments({ page: pageNum, status: statusFilter });
-  }, [fetchDocuments, statusFilter]);
+    fetchDocuments({ page: pageNum, status: statusFilter, q:search, due_from:dueFrom, due_to:dueTo, ...(kind==='ap' ? {purchase_order_id:purchaseId} : {}) });
+  }, [fetchDocuments, statusFilter, search, dueFrom, dueTo, purchaseId, kind]);
 
   useEffect(() => {
-    loadDocuments(1);
+    const timer = setTimeout(() => loadDocuments(1), 250);
+    return () => clearTimeout(timer);
   }, [loadDocuments]);
 
   useEffect(() => {
@@ -99,7 +107,9 @@ export default function BillingLedgerView({ kind, parties }) {
     }
   };
 
+  const supplierPayment = useRecordedAction('retail:ap-payment', async () => {setPaymentTarget(null);toast.success('Supplier payment recorded.');loadDocuments(page);});
   const handleRecordPayment = async (payload) => {
+    if(kind==='ap') {await supplierPayment.run(`/ap/bills/${paymentTarget.id}/payments`,payload);return;}
     setIsSubmitting(true);
     const res = await recordPayment(paymentTarget.id, payload);
     setIsSubmitting(false);
@@ -153,12 +163,19 @@ export default function BillingLedgerView({ kind, parties }) {
         ariaLabel={`${docLabel} sections`}
       />
 
+      {kind==='ap' && supplierPayment.error && <div className="alert alert-error" role="alert">{supplierPayment.error}</div>}
+      {kind==='ap' && supplierPayment.pending && <div className="alert alert-warning" role="status">A supplier payment needs confirmation. <button className="btn btn-secondary" disabled={supplierPayment.busy} onClick={supplierPayment.retry}>Retry saved supplier payment</button></div>}
+      <SavedViews name={`${kind}-ledger`} />
       {error && <div className="alert alert-error mb-xl">{error}</div>}
 
       <TabPanel idPrefix="ledger" id="documents" value={activeTab}>
         <>
-          <div className="mb-lg flex gap-sm">
-            <select className="form-input" style={{ maxWidth: '220px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <div className="workspace-toolbar">
+            <label>{docLabel} number<input className="form-input" value={search} onChange={e=>setSearch(e.target.value)} /></label>
+            <label>Due from<input className="form-input" type="date" value={dueFrom} onChange={e=>setDueFrom(e.target.value)} /></label>
+            <label>Due to<input className="form-input" type="date" value={dueTo} onChange={e=>setDueTo(e.target.value)} /></label>
+            {purchaseId && <button className="btn btn-secondary" onClick={()=>setPurchaseId('')}>Clear purchase order filter</button>}
+            <select aria-label="Document status" className="form-input" style={{ maxWidth: '220px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">All statuses</option>
               {statuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
@@ -178,7 +195,7 @@ export default function BillingLedgerView({ kind, parties }) {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                {error ? <tr><td colSpan={7}>Unable to load documents. <button className="btn btn-secondary" onClick={()=>loadDocuments(page)}>Retry</button></td></tr> : loading ? (
                   <SkeletonRows rows={4} cols={7} />
                 ) : documents.length === 0 ? (
                   <EmptyStateRow colSpan={7} icon="billing" title={`No ${docLabel.toLowerCase()}s found`} hint={statusFilter ? 'Try clearing the status filter.' : `New ${docLabel.toLowerCase()}s will appear here.`} />
@@ -198,7 +215,7 @@ export default function BillingLedgerView({ kind, parties }) {
                         <td><span className={`badge ${STATUS_BADGE[doc.status] || 'badge-secondary'}`}>{doc.status}</span></td>
                         <td className="text-right">
                           {doc.status !== 'void' && doc.status !== 'paid' && (
-                            <button className="btn btn-sm btn-outline mr-sm" onClick={() => setPaymentTarget({ ...doc, outstanding })}>Record Payment</button>
+                            <button className="btn btn-sm btn-outline mr-sm" disabled={kind==='ap' && (!supplierPayment.ready || !!supplierPayment.pending || supplierPayment.busy)} onClick={() => setPaymentTarget({ ...doc, outstanding })}>Record Payment</button>
                           )}
                           {doc.status === openStatus && Number(doc.amount_paid) === 0 && (
                             <button className="btn btn-sm btn-outline text-error" onClick={() => handleVoid(doc)}>Void</button>
@@ -225,7 +242,7 @@ export default function BillingLedgerView({ kind, parties }) {
       </TabPanel>
 
       <TabPanel idPrefix="ledger" id="aging" value={activeTab}>
-        <div>
+        {aging && !error ? <div>
           <div className="stats-grid mb-xl" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-lg)' }}>
             {AGING_BUCKETS.map(bucket => (
               <div key={bucket.key} className="pos-glass-card" style={{ padding: 'var(--space-lg)' }}>
@@ -266,7 +283,7 @@ export default function BillingLedgerView({ kind, parties }) {
               </div>
             );
           })}
-        </div>
+        </div> : <p role="status">{error ? 'Aging totals are unavailable.' : 'Loading aging totals…'}</p>}
       </TabPanel>
 
       <BillingDocumentModal
@@ -282,13 +299,14 @@ export default function BillingLedgerView({ kind, parties }) {
 
       <RecordPaymentModal
         isOpen={!!paymentTarget}
-        onClose={() => setPaymentTarget(null)}
+        onClose={() => {if(!supplierPayment.busy && !isSubmitting)setPaymentTarget(null);}}
+        activeBranchOnly={kind==='ap'}
         onSubmit={handleRecordPayment}
         document={paymentTarget}
         outstanding={paymentTarget?.outstanding}
         locations={locations}
-        isSubmitting={isSubmitting}
-        error={null}
+        isSubmitting={isSubmitting || (kind==='ap' && (supplierPayment.busy || !!supplierPayment.pending))}
+        error={kind==='ap' ? supplierPayment.error : null}
       />
     </div>
   );

@@ -115,15 +115,16 @@ async function fetchWithAuth(endpoint, options = {}, scope) {
 
   // Handle standard HTTP errors
   if (!response.ok) {
+    let errorData;
     let errorMessage = HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`;
     try {
-      const errorData = await response.json();
+      errorData = await response.json();
       // Prefer the server's own message, it's written for users.
       errorMessage = errorData.message || errorData.error || errorMessage;
     } catch {
       // Not JSON
     }
-    throw apiError(errorMessage, { endpoint, status: response.status });
+    throw apiError(errorMessage, { endpoint, status: response.status, body:errorData });
   }
 
   // Handle 204 No Content
@@ -265,10 +266,11 @@ export async function postPublic(endpoint, body) {
   }
 
   if (!response.ok) {
+    let errorData;
     let errorMessage = HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`;
     let errorBody;
     try {
-      const errorData = await response.json();
+      errorData = await response.json();
       errorBody = errorData;
       // Zod validation errors come back as a details[] rather than a message.
       if (Array.isArray(errorData.details) && errorData.details.length > 0) {

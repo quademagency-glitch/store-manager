@@ -6,6 +6,7 @@ import { usePrintDocument } from '../hooks/usePrintDocument';
 import { Icons as SharedIcons } from '../components/icons/Icons';
 import { useCurrency } from '../hooks/useCurrency';
 import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
+import TillSessions from '../features/financials/components/TillSessions';
 import { ErrorBanner, HelpHint } from '../components/ui';
 
 const Icons = {
@@ -69,7 +70,8 @@ export default function TillAccount() {
   };
   useEffect(() => {
     fetchData();
-    return () => { requestId.current += 1; };
+    window.addEventListener('quaderp:till-updated', fetchData);
+    return () => { requestId.current += 1; window.removeEventListener('quaderp:till-updated', fetchData); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, activeLocationId, isAdmin]);
 
@@ -83,10 +85,10 @@ export default function TillAccount() {
 
     return (
       <div className="fin-summary-section">
-        <div className="fin-summary-header" onClick={() => setFinExpanded(!finExpanded)}>
+        <button type="button" className="fin-summary-header" aria-expanded={finExpanded} onClick={() => setFinExpanded(!finExpanded)}>
           <h2 className="flex items-center gap-sm"><span aria-hidden="true" className="inline-flex">{Icons.chart}</span> Financial Summary</h2>
           <span className="fin-summary-toggle" style={{ transform: finExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-        </div>
+        </button>
         {finExpanded && (
           <div className="fin-summary-body">
             {/* Top-level KPIs */}
@@ -181,49 +183,25 @@ export default function TillAccount() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-4 md:p-6" style={{ background: 'var(--color-bg-primary)' }}>
+    <div className="till-page w-full h-full flex flex-col p-4 md:p-6" style={{ background: 'var(--color-bg-primary)' }}>
       <ErrorBanner
         error={error}
         onRetry={() => { fetchData(); }}
       />
 
-      {/* Header Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 pb-4 w-full border-b">
-        <div>
-          <h1 className="text-xl font-bold uppercase tracking-wide text-primary">
-            Till Account Ledger
-            <HelpHint article="till-and-cash-drawer" label="Managing the till and cash drawer" />
-          </h1>
-          <p className="text-xs mt-1 uppercase text-tertiary">Cash movements and vault balance.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center bg-transparent p-0.5 flex-1 md:flex-initial justify-between" style={{ border: '1px solid var(--color-border)' }}>
-            <label htmlFor="till-start">Start Date</label>
-            <input id="till-start"
-              type="date" 
-              className="bg-transparent text-sm px-1 py-1 outline-none font-mono w-[45%] md:w-auto text-primary"
-              value={startDate} 
-              onChange={e => setStartDate(e.target.value)} 
-            />
-            <span className="px-1 font-mono text-muted">-</span>
-            <label htmlFor="till-end">End Date</label>
-            <input id="till-end"
-              type="date" 
-              className="bg-transparent text-sm px-1 py-1 outline-none font-mono w-[45%] md:w-auto text-primary"
-              value={endDate} 
-              onChange={e => setEndDate(e.target.value)} 
-            />
-          </div>
-          <button 
-            onClick={() => printElement('till-print-area', 'a4')} 
-            className="flex items-center justify-center gap-2 px-4 py-1.5 text-sm transition-colors uppercase font-medium w-full sm:w-auto"
-            style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }}
-          >
-            {Icons.printer} Print
-          </button>
-        </div>
+      <div className="page-header">
+        <div><h1 className="page-title">Till account <HelpHint article="till-and-cash-drawer" label="Managing the till and cash drawer" /></h1><p className="page-subtitle">Count the shared branch drawer and review recorded cash movements.</p></div>
       </div>
+      <TillSessions fmt={fmt} currency={business?.currency || 'GHS'} printElement={printElement} />
+      <section className="workspace-panel" aria-label="Cash ledger period">
+        <h2>Cash ledger</h2>
+        <p className="workspace-status">This period report is separate from an individual till handover.</p>
+        <div className="workspace-toolbar">
+          <label htmlFor="till-start">Start date<input id="till-start" className="form-input" type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} /></label>
+          <label htmlFor="till-end">End date<input id="till-end" className="form-input" type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} /></label>
+          <button className="btn btn-secondary" onClick={()=>printElement('till-print-area','a4')}>{Icons.printer} Print ledger</button>
+        </div>
+      </section>
 
       {loading && !data ? (
         <div className="flex justify-center py-20" style={{ color: 'var(--color-accent-primary)' }}>{Icons.loader}</div>
@@ -231,7 +209,7 @@ export default function TillAccount() {
         /* BASIC VIEW FOR CASHIERS */
         <div className="w-full max-w-lg mx-auto mt-12 bg-transparent p-8 text-center" style={{ border: '1px solid var(--color-border)' }}>
           <h2 className="text-sm uppercase tracking-wider font-semibold mb-2 text-tertiary">Expected Cash Deposit ({currencySymbol})</h2>
-          <div className="text-5xl font-mono font-bold mb-6" style={{ color: data.currentBalance >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+          <div className="till-ledger-total font-mono font-bold mb-6" style={{ color: data.currentBalance >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
             {fmt(data.currentBalance)}
           </div>
           <div className="text-xs text-left uppercase pt-4 text-tertiary border-t">

@@ -57,7 +57,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
   if (!purchaseOrder) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={() => !isSubmitting && !locked && onClose()} title={`Receive Goods: ${purchaseOrder.po_number}`} size="large">
+    <Modal isOpen={isOpen} onClose={() => !isSubmitting && !locked && onClose()} title={`Receive Goods: ${purchaseOrder.po_number}`} size="lg">
       <form onSubmit={handleSubmit}>
         {locked && <p role="status">The delivery result is unconfirmed. Retry the same delivery to retrieve its saved result.</p>}
         <fieldset disabled={isSubmitting || locked} style={{ border:0, padding:0 }}>
@@ -159,6 +159,7 @@ export default function ReceiveGoodsModal({ isOpen, onClose, onSubmit, purchaseO
           </div>
         </div>
 
+<p className="workspace-status">Enter only accepted units in Received. Leave shortages outstanding; record damaged or rejected quantities and any supplier price differences in the notes before confirming.</p>
         {/* Notes */}
         <div className="form-group mb-lg">
           <label className="form-label" htmlFor="receive-notes">Receiving Notes</label>

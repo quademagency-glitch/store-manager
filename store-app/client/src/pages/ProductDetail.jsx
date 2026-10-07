@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthContext } from '../lib/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -77,6 +77,8 @@ function describeEdit(event) {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const inventoryReturn = {pathname:'/inventory', search:params.get('from') || ''};
   const { hasPermission } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
@@ -191,7 +193,7 @@ export default function ProductDetail() {
     try {
       await api.delete(`/products/${productId}`);
       toast.success(`${name} deleted`);
-      navigate('/inventory');
+      navigate(inventoryReturn);
     } catch (err) {
       setFormError(err.message || 'Failed to delete product');
     }
@@ -211,7 +213,7 @@ export default function ProductDetail() {
       <div className="glass-panel mt-xl" style={{ textAlign: 'center', padding: '3rem' }}>
         <ErrorBanner error={error} onRetry={loadProduct} />
         <p>Product not found.</p>
-        <button className="btn btn-secondary mt-lg" onClick={() => navigate('/inventory')}>
+        <button className="btn btn-secondary mt-lg" onClick={() => navigate(inventoryReturn)}>
           Back to Inventory
         </button>
       </div>
@@ -226,7 +228,7 @@ export default function ProductDetail() {
 
   return (
     <div>
-      <button className="btn btn-outline btn-sm mb-lg" onClick={() => navigate('/inventory')}>
+      <button className="btn btn-outline btn-sm mb-lg" onClick={() => navigate(inventoryReturn)}>
         ← Back to Inventory
       </button>
 

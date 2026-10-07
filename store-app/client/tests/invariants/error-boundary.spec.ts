@@ -60,7 +60,7 @@ test.describe('route error boundary', () => {
     await expect(page.locator('.error-boundary--route')).toBeVisible();
 
     // The recovery people actually attempt first is clicking something else.
-    const link = page.locator('.dashboard-sidebar').getByRole('button', { name: /^dashboard$/i }).first();
+    const link = page.locator('.dashboard-sidebar').getByRole('link', { name: /^dashboard$/i }).first();
     await link.click();
 
     await expect(page).toHaveURL(/\/dashboard/);

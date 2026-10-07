@@ -100,3 +100,5 @@ export async function getReceivingDrafts(scope) {
     .filter(row => row.key.startsWith('operation:receive:') && row.key.endsWith(suffix))
     .map(row => ({ purchaseOrderId: row.key.slice('operation:receive:'.length, -suffix.length), request: row.rows }));
 }
+
+export async function getProductCacheInfo(scope) { return (await (await getDB()).get('scoped_cache', `products:${scopeKey(scope)}`))?.savedAt || null; }

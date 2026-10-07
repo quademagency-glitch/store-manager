@@ -1,3 +1,8 @@
+import { useLocation } from 'react-router-dom';
+import { useQueryState } from '../hooks/useQueryState';
+import { useRecordedAction } from '../hooks/useRecordedAction';
+import SavedViews from '../components/SavedViews';
+import PurchaseBilling from '../features/inventory/components/PurchaseBilling';
 import { useOfflineScope } from '../hooks/useOfflineScope';
 import { scopeKey, saveOperationDraft, getOperationDraft, clearOperationDraft, getReceivingDrafts } from '../lib/idb';
 import { useState, useEffect, useRef } from 'react';
@@ -14,7 +19,7 @@ import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 import PurchaseOrderForm from '../features/inventory/components/PurchaseOrderForm';
 import ReceiveGoodsModal from '../features/inventory/components/ReceiveGoodsModal';
 import { api } from '../lib/api';
-import { EmptyStateRow, SkeletonTable } from '../components/ui';
+import { EmptyStateRow, SkeletonTable, ErrorBanner } from '../components/ui';
 
 export default function PurchaseOrders() {
   const toast = useToast();
@@ -24,19 +29,24 @@ export default function PurchaseOrders() {
   const confirm = useConfirm();
   const { business, printElement } = usePrintDocument();
   const { fmt } = useCurrency(business);
-  const { orders, loading, page, totalPages, totalOrders, fetchOrders, createOrder, updateOrder, sendOrder, cancelOrder, receiveGoods } = usePurchaseOrders();
+  const { orders, loading, error: ordersError, page, totalPages, totalOrders, fetchOrders, sendOrder, cancelOrder, receiveGoods } = usePurchaseOrders();
   const { suppliers, fetchSuppliers } = useSuppliers();
   const { products } = useProducts();
 
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useQueryState('status');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  const scope = useOfflineScope();
+  const location = useLocation();
+  const initialDraft = location.state?.reorderDraft || null;
+  useEffect(() => { if (initialDraft && canManage) { setEditingOrder(null); setIsFormOpen(true); } }, [initialDraft, canManage]);
+  const saveAction = useRecordedAction('retail:purchase', async (_result, request) => { await clearOperationDraft(`po-form:${request.path === '/purchase-orders' ? 'new' : request.path.split('/').pop()}`, scope); await fetchOrders(1, statusFilter); setIsFormOpen(false); toast.success('Purchase order saved'); });
+
   // Receive goods
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
-  const scope = useOfflineScope();
   const receiveAttempt = useRef(null);
   const [receiveRequest, setReceiveRequest] = useState(null);
   const [receiveLocked, setReceiveLocked] = useState(false);
@@ -48,6 +58,7 @@ export default function PurchaseOrders() {
 
   // GRN print
   const [showGrnModal, setShowGrnModal] = useState(false);
+  const [showOrderDocument, setShowOrderDocument] = useState(false);
   const [grnData, setGrnData] = useState(null);
 
   // Detail view
@@ -119,18 +130,11 @@ export default function PurchaseOrders() {
     setIsSubmitting(true);
     setFormError('');
     try {
-      if (editingOrder) {
-        const result = await updateOrder(editingOrder.id, data);
-        if (!result.success) throw new Error(result.error);
-        toast.success('Purchase order updated');
-      } else {
-        const result = await createOrder(data);
-        if (!result.success) throw new Error(result.error);
-        toast.success('Purchase order created');
-      }
-      setIsFormOpen(false);
+      const result = await saveAction.run(editingOrder ? `/purchase-orders/${editingOrder.id}` : '/purchase-orders', data, editingOrder ? 'put' : 'post');
+      return !!result;
     } catch (err) {
       setFormError(err.message);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -138,9 +142,9 @@ export default function PurchaseOrders() {
 
   const handleSend = async (po) => {
     const confirmed = await confirm({
-      title: 'Send Purchase Order',
+      title: 'Mark purchase order as sent',
       message: `Mark ${po.po_number} as sent to ${po.supplier?.name || 'supplier'}?`,
-      confirmText: 'Send'
+      confirmText: 'Mark as sent'
     });
     if (confirmed) {
       const result = await sendOrder(po.id);
@@ -267,6 +271,10 @@ export default function PurchaseOrders() {
         </button>)}
       </div>}
 
+      <ErrorBanner error={ordersError} onRetry={() => fetchOrders(1,statusFilter)} />
+      <ErrorBanner error={saveAction.error} />
+      {saveAction.pending && <div className="alert alert-warning" role="status">A purchase order save needs confirmation. <button className="btn btn-secondary" disabled={saveAction.busy} onClick={saveAction.retry}>Retry saved purchase order</button></div>}
+      <SavedViews name="purchase-orders" />
       {/* Status Filter */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {statusFilters.map(f => (
@@ -285,7 +293,7 @@ export default function PurchaseOrders() {
       <div className="po-grid" style={{ display: 'grid', gridTemplateColumns: selectedPO ? '1fr 1fr' : '1fr', gap: '16px' }}>
         {/* PO Table */}
         <div className="glass-panel">
-          {loading ? (
+          {ordersError ? <p className="p-md">Purchase orders are unavailable until the request succeeds.</p> : loading ? (
             <SkeletonTable rows={5} cols={6} caption="Loading purchase orders" />
           ) : (
             <>
@@ -308,7 +316,7 @@ export default function PurchaseOrders() {
                         style={{ cursor: 'pointer', background: selectedPO?.id === po.id ? 'var(--color-accent-glow)' : undefined }}
                         onClick={() => viewPODetail(po)}
                       >
-                        <td><code style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{po.po_number}</code></td>
+                        <td><button className="btn btn-ghost" onClick={e => {e.stopPropagation();viewPODetail(po);}}>{po.po_number}</button></td>
                         <td className="font-medium">{po.supplier?.name || '-'}</td>
                         <td className="text-muted">{formatDate(po.created_at)}</td>
                         <td className="text-right font-bold">{fmt(po.total_amount)}</td>
@@ -322,7 +330,7 @@ export default function PurchaseOrders() {
                             {canManage && po.status === 'draft' && (
                               <>
                                 <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)} title="Edit">Edit</button>
-                                <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none', cursor: 'pointer' }}>Send</button>
+                                <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none', cursor: 'pointer' }}>Mark sent</button>
                               </>
                             )}
                             {canReceive && (po.status === 'sent' || po.status === 'partial') && (
@@ -347,7 +355,7 @@ export default function PurchaseOrders() {
                   <div key={po.id} className="m-card" style={{ background: selectedPO?.id === po.id ? 'var(--color-accent-glow)' : undefined, cursor: 'pointer' }} onClick={() => viewPODetail(po)}>
                     <div className="m-card-top">
                       <div className="flex-1 min-w-0">
-                        <div className="m-card-title" style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{po.po_number}</div>
+                        <button className="btn btn-ghost" onClick={e => {e.stopPropagation();viewPODetail(po);}}>{po.po_number}</button>
                         <div className="m-card-sub">{po.supplier?.name || '-'}</div>
                         <div className="m-card-meta">{formatDate(po.created_at)}</div>
                       </div>
@@ -359,7 +367,7 @@ export default function PurchaseOrders() {
                     <div className="m-card-actions" onClick={e => e.stopPropagation()}>
                       {canManage && po.status === 'draft' && (<>
                         <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(po)}>Edit</button>
-                        <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none' }}>Send</button>
+                        <button className="btn btn-sm" onClick={() => handleSend(po)} style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'none' }}>Mark sent</button>
                       </>)}
                       {canReceive && (po.status === 'sent' || po.status === 'partial') && (
                         <button className="btn btn-sm btn-primary" onClick={() => handleReceiveOpen(po)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive</button>
@@ -463,6 +471,7 @@ export default function PurchaseOrders() {
                   </tfoot>
                 </table>
 
+                <button className="btn btn-secondary" onClick={()=>setShowOrderDocument(true)}>Preview / print purchase order</button>
                 {/* Notes */}
                 {selectedPO.notes && (
                   <div style={{ marginTop: '16px', padding: '12px', background: 'var(--color-bg-tertiary)', borderRadius: '8px' }}>
@@ -471,10 +480,12 @@ export default function PurchaseOrders() {
                   </div>
                 )}
 
+                {hasPermission('manage_financials') && <PurchaseBilling key={selectedPO.id} order={selectedPO} fmt={fmt} />}
+                <p className="workspace-status">Print or save the order and share it with your supplier. “Mark as sent” records that handoff; it does not send a message.</p>
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
                   {canManage && selectedPO.status === 'draft' && (
-                    <button className="btn btn-primary btn-sm" onClick={() => handleSend(selectedPO)}>Send to Supplier</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => handleSend(selectedPO)}>Mark as sent</button>
                   )}
                   {canReceive && (selectedPO.status === 'sent' || selectedPO.status === 'partial') && (
                     <button className="btn btn-primary btn-sm" onClick={() => handleReceiveOpen(selectedPO)} style={{ background: 'linear-gradient(135deg, var(--color-success), #16a34a)', border: 'none' }}>Receive Goods</button>
@@ -494,8 +505,9 @@ export default function PurchaseOrders() {
         suppliers={suppliers}
         products={products}
         editingOrder={editingOrder}
-        isSubmitting={isSubmitting}
-        error={formError}
+        initialDraft={initialDraft}
+        isSubmitting={isSubmitting || saveAction.busy || !!saveAction.pending || !saveAction.ready}
+        error={formError || saveAction.error}
       />
 
       {/* Receive Goods Modal */}
@@ -512,8 +524,12 @@ export default function PurchaseOrders() {
         error={receiveError}
       />
 
+      <Modal isOpen={showOrderDocument} onClose={()=>setShowOrderDocument(false)} title="Purchase order document" size="lg">
+        {selectedPO && <PurchaseOrderDocument business={business} purchaseOrder={selectedPO} items={(selectedPO.items || []).map(item=>({product_name:item.product?.name,sku:item.product?.sku,quantity:item.quantity,unit_cost:item.unit_cost,notes:item.notes}))} notes={selectedPO.notes} date={selectedPO.created_at} fmt={fmt} documentType="purchase_order" />}
+        <button className="btn btn-primary" onClick={()=>printElement('printable-grn','a4')}>Print / save PDF</button>
+      </Modal>
       {/* GRN Print Modal */}
-      <Modal isOpen={showGrnModal} onClose={() => setShowGrnModal(false)} title="Goods Received Note" size="large">
+      <Modal isOpen={showGrnModal} onClose={() => setShowGrnModal(false)} title="Goods Received Note" size="lg">
         {grnData && (
           <div style={{ padding: '0.5rem' }}>
             <PurchaseOrderDocument

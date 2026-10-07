@@ -303,34 +303,37 @@ router.get('/reorder-suggestions', authGuard, permissionCheck('manage_inventory'
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // Get sales data for last 30 days
-    const { data: salesMovements } = await supabaseAdmin
+    const { data: salesMovements, error: salesError } = await supabaseAdmin
       .from('stock_movements')
-      .select('product_id, quantity_change')
+      .select('product_id, location_id, quantity_change')
       .eq('business_id', businessId)
       .eq('movement_type', 'SALE')
       .gte('created_at', thirtyDaysAgo.toISOString());
 
+    if (salesError) throw salesError;
     const salesByProduct = {};
     for (const m of (salesMovements || [])) {
-      if (!salesByProduct[m.product_id]) salesByProduct[m.product_id] = 0;
-      salesByProduct[m.product_id] += Math.abs(m.quantity_change);
+      if (!salesByProduct[`${m.product_id}-${m.location_id}`]) salesByProduct[`${m.product_id}-${m.location_id}`] = 0;
+      salesByProduct[`${m.product_id}-${m.location_id}`] += Math.abs(m.quantity_change);
     }
 
     // Get product inventory with thresholds
-    const { data: inventory } = await supabaseAdmin
+    const { data: inventory, error: inventoryError } = await supabaseAdmin
       .from('product_inventory')
       .select(`
         quantity, low_stock_threshold, location_id,
-        product:products!product_id(id, name, sku, category, price, business_id),
+        product:products!product_id(id, name, sku, category, price, cost_price, business_id),
         location:locations!location_id(id, name)
       `);
 
     // Get reorder configs
-    const { data: reorderConfigs } = await supabaseAdmin
+    const { data: reorderConfigs, error: configError } = await supabaseAdmin
       .from('inventory_reorder_config')
       .select('*, supplier:suppliers!preferred_supplier_id(id, name, lead_time_days)')
       .eq('business_id', businessId);
 
+    if (inventoryError) throw inventoryError;
+    if (configError) throw configError;
     const configMap = {};
     for (const rc of (reorderConfigs || [])) {
       configMap[`${rc.product_id}-${rc.location_id}`] = rc;
@@ -349,13 +352,13 @@ router.get('/reorder-suggestions', authGuard, permissionCheck('manage_inventory'
     for (const inv of (inventory || [])) {
       if (inv.product?.business_id !== businessId) continue;
 
-      const reorderPoint = inv.low_stock_threshold || 5;
+      const reorderPoint = inv.low_stock_threshold ?? 0;
       if (inv.quantity > reorderPoint) continue; // Not below threshold
 
-      const sold30d = salesByProduct[inv.product?.id] || 0;
+      const sold30d = salesByProduct[`${inv.product?.id}-${inv.location_id}`] || 0;
       const dailySalesRate = sold30d / 30;
       const config = configMap[`${inv.product?.id}-${inv.location_id}`];
-      const leadTime = config?.supplier?.lead_time_days || 7;
+      const leadTime = config?.supplier?.lead_time_days ?? 7;
       const preferredSupplier = config?.supplier || null;
 
       // Suggested quantity = (daily rate × lead time × 2) + reorder point - current stock
@@ -378,7 +381,8 @@ router.get('/reorder-suggestions', authGuard, permissionCheck('manage_inventory'
         daily_sales_rate: Math.round(dailySalesRate * 100) / 100,
         lead_time_days: leadTime,
         suggested_quantity: suggestedQty,
-        estimated_cost: Math.round(suggestedQty * Number(inv.product.price) * 100) / 100,
+        unit_cost: inv.product.cost_price === null ? null : Number(inv.product.cost_price),
+        estimated_cost: inv.product.cost_price === null ? null : Math.round(suggestedQty * Number(inv.product.cost_price) * 100) / 100,
         location: inv.location?.name || 'Unknown',
         location_id: inv.location_id,
         preferred_supplier: preferredSupplier,

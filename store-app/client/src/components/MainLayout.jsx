@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useTheme } from '../lib/ThemeContext';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { RouteErrorBoundary } from './ErrorBoundary';
 import NotificationBell from './NotificationBell';
 import { ALERTS_PERMISSIONS } from '../constants/permissions';
@@ -154,6 +155,10 @@ export default function MainLayout() {
 
   const [availableLocations, setAvailableLocations] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(()=>window.matchMedia('(max-width: 768px)').matches);
+  const sidebarRef = useRef(null);
+  useEffect(()=>{const media=window.matchMedia('(max-width: 768px)'); const changed=()=>setMobileViewport(media.matches);media.addEventListener('change',changed);return()=>media.removeEventListener('change',changed);},[]);
+  useFocusTrap({active:mobileViewport && isMobileMenuOpen,containerRef:sidebarRef,onEscape:()=>setIsMobileMenuOpen(false)});
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isBranchMenuOpen, setIsBranchMenuOpen] = useState(false);
 
@@ -291,7 +296,6 @@ export default function MainLayout() {
       icon: Icons.products,
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales'), tour: 'sales' },
-        { path: '/products', label: 'Products', icon: Icons.products, visible: hasPermission('view_products') },
         { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory'), tour: 'inventory' },
         { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers'), tour: 'suppliers' },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: ['view_purchases', 'manage_purchases', 'receive_goods'].some(hasPermission) },
@@ -300,21 +304,27 @@ export default function MainLayout() {
         { path: '/alerts', label: 'Alerts', icon: Icons.alerts, visible: canSeeAlerts },
       ].filter(i => i.visible)
     };
-    if (storeOps.items.length > 0) groups.push(storeOps);
+    const inventoryPaths = ['/inventory'];
+    const purchasingPaths = ['/suppliers', '/purchase-orders'];
+    const inventoryItems = storeOps.items.filter(item => inventoryPaths.includes(item.path));
+    const purchasingItems = storeOps.items.filter(item => purchasingPaths.includes(item.path));
+    storeOps.title = 'Sales';
+    storeOps.items = storeOps.items.filter(item => !inventoryPaths.includes(item.path) && !purchasingPaths.includes(item.path));
+    if (storeOps.items.length) groups.push(storeOps);
+    if (inventoryItems.length) groups.push({ title: 'Inventory', icon: Icons.inventory, items: inventoryItems });
+    if (purchasingItems.length) groups.push({ title: 'Purchasing', icon: Icons.purchaseOrder, items: purchasingItems });
 
     // ─── Accounting & Finance ───
     const accounting = {
-      title: 'Accounting',
+      title: 'Finance',
       icon: Icons.billing,
       items: [
         { path: '/till-account', label: 'Till Account', icon: Icons.billing, visible: hasPermission('manage_till') },
-        { path: '/accounting-templates', label: 'Templates', icon: Icons.invoice, visible: hasPermission('view_accounting') },
+        { path: '/accounting-templates', label: 'Expenses & Entries', icon: Icons.invoice, visible: hasPermission('view_accounting') },
         { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: hasPermission('approve_accounting') },
-        { path: '/accounting-settings', label: 'Template Settings', icon: Icons.settings, visible: hasPermission('manage_accounting_settings') },
-        { path: '/invoice', label: 'Subscription Invoices', icon: Icons.invoice, visible: hasPermission('manage_business') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('manage_reconciliation') },
         { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('view_financial_reports'), tour: 'reports' },
-        { path: '/reports/accounts-receivable', label: 'Accounts Receivable', icon: Icons.invoice, visible: hasPermission('view_financial_reports') },
+        { path: '/reports/accounts-receivable', label: 'Receivables Aging', icon: Icons.invoice, visible: hasPermission('view_financial_reports') && !hasPermission('manage_financials') },
         { path: '/accounts-receivable', label: 'Receivables & Invoices', icon: Icons.invoice, visible: hasPermission('manage_financials') },
         { path: '/accounts-payable', label: 'Payables & Bills', icon: Icons.invoice, visible: hasPermission('manage_financials') },
       ].filter(i => i.visible)
@@ -322,7 +332,7 @@ export default function MainLayout() {
     if (accounting.items.length > 0) groups.push(accounting);
 
     const crm = {
-      title: 'CRM',
+      title: 'Customers',
       icon: Icons.crm,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales'), tour: 'customers' },
@@ -341,22 +351,23 @@ export default function MainLayout() {
         { path: '/hr/attendance', label: 'Attendance', icon: Icons.reconciliation, visible: true }, // Left true as requested (clock in/out)
         { path: '/hr/schedules', label: 'Schedules', icon: Icons.history, visible: hasPermission('manage_hr_schedules') },
         { path: '/hr/my-commissions', label: 'My Commissions', icon: Icons.billing, visible: hasPermission('view_my_commissions') },
-        { path: '/settings', label: 'Team & Roles', icon: Icons.team, visible: hasPermission('manage_users'), tour: 'settings' },
+        { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_users'), tour: 'settings' },
+        { path: '/business-admin/roles', label: 'Roles & Permissions', icon: Icons.settings, visible: hasPermission('manage_roles') },
       ].filter(i => i.visible)
     };
     if (hr.items.length > 0) groups.push(hr);
 
     // ─── Business Administration ───
     const businessGroup = {
-      title: 'Administration',
+      title: 'Settings',
       icon: Icons.settings,
       items: [
         { path: '/business-admin', label: 'Overview', icon: Icons.dashboard, visible: hasPermission('manage_business'), exact: true },
         { path: '/business-admin/setup', label: 'Setup Checklist', icon: Icons.dashboard, visible: hasPermission('manage_business'), tour: 'setup' },
         { path: '/business-admin/organization', label: 'Organization', icon: Icons.business, visible: hasPermission('manage_organization') },
         { path: '/business-admin/locations', label: 'Locations', icon: Icons.locations, visible: hasPermission('manage_locations') },
-        { path: '/business-admin/team', label: 'Team', icon: Icons.team, visible: hasPermission('manage_users') },
-        { path: '/business-admin/roles', label: 'Roles', icon: Icons.settings, visible: hasPermission('manage_roles') },
+        { path: '/accounting-settings', label: 'Entry Templates', icon: Icons.settings, visible: hasPermission('manage_accounting_settings') },
+        { path: '/invoice', label: 'Subscription Invoices', icon: Icons.invoice, visible: hasPermission('manage_business') },
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_billing') },
         { path: '/business-admin/shrinkage', label: 'Loss Prevention', icon: Icons.alerts, visible: hasPermission('view_shrinkage_report') },
         { path: '/business-admin/attendance-report', label: 'Attendance Report', icon: Icons.reconciliation, visible: hasPermission('view_attendance_report') },
@@ -568,7 +579,7 @@ export default function MainLayout() {
       />
 
       {/* ── Sidebar ── */}
-      <aside className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+      <aside ref={sidebarRef} inert={mobileViewport && !isMobileMenuOpen} className={`dashboard-sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <svg width="32" height="32" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -649,15 +660,17 @@ export default function MainLayout() {
                         : location.pathname.startsWith(item.path);
 
                       return (
-                        <button
+                        <Link
+                          to={item.path}
+                          aria-current={isActive ? 'page' : undefined}
                           key={item.path}
                           className={`sidebar-link ${isActive ? 'active' : ''}`}
                           data-tour-step={item.tour}
-                          onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
+                          onClick={() => setIsMobileMenuOpen(false)}
                         >
                           {item.icon}
                           {item.label}
-                        </button>
+                        </Link>
                       );
                     })}
                   </div>

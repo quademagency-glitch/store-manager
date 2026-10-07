@@ -1,3 +1,7 @@
+import { useBasketWorkspace } from '../hooks/useBasketWorkspace';
+import { stockAt } from '../lib/stockStatus';
+import { ErrorBanner } from '../components/ui';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAuthContext } from '../lib/AuthContext';
 import { useProducts } from '../hooks/useProducts';
@@ -44,7 +48,13 @@ export default function Sales() {
   const confirm = useConfirm();
   const { business } = usePrintDocument();
   const { fmt, currencySymbol } = useCurrency(business);
-  const { products } = useProducts();
+  const { products, loading: productsLoading, error: productsError, refreshProducts, cacheInfo } = useProducts();
+  const baskets = useBasketWorkspace();
+  const [category, setCategory] = useState('all');
+  const [onlyFavourites, setOnlyFavourites] = useState(false);
+  const [catalogLimit, setCatalogLimit] = useState(60);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const cartRef = useRef(null);
   // Customers are created through the POST in handleCreateCustomer, not the
   // hook's createCustomer, it is deliberately not destructured here.
   const { searchCustomers, verifyCustomerCode } = useCustomers();
@@ -58,7 +68,8 @@ export default function Sales() {
   const [saleType, setSaleType] = useState(null);
 
   // Customer state
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const selectedCustomer = baskets.workspace.customer;
+  const setSelectedCustomer = baskets.setCustomer;
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -74,7 +85,8 @@ export default function Sales() {
   // with exactly one `scans` slot per unit, updateQuantity pushes and pops
   // them alongside the quantity, so every physical item leaving the shop has
   // its own tracking codes and checkout stays blocked until all are filled.
-  const [wizardItems, setWizardItems] = useState([]);
+  const wizardItems = baskets.workspace.items;
+  const setWizardItems = baskets.setItems;
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const productSearchRef = useRef(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
@@ -120,7 +132,8 @@ export default function Sales() {
 
   // Filter products by search
   const filteredProducts = useMemo(() => {
-    if (!productSearchTerm) return products;
+    const candidates = products.filter(p => (category === 'all' || p.category === category) && (!onlyFavourites || baskets.workspace.favourites.includes(p.id)));
+    if (!productSearchTerm) return candidates;
     const lower = productSearchTerm.toLowerCase();
     // Coerced rather than dereferenced. name/sku/category are NOT NULL in the
     // database today, so this is defensive rather than a live fix, but the
@@ -129,8 +142,8 @@ export default function Sales() {
     // narrowed .select(), a new nullable column or a partial cache hydration
     // would all be enough.
     const match = (value) => String(value ?? '').toLowerCase().includes(lower);
-    return products.filter(p => match(p.name) || match(p.sku) || match(p.category));
-  }, [products, productSearchTerm]);
+    return candidates.filter(p => match(p.name) || match(p.sku) || match(p.category));
+  }, [products, productSearchTerm, category, onlyFavourites, baskets.workspace.favourites]);
 
   // Currency formatting handled by useCurrency hook above
 
@@ -401,6 +414,8 @@ export default function Sales() {
       setShowReceipt(true);
       // Reset wizard
       setWizardItems([]);
+      setSelectedCustomer(null);
+      setMobileCartOpen(false);
       setAmountPaid('');
       setPaymentMethod('cash');
       setAppliedStoreCredit('');
@@ -424,6 +439,7 @@ export default function Sales() {
 
   // ─── POS Actions ───
   const handleAddFromCatalog = (product) => {
+    if (!baskets.ready || savedCheckout || isProcessing) return;
     const userLocationId = activeLocationId;
     const localStock = userLocationId
       ? (product.product_inventory?.find(inv => inv.location_id === userLocationId)?.quantity || 0)
@@ -494,6 +510,8 @@ export default function Sales() {
    * with scanned input. The hook refuses to fire any of these while focus is in
    * a field, except Escape, which should always close what is in front of you.
    */
+  useFocusTrap({ active: mobileCartOpen && !showPaymentModal && !showNewCustomerModal && !showVerifyModal && !showCustomerDrawer && !showReceipt && !showScanner, containerRef: cartRef, onEscape: () => setMobileCartOpen(false) });
+
   useKeyboardShortcuts([
     { key: 'F1', handler: () => productSearchRef.current?.focus() },
     { key: '/', handler: () => productSearchRef.current?.focus() },
@@ -567,6 +585,7 @@ export default function Sales() {
           } catch (err) { setSaleError(err.message); }
         }}>Cancel saved checkout</button>}
       </div>}
+      {baskets.error && <ErrorBanner error={baskets.error} />}
       {/* ─── Left Panel: Catalog ─── */}
       <div className="sales-catalog">
         <div className="catalog-header">
@@ -608,37 +627,38 @@ export default function Sales() {
           <input
              ref={productSearchRef}
              className="catalog-search-input"
-             placeholder="Search products by name, SKU...  (F1)"
+             aria-label="Search products or scan a SKU" placeholder="Search or scan SKU… (F1)"
+             onKeyDown={e => { if (e.key === 'Enter') { const found = products.find(p => [p.sku, p.product_code].includes(productSearchTerm.trim())); if (found) { handleAddFromCatalog(found); setProductSearchTerm(''); } } }}
              value={productSearchTerm}
              onChange={e => setProductSearchTerm(e.target.value)}
           />
         </div>
 
+        <div className="pos-catalog-tools">
+          <select className="form-input" aria-label="Product category" value={category} onChange={e => { setCategory(e.target.value); setCatalogLimit(60); }}><option value="all">All categories</option>{[...new Set(products.map(p => p.category).filter(Boolean))].sort().map(value => <option key={value}>{value}</option>)}</select>
+          <button className="btn btn-secondary" aria-pressed={onlyFavourites} onClick={() => setOnlyFavourites(value => !value)}>{onlyFavourites ? 'Show all products' : 'Favourites'}</button>
+        </div>
+        <ErrorBanner error={productsError} onRetry={refreshProducts} />
+        {cacheInfo?.offline && <p role="status" className="workspace-status">Using saved products{cacheInfo.savedAt ? ` from ${new Date(cacheInfo.savedAt).toLocaleString()}` : ''}. Stock will be checked when the sale reconnects.</p>}
         <div className="catalog-grid">
-          {filteredProducts.map(p => (
-            <div key={p.id} className="product-card" onClick={() => handleAddFromCatalog(p)}>
-               <div className="product-card-top">
-                 <div className="product-card-avatar">{p.name.charAt(0)}</div>
-                 <div className="product-card-meta">
-                   <span className="product-card-name">{p.name}</span>
-                   <span className="product-card-sku">{p.sku}</span>
-                 </div>
-               </div>
-               <div className="product-card-middle mt-sm">
-                 <span className="product-card-price">{fmt(p.price)}</span>
-               </div>
+          {productsLoading || !baskets.ready ? <p role="status">Loading your till…</p> : !productsError && filteredProducts.slice(0, catalogLimit).map(p => (
+            <div key={p.id}>
+              <button type="button" className="product-card" disabled={!!savedCheckout || isProcessing} onClick={() => handleAddFromCatalog(p)} aria-label={`Add ${p.name} to cart`}>
+                <div className="product-card-top"><div className="product-card-avatar" aria-hidden="true">{p.name.charAt(0)}</div><div className="product-card-meta"><span className="product-card-name">{p.name}</span><span className="product-card-sku">{p.sku}</span></div></div>
+                <div className="product-card-middle mt-sm"><span className="product-card-price">{fmt(p.price)}</span></div>
+                <div className="pos-product-stock">{stockAt(p, activeLocationId || 'all').quantity} available</div>
+              </button>
+              <button className="btn btn-ghost btn-sm" aria-label={`${baskets.workspace.favourites.includes(p.id) ? 'Unpin' : 'Pin'} ${p.name}`} aria-pressed={baskets.workspace.favourites.includes(p.id)} onClick={() => baskets.toggleFavourite(p.id)}>{baskets.workspace.favourites.includes(p.id) ? '★ Favourite' : '☆ Favourite'}</button>
             </div>
           ))}
-          {filteredProducts.length === 0 && (
-            <div className="catalog-empty">
-              <p>No products found.</p>
-            </div>
-          )}
+          {!productsLoading && !productsError && !filteredProducts.length && <p>No products match this search.</p>}
         </div>
+        {filteredProducts.length > catalogLimit && <button className="btn btn-secondary" onClick={() => setCatalogLimit(limit => limit + 60)}>Show more products ({filteredProducts.length - catalogLimit} remaining)</button>}
       </div>
 
       {/* ─── Right Panel: Cart ─── */}
-      <div className="sales-cart">
+      <div ref={cartRef} className={`sales-cart ${mobileCartOpen ? 'pos-cart-open' : ''}`} role={mobileCartOpen ? 'dialog' : undefined} aria-modal={mobileCartOpen || undefined} aria-label="Current order" tabIndex={-1}>
+        <button className="btn btn-secondary pos-cart-close" onClick={() => setMobileCartOpen(false)}>Back to products</button>
         <div className="cart-header">
            <div className="cart-title">
              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -653,6 +673,11 @@ export default function Sales() {
            )}
         </div>
 
+        <div className="pos-basket-tools">
+          <button className="btn btn-secondary btn-sm" disabled={!wizardItems.length || !!savedCheckout || isProcessing} onClick={baskets.park}>Park basket</button>
+          <select className="form-input" aria-label="Resume parked basket" value="" disabled={!!savedCheckout || isProcessing} onChange={e => e.target.value && baskets.resume(e.target.value)}><option value="">Parked baskets ({baskets.workspace.parked.length})</option>{baskets.workspace.parked.map(basket => <option key={basket.id} value={basket.id}>{basket.customer?.name || 'Customer not selected'} · {basket.items.reduce((sum, item) => sum + item.quantity, 0)} units · {new Date(basket.savedAt).toLocaleTimeString()}</option>)}</select>
+          <small>{baskets.ready && !baskets.error ? 'Basket saved on this device. ' : ''}Customer and all unit codes are required to pay.</small>
+        </div>
         <div className="cart-items">
            {wizardItems.length === 0 ? (
              <div className="cart-empty">
@@ -670,11 +695,11 @@ export default function Sales() {
                      </div>
                      <div className="flex items-center gap-sm">
                        <div className="product-card-qty-control">
-                         <button className="qty-btn qty-btn-sm" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                         <button className="qty-btn qty-btn-sm" aria-label={`Decrease ${item.product.name} quantity`} onClick={() => updateQuantity(item.id, -1)}>-</button>
                          <span className="qty-value qty-value-sm">{item.quantity}</span>
-                         <button className="qty-btn qty-btn-sm" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                         <button className="qty-btn qty-btn-sm" aria-label={`Increase ${item.product.name} quantity`} onClick={() => updateQuantity(item.id, 1)}>+</button>
                        </div>
-                       <button className="btn-icon text-error" onClick={() => removeWizardItem(item.id)}>✕</button>
+                       <button className="btn-icon text-error" aria-label={`Remove ${item.product.name} from cart`} onClick={() => removeWizardItem(item.id)}>✕</button>
                      </div>
                    </div>
 
@@ -688,7 +713,7 @@ export default function Sales() {
                          return (
                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: isComplete ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isComplete ? '#10b981' : 'var(--color-border)'}`, borderRadius: '6px' }}>
                              <span style={{ fontSize: '0.7rem', color: isComplete ? '#10b981' : 'var(--color-text-muted)' }}>Unit {idx + 1} {isComplete ? '✓' : ''}</span>
-                             <button className="btn btn-sm btn-secondary" style={{ padding: '2px 8px', fontSize: '0.7rem' }} onClick={() => openScanner(item.id, idx)}>Scan QR</button>
+                             <button className="btn btn-sm btn-secondary" style={{ padding: '2px 8px', fontSize: '0.7rem' }} aria-label={`Scan ${item.product.name} unit ${idx + 1}`} onClick={() => openScanner(item.id, idx)}>Scan QR</button>
                            </div>
                          );
                       })}
@@ -730,6 +755,7 @@ export default function Sales() {
         </div>
       </div>
 
+      <div className="pos-mobile-bar"><span aria-live="polite">{wizardItems.reduce((sum, item) => sum + item.quantity, 0)} units · <strong>{fmt(taxLine.total)}</strong></span><button className="btn btn-primary" onClick={() => setMobileCartOpen(true)}>View cart & checkout</button></div>
       {/* ─── Modals ─── */}
 
       {/* Customer Selection Modal */}
@@ -737,7 +763,7 @@ export default function Sales() {
           <input
             type="text"
             className="input w-full mb-md"
-            placeholder="Search by phone or name..."
+            aria-label="Search customers by phone or name" placeholder="Search by phone or name…"
             value={customerSearchTerm}
             onChange={(e) => setCustomerSearchTerm(e.target.value)}
           />

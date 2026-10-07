@@ -1,3 +1,5 @@
+import { useAuthContext } from '../lib/AuthContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -47,11 +49,14 @@ function fuzzyScore(query, text) {
 
 export default function CommandPalette({ navGroups = [] }) {
   const navigate = useNavigate();
+  const {hasPermission} = useAuthContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  const dialogRef = useRef(null);
+  useFocusTrap({ active: open, containerRef: dialogRef, initialFocusRef: inputRef, onEscape: () => setOpen(false) });
 
   // Quick actions sit alongside navigation because "start a new sale" is a verb
   // people reach for, and hunting for the page that does it is the friction
@@ -70,14 +75,14 @@ export default function CommandPalette({ navGroups = [] }) {
     const paths = new Set(fromNav.map((c) => c.path));
     const quick = [
       { id: 'act:sale', label: 'New sale', group: 'Actions', path: '/sales' },
-      { id: 'act:product', label: 'Add product', group: 'Actions', path: '/inventory' },
-      { id: 'act:customer', label: 'Add customer', group: 'Actions', path: '/customers' },
-      { id: 'act:reports', label: 'View reports', group: 'Actions', path: '/reports/profit-loss' },
+      { id: 'act:product', permission:'manage_products', label: 'Add product', group: 'Actions', path: '/inventory?action=add' },
+      { id: 'act:customer', permission:'manage_customers', label: 'Add customer', group: 'Actions', path: '/customers?action=add' },
+      { id: 'act:reports', label: 'View reports', group: 'Actions', path: '/reports/pnl' },
       // Only offered if the user can actually reach the destination.
-    ].filter((c) => paths.has(c.path));
+    ].filter((c) => paths.has(c.path.split('?')[0]) && (!c.permission || hasPermission(c.permission)));
 
     return [...quick, ...fromNav];
-  }, [navGroups]);
+  }, [navGroups, hasPermission]);
 
   const results = useMemo(() => {
     if (!query.trim()) return commands.slice(0, 12);
@@ -137,9 +142,10 @@ export default function CommandPalette({ navGroups = [] }) {
       role="presentation"
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
     >
-      <div className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div ref={dialogRef} className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
         <input
           ref={inputRef}
+          aria-label="Search pages and actions"
           className="command-palette-input"
           placeholder="Search pages and actions…"
           value={query}

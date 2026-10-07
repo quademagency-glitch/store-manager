@@ -16,6 +16,7 @@ export function useInventoryAnalytics() {
       setSummary(data);
       return data;
     } catch (err) {
+      setSummary(null);
       setError(err.message || 'Failed to fetch summary');
       return null;
     }
@@ -27,6 +28,7 @@ export function useInventoryAnalytics() {
       setValuation(data);
       return data;
     } catch (err) {
+      setValuation(null);
       setError(err.message || 'Failed to fetch valuation');
       return null;
     }
@@ -38,6 +40,7 @@ export function useInventoryAnalytics() {
       setTurnover(data);
       return data;
     } catch (err) {
+      setTurnover(null);
       setError(err.message || 'Failed to fetch turnover');
       return null;
     }
@@ -49,6 +52,7 @@ export function useInventoryAnalytics() {
       setDeadStock(data);
       return data;
     } catch (err) {
+      setDeadStock(null);
       setError(err.message || 'Failed to fetch dead stock');
       return null;
     }
@@ -60,6 +64,7 @@ export function useInventoryAnalytics() {
       setReorderSuggestions(data);
       return data;
     } catch (err) {
+      setReorderSuggestions(null);
       setError(err.message || 'Failed to fetch reorder suggestions');
       return null;
     }

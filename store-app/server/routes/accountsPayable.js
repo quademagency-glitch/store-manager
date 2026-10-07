@@ -5,12 +5,14 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { transactionError } = require('../utils/transactionError');
 const { getPagination } = require('../utils/paginate');
 const { resolveCurrency } = require('../utils/currency');
 
 const router = express.Router();
 
 const billSchema = z.object({
+  operation_id: z.uuid().optional(),
   supplier_id: z.string().uuid(),
   purchase_order_id: z.string().uuid().optional().nullable(),
   description: z.string().optional().nullable(),
@@ -24,7 +26,8 @@ const billSchema = z.object({
 });
 
 const paymentSchema = z.object({
-  amount: z.number().positive(),
+  operation_id:z.uuid().optional(),
+  amount: z.number().finite().positive().multipleOf(0.01),
   payment_method: z.enum(['cash', 'mobile_money', 'bank_transfer', 'card', 'other']),
   payment_date: z.string().optional(),
   location_id: z.string().uuid().optional().nullable(),
@@ -54,6 +57,11 @@ router.get('/bills', authGuard, permissionCheck('manage_financials'), async (req
     }
     if (supplier_id) query = query.eq('supplier_id', supplier_id);
     if (status) query = query.eq('status', status);
+    if (req.query.q) query = query.ilike('bill_number', `%${String(req.query.q).slice(0,100).replace(/[%_]/g, '')}%`);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.due_from || '')) query = query.gte('due_date', req.query.due_from);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.due_to || '')) query = query.lte('due_date', req.query.due_to);
+    if (req.query.purchase_order_id && z.uuid().safeParse(req.query.purchase_order_id).success) query = query.eq('purchase_order_id', req.query.purchase_order_id);
+
     if (is_opening_balance !== undefined) query = query.eq('is_opening_balance', is_opening_balance === 'true');
 
     const { data, error, count } = await query;
@@ -162,6 +170,15 @@ router.post('/bills', authGuard, permissionCheck('manage_financials'), validateB
 
     const business_id = req.user.role === 'Platform Admin' ? supplier.business_id : req.user.business_id;
 
+    if (purchase_order_id) {
+      if (!req.body.operation_id) return res.status(400).json({error:'Create a linked bill from the purchase order to prevent duplicate billing.'});
+      const {data:po}=await supabaseAdmin.from('purchase_orders').select('supplier_id').eq('business_id',business_id).eq('id',purchase_order_id).single();
+      if(!po || po.supplier_id!==supplier_id) return res.status(400).json({error:'This purchase order does not belong to this supplier.'});
+      const {data,error}=await supabaseAdmin.rpc('bill_received_purchase',{p_business_id:business_id,p_actor_id:req.user.id,p_po_id:purchase_order_id,p_request:{operation_id:req.body.operation_id,amount,description:description||'',due_date:due_date||null}});
+      if(error) return transactionError(res,error,'The linked supplier bill could not be confirmed.');
+      return res.status(201).json(data);
+    }
+
     const { data: billNumber, error: numErr } = await supabaseAdmin.rpc('generate_ap_bill_number', { p_business_id: business_id });
     if (numErr) throw numErr;
 
@@ -201,6 +218,14 @@ router.post('/bills', authGuard, permissionCheck('manage_financials'), validateB
 router.post('/bills/:id/payments', authGuard, permissionCheck('manage_financials'), validateBody(paymentSchema), async (req, res) => {
   try {
     const { amount, payment_method, payment_date, location_id, notes } = req.body;
+    if (req.body.operation_id) {
+      if (location_id && location_id !== req.user.active_location_id) return res.status(400).json({error:'Switch to the payment branch before recording this payment.'});
+      const ledgerStatus = ['Salesperson','Cashier'].includes(req.user.role) ? 'pending' : 'approved';
+      const {data,error}=await supabaseAdmin.rpc('record_ap_payment_once',{p_business_id:req.user.business_id,p_actor_id:req.user.id,p_bill_id:req.params.id,p_request:req.body,p_ledger_status:ledgerStatus});
+      if(error) return transactionError(res,error,'The supplier payment could not be confirmed. Retry the saved request.', true);
+      return res.status(201).json(data);
+    }
+
 
     let billQuery = supabaseAdmin.from('ap_bills').select('id, business_id, bill_number, amount, amount_paid, status').eq('id', req.params.id);
     if (req.user.role !== 'Platform Admin') billQuery = billQuery.eq('business_id', req.user.business_id);

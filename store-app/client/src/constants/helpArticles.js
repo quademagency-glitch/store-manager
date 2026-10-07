@@ -290,15 +290,18 @@ visible on the day they happen rather than at month end.
 
 ## Opening
 
-At the start of a shift, go to **Accounting → Till Account** and record the
-opening float: the cash you are starting with.
+At the start of a shift, go to **Finance → Till Account** and record the
+opening float: the cash you are starting with. Name the shared branch drawer.
+Only one session is open per branch, and cash activity from all cashiers at
+that branch contributes to it.
 
 ## During the shift
 
 Cash sales add to the till automatically. Record anything else that moves cash
 as you go:
 
-- **Deposits**: money taken out and banked, or moved to mobile money.
+- **Bank deposits**: use Record bank deposit with the amount and reference.
+- **Cash in**: use Record cash in for extra float, with a reason.
 - **Expenses**: petty cash spent, using one of your accounting templates.
 - **Payouts**: supplier paid in cash from the drawer.
 
@@ -310,14 +313,15 @@ how your templates are configured.
 At the end of the shift, count the drawer and enter the actual figure. QuadERP
 compares it against what it expected and shows the variance.
 
-A variance is not automatically a problem, but it is always worth explaining
-while the shift is fresh. Add a note. Repeated unexplained variances at the same
-location or under the same person surface in the loss prevention report.
+Explain any difference between expected and counted cash before closing.
+Recent handovers show the opener, closer, count, variance and note. A manager
+with approval permission can record a review, and you can print the handover.
 
 ## Reconciliation
 
-**Accounting → Reconciliation** is where you match the till record against your
-bank and mobile money statements over a period. See
+**Finance → Reconciliation** is where you match the till record against your
+bank and mobile money statements over a period. Till sessions show recorded
+card and MoMo totals separately; they are not provider settlement confirmations. See
 [Understanding your ledger](#article:understanding-ledger) for how the
 underlying entries fit together.
 `,

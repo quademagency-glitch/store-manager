@@ -24,6 +24,16 @@
 
 /* Sidebar */
 .dashboard-sidebar {
+  /* The navigation rail keeps an ink surface in either workspace theme. */
+  --color-bg-secondary: #111827;
+  --color-bg-tertiary: #263349;
+  --color-text-primary: #f3f5fa;
+  --color-text-secondary: #c2ccda;
+  --color-text-tertiary: #9caec4;
+  --color-border: #2c3749;
+  --color-accent-primary: #b3b9ff;
+  --color-accent-hover: #d6d9ff;
+  --color-accent-glow: #303c61;
   grid-column: 1;
   width: var(--sidebar-width);
   height: 100dvh;
@@ -103,7 +113,7 @@
 }
 
 [data-theme="light"] .sidebar-group-header:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-bg-tertiary);
 }
 
 .sidebar-group-header.has-active {
@@ -193,7 +203,7 @@
 .sidebar-link.active::before {
   opacity: 1;
   transform: scaleX(1);
-  background: linear-gradient(90deg, var(--color-accent-glow), transparent);
+  background: var(--color-accent-glow);
   border-left: 3px solid var(--color-accent-primary);
 }
 

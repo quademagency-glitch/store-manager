@@ -307,6 +307,9 @@ export default function MainLayout() {
     const inventoryPaths = ['/inventory'];
     const purchasingPaths = ['/suppliers', '/purchase-orders'];
     const inventoryItems = storeOps.items.filter(item => inventoryPaths.includes(item.path));
+    if (hasPermission('manage_inventory') || hasPermission('manage_returns')) inventoryItems.push({path:'/item-history',label:'Item History',icon:Icons.history});
+    if (hasPermission('manage_inventory')) inventoryItems.push({path:'/unit-transfers',label:'Scanned Transfers',icon:Icons.inventory},{path:'/investigations',label:'Investigations',icon:Icons.alerts});
+    if (hasPermission('manage_returns')) inventoryItems.push({path:'/return-inspections',label:'Return Inspections',icon:Icons.reconciliation});
     const purchasingItems = storeOps.items.filter(item => purchasingPaths.includes(item.path));
     storeOps.title = 'Sales';
     storeOps.items = storeOps.items.filter(item => !inventoryPaths.includes(item.path) && !purchasingPaths.includes(item.path));
@@ -323,6 +326,7 @@ export default function MainLayout() {
         { path: '/accounting-templates', label: 'Expenses & Entries', icon: Icons.invoice, visible: hasPermission('view_accounting') },
         { path: '/accounting-approvals', label: 'Approvals', icon: Icons.reconciliation, visible: hasPermission('approve_accounting') },
         { path: '/reconciliation', label: 'Reconciliation', icon: Icons.reconciliation, visible: hasPermission('manage_reconciliation') },
+        { path: '/payment-settlements', label: 'Provider Statements', icon: Icons.billing, visible: hasPermission('manage_reconciliation') },
         { path: '/reports/pnl', label: 'P&L Report', icon: Icons.history, visible: hasPermission('view_financial_reports'), tour: 'reports' },
         { path: '/reports/accounts-receivable', label: 'Receivables Aging', icon: Icons.invoice, visible: hasPermission('view_financial_reports') && !hasPermission('manage_financials') },
         { path: '/accounts-receivable', label: 'Receivables & Invoices', icon: Icons.invoice, visible: hasPermission('manage_financials') },
@@ -336,6 +340,7 @@ export default function MainLayout() {
       icon: Icons.crm,
       items: [
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales'), tour: 'customers' },
+        { path: '/customer-segments', label: 'Segments & Follow-ups', icon: Icons.crm, visible: hasPermission('manage_marketing') },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
         { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_marketing') },
         { path: '/loyalty', label: 'Loyalty & Rewards', icon: Icons.billing, visible: hasPermission('manage_loyalty') },

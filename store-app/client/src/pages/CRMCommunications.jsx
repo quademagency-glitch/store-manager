@@ -107,7 +107,8 @@ export default function CRMCommunications() {
 
     try {
       const res = await api.post('/crm-communications/send', campaignForm);
-      toast.success(`Campaign sent! SMS: ${res.smsResults?.success ? 'Sent' : 'Skipped'}, Email: ${res.emailResults?.success ? 'Sent' : 'Skipped'}`);
+      const status = `SMS: ${res.smsResults?.success ? 'Accepted by provider' : res.smsResults?.error || 'Not requested'}. Email: ${res.emailResults?.success ? 'Accepted by provider' : res.emailResults?.error || 'Not requested'}.`;
+      if(res.success) toast.success(status); else toast.error(status);
       setCampaignForm({ targetAudience: 'all_customers', customerId: '', type: 'both', templateId: '', subject: '', message: '' });
     } catch (err) {
       toast.error(err.message || 'Failed to send campaign');

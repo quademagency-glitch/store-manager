@@ -12,15 +12,8 @@ import {
 import { Link } from 'react-router-dom';
 import { IS_MOCK } from '../lib/mockMode';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export default function Dashboard() {
-  const { user, role, hasPermission, activeLocationId } = useAuthContext();
+  const { role, hasPermission, activeLocationId } = useAuthContext();
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const {
@@ -59,24 +52,10 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Dynamic Welcome Banner */}
-      <div className="dashboard-welcome-banner">
-        <div className="banner-content">
-          <h1 className="banner-title">
-            {getGreeting()}, <span className="highlight-text">{user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
-          </h1>
-          <p className="banner-subtitle">
-            Here's what's happening in your store today.
-          </p>
-        </div>
-        <div className="banner-role">
-          <span className={`role-badge role-badge-${role?.toLowerCase().replace(/\s+/g, '-')}`}>
-            {role || 'Unknown'}
-          </span>
-        </div>
-        <div className="banner-glow-1"></div>
-        <div className="banner-glow-2"></div>
-      </div>
+      <header className="dashboard-work-heading">
+        <div><p className="work-eyebrow">STORE OPERATIONS</p><h1>Today at your branch</h1><p>Review pending work, then open the records that need a decision.</p></div>
+        <span className="work-badge">{role || 'Staff workspace'}</span>
+      </header>
 
       <div className="dashboard-content">
         <ErrorBanner error={error} onRetry={() => { fetchSummary(); fetchRecentActivity(); if (hasPermission('view_analytics')) { fetchSalesTrend(); fetchTopProducts(); fetchInventoryHealth(); fetchStaffPerformance(); } }} />

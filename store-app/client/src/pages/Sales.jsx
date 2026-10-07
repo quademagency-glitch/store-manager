@@ -1,4 +1,5 @@
 import { useBasketWorkspace } from '../hooks/useBasketWorkspace';
+import SharedDraftControls from '../features/operations/SharedDraftControls';
 import { stockAt } from '../lib/stockStatus';
 import { ErrorBanner } from '../components/ui';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -678,6 +679,7 @@ export default function Sales() {
           <select className="form-input" aria-label="Resume parked basket" value="" disabled={!!savedCheckout || isProcessing} onChange={e => e.target.value && baskets.resume(e.target.value)}><option value="">Parked baskets ({baskets.workspace.parked.length})</option>{baskets.workspace.parked.map(basket => <option key={basket.id} value={basket.id}>{basket.customer?.name || 'Customer not selected'} · {basket.items.reduce((sum, item) => sum + item.quantity, 0)} units · {new Date(basket.savedAt).toLocaleTimeString()}</option>)}</select>
           <small>{baskets.ready && !baskets.error ? 'Basket saved on this device. ' : ''}Customer and all unit codes are required to pay.</small>
         </div>
+        <SharedDraftControls kind="basket" value={{items:wizardItems,customer:selectedCustomer}} disabled={!baskets.ready || !!savedCheckout || isProcessing} onLoad={value=>{if(!Array.isArray(value.items))throw new Error('This saved basket is invalid.');setWizardItems(value.items);setSelectedCustomer(value.customer||null);}} />
         <div className="cart-items">
            {wizardItems.length === 0 ? (
              <div className="cart-empty">

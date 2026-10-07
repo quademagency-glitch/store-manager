@@ -71,6 +71,7 @@ export const APP_ROUTES: Route[] = [
   },
   { path: '/sales-record', name: '04-sales-record' },
   { path: '/returns', name: '05-returns' },
+  ...['item-history','return-inspections','unit-transfers','investigations','customer-segments','payment-settlements'].map((route,i)=>({path:`/${route}`,name:`40${i}-${route}`})),
   { path: '/alerts', name: '06-alerts' },
   { path: '/suppliers', name: '07-suppliers' },
   { path: '/purchase-orders', name: '08-purchase-orders' },

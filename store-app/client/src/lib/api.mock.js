@@ -1,4 +1,5 @@
 import { resolveRetailMock } from './retail.mock';
+import { resolveOperationsMock } from './operations.mock';
 import { MOCK_MODE } from './mockMode';
 
 /**
@@ -882,6 +883,8 @@ export function resolveMock(endpoint, method = 'GET', body = undefined) {
      asks for /sales?customer_id=<id>, and a purchase history that ignored it
      would list other people's sales. */
   const query = Object.fromEntries(new URLSearchParams(raw.split('?')[1] || ''));
+  const operations = resolveOperationsMock(path, method, body, query);
+  if (operations !== undefined) return { hit:true, data:MOCK_MODE === 'empty' ? emptyLike(operations) : operations };
   const retail = resolveRetailMock(path, method, body, FIXTURES);
   if (retail !== undefined) return { hit:true, data:MOCK_MODE === 'empty' ? emptyLike(retail) : retail };
 

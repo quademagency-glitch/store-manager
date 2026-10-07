@@ -281,6 +281,14 @@ router.post('/transfers', authGuard, permissionCheck('manage_inventory'), async 
       return res.status(400).json({ error: 'Bad request', message: 'Source and destination locations must be different.' });
     }
 
+    if (!['Business Admin','Platform Admin'].includes(req.user.role) && !req.user.location_ids?.includes(from_location_id)) return res.status(403).json({error:'Source branch access denied.'});
+    const {data:ownedBranches,error:branchError}=await supabaseAdmin.from('locations').select('id').eq('business_id',req.user.business_id).in('id',[from_location_id,to_location_id]);
+    if(branchError)throw branchError;
+    if(ownedBranches.length!==2)return res.status(403).json({error:'Both branches must belong to this business.'});
+    const {data:tracked,error:trackedError}=await supabaseAdmin.from('inventory_units').select('id').eq('business_id',req.user.business_id).eq('product_id',product_id).eq('location_id',from_location_id).limit(1);
+    if(trackedError)throw trackedError;
+    if(tracked.length)return res.status(409).json({error:'Use Scanned Transfers to dispatch tracked units and preserve their item history.'});
+
     // Check source stock
     const { data: srcInv, error: srcErr } = await supabaseAdmin
       .from('product_inventory')

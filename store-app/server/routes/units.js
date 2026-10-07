@@ -299,18 +299,27 @@ router.put('/:id/status', authGuard, permissionCheck('manage_inventory'), async 
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
+    if (!req.user.active_location_id) {
+      return res.status(400).json({ error: 'Select a branch before changing a unit status.' });
+    }
+
     const updateData = { status };
     if (notes) updateData.notes = notes;
 
+    // maybeSingle: a unit in another branch, or one already sold/quarantined,
+    // matches no row. That is a 404 for the user, not a server failure.
     const { data, error } = await supabaseAdmin
       .from('inventory_units')
       .update(updateData)
       .eq('id', id)
+      .eq('business_id', req.user.business_id)
+      .eq('location_id', req.user.active_location_id)
+      .in('status', ['in_stock', 'damaged', 'lost', 'returned'])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Unit not found' });
+    if (!data) return res.status(404).json({ error: 'Unit not found in this branch, or its status can no longer be changed here.' });
 
     res.json({ message: 'Unit status updated', unit: data });
   } catch (err) {

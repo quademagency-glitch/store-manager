@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { api } from '../lib/api';
 import Modal from '../components/Modal';
@@ -95,7 +95,7 @@ export default function Returns() {
       if (current !== generation.current) return;
       setReceipt({ ...data, receiptNumber: sale.receipt_number || sale.id.slice(0,8), customer: sale.customer?.name || 'Walk-in Customer' });
       setSale(null); setResults([]); setRetry(false); request.current = null;
-      toast.success('Return recorded. Refund details are on the refund note.');
+      toast.success('Return recorded. Inspect the returned goods before restocking.');
     } catch (err) {
       if (current !== generation.current) return;
       setError(err.message);
@@ -108,7 +108,8 @@ export default function Returns() {
   if (!allowed) return <div className="container"><h1>Access denied</h1><p>You need permission to manage returns.</p></div>;
   return <div className="container returns-page">
     <h1 className="dashboard-title">Returns & Reversals</h1>
-    <p className="text-muted">Return sold goods, restore stock and record refunds to the original payment sources.</p>
+    <p className="text-muted">Verify the original sale and record its refund. Returned goods remain on hold until inspection.</p>
+    <Link className="btn btn-secondary" to="/return-inspections">Inspect returned goods</Link>
     {!activeLocationId && <p className="alert alert-warning">Select a branch to process returns.</p>}
     <form onSubmit={search} className="returns-search flex gap-md mb-lg">
       <input aria-label="Find receipt" className="form-input" style={{ flex: 1 }} value={query} onChange={e => setQuery(e.target.value)} placeholder="Receipt number, customer name or phone" />

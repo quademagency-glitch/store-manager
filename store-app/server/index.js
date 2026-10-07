@@ -313,8 +313,10 @@ app.post('/api/subscriptions/paystack-webhook', paystackRawBody, paystackWebhook
 const LARGE_JSON_PATHS = [/^\/api\/imports\/(validate|commit)$/];
 const jsonSmall = express.json({ limit: '100kb' });
 const jsonLarge = express.json({ limit: '20mb' });
+const jsonEvidence = express.json({ limit: '3mb' });
+const jsonStatements = express.json({ limit: '300kb' });
 app.use((req, res, next) =>
-  (LARGE_JSON_PATHS.some((re) => re.test(req.path)) ? jsonLarge : jsonSmall)(req, res, next));
+  (/^\/api\/traceability\/evidence\//.test(req.path) ? jsonEvidence : /^\/api\/operations\/statements\//.test(req.path) ? jsonStatements : LARGE_JSON_PATHS.some((re) => re.test(req.path)) ? jsonLarge : jsonSmall)(req, res, next));
 
 // ============================================
 // Routes
@@ -511,6 +513,8 @@ app.use('/api/returns', returnsRoutes);
 // Ledger routes
 app.use('/api/ledger', ledgerRoutes);
 app.use('/api/till-sessions', require('./routes/tillSessions'));
+app.use('/api/traceability', require('./routes/traceability'));
+app.use('/api/operations', require('./routes/operations'));
 
 // Accounting Templates routes
 app.use('/api/accounting/templates', accountingTemplatesRoutes);

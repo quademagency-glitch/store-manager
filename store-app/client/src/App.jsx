@@ -1,6 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { Fragment, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './lib/AuthContext';
+import { AuthProvider, useAuthContext } from './lib/AuthContext';
 import { ThemeProvider } from './lib/ThemeContext';
 import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
@@ -15,6 +15,12 @@ import Login from './pages/Login';
    removes a serialized hop from the slowest path we have. */
 import Signup from './pages/Signup';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ItemHistory = lazy(() => import('./pages/ItemHistory'));
+const UnitTransfers = lazy(() => import('./pages/UnitTransfers'));
+const ReturnInspections = lazy(() => import('./pages/ReturnInspections'));
+const Investigations = lazy(() => import('./pages/Investigations'));
+const CustomerSegments = lazy(() => import('./pages/CustomerSegments'));
+const PaymentSettlements = lazy(() => import('./pages/PaymentSettlements'));
 
 const Sales = lazy(() => import('./pages/Sales'));
 const Inventory = lazy(() => import('./pages/Inventory'));
@@ -88,6 +94,10 @@ function ThrowOnRender() {
   throw new Error('Deliberate test error from /__boom');
 }
 
+function WorkScope({children}) {
+  const {businessId,activeLocationId,user}=useAuthContext();
+  return <Fragment key={`${businessId}:${user?.id}:${activeLocationId}`}>{children}</Fragment>;
+}
 export default function App() {
   return (
     <ThemeProvider>
@@ -133,6 +143,12 @@ export default function App() {
                     }
                   >
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/item-history" element={<ProtectedRoute requiredPermission={['manage_inventory','manage_returns']}><WorkScope><ItemHistory /></WorkScope></ProtectedRoute>} />
+                    <Route path="/unit-transfers" element={<ProtectedRoute requiredPermission="manage_inventory"><WorkScope><UnitTransfers /></WorkScope></ProtectedRoute>} />
+                    <Route path="/return-inspections" element={<ProtectedRoute requiredPermission="manage_returns"><WorkScope><ReturnInspections /></WorkScope></ProtectedRoute>} />
+                    <Route path="/investigations" element={<ProtectedRoute requiredPermission="manage_inventory"><WorkScope><Investigations /></WorkScope></ProtectedRoute>} />
+                    <Route path="/customer-segments" element={<ProtectedRoute requiredPermission="manage_marketing"><WorkScope><CustomerSegments /></WorkScope></ProtectedRoute>} />
+                    <Route path="/payment-settlements" element={<ProtectedRoute requiredPermission="manage_reconciliation"><WorkScope><PaymentSettlements /></WorkScope></ProtectedRoute>} />
                     {/* A route that throws on render, so the route-level error
                         boundary can be tested against a real React error
                         rather than a simulated one. Stripped from production

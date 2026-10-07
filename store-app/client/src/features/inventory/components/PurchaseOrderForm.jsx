@@ -3,6 +3,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import Modal from '../../../components/Modal';
 import { ErrorBanner } from '../../../components/ui';
 import { usePersistentDraft } from '../../../hooks/usePersistentDraft';
+import SharedDraftControls from '../../operations/SharedDraftControls';
 
 const blankLine = () => ({ product_id: '', quantity: '', unit_cost: '', notes: '' });
 export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers, products, editingOrder, initialDraft, isSubmitting, error }) {
@@ -31,6 +32,7 @@ export default function PurchaseOrderForm({ isOpen, onClose, onSubmit, suppliers
     <form onSubmit={submit}>
       <ErrorBanner error={error || saveError || draft.error} />
       <p className="workspace-status">Your draft stays on this device for your account and branch. Confirm purchase costs before saving.</p>
+      {!editingOrder && <SharedDraftControls kind="purchase" value={draft.value} disabled={locked} onLoad={value=>{if(!Array.isArray(value.items))throw new Error('This saved purchase draft is invalid.');draft.setValue(value);}} />}
       {initialDraft && !editingOrder && <button type="button" className="btn btn-secondary" disabled={locked} onClick={async()=>{if(await confirm({title:'Use selected reorder items',message:'Replace this saved purchase draft with the items selected in Reorder?',confirmText:'Replace draft'})) draft.setValue(initial);}}>Use selected reorder items</button>}
       <fieldset disabled={locked} className="workspace-fieldset">
         <div className="workspace-form-grid">

@@ -245,7 +245,8 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
   try {
     const { targetAudience, customerId, type, subject, message } = req.body;
 
-    if (!message) {
+    if (!['sms','email','both'].includes(type)) return res.status(400).json({error:'Choose SMS, email or both.'});
+    if (typeof message !== 'string' || !message.trim() || message.length>5000) {
       return res.status(400).json({ error: 'Message content is required' });
     }
 
@@ -254,7 +255,7 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
     if (targetAudience === 'specific_customer' && customerId) {
       const { data, error } = await supabaseAdmin
         .from('customers')
-        .select('name, email, phone')
+        .select('id, name, email, phone')
         .eq('id', customerId)
         .eq('business_id', req.user.business_id)
         .single();
@@ -263,7 +264,7 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
     } else if (targetAudience === 'all_customers') {
       const { data, error } = await supabaseAdmin
         .from('customers')
-        .select('name, email, phone')
+        .select('id, name, email, phone')
         .eq('business_id', req.user.business_id);
       if (error) throw error;
       customers = data || [];
@@ -286,7 +287,7 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
        if (customerIds.length > 0) {
          const { data, error } = await supabaseAdmin
            .from('customers')
-           .select('name, email, phone')
+           .select('id, name, email, phone')
            .in('id', customerIds)
            .eq('business_id', req.user.business_id);
          if (error) throw error;
@@ -299,6 +300,17 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
     if (customers.length === 0) {
       return res.status(400).json({ error: 'No recipients found for this audience' });
     }
+
+    // All CRM entry points honor explicit channel preferences. Missing
+    // preference is not consent; database failures stop dispatch.
+    const { data: preferences, error: preferenceError } = await supabaseAdmin
+      .from('customer_contact_preferences').select('customer_id,channel,allowed')
+      .eq('business_id',req.user.business_id).in('customer_id',customers.map(c=>c.id));
+    if(preferenceError) throw preferenceError;
+    const allowed=(customer,channel)=>preferences?.some(p=>p.customer_id===customer.id&&p.channel===channel&&p.allowed===true);
+    const smsCustomers=customers.filter(c=>c.phone&&allowed(c,'sms'));
+    const emailCustomers=customers.filter(c=>c.email&&allowed(c,'email'));
+    if(!(type!=='email'&&smsCustomers.length)&&!(type!=='sms'&&emailCustomers.length))return res.status(400).json({error:'No recipients have explicitly allowed the selected channel. Review customer preferences first.'});
 
     // 2. Fetch Gateways (Fallback logic: business specific -> platform default)
     let smsGateway = null;
@@ -361,7 +373,7 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
 
     // 3. Dispatch SMS
     if (type === 'sms' || type === 'both') {
-      const phoneNumbers = customers.map(c => c.phone).filter(Boolean);
+      const phoneNumbers = [...new Set(smsCustomers.map(c => c.phone))];
       if (phoneNumbers.length > 0) {
         smsResults = await smsService.sendCustomSMS(phoneNumbers, message, smsGateway);
       } else {
@@ -371,7 +383,7 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
 
     // 4. Dispatch Email
     if (type === 'email' || type === 'both') {
-      const emails = customers.map(c => c.email).filter(Boolean);
+      const emails = [...new Set(emailCustomers.map(c => c.email))];
       if (emails.length > 0) {
         emailResults = await emailService.sendCustomEmail(emails, subject || 'Message from Business', message, emailGateway);
       } else {
@@ -379,9 +391,10 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
       }
     }
 
+    for(const result of [smsResults,emailResults])if(result?.simulated){result.success=false;result.error='Provider is not configured. No message was dispatched.';}
     res.json({
-      success: true,
-      recipientsCount: customers.length,
+      success: !!(smsResults?.success || emailResults?.success),
+      recipientsCount: new Set([...(type!=='email'?smsCustomers:[]),...(type!=='sms'?emailCustomers:[])].map(c=>c.id)).size,
       smsResults,
       emailResults
     });

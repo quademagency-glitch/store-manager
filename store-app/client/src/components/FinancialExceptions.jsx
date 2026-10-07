@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { useOfflineScope } from '../hooks/useOfflineScope';
 import { walletPost } from '../lib/walletOperations';
 import Modal from './Modal';
+import { EmptyStateRow } from './ui';
 
 const actions = {
   sale: ['confirm_settlement', 'Confirm payment from receipt evidence'],
@@ -46,7 +47,7 @@ export default function FinancialExceptions() {
     {!data ? <button className="btn btn-secondary" onClick={load}>Reload exceptions</button> : <>
       <p>{data.total} exceptions across the selected branch scope.</p>
       <div style={{ overflowX: 'auto' }}><table className="glass-table"><thead><tr><th>Reference</th><th>Issue</th><th>Recorded amount</th><th>Action</th></tr></thead>
-        <tbody>{data.data.map(row => <tr key={`${row.kind}:${row.record_id}`}><td>{row.reference}</td><td>{row.reason}</td><td>{row.amount ?? 'Unknown'}</td><td>
+        <tbody>{!data.data.length && <EmptyStateRow colSpan={4} title="No financial exceptions in this branch" hint="Change the branch or date scope if you expected a record." />}{data.data.map(row => <tr key={`${row.kind}:${row.record_id}`}><td>{row.reference}</td><td>{row.reason}</td><td>{row.amount ?? 'Unknown'}</td><td>
           <button className="btn btn-secondary btn-sm" disabled={!scope || scope.locationId !== row.location_id} onClick={() => open(row)}>Review</button>
         </td></tr>)}</tbody></table></div>
       {!scope && <p>Select a branch to review its records.</p>}

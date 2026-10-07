@@ -72,6 +72,7 @@
 
 /* --- layout --- */
 @import './styles/dashboard-layout.css' layer(layout);
+@import './styles/operations.css' layer(pages);
 @import './styles/admin-layout-top-nav.css' layer(layout);
 @import './styles/pages-layouts.css' layer(layout);
 

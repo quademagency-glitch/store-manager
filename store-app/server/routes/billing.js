@@ -96,7 +96,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating gateway:');
-    res.status(500).json({ error: err.message || 'Failed to create gateway' });
+    res.status(500).json({ error: 'Failed to create gateway' });
   }
 });
 
@@ -147,7 +147,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating gateway:');
-    res.status(500).json({ error: err.message || 'Failed to update gateway' });
+    res.status(500).json({ error: 'Failed to update gateway' });
   }
 });
 
@@ -166,7 +166,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), as
     res.json({ message: 'Gateway removed' });
   } catch (err) {
     logger.error({ err: err }, 'Error deleting gateway:');
-    res.status(500).json({ error: err.message || 'Failed to delete gateway' });
+    res.status(500).json({ error: 'Failed to delete gateway' });
   }
 });
 
@@ -237,7 +237,7 @@ router.post('/paystack/initialize', authGuard, async (req, res) => {
 
   } catch (err) {
     logger.error({ err: err }, 'Paystack Initialize Error:');
-    res.status(500).json({ error: err.message || 'Failed to initialize payment' });
+    res.status(500).json({ error: 'Failed to initialize payment' });
   }
 });
 
@@ -365,7 +365,7 @@ router.post('/invoices/send', authGuard, permissionCheck('manage_platform'), asy
     }
   } catch (err) {
     logger.error({ err: err }, 'Error sending invoice:');
-    res.status(500).json({ error: err.message || 'Failed to send invoice' });
+    res.status(500).json({ error: 'Failed to send invoice' });
   }
 });
 
@@ -449,7 +449,7 @@ router.post('/record-payment', authGuard, permissionCheck('manage_platform'), as
     });
   } catch (err) {
     logger.error({ err: err }, 'Error recording payment:');
-    res.status(500).json({ error: err.message || 'Failed to record payment' });
+    res.status(500).json({ error: 'Failed to record payment' });
   }
 });
 

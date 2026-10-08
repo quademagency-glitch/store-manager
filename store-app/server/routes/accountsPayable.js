@@ -267,7 +267,7 @@ router.post('/bills/:id/payments', authGuard, permissionCheck('manage_financials
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err }, 'Error recording AP payment:');
-    res.status(500).json({ error: err.message || 'Failed to record payment' });
+    res.status(500).json({ error: 'Failed to record payment' });
   }
 });
 

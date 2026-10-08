@@ -160,7 +160,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_marketing'), async (
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating CRM gateway:');
-    res.status(500).json({ error: err.message || 'Failed to create gateway' });
+    res.status(500).json({ error: 'Failed to create gateway' });
   }
 });
 
@@ -227,7 +227,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_marketing'), asyn
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating CRM gateway:');
-    res.status(500).json({ error: err.message || 'Failed to update gateway' });
+    res.status(500).json({ error: 'Failed to update gateway' });
   }
 });
 
@@ -314,7 +314,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_marketing'), a
     res.json({ message: 'Gateway removed' });
   } catch (err) {
     logger.error({ err: err }, 'Error deleting CRM gateway:');
-    res.status(500).json({ error: err.message || 'Failed to delete gateway' });
+    res.status(500).json({ error: 'Failed to delete gateway' });
   }
 });
 
@@ -466,7 +466,10 @@ router.post('/send', authGuard, permissionCheck('manage_marketing'), async (req,
     if (type === 'email' || type === 'both') {
       const emails = [...new Set(emailCustomers.map(c => c.email))];
       if (emails.length > 0) {
-        emailResults = await emailService.sendCustomEmail(emails, subject || 'Message from Business', message, emailGateway);
+        const { data: business } = await supabaseAdmin.from('businesses').select('name').eq('id', req.user.business_id).maybeSingle();
+        const viaPlatform = !emailGateway || emailGateway.business_id !== req.user.business_id;
+        const html = emailService.buildBusinessMessageHtml({ businessName: business?.name, text: message, viaPlatform });
+        emailResults = await emailService.sendCustomEmail(emails, subject || `Message from ${business?.name || 'Business'}`, html, emailGateway);
       } else {
         emailResults = { success: false, error: 'No valid email addresses found' };
       }

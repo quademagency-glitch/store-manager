@@ -46,7 +46,8 @@ beforeEach(() => {
   });
   owned = { products: [PRODUCT], locations: [LOC, LOC2], users: [ME, STAFF, OWNER], product_batches: [BATCH] };
   rows = {}; queries = []; mutations = [];
-  mockDb.rpc.mockResolvedValue({ data: null, error: null });
+  mockDb.rpc.mockReset().mockResolvedValue({ data: null, error: null });
+  mockDb.auth.admin.deleteUser.mockReset();
   mockDb.from.mockImplementation((table) => {
     const calls = []; queries.push({ table, calls });
     const answer = () => {
@@ -169,6 +170,13 @@ describe('products and tracked units', () => {
     expect(writes()).toHaveLength(0);
   });
 
+  test('branch staff list tracked units at their own branches only', async () => {
+    Object.assign(mockUser, { role: 'Store Manager', permissions: ['view_inventory'], location_ids: [LOC], active_location_id: null });
+    expect((await request(app).get(`/units?location_id=${LOC2}`)).status).toBe(403);
+    expect((await request(app).get('/units')).status).toBe(200);
+    expect(queriesOn('inventory_units').at(-1)).toContainEqual(['in', 'location_id', [LOC]]);
+  });
+
   test('the untracked journey reads only this business\'s product and branch', async () => {
     rows.products = { data: null, error: null };
     const res = await request(app).get(`/units/untracked/journey?product_id=${FOREIGN_PRODUCT}&location_id=${LOC}`);
@@ -271,6 +279,14 @@ describe('money', () => {
     }
   });
 
+  test('a deposit payment is one database call, never a separate debit', async () => {
+    rows.ar_invoices = { data: { id: 'inv1', business_id: BIZ, total_amount: 100, amount_paid: 0, status: 'open', customer_id: 'c1', invoice_number: 'INV-1' }, error: null };
+    mockDb.rpc.mockResolvedValue({ data: { success: true }, error: null });
+    expect((await request(app).post('/ar/invoices/inv1/payments').send({ amount: 10, payment_method: 'customer_deposit' })).status).toBe(201);
+    expect(mockDb.rpc).toHaveBeenCalledWith('record_ar_deposit_payment', expect.objectContaining({ p_invoice_id: 'inv1', p_amount: 10, p_business_id: BIZ }));
+    expect(mutations.filter((m) => m.table === 'store_credit_ledger')).toHaveLength(0);
+  });
+
   test('a customer payment cannot be posted to another business\'s branch', async () => {
     rows.ar_invoices = { data: { id: 'inv1', business_id: BIZ, total_amount: 100, amount_paid: 0, status: 'open' }, error: null };
     const res = await request(app).post('/ar/invoices/inv1/payments').send({ amount: 10, payment_method: 'cash', location_id: FOREIGN_LOC });
@@ -367,5 +383,15 @@ describe('reads', () => {
     const inventory = queriesOn('product_inventory');
     expect(inventory.length).toBeGreaterThan(0);
     for (const calls of inventory) expect(calls).toContainEqual(['in', 'location_id', [LOC, LOC2]]);
+  });
+});
+
+describe('SKUs', () => {
+  test('the importer checks SKUs against this business only, never the whole platform', async () => {
+    const { validateProductRows } = require('../services/importValidators');
+    rows.locations = { data: [{ id: LOC }], error: null };
+    await validateProductRows([{ name: 'Fridge', sku: 'HS-220', price: '10' }], BIZ);
+    const skuQuery = queriesOn('products').find((calls) => calls.some((c) => c[0] === 'in' && c[1] === 'sku'));
+    expect(skuQuery).toContainEqual(['eq', 'business_id', BIZ]);
   });
 });

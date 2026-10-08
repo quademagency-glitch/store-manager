@@ -30,26 +30,31 @@ function loadXlsx() {
  * carries the CVE-2023-30533 prototype pollution fixed in 0.19.3, and the
  * project stopped publishing there.
  */
-async function parseFile(buffer, filename) {
+/**
+ * @param {{ maxRows?: number }} [options] stop reading after this many data
+ *   rows plus one, so a caller can tell "too many" without holding them all.
+ */
+async function parseFile(buffer, filename, { maxRows } = {}) {
   const lower = filename.toLowerCase();
 
-  if (lower.endsWith('.csv')) return parseCsv(buffer);
-  if (lower.endsWith('.xlsx')) return parseXlsx(buffer);
-  if (lower.endsWith('.xls')) return parseXls(buffer);
+  if (lower.endsWith('.csv')) return parseCsv(buffer, maxRows);
+  if (lower.endsWith('.xlsx')) return parseXlsx(buffer, maxRows);
+  if (lower.endsWith('.xls')) return parseXls(buffer, maxRows);
   throw new Error('Unsupported file type. Please upload a .csv, .xlsx or .xls file.');
 }
 
-function parseCsv(buffer) {
+function parseCsv(buffer, maxRows) {
   const records = parse(buffer, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
+    ...(maxRows ? { to: maxRows + 1 } : {}),
   });
   const headers = records.length > 0 ? Object.keys(records[0]) : [];
   return { headers, rows: records };
 }
 
-async function parseXlsx(buffer) {
+async function parseXlsx(buffer, maxRows) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const worksheet = workbook.worksheets[0];
@@ -65,6 +70,7 @@ async function parseXlsx(buffer) {
       headers = values.map(v => String(normalizeCellValue(v) ?? '').trim());
       return;
     }
+    if (maxRows && rows.length > maxRows) return;
     const record = {};
     headers.forEach((header, i) => {
       record[header] = normalizeCellValue(values[i]);
@@ -80,9 +86,9 @@ async function parseXlsx(buffer) {
  * the header, values passed through normalizeCellValue so a date lands as
  * YYYY-MM-DD here too.
  */
-function parseXls(buffer) {
+function parseXls(buffer, maxRows) {
   const XLSX = loadXlsx();
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true, ...(maxRows ? { sheetRows: maxRows + 2 } : {}) });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
     throw new Error('The uploaded file has no worksheets.');

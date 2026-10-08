@@ -153,7 +153,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating communication gateway:');
-    res.status(500).json({ error: err.message || 'Failed to create communication gateway' });
+    res.status(500).json({ error: 'Failed to create communication gateway' });
   }
 });
 
@@ -205,7 +205,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating communication gateway:');
-    res.status(500).json({ error: err.message || 'Failed to update communication gateway' });
+    res.status(500).json({ error: 'Failed to update communication gateway' });
   }
 });
 
@@ -225,7 +225,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), as
     res.json({ message: 'Gateway removed' });
   } catch (err) {
     logger.error({ err: err }, 'Error deleting communication gateway:');
-    res.status(500).json({ error: err.message || 'Failed to delete communication gateway' });
+    res.status(500).json({ error: 'Failed to delete communication gateway' });
   }
 });
 

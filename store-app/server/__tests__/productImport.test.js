@@ -205,13 +205,13 @@ describe('SKU', () => {
     expect(errors).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/Duplicate SKU/) }));
   });
 
-  it('still catches a SKU already used on the platform', async () => {
+  it('still catches a SKU this business already uses', async () => {
     withLocations([LOC_A], ['HS-220']);
 
     const { valid, errors } = await validateProductRows([rowFor()], BIZ);
 
     expect(valid).toHaveLength(0);
-    expect(errors).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/globally unique/) }));
+    expect(errors).toContainEqual(expect.objectContaining({ message: expect.stringMatching(/already used by one of your products/) }));
   });
 });
 
@@ -318,5 +318,15 @@ describe('file formats', () => {
       opening_quantity: 7,
       location_id: LOC_A,
     });
+  });
+});
+
+describe('row ceiling', () => {
+  // Preview returned every row until 8 October 2026, while validate and commit refused more than 20,000.
+  test('parsing stops one row past the ceiling, so the caller can refuse without holding the rest', async () => {
+    const csv = Buffer.from('name,sku\n' + Array.from({ length: 50 }, (_, i) => `Item ${i},SKU-${i}`).join('\n'));
+    const { rows } = await parseFile(csv, 'big.csv', { maxRows: 10 });
+    expect(rows).toHaveLength(11);
+    expect((await parseFile(csv, 'big.csv')).rows).toHaveLength(50);
   });
 });

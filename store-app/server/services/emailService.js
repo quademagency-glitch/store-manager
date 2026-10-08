@@ -1226,7 +1226,27 @@ async function sendTrialEndingReminder(business, { daysLeft, trialEndsAt } = {})
   }
 }
 
+/**
+ * A business's CRM message as an email body. The composer is a plain text box,
+ * so the text is escaped and its line breaks kept. Until 8 October 2026 it was
+ * sent as raw HTML, and when the business had no email account of its own it
+ * went out from QuadERP's address: any business could send QuadERP-branded
+ * mail with its own links and forms in it. Through the platform sender the
+ * message is also framed with the name of the business it came from.
+ */
+function buildBusinessMessageHtml({ businessName, text, viaPlatform }) {
+  const body = escapeHtml(text).replace(/\r?\n/g, '<br>');
+  if (!viaPlatform) return `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#0f172a;">${body}</div>`;
+  const name = escapeHtml(businessName || 'A business');
+  return `<div style="font-family:Arial,sans-serif;color:#0f172a;max-width:600px;">
+  <p style="font-size:13px;color:#64748b;margin:0 0 12px;">A message from <strong>${name}</strong></p>
+  <div style="font-size:15px;line-height:1.6;">${body}</div>
+  <p style="font-size:12px;color:#94a3b8;margin:24px 0 0;border-top:1px solid #e2e8f0;padding-top:12px;">Sent by ${name} using ${escapeHtml(PLATFORM_NAME)}. ${escapeHtml(PLATFORM_NAME)} did not write this message.</p>
+</div>`;
+}
+
 module.exports = {
+  buildBusinessMessageHtml,
   LOGO_URL,
   senderAddress,
   /* The six builders are pure string functions. Exported so they can be

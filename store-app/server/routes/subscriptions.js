@@ -104,7 +104,7 @@ router.post('/plans', authGuard, permissionCheck('manage_platform'), async (req,
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error creating plan:');
-    res.status(500).json({ error: err.message || 'Failed to create plan' });
+    res.status(500).json({ error: 'Failed to create plan' });
   }
 });
 
@@ -132,7 +132,7 @@ router.put('/plans/:id', authGuard, permissionCheck('manage_platform'), async (r
     res.json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error updating plan:');
-    res.status(500).json({ error: err.message || 'Failed to update plan' });
+    res.status(500).json({ error: 'Failed to update plan' });
   }
 });
 
@@ -155,7 +155,7 @@ router.delete('/plans/:id', authGuard, permissionCheck('manage_platform'), async
     res.json({ message: 'Plan deactivated', plan: data });
   } catch (err) {
     logger.error({ err: err }, 'Error deactivating plan:');
-    res.status(500).json({ error: err.message || 'Failed to deactivate plan' });
+    res.status(500).json({ error: 'Failed to deactivate plan' });
   }
 });
 
@@ -362,7 +362,7 @@ router.post('/assign', authGuard, async (req, res) => {
     });
   } catch (err) {
     logger.error({ err: err }, 'Error assigning plan:');
-    res.status(500).json({ error: err.message || 'Failed to assign plan' });
+    res.status(500).json({ error: 'Failed to assign plan' });
   }
 });
 

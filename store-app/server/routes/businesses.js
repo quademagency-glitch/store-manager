@@ -145,7 +145,7 @@ router.put('/:id', authGuard, permissionCheck('manage_business'), async (req, re
     res.json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error updating business:');
-    res.status(500).json({ error: err.message || 'Failed to update business profile' });
+    res.status(500).json({ error: 'Failed to update business profile' });
   }
 });
 

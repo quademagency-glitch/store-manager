@@ -222,8 +222,8 @@ function tokenMatches(provided, expected) {
 }
 
 async function healthDeepHandler(req, res) {
-  const expectedToken = process.env.HEALTH_CHECK_TOKEN;
-  const authorised = !expectedToken || tokenMatches(req.get('x-health-token'), expectedToken);
+  // Without a configured token only development reveals detail; production fails closed.
+  const authorised = healthTokenOk(req);
 
   let report;
   if (cached && cached.expiresAt > Date.now()) {
@@ -283,4 +283,10 @@ function _resetCache() {
   cached = null;
 }
 
-module.exports = { healthDeepHandler, _resetCache, CACHE_TTL_MS };
+/** The same gate for other operator-only endpoints (CSP summary). */
+function healthTokenOk(req) {
+  const expectedToken = process.env.HEALTH_CHECK_TOKEN;
+  return expectedToken ? tokenMatches(req.get('x-health-token'), expectedToken) : process.env.NODE_ENV !== 'production';
+}
+
+module.exports = { healthDeepHandler, healthTokenOk, _resetCache, CACHE_TTL_MS };

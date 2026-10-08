@@ -246,54 +246,43 @@ router.post('/invoices/:id/payments', authGuard, permissionCheck('manage_financi
     const ledgerStatus = isCashier ? 'pending' : 'approved';
     const postToLedger = ['cash', 'mobile_money'].includes(payment_method);
 
-    if (payment_method === 'customer_deposit') {
-      const { data: lastEntry } = await supabaseAdmin
-        .from('store_credit_ledger')
-        .select('balance_after')
-        .eq('customer_id', invoice.customer_id)
-        .eq('business_id', invoice.business_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    const paymentDate = payment_date || new Date().toISOString().split('T')[0];
+    /* A deposit payment debits the customer's deposit and pays the invoice in
+       one transaction (migration 097). Until 8 October 2026 these were two
+       requests, and a failure between them left the deposit spent and the
+       invoice unpaid. */
+    const { data, error } = payment_method === 'customer_deposit'
+      ? await supabaseAdmin.rpc('record_ar_deposit_payment', {
+        p_invoice_id: req.params.id,
+        p_amount: amount,
+        p_payment_date: paymentDate,
+        p_notes: notes || null,
+        p_user_id: req.user.id,
+        p_business_id: invoice.business_id,
+      })
+      : await supabaseAdmin.rpc('record_ar_payment', {
+        p_invoice_id: req.params.id,
+        p_amount: amount,
+        p_payment_method: payment_method,
+        p_payment_date: paymentDate,
+        p_location_id: location_id || null,
+        p_notes: notes || null,
+        p_user_id: req.user.id,
+        p_business_id: invoice.business_id,
+        p_post_to_ledger: postToLedger,
+        p_ledger_status: ledgerStatus,
+      });
 
-      const currentBalance = Number(lastEntry?.balance_after || 0);
-      if (currentBalance < amount) {
-         return res.status(400).json({ error: `Insufficient deposit balance. Available: ${currentBalance.toFixed(2)}` });
-      }
-
-      const newBalance = currentBalance - amount;
-      const { error: ledgerErr } = await supabaseAdmin
-        .from('store_credit_ledger')
-        .insert({
-          customer_id: invoice.customer_id,
-          business_id: invoice.business_id,
-          type: 'redeem',
-          amount: -amount,
-          balance_after: newBalance,
-          note: `Payment for AR Invoice #${invoice.invoice_number}`
-        });
-      
-      if (ledgerErr) throw ledgerErr;
+    if (error) {
+      // The database's own refusals are written for people; anything else is not shown.
+      if (/Insufficient/i.test(error.message || '')) return res.status(400).json({ error: 'The customer\'s deposit does not cover this payment.' });
+      if (/exceeds outstanding|voided invoice|no customer whose deposit/i.test(error.message || '')) return res.status(400).json({ error: error.message });
+      throw error;
     }
-
-    const { data, error } = await supabaseAdmin.rpc('record_ar_payment', {
-      p_invoice_id: req.params.id,
-      p_amount: amount,
-      p_payment_method: payment_method,
-      p_payment_date: payment_date || new Date().toISOString().split('T')[0],
-      p_location_id: location_id || null,
-      p_notes: notes || null,
-      p_user_id: req.user.id,
-      p_business_id: invoice.business_id,
-      p_post_to_ledger: postToLedger,
-      p_ledger_status: ledgerStatus,
-    });
-
-    if (error) throw error;
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err }, 'Error recording AR payment:');
-    res.status(500).json({ error: err.message || 'Failed to record payment' });
+    res.status(500).json({ error: 'Failed to record payment' });
   }
 });
 

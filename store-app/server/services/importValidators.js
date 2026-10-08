@@ -97,9 +97,9 @@ function generateSku(name, taken) {
  * Unpriced products land at 0 and are listed under "Needs pricing", where
  * the bulk price tool can set prices from cost.
  *
- * SKU is GLOBALLY unique across the whole platform (not per-business, see
- * the products.sku UNIQUE constraint), so dedup must check the entire table,
- * not just this business.
+ * A SKU is unique within the business (migration 098). It was platform-wide
+ * until 8 October 2026, and checking the whole table told one business which
+ * SKUs another business stocks.
  */
 async function validateProductRows(rows, businessId, options = {}) {
   const errors = [];
@@ -157,7 +157,7 @@ async function validateProductRows(rows, businessId, options = {}) {
 
   let existingSkus = new Set();
   if (skusToCheck.length > 0) {
-    const { data, error } = await supabaseAdmin.from('products').select('sku').in('sku', skusToCheck);
+    const { data, error } = await supabaseAdmin.from('products').select('sku').eq('business_id', businessId).in('sku', skusToCheck);
     if (error) throw error;
     existingSkus = new Set((data || []).map(p => p.sku));
   }
@@ -169,7 +169,7 @@ async function validateProductRows(rows, businessId, options = {}) {
     const lineNumber = i + 2;
     const sku = String(row.sku || '').trim();
     if (sku && existingSkus.has(sku)) {
-      errors.push({ row: lineNumber, field: 'sku', message: `SKU '${sku}' is already in use on this platform. SKUs must be globally unique, please use a different SKU.` });
+      errors.push({ row: lineNumber, field: 'sku', message: `SKU '${sku}' is already used by one of your products. Use a different SKU, or edit the existing product.` });
       return;
     }
     if (errors.some(e => e.row === lineNumber)) return;

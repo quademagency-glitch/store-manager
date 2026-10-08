@@ -326,3 +326,18 @@ describe('welcome email, scanner download', () => {
     delete process.env.SCANNER_ENABLED;
   });
 });
+
+describe('business CRM messages', () => {
+  const { buildBusinessMessageHtml } = require('../services/emailService');
+  test('typed text is escaped, never sent as markup, and keeps its line breaks', () => {
+    const html = buildBusinessMessageHtml({ businessName: 'Shop <b>', text: 'Hi\n<a href="https://evil.example">Verify your QuadERP account</a>', viaPlatform: false });
+    expect(html).not.toMatch(/<a /);
+    expect(html).toContain('&lt;a href=');
+    expect(html).toContain('Hi<br>');
+  });
+  test('through the platform sender it names the business and disowns the content', () => {
+    const html = buildBusinessMessageHtml({ businessName: 'Omek <Gigs>', text: 'Sale on Friday', viaPlatform: true });
+    expect(html).toContain('A message from <strong>Omek &lt;Gigs&gt;</strong>');
+    expect(html).toContain('QuadERP did not write this message.');
+  });
+});

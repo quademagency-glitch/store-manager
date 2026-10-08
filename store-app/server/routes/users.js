@@ -173,7 +173,9 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
     res.json({ message: 'User created successfully', user: data.user });
   } catch (err) {
     logger.error({ err: err }, 'Error creating user:');
-    res.status(500).json({ error: err.message || 'Failed to create user' });
+    // Supabase's duplicate-email refusal is worth showing; other driver text is not.
+    if (/already (been )?registered|already exists/i.test(err?.message || '')) return res.status(409).json({ error: 'An account with this email address already exists.' });
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 

@@ -104,3 +104,43 @@ test('browser roles have no table access or execution rights for the new financi
   assert.equal((await one('SELECT has_table_privilege($1,\'till_sessions\',\'SELECT\') AS allowed',[role])).allowed,false);
  }
 });
+
+test('an invoice paid from a deposit debits the deposit and pays the invoice together, or neither',async()=>{
+ await db.exec(`CREATE TABLE IF NOT EXISTS ar_invoices(id uuid PRIMARY KEY,business_id uuid NOT NULL,customer_id uuid,invoice_number text,total_amount numeric NOT NULL,amount_paid numeric NOT NULL DEFAULT 0,status text NOT NULL DEFAULT 'open',updated_at timestamptz);
+  ALTER TABLE ar_payments ADD COLUMN IF NOT EXISTS business_id uuid, ADD COLUMN IF NOT EXISTS invoice_id uuid, ADD COLUMN IF NOT EXISTS amount numeric,
+   ADD COLUMN IF NOT EXISTS payment_date date, ADD COLUMN IF NOT EXISTS location_id uuid, ADD COLUMN IF NOT EXISTS notes text, ADD COLUMN IF NOT EXISTS created_by uuid;`);
+ // record_ar_payment as production runs it (056), then the new wrapper.
+ const m056=read('db/migrations/056_fix_ar_invoices_column_names.sql');
+ await db.exec(m056.slice(m056.indexOf('CREATE OR REPLACE FUNCTION public.record_ar_payment(')));
+ await db.exec(read('db/migrations/097_atomic_ar_deposit_payment.sql'));
+ const customer=uuid(),inv=uuid(),big=uuid();
+ await q("INSERT INTO customers(id,business_id,name,phone) VALUES($1,$2,'Depositor','+233200000097')",[customer,ids.biz]);
+ await q("INSERT INTO store_credit_ledger(customer_id,business_id,type,amount) VALUES($1,$2,'issue',50)",[customer,ids.biz]);
+ await q("INSERT INTO ar_invoices(id,business_id,customer_id,invoice_number,total_amount) VALUES($1,$3,$4,'INV-D1',40),($2,$3,$4,'INV-D2',100)",[inv,big,ids.biz,customer]);
+ const pay=(invoice,amount)=>one('SELECT record_ar_deposit_payment($1,$2,CURRENT_DATE,NULL,$3,$4) AS r',[invoice,amount,ids.user,ids.biz]);
+ const credit=async()=>Number((await one('SELECT coalesce(sum(amount),0) AS s FROM store_credit_ledger WHERE customer_id=$1',[customer])).s);
+ assert.equal((await pay(inv,30)).r.new_status,'partial');
+ assert.equal(await credit(),20);
+ // More than is outstanding: the invoice step fails, and the debit goes with it.
+ await assert.rejects(pay(inv,15),/exceeds outstanding/);
+ assert.equal(await credit(),20);
+ // More than the deposit holds.
+ await assert.rejects(pay(big,25),/Insufficient/);
+ assert.equal(await credit(),20);
+ assert.equal(Number((await one('SELECT amount_paid FROM ar_invoices WHERE id=$1',[big])).amount_paid),0);
+ // Another business cannot draw on this customer's deposit through its own id.
+ await assert.rejects(one('SELECT record_ar_deposit_payment($1,1,CURRENT_DATE,NULL,$2,$3)',[inv,ids.otherUser,ids.other]),/Invoice not found/);
+});
+test('SKUs are unique per business, and one QR code marks one unit',async()=>{
+ await db.exec(read('db/migrations/098_products_sku_per_business.sql'));
+ await db.exec(read('db/migrations/099_unique_unit_qr_code.sql'));
+ // The same manufacturer code in two shops; never twice in one.
+ await q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV','SAM-55')",[uuid(),ids.biz]);
+ await q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV','SAM-55')",[uuid(),ids.other]);
+ await assert.rejects(q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV again','SAM-55')",[uuid(),ids.biz]),/duplicate key/);
+ const code=uuid(),unit=()=>q("INSERT INTO inventory_units(business_id,product_id,location_id,qr_code_id,assigned_by) VALUES($1,$2,$3,$4,$5)",[ids.biz,ids.product,ids.loc,code,ids.user]);
+ await unit();
+ await assert.rejects(unit(),/duplicate key/);
+ // Units without a single code (double-QR packs) are unaffected.
+ await q("INSERT INTO inventory_units(business_id,product_id,location_id,assigned_by) VALUES($1,$2,$3,$4),($1,$2,$3,$4)",[ids.biz,ids.product,ids.loc,ids.user]);
+});

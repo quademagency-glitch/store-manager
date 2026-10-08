@@ -60,9 +60,13 @@ router.post('/preview', authGuard, permissionCheck('manage_financials'), upload.
       return res.status(400).json({ error: `entity_type must be one of: ${ENTITY_TYPES.join(', ')}` });
     }
 
-    const { headers, rows } = await parseFile(req.file.buffer, req.file.originalname);
+    const { headers, rows } = await parseFile(req.file.buffer, req.file.originalname, { maxRows: MAX_IMPORT_ROWS });
     if (rows.length === 0) {
       return res.status(400).json({ error: 'The uploaded file has no data rows.' });
+    }
+    // Validate and commit already refused more; preview returned every row.
+    if (rows.length > MAX_IMPORT_ROWS) {
+      return res.status(413).json({ error: `Import is limited to ${MAX_IMPORT_ROWS.toLocaleString()} rows at a time. Split the file and import it in parts.` });
     }
 
     const suggestedMapping = suggestColumnMapping(headers, TARGET_FIELDS[entity_type], entity_type);
@@ -286,7 +290,7 @@ router.post('/batches/:id/undo', authGuard, permissionCheck('manage_financials')
     res.json(data);
   } catch (err) {
     logger.error({ err }, 'Error undoing import batch:');
-    res.status(500).json({ error: err.message || 'Failed to undo import batch.' });
+    res.status(500).json({ error: 'Failed to undo import batch.' });
   }
 });
 

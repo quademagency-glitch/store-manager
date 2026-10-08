@@ -2,7 +2,7 @@ const express = require("express"),
   request = require("supertest");
 const mockDb = { from: jest.fn() };
 const mockSms = { sendCustomSMS: jest.fn() },
-  mockEmail = { sendCustomEmail: jest.fn() };
+  mockEmail = { sendCustomEmail: jest.fn(), buildBusinessMessageHtml: jest.fn(({ text }) => `<p>${text}</p>`) };
 let mockPreferences = [];
 jest.mock("../db/supabase", () => ({ supabaseAdmin: mockDb }));
 jest.mock("../middleware/authGuard", () => (req, res, next) => {
@@ -23,6 +23,7 @@ beforeEach(() => {
     for (const key of ["select", "eq", "in", "is"])
       query[key] = jest.fn(() => query);
     query.single = async () => ({ data: null });
+    query.maybeSingle = async () => ({ data: null });
     query.then = (resolve, reject) =>
       Promise.resolve({
         data:
@@ -69,9 +70,11 @@ test("channel preferences are evaluated separately immediately before dispatch",
   expect(mockEmail.sendCustomEmail).toHaveBeenCalledWith(
     ["b@example.invalid"],
     "Message from Business",
-    "Service follow-up",
+    "<p>Service follow-up</p>",
     null,
   );
+  // No email account of the business's own: framed as coming from the business.
+  expect(mockEmail.buildBusinessMessageHtml).toHaveBeenCalledWith(expect.objectContaining({ text: "Service follow-up", viaPlatform: true }));
 });
 test("a simulated gateway response cannot be reported as sent", async () => {
   mockPreferences = [{ customer_id: "a", channel: "sms", allowed: true }];

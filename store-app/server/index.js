@@ -50,7 +50,7 @@ const reportsRoutes = require('./routes/reports');
 const publicApiRoutes = require('./routes/publicApi');
 const integrationsRoutes = require('./routes/integrations');
 const { paystackWebhookHandler } = require('./routes/paystackWebhook');
-const { healthDeepHandler } = require('./routes/healthDeep');
+const { healthDeepHandler, healthTokenOk } = require('./routes/healthDeep');
 const auditLogsRoutes = require('./routes/auditLogs');
 const { cspReportHandler, cspReportSummaryFromDb } = require('./routes/cspReport');
 const apiKeyGuard = require('./middleware/apiKeyGuard');
@@ -370,10 +370,7 @@ app.get('/api/health/deep', healthDeepLimiter, healthDeepHandler);
 // Same token gate as the deep health check: it reveals which resources the app
 // loads, which is reconnaissance.
 app.get('/api/csp-report/summary', healthDeepLimiter, async (req, res) => {
-  const expected = process.env.HEALTH_CHECK_TOKEN;
-  if (expected && req.get('x-health-token') !== expected) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  if (!healthTokenOk(req)) return res.status(401).json({ error: 'Unauthorized' });
   try {
     // Nonsense input falls back to the default rather than clamping to 1.
     // Clamping would silently narrow the window to a single day, and on this

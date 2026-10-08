@@ -52,7 +52,11 @@ router.get('/', authGuard, async (req, res) => {
     }
 
     const loc = location_id || req.user.active_location_id;
+    const isAdmin = ['Platform Admin', 'Business Admin'].includes(req.user.role);
+    // Branch staff see their branches only (any id from the query string was honoured).
+    if (loc && !isAdmin && !(req.user.location_ids || []).includes(loc)) return res.status(403).json({ error: 'You do not have access to that branch.' });
     if (loc) query = query.eq('location_id', loc);
+    else if (!isAdmin) query = query.in('location_id', req.user.location_ids?.length ? req.user.location_ids : ['00000000-0000-0000-0000-000000000000']);
     if (product_id) query = query.eq('product_id', product_id);
     if (status) query = query.eq('status', status);
 
@@ -213,8 +217,8 @@ router.post('/assign', authGuard, permissionCheck('manage_inventory'), async (re
       .single();
 
     if (unitErr) {
-      if (unitErr.code === '23505') { // unique violation
-        return res.status(409).json({ error: 'Serial number must be unique.' });
+      if (unitErr.code === '23505') { // unique violation: the serial, or (099) the QR code
+        return res.status(409).json({ error: /qr_code_id/.test(unitErr.message || '') ? 'This QR code has just been assigned to another unit.' : 'Serial number must be unique.' });
       }
       throw unitErr;
     }

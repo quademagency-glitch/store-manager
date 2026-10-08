@@ -151,6 +151,10 @@
 
 .trend-up { background: var(--color-success); color: #ffffff; }
 .trend-down { background: var(--color-error); color: #ffffff; }
+/* Dark-theme success/error tokens are pale text colours (#10b981, #fca5a5),
+   which put white badge text at 2.5:1 and 1.9:1. Use deep solid fills. */
+[data-theme="dark"] .trend-up { background: #047857; }   /* 5.48:1 */
+[data-theme="dark"] .trend-down { background: #b91c1c; } /* 6.47:1 */
 .trend-neutral { background: var(--color-bg-tertiary); color: var(--color-text-secondary); border-color: var(--color-border); }
 
 /* Bento Box & Activity Feed */

@@ -21,10 +21,11 @@
       // Resolve the theme BEFORE first paint. This ran in a React effect
       // previously, so the first frame had no data-theme at all and rendered
       // as an unstyled white page. Must stay synchronous and inline.
+      // Light is the default; only an explicit choice in the app selects dark.
+      // The device setting is deliberately ignored.
       (function () {
         try {
-          var stored = localStorage.getItem('app-theme');
-          var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var theme = localStorage.getItem('app-theme') === 'dark' ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', theme);
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute('content', theme === 'dark' ? '#020617' : '#eef2f7');

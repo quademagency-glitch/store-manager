@@ -180,6 +180,43 @@ test.describe('theme is applied before first paint', () => {
       expect(applied).toBe(theme);
     });
   }
+
+  test('light is the default, even on a device set to dark mode', async ({ page }) => {
+    // The owner's decision: only the in-app toggle selects dark.
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.addInitScript(() => {
+      try { localStorage.removeItem('app-theme'); localStorage.setItem('tour_completed', 'true'); } catch { /* storage blocked */ }
+    });
+    await page.goto('/dashboard', { waitUntil: 'commit' });
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+    await page.waitForLoadState('load');
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
+  });
+});
+
+test.describe('dashboard status badges stay readable', () => {
+  // Dark-theme success/error tokens are pale text colours; used as a badge
+  // fill under white text they measured 2.5:1 and 1.9:1.
+  for (const theme of THEMES as readonly Theme[]) {
+    test(theme, async ({ page }) => {
+      await gotoApp(page, '/dashboard', theme);
+      const badges = page.locator('.stat-trend.trend-up, .stat-trend.trend-down');
+      await expect(badges.first()).toBeVisible();
+      const ratios = await badges.evaluateAll((els) => els.map((el) => {
+        const rgb = (v: string) => (v.match(/\d+(\.\d+)?/g) || []).slice(0, 3).map(Number);
+        const lum = ([r, g, b]: number[]) => {
+          const c = [r, g, b].map((x) => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
+          return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+        };
+        const s = getComputedStyle(el);
+        const [a, b] = [lum(rgb(s.color)), lum(rgb(s.backgroundColor))];
+        return { text: el.textContent?.trim(), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+      }));
+      for (const { text, ratio } of ratios) {
+        expect(ratio, `"${text}" badge contrast ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
 });
 
 test('backdrop-filter stays within the blur budget', async ({ page }) => {

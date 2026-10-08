@@ -206,3 +206,47 @@ test("daily work returns no unauthorized queues", async () => {
   expect(r.body.items).toEqual([]);
   expect(mockDb.from.mock.calls.map((c) => c[0])).toEqual(["locations"]);
 });
+
+test("bulk consent is permission protected and bounded before reaching the database", async () => {
+  const body = { customer_ids: [uuid()], channel: "sms", allowed: true, source: "Signed paper forms" };
+  expect((await post("/operations/customers/consent", body)).status).toBe(403);
+  mockUser.permissions = ["manage_marketing"];
+  const tooMany = await post("/operations/customers/consent", { ...body, customer_ids: Array.from({ length: 501 }, uuid) });
+  expect(tooMany.status).toBe(400);
+  expect(tooMany.body.requestRejected).toBe(true);
+  expect((await post("/operations/customers/consent", { ...body, source: "  " })).status).toBe(400);
+  expect(mockDb.rpc).not.toHaveBeenCalledWith("customer_consent_bulk", expect.anything());
+  expect((await post("/operations/customers/consent", body)).status).toBe(200);
+  expect(mockDb.rpc).toHaveBeenCalledWith(
+    "customer_consent_bulk",
+    expect.objectContaining({ p_business_id: mockUser.business_id, p_actor_id: mockUser.id }),
+  );
+});
+
+test("consent preview matches local and international spellings and records nothing", async () => {
+  mockUser.permissions = ["manage_marketing"];
+  const stored = { id: uuid(), name: "Ama Mensah", phone: "+233241234567" };
+  const base = mockDb.from.getMockImplementation();
+  let sentNumbers;
+  mockDb.from.mockImplementation((table) => {
+    const query = base(table);
+    query.single = jest.fn(async () => ({ data: null }));
+    if (table === "customers") {
+      query.in = jest.fn((_column, values) => {
+        sentNumbers = values;
+        return query;
+      });
+      query.then = (resolve, reject) => Promise.resolve({ data: [stored] }).then(resolve, reject);
+    }
+    return query;
+  });
+  const res = await request(app)
+    .post("/operations/customers/consent-preview")
+    .send({ phones: ["024 123 4567", "+233241234567", "0559999999", "not a number"] });
+  expect(res.status).toBe(200);
+  expect(sentNumbers).toEqual(["+233241234567", "+233559999999"]);
+  expect(res.body.matched).toEqual([stored]);
+  expect(res.body.unmatched).toEqual(["0559999999"]);
+  expect(res.body.invalid).toEqual(["not a number"]);
+  expect(mockDb.rpc).not.toHaveBeenCalled();
+});

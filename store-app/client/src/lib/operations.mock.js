@@ -222,6 +222,26 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       labels.push(result);
     }
   }
+  if (path === "/operations/customers/consent-preview") {
+    const tail = (v) => String(v || "").replace(/\D/g, "").slice(-9);
+    const matched = [], unmatched = [], invalid = [];
+    for (const raw of body.phones || []) {
+      if (tail(raw).length < 9) { invalid.push(raw); continue; }
+      const hit = customers.find((c) => c.phone && tail(c.phone) === tail(raw));
+      if (!hit) unmatched.push(raw);
+      else if (!matched.some((m) => m.id === hit.id)) matched.push({ id: hit.id, name: hit.name, phone: hit.phone });
+    }
+    result = { matched, unmatched, invalid };
+  }
+  if (path === "/operations/customers/consent") {
+    for (const row of customers.filter((r) => body.customer_ids.includes(r.id)))
+      Object.assign(row, {
+        allowed: body.allowed,
+        eligible: body.allowed && !!row.phone,
+        preference: !body.allowed ? "Opted out" : row.phone ? "Allowed" : "Contact detail missing",
+      });
+    result = { recorded: body.customer_ids.length, channel: body.channel, allowed: body.allowed };
+  }
   if (path === "/operations/customers/segment")
     result = {
       rows: customers,

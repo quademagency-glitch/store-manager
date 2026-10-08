@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecordedAction } from "../hooks/useRecordedAction";
+import BulkConsent from "../features/operations/BulkConsent";
 import {
   WorkPage,
   Field,
@@ -44,6 +45,20 @@ export default function CustomerSegments() {
       setCampaign(data);
   });
   const locked = action.busy || !!action.pending || !action.ready;
+  // Ticked rows belong to one page of one audience; changing the page,
+  // channel or filters starts a fresh selection.
+  const pageKey = `${channel}|${offset}|${JSON.stringify(applied)}`;
+  const [picked, setPicked] = useState({ key: "", rows: {} });
+  const selectedRows = picked.key === pageKey ? Object.values(picked.rows) : [];
+  const pageRows = audience.data?.rows || [];
+  const allPicked = pageRows.length > 0 && selectedRows.length === pageRows.length;
+  const toggleRow = (row) =>
+    setPicked((p) => {
+      const rows = p.key === pageKey ? { ...p.rows } : {};
+      if (rows[row.id]) delete rows[row.id];
+      else rows[row.id] = row;
+      return { key: pageKey, rows };
+    });
   function edit(row) {
     setCampaign(row);
     setName(row.name);
@@ -160,6 +175,20 @@ export default function CustomerSegments() {
                 <table className="work-table">
                   <thead>
                     <tr>
+                      <th>
+                        <input
+                          type="checkbox"
+                          aria-label="Select all customers on this page"
+                          checked={allPicked}
+                          disabled={!pageRows.length}
+                          onChange={(e) =>
+                            setPicked({
+                              key: pageKey,
+                              rows: e.target.checked ? Object.fromEntries(pageRows.map((r) => [r.id, r])) : {},
+                            })
+                          }
+                        />
+                      </th>
                       <th>Customer</th>
                       <th>Last purchase</th>
                       <th>Contact preference</th>
@@ -167,9 +196,17 @@ export default function CustomerSegments() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!audience.data.rows.length&&<tr className="empty-state-row"><td colSpan={4}><Empty>No customers match these filters.</Empty></td></tr>}
+                    {!audience.data.rows.length&&<tr className="empty-state-row"><td colSpan={5}><Empty>No customers match these filters.</Empty></td></tr>}
                     {audience.data.rows.map((row) => (
                       <tr key={row.id}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${row.name}`}
+                            checked={!!(picked.key === pageKey && picked.rows[row.id])}
+                            onChange={() => toggleRow(row)}
+                          />
+                        </td>
                         <td>
                           <strong>{row.name}</strong>
                           <small>
@@ -242,6 +279,12 @@ export default function CustomerSegments() {
               </div>
             </>
           )}
+          <BulkConsent
+            channel={channel}
+            selected={selectedRows}
+            onClearSelection={() => setPicked({ key: "", rows: {} })}
+            onRecorded={() => audience.refresh()}
+          />
           {preference && (
             <form
               className="work-divider"

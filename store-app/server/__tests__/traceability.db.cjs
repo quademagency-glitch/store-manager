@@ -55,6 +55,7 @@ before(async () => {
   );
   await db.exec(read("db/migrations/090_traceability_operations.sql"));
   await db.exec(read("db/migrations/091_customer_work_and_settlements.sql"));
+  await db.exec(read("db/migrations/092_bulk_customer_consent.sql"));
   await q(
     "INSERT INTO businesses(id,name,slug) VALUES($1,'Retail test','retail-test'),($2,'Other','other-test')",
     [ids.biz, ids.other],
@@ -837,4 +838,64 @@ test('private evidence is tenant scoped, capped atomically and frozen after revi
  await action({action:'update_case',operation_id:uuid(),case_id:c.id,status:'resolved',note:'Reviewed all evidence'});
  await assert.rejects(put(),/read-only/);
  assert.equal((await one('SELECT count(*)::int n FROM workflow_evidence WHERE subject_id=$1',[c.id])).n,10);
+});
+
+test("bulk consent is one journalled transaction, retry-safe, tenant-scoped and removed with the customer", async () => {
+  const mine = [uuid(), uuid(), uuid()],
+    theirs = uuid();
+  for (const [i, c] of mine.entries())
+    await q(
+      "INSERT INTO customers(id,business_id,name,phone) VALUES($1,$2,$3,$4)",
+      [c, ids.biz, "Bulk consent " + i, "+23320000010" + i],
+    );
+  await q(
+    "INSERT INTO customers(id,business_id,name,phone) VALUES($1,$2,'Other tenant','+233200000199')",
+    [theirs, ids.other],
+  );
+  const bulk = async (request) =>
+    (
+      await one("SELECT customer_consent_bulk($1,$2,$3) result", [
+        ids.biz,
+        ids.user,
+        JSON.stringify(request),
+      ])
+    ).result;
+  const allowedCount = async () =>
+    (
+      await one(
+        "SELECT count(*)::int n FROM customer_contact_preferences WHERE business_id=$1 AND customer_id=ANY($2) AND channel='sms' AND allowed",
+        [ids.biz, mine],
+      )
+    ).n;
+  const request = {
+    operation_id: uuid(),
+    customer_ids: [...mine, mine[0]],
+    channel: "sms",
+    allowed: true,
+    source: "Signed paper consent forms, October 2026",
+  };
+  const first = await bulk(request);
+  assert.deepEqual(first, { recorded: 3, channel: "sms", allowed: true });
+  assert.deepEqual(await bulk(request), first, "a retry returns the stored result");
+  assert.equal(await allowedCount(), 3);
+  await assert.rejects(bulk({ ...request, source: "Changed" }), /Reference already used/);
+  await assert.rejects(
+    bulk({ operation_id: uuid(), customer_ids: [mine[0], theirs], channel: "sms", allowed: false, source: "Opt-out list" }),
+    /not found/,
+  );
+  assert.equal(await allowedCount(), 3, "a rejected batch writes nothing");
+  await assert.rejects(
+    bulk({ operation_id: uuid(), customer_ids: Array.from({ length: 501 }, uuid), channel: "sms", allowed: true, source: "List" }),
+    /between 1 and 500/,
+  );
+  await assert.rejects(
+    bulk({ operation_id: uuid(), customer_ids: mine, channel: "sms", allowed: true, source: "   " }),
+    /how this permission was obtained/,
+  );
+  await q("DELETE FROM customers WHERE id=$1", [mine[1]]);
+  assert.equal(
+    (await one("SELECT count(*)::int n FROM customer_contact_preferences WHERE customer_id=$1", [mine[1]])).n,
+    0,
+    "deleting a customer removes their preferences instead of blocking",
+  );
 });

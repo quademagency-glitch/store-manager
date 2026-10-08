@@ -227,3 +227,29 @@ test('purchase cloud draft preserves quantities and costs through release and re
  await expect(page.getByLabel('Unit cost',{exact:true})).toHaveValue('7.50');
  await expect(page.getByLabel('Quantity',{exact:true})).toHaveValue('12');
 });
+test("bulk permission records ticked customers and an imported phone list with their source", async ({
+  page,
+}) => {
+  await gotoApp(page, "/customer-segments");
+  const yaw = page.getByRole("row", { name: /Yaw Owusu/ });
+  const adwoa = page.getByRole("row", { name: /Adwoa Nyarko/ });
+  await expect(yaw).toContainText("Opted out");
+
+  await page.getByRole("checkbox", { name: "Select Yaw Owusu" }).check();
+  await page.getByRole("button", { name: "Record permission for 1 selected" }).click();
+  await page.getByLabel("How and when this permission was obtained").fill("Signed consent form at the Osu shop");
+  await page.getByRole("button", { name: "Record for 1 customer" }).click();
+  await expect(page.getByText("Recorded SMS permission for 1 customer.")).toBeVisible();
+  // Allowed, but there is no phone number to send to.
+  await expect(yaw).toContainText("Contact detail missing");
+
+  await page.getByRole("button", { name: "Import a permission list" }).click();
+  await page.getByLabel("Phone numbers, one per line or as a CSV column").fill("+233 20 333 4455\n0559999999\n1234567");
+  await page.getByRole("button", { name: "Match to customers" }).click();
+  await expect(page.getByText(/1\s+matched · 1\s+not found · 1\s+not a valid number/)).toBeVisible();
+  await page.getByLabel("Permission to contact").last().selectOption("excluded");
+  await page.getByLabel("How and when this permission was obtained").fill("Opt-out list from the front desk");
+  await page.getByRole("button", { name: "Record for 1 customer" }).click();
+  await expect(page.getByText("Recorded SMS opt-out for 1 customer.")).toBeVisible();
+  await expect(adwoa).toContainText("Opted out");
+});

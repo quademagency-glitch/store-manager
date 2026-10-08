@@ -5,6 +5,7 @@ const { supabaseAdmin: db } = require("../db/supabase");
 const authGuard = require("../middleware/authGuard");
 const permissionCheck = require("../middleware/permissionCheck");
 const { transactionError } = require("../utils/transactionError");
+const { resolveCountry, normalizePhone } = require("../utils/phone");
 const router = express.Router();
 const id = z.uuid(),
   text = z.string().trim(),
@@ -231,6 +232,69 @@ router.post(
   "/customers/actions",
   permissionCheck("manage_marketing"),
   mutation(marketing, "customer_work_action", false),
+);
+// The same permission recorded for up to 500 customers in one journalled
+// transaction, with how it was obtained (a paper form, a signup list).
+const consent = z.object({
+  operation_id: id,
+  customer_ids: z.array(id).min(1).max(500),
+  channel: z.enum(["sms", "email"]),
+  allowed: z.boolean(),
+  source: text.min(1).max(1000),
+});
+router.post(
+  "/customers/consent",
+  permissionCheck("manage_marketing"),
+  mutation(consent, "customer_consent_bulk", false),
+);
+// Match a pasted or uploaded list of phone numbers to existing customers.
+// Nothing is recorded here; the reviewed matches are sent to /consent.
+router.post(
+  "/customers/consent-preview",
+  permissionCheck("manage_marketing"),
+  async (req, res) => {
+    const p = z
+      .object({ phones: z.array(text.max(30)).min(1).max(2000) })
+      .safeParse(req.body);
+    if (!p.success)
+      return res
+        .status(400)
+        .json({ error: "Paste between 1 and 2,000 phone numbers." });
+    try {
+      const country = await resolveCountry(
+        db,
+        req.user.business_id,
+        req.user.active_location_id,
+      );
+      const typed = new Map(),
+        invalid = [];
+      for (const raw of p.data.phones) {
+        if (!raw) continue;
+        const e164 = normalizePhone(raw, country);
+        if (!e164) invalid.push(raw);
+        else if (!typed.has(e164)) typed.set(e164, raw);
+      }
+      const numbers = [...typed.keys()],
+        found = [];
+      for (let i = 0; i < numbers.length; i += 200)
+        found.push(
+          ...(await data(
+            list("customers", req, "id,name,phone").in(
+              "phone",
+              numbers.slice(i, i + 200),
+            ),
+          )),
+        );
+      const matched = new Set(found.map((c) => c.phone));
+      res.json({
+        matched: found.map((c) => ({ id: c.id, name: c.name, phone: c.phone })),
+        unmatched: numbers.filter((n) => !matched.has(n)).map((n) => typed.get(n)),
+        invalid,
+      });
+    } catch (e) {
+      fail(res, e);
+    }
+  },
 );
 router.get(
   "/customers/segment",

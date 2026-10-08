@@ -1,6 +1,6 @@
 import { useBasketWorkspace } from '../hooks/useBasketWorkspace';
 import SharedDraftControls from '../features/operations/SharedDraftControls';
-import { stockAt } from '../lib/stockStatus';
+import { stockAt, unitCount } from '../lib/stockStatus';
 import { ErrorBanner } from '../components/ui';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -590,10 +590,10 @@ export default function Sales() {
       {/* ─── Left Panel: Catalog ─── */}
       <div className="sales-catalog">
         <div className="catalog-header">
-          <div className="catalog-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <h1 className="catalog-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             POS Terminal
-          </div>
+          </h1>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {/* Discoverability: shortcuts nobody knows about save nobody time. */}
             <button
@@ -676,7 +676,7 @@ export default function Sales() {
 
         <div className="pos-basket-tools">
           <button className="btn btn-secondary btn-sm" disabled={!wizardItems.length || !!savedCheckout || isProcessing} onClick={baskets.park}>Park basket</button>
-          <select className="form-input" aria-label="Resume parked basket" value="" disabled={!!savedCheckout || isProcessing} onChange={e => e.target.value && baskets.resume(e.target.value)}><option value="">Parked baskets ({baskets.workspace.parked.length})</option>{baskets.workspace.parked.map(basket => <option key={basket.id} value={basket.id}>{basket.customer?.name || 'Customer not selected'} · {basket.items.reduce((sum, item) => sum + item.quantity, 0)} units · {new Date(basket.savedAt).toLocaleTimeString()}</option>)}</select>
+          <select className="form-input" aria-label="Resume parked basket" value="" disabled={!!savedCheckout || isProcessing} onChange={e => e.target.value && baskets.resume(e.target.value)}><option value="">Parked baskets ({baskets.workspace.parked.length})</option>{baskets.workspace.parked.map(basket => <option key={basket.id} value={basket.id}>{basket.customer?.name || 'Customer not selected'} · {unitCount(basket.items.reduce((sum, item) => sum + item.quantity, 0))} · {new Date(basket.savedAt).toLocaleTimeString()}</option>)}</select>
           <small>{baskets.ready && !baskets.error ? 'Basket saved on this device. ' : ''}Customer and all unit codes are required to pay.</small>
         </div>
         <SharedDraftControls kind="basket" value={{items:wizardItems,customer:selectedCustomer}} disabled={!baskets.ready || !!savedCheckout || isProcessing} onLoad={value=>{if(!Array.isArray(value.items))throw new Error('This saved basket is invalid.');setWizardItems(value.items);setSelectedCustomer(value.customer||null);}} />
@@ -757,7 +757,7 @@ export default function Sales() {
         </div>
       </div>
 
-      <div className="pos-mobile-bar"><span aria-live="polite">{wizardItems.reduce((sum, item) => sum + item.quantity, 0)} units · <strong>{fmt(taxLine.total)}</strong></span><button className="btn btn-primary" onClick={() => setMobileCartOpen(true)}>View cart & checkout</button></div>
+      <div className="pos-mobile-bar"><span aria-live="polite">{unitCount(wizardItems.reduce((sum, item) => sum + item.quantity, 0))} · <strong>{fmt(taxLine.total)}</strong></span><button className="btn btn-primary" onClick={() => setMobileCartOpen(true)}>View cart & checkout</button></div>
       {/* ─── Modals ─── */}
 
       {/* Customer Selection Modal */}

@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { business } = usePrintDocument();
   const { fmt } = useCurrency(business);
   const {
-    summary, recentActivity, loading, error, resources,
+    summary, recentActivity, error, resources,
     salesTrend, topProducts, inventoryHealth, staffPerformance,
     fetchSummary, fetchRecentActivity,
     fetchSalesTrend, fetchTopProducts, fetchInventoryHealth, fetchStaffPerformance
@@ -49,6 +49,9 @@ export default function Dashboard() {
   };
 
   const todayTxCount = summary?.todayTransactionCount ?? null;
+  // The tiles follow the summary request alone. A badge such as "All clear"
+  // only appears beside a value that has actually loaded.
+  const summaryLoading = !!resources?.summary?.loading;
 
   return (
     <>
@@ -110,7 +113,7 @@ export default function Dashboard() {
         </div>
 
         {/* Enhanced Stats Grid */}
-        {summary && !resources?.summary?.error && <div className="stats-grid">
+        {(summary || summaryLoading) && !resources?.summary?.error && <div className="stats-grid" aria-busy={summaryLoading}>
           {hasPermission('view_sales') && (
             <Link to="/sales-record" className="stat-card" aria-label="View today's sales records">
               <div className="stat-icon stat-icon-sales">
@@ -122,8 +125,8 @@ export default function Dashboard() {
               <div className="stat-details">
                 <span className="stat-label">Today's Sales</span>
                 <div className="stat-value-row">
-                  <span className="stat-value">{loading ? '...' : fmt(summary?.todaySalesTotal)}</span>
-                  {!loading && todayTxCount !== null && (
+                  <span className="stat-value">{summaryLoading ? '…' : fmt(summary?.todaySalesTotal)}</span>
+                  {!summaryLoading && todayTxCount !== null && (
                     <span className="stat-trend trend-neutral">{todayTxCount} tx</span>
                   )}
                 </div>
@@ -144,7 +147,7 @@ export default function Dashboard() {
               <div className="stat-details">
                 <span className="stat-label">Products</span>
                 <div className="stat-value-row">
-                  <span className="stat-value">{loading ? '...' : summary?.totalProducts || 0}</span>
+                  <span className="stat-value">{summaryLoading ? '…' : summary?.totalProducts || 0}</span>
                   <span className="stat-trend trend-neutral">Active catalog</span>
                 </div>
                 <span className="stat-hint">Listed in inventory</span>
@@ -164,10 +167,10 @@ export default function Dashboard() {
               <div className="stat-details">
                 <span className="stat-label">Stock Alerts</span>
                 <div className="stat-value-row">
-                  <span className="stat-value">{loading ? '...' : summary?.lowStockCount || 0}</span>
-                  <span className={`stat-trend ${(summary?.lowStockCount > 0) ? 'trend-down' : 'trend-neutral'}`}>
+                  <span className="stat-value">{summaryLoading ? '…' : summary?.lowStockCount || 0}</span>
+                  {!summaryLoading && <span className={`stat-trend ${(summary?.lowStockCount > 0) ? 'trend-down' : 'trend-neutral'}`}>
                     {(summary?.lowStockCount > 0) ? '↑ Action needed' : 'All good'}
-                  </span>
+                  </span>}
                 </div>
                 <span className="stat-hint">Items low on stock</span>
               </div>
@@ -186,10 +189,10 @@ export default function Dashboard() {
               <div className="stat-details">
                 <span className="stat-label">Stock Discrepancies</span>
                 <div className="stat-value-row">
-                  <span className="stat-value">{loading ? '...' : summary?.theftAlertsCount || 0}</span>
-                  <span className={`stat-trend ${(summary?.theftAlertsCount > 0) ? 'trend-down' : 'trend-up'}`}>
+                  <span className="stat-value">{summaryLoading ? '…' : summary?.theftAlertsCount || 0}</span>
+                  {!summaryLoading && <span className={`stat-trend ${(summary?.theftAlertsCount > 0) ? 'trend-down' : 'trend-up'}`}>
                     {(summary?.theftAlertsCount > 0) ? '↑ Investigate' : 'All clear'}
-                  </span>
+                  </span>}
                 </div>
                 <span className="stat-hint">Shrinkage events (30d)</span>
               </div>

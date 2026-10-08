@@ -8,3 +8,6 @@ export function stockAt(product, location = 'all') {
     threshold: rows.reduce((sum, row) => sum + Number(row.low_stock_threshold || 0), 0),
   };
 }
+
+/** "1 unit", "3 units". */
+export const unitCount = n => `${n} ${Number(n) === 1 ? 'unit' : 'units'}`;

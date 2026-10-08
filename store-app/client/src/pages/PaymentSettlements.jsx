@@ -10,6 +10,11 @@ import {
   ActionState,
   useRecords,
 } from "../features/operations/WorkSurface";
+
+// Returns carry no number of their own; the original receipt is what staff
+// and customers will recognise.
+const refundLabel = (r) =>
+  `Refund for ${r.original_sale?.receipt_number || `sale ${r.original_sale_id?.slice(0, 8)}`}`;
 export default function PaymentSettlements() {
   const records = useRecords("/operations/statements");
   const [provider, setProvider] = useState(""),
@@ -295,7 +300,7 @@ export default function PaymentSettlements() {
                       <option value="">Choose a verified record</option>
                       {candidates.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {r.receipt_number || `Refund ${r.id.slice(0, 8)}`} ·{" "}
+                          {r.receipt_number || refundLabel(r)} ·{" "}
                           {r.settled_at?.slice(0, 10) ||
                             r.created_at?.slice(0, 10)}
                         </option>
@@ -342,7 +347,7 @@ export default function PaymentSettlements() {
                 .filter((r) => !matchedRefunds.has(r.id))
                 .map((r) => (
                   <p key={r.id}>
-                    Refund {r.id.slice(0, 8)} · {r.refund_method} ·{" "}
+                    {refundLabel(r)} · {r.refund_method} ·{" "}
                     {Number(r.payment_refund_amount).toFixed(2)}
                   </p>
                 ))}

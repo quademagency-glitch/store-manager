@@ -187,15 +187,16 @@ export default function CustomerSegments() {
                         <td>
                           <div className="work-inline">
                             <button
-                              className="btn btn-ghost"
+                              className="btn btn-secondary"
                               disabled={locked}
+                              aria-label={`Record ${channel} contact permission for ${row.name}`}
                               onClick={() => {
                                 setPreference(row);
                                 setAllowed(row.allowed);
                                 setSource("");
                               }}
                             >
-                              Preference
+                              Record permission
                             </button>
                             <button
                               className="btn btn-secondary"

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { useAuthContext } from "../lib/AuthContext";
+import { unitCount } from "../lib/stockStatus";
 import { useRecordedAction } from "../hooks/useRecordedAction";
 import {
   WorkPage,
@@ -155,8 +156,8 @@ export default function UnitTransfers() {
               }
             >
               {shipment
-                ? `Receive ${units.length} units`
-                : `Dispatch ${units.length} units`}
+                ? `Receive ${unitCount(units.length)}`
+                : `Dispatch ${unitCount(units.length)}`}
             </button>
             {shipment && (
               <button

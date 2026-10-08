@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useRecordedAction } from "../hooks/useRecordedAction";
+import { unitCount } from "../lib/stockStatus";
 import {
   WorkPage,
   Field,
@@ -51,7 +52,7 @@ export default function ReturnInspections() {
                 <Badge>{row.status}</Badge>
               </div>
               <p>
-                {row.item?.quantity} units · {row.item?.return?.reason}
+                {unitCount(row.item?.quantity)} · {row.item?.return?.reason}
               </p>
               <small>{stamp(row.created_at)}</small>
               {(

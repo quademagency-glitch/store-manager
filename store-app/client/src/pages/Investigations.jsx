@@ -17,7 +17,7 @@ export default function Investigations() {
   const records = useRecords("/traceability/cases"),
     staff = useRecords("/traceability/staff"),
     labels = useRecords("/traceability/labels");
-  const { hasPermission } = useAuthContext();
+  const { hasPermission, user } = useAuthContext();
   const [selected, setSelected] = useState(null),
     [title, setTitle] = useState(""),
     [note, setNote] = useState(""),
@@ -264,7 +264,10 @@ export default function Investigations() {
             <p>
               {row.reason} · {row.requester?.name}
             </p>
-            {!row.approved_at && hasPermission("manage_business") && (
+            {!row.approved_at && hasPermission("manage_business") && row.requested_by === user?.id && (
+              <p className="workspace-status">Waiting for another manager to approve.</p>
+            )}
+            {!row.approved_at && hasPermission("manage_business") && row.requested_by !== user?.id && (
               <button
                 className="btn btn-secondary"
                 disabled={locked}

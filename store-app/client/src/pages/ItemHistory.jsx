@@ -16,11 +16,14 @@ import {
 export default function ItemHistory() {
   const [params, setParams] = useSearchParams();
   const [input, setInput] = useState(params.get("code") || "");
-  const code = params.get("code") || "",
-    unitId = params.get("unit") || "";
+  const code = params.get("code") || "";
   const matches = useRecords(
     code ? `/traceability/lookup?code=${encodeURIComponent(code)}` : null,
   );
+  // A scan that resolves to one item opens its history without a second click.
+  const unitId =
+    params.get("unit") ||
+    (matches.data?.length === 1 ? matches.data[0].id : "");
   const detail = useRecords(unitId ? `/traceability/units/${unitId}` : null);
   const { hasPermission } = useAuthContext();
   const info = detail.data;

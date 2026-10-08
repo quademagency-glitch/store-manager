@@ -26,7 +26,7 @@ test("item lookup exposes attributable history and original receipt without clai
     .getByLabel("Item code, pack code or serial number")
     .fill("QD-004821");
   await page.getByRole("button", { name: "Find item", exact: true }).click();
-  await page.getByRole("button", { name: /LG 43-inch Television/ }).click();
+  // A code that resolves to one item opens its history without a second click.
   await expect(
     page.getByRole("heading", { name: "Recorded history", exact: true }),
   ).toBeVisible();
@@ -80,7 +80,7 @@ test("receiving transfer requires scans and records the received unit", async ({
   await page.getByLabel("Scan unique item code").fill("QD-004821");
   await page.getByRole("button", { name: "Add unit", exact: true }).click();
   await capture(page, "04-scanned-transfer");
-  await page.getByRole("button", { name: "Receive 1 units" }).click();
+  await page.getByRole("button", { name: "Receive 1 unit", exact: true }).click();
   await expect(
     page.getByText("1 dispatched · 1 received · 0 outstanding"),
   ).toBeVisible();
@@ -105,12 +105,30 @@ test("investigation notes append and a reviewed resolution remains visible", asy
   ).toBeVisible();
   await capture(page, "05-investigation");
 });
+test("a label replacement is never offered for approval to the person who requested it", async ({
+  page,
+}) => {
+  await gotoApp(page, "/investigations");
+  await page.getByLabel("Current item code").fill("QD-004821");
+  await page.getByLabel("Unused replacement code").fill("QD-009999");
+  await page.getByLabel("Reason for replacement").fill("Label torn in storage");
+  await page.getByRole("button", { name: "Request replacement" }).click();
+  await expect(
+    page.getByText("Waiting for another manager to approve.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Approve and replace label" }),
+  ).toHaveCount(0);
+});
 test("customer preference exclusion and reviewed campaign draft are visible in dark mode", async ({
   page,
 }) => {
   await gotoApp(page, "/customer-segments", "dark");
   await expect(
     page.getByText("Opted out", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Record sms contact permission for / }).first(),
   ).toBeVisible();
   await page.getByLabel("Campaign name").fill("After-sales care");
   await page

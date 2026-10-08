@@ -216,6 +216,7 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
         old_code: { code: unit.item_code },
         new_code: { code: body.new_code },
         reason: body.note,
+        requested_by: "mock-user",
         requester: { name: "Ama Mensah" },
       };
       labels.push(result);

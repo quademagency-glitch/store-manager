@@ -21,11 +21,11 @@ test('mobile checkout opens above catalogue, keeps customer and tracking gates, 
  await expect(cart.getByRole('button',{name:'Select Customer First'})).toBeDisabled();
  await expect(cart).toContainText('unit codes are required');
  await cart.getByRole('button',{name:'Park basket'}).click();
- await expect(cart.getByLabel('Resume parked basket')).toContainText('1 units');
+ await expect(cart.getByLabel('Resume parked basket')).toContainText('1 unit ·');
  await page.reload();
  await page.locator('.pos-mobile-bar button').click();
  const resume=page.getByLabel('Resume parked basket');
- await expect(resume).toContainText('1 units');
+ await expect(resume).toContainText('1 unit ·');
  await resume.selectOption({index:1});
  await expect(page.locator('.cart-items')).toContainText('Perfumed Rice');
  await expect(cart.getByRole('button',{name:'Select Customer First'})).toBeDisabled();

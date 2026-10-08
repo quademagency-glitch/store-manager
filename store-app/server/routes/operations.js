@@ -462,7 +462,7 @@ router.get(
           branch(
             "returns",
             req,
-            "id,original_sale_id,payment_refund_amount,refund_method,created_at",
+            "id,original_sale_id,payment_refund_amount,refund_method,created_at,original_sale:sales!original_sale_id(receipt_number)",
           )
             .in("refund_method", ["card", "mobile"])
             .order("created_at", { ascending: false })

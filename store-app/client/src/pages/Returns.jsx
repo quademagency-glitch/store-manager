@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast';
 import LetterheadRenderer, { LetterheadFooter } from '../components/LetterheadRenderer';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useCurrency } from '../hooks/useCurrency';
+import { taskStart, trackTask } from '../lib/analytics';
 import '../styles/returns.css';
 
 const money = n => Math.round((Number(n) + Number.EPSILON) * 100);
@@ -23,6 +24,7 @@ export default function Returns() {
   const linkedSale = params.get('sale');
   const generation = useRef(0);
   const request = useRef(null);
+  const startedAt = useRef(null); // anonymous return timing: first lookup to recorded refund
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [sale, setSale] = useState(null);
@@ -50,6 +52,7 @@ export default function Returns() {
 
   async function search(e) {
     e.preventDefault();
+    startedAt.current ??= taskStart();
     const current = generation.current;
     setBusy(true); setError('');
     try {
@@ -60,6 +63,7 @@ export default function Returns() {
     finally { if (current === generation.current) setBusy(false); }
   }
   async function open(id) {
+    startedAt.current ??= taskStart();
     const current = generation.current;
     setBusy(true); setError('');
     try {
@@ -95,6 +99,7 @@ export default function Returns() {
       if (current !== generation.current) return;
       setReceipt({ ...data, receiptNumber: sale.receipt_number || sale.id.slice(0,8), customer: sale.customer?.name || 'Walk-in Customer' });
       setSale(null); setResults([]); setRetry(false); request.current = null;
+      trackTask('return', startedAt.current); startedAt.current = null;
       toast.success('Return recorded. Inspect the returned goods before restocking.');
     } catch (err) {
       if (current !== generation.current) return;

@@ -70,7 +70,9 @@ router.get('/lookup', authGuard, async (req, res) => {
       return res.json({ qr: qrRecord, unit: null, message: 'QR code exists but is not assigned to any item.' });
     }
 
-    // Find the inventory unit
+    // Find the inventory unit. Label codes come from one shared pool, so the
+    // unit must be scoped to the caller's business or this returns another
+    // tenant's product, price and branch.
     const { data: unit, error: unitErr } = await supabaseAdmin
       .from('inventory_units')
       .select(`
@@ -80,7 +82,8 @@ router.get('/lookup', authGuard, async (req, res) => {
         qr:qr_code_pool!qr_code_id(id, code)
       `)
       .eq('qr_code_id', qrRecord.id)
-      .single();
+      .eq('business_id', req.user.business_id)
+      .maybeSingle();
 
     if (unitErr || !unit) {
       return res.status(404).json({ error: 'Unit not found for this QR code' });

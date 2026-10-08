@@ -1,5 +1,5 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
-import { ENTITY, DPA_VERSION, EFFECTIVE_DATE, postalLine } from '../legal/entity';
+import { ENTITY, DPA_VERSION, DPA_EFFECTIVE_DATE, postalLine } from '../legal/entity';
 import { analyticsAllowed, subprocessorAllowed } from '../lib/analyticsGate';
 
 /* Clause 5.2 names sub-processors that actually process. Derived from the same
@@ -46,7 +46,7 @@ const SPEED_INSIGHTS_LIVE = subprocessorAllowed(
  */
 export default function Dpa() {
   return (
-    <LegalLayout title="Data Processing Agreement" version={DPA_VERSION} effective={EFFECTIVE_DATE}>
+    <LegalLayout title="Data Processing Agreement" version={DPA_VERSION} effective={DPA_EFFECTIVE_DATE}>
       <p>
         This agreement governs our handling of personal data that you put into {ENTITY.product}{' '}
         about other people: your customers, your staff, your suppliers. It forms part of the{' '}
@@ -157,7 +157,7 @@ export default function Dpa() {
         <Sub n="5.2">
           Our current sub-processors are Supabase (database, authentication and file storage),
           Railway (application hosting), Vercel (web application hosting and delivery{SPEED_INSIGHTS_LIVE ? ', and page performance timings recorded against the route visited rather than against you' : ''})
-          {ANALYTICS_LIVE ? ', Resend (transactional email) and PostHog (product analytics, in the United States, which records which screens are opened and not what is on them)' : ' and Resend (transactional email)'}.
+          {ANALYTICS_LIVE ? ', Resend (transactional email) and PostHog (product analytics, in the United States, which records which screens are opened and how long everyday tasks take, not what is on them)' : ' and Resend (transactional email)'}.
           Paystack processes your own billing data but does not process the data covered by this
           agreement.
         </Sub>

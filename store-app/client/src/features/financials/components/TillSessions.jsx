@@ -3,6 +3,7 @@ import { useAuthContext } from '../../../lib/AuthContext';
 import { api } from '../../../lib/api';
 import { useRecordedAction } from '../../../hooks/useRecordedAction';
 import { ErrorBanner } from '../../../components/ui';
+import { taskStart, trackTask } from '../../../lib/analytics';
 
 const DENOMINATIONS = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
 const delta = (snapshot, start, key) => Number(snapshot?.[key] || 0) - Number(start?.[key] || 0);
@@ -20,6 +21,7 @@ export default function TillSessions({ fmt, currency, printElement }) {
   const [movementNote, setMovementNote] = useState('');
   const [reviewNotes, setReviewNotes] = useState({});
   const requestId = useRef(0);
+  const closeStartedAt = useRef(null); // anonymous timing: starting the count to recording the close
   const load = useCallback(async () => {
     const id = ++requestId.current;
     setLoading(true); setError('');
@@ -28,7 +30,7 @@ export default function TillSessions({ fmt, currency, printElement }) {
     finally { if (id === requestId.current) setLoading(false); }
   }, []);
   useEffect(() => { setData(null); setCounted(''); setCounts({}); setNote(''); setOpening(''); setMovement(''); setMovementNote(''); load(); }, [activeLocationId, load]);
-  const action = useRecordedAction('retail:till', async () => { setNote(''); setCounted(''); setCounts({}); setMovement(''); setMovementNote(''); await load(); window.dispatchEvent(new Event('quaderp:till-updated')); });
+  const action = useRecordedAction('retail:till', async (_response, request) => { if (request.body?.action === 'close') { trackTask('till_close', closeStartedAt.current); closeStartedAt.current = null; } setNote(''); setCounted(''); setCounts({}); setMovement(''); setMovementNote(''); await load(); window.dispatchEvent(new Event('quaderp:till-updated')); });
   const current = data?.sessions?.find(row => row.status === 'open');
   const expected = current ? Number(current.opening_float) + delta(data.snapshot, current.opening_snapshot, 'cash_sales') + delta(data.snapshot, current.opening_snapshot, 'cash_in') - delta(data.snapshot, current.opening_snapshot, 'cash_out') - delta(data.snapshot, current.opening_snapshot, 'cash_refunds') : 0;
   const locked = action.busy || !!action.pending || !action.ready || loading;
@@ -53,7 +55,7 @@ export default function TillSessions({ fmt, currency, printElement }) {
         <label>Reason / deposit reference<input className="form-input" required minLength={3} value={movementNote} onChange={e => setMovementNote(e.target.value)} disabled={locked} /></label>
         <button className="btn btn-secondary" value="cash_in" disabled={locked}>Record cash in</button><button className="btn btn-secondary" value="cash_out" disabled={locked}>Record bank deposit</button>
       </form>}
-      <form onSubmit={e => { e.preventDefault(); post({action:'close',session_id:current.id,counted_cash:Number(counted),denominations:counts,note}); }}>
+      <form onFocusCapture={() => { closeStartedAt.current ??= taskStart(); }} onSubmit={e => { e.preventDefault(); post({action:'close',session_id:current.id,counted_cash:Number(counted),denominations:counts,note}); }}>
         {currency === 'GHS' && <details><summary>Count Ghana cedi notes and coins</summary><div className="workspace-form-grid">{DENOMINATIONS.map(value => <label key={value}>{fmt(value)}<input className="form-input" type="number" min="0" step="1" value={counts[value] ?? ''} disabled={locked} onChange={e => { const next={...counts,[value]:Number(e.target.value)}; setCounts(next); setCounted(Object.entries(next).reduce((sum,[denomination,qty])=>sum+Number(denomination)*qty,0).toFixed(2)); }} /></label>)}</div></details>}
         <div className="workspace-toolbar"><label>Actual cash counted<input className="form-input" type="number" required min="0" step="0.01" value={counted} onChange={e => { setCounted(e.target.value); setCounts({}); }} disabled={locked} /></label><label>Handover / variance explanation<input className="form-input" required={counted !== '' && Math.round(Number(counted)*100) !== Math.round(expected*100)} minLength={5} value={note} onChange={e => setNote(e.target.value)} disabled={locked} /></label><button className="btn btn-primary" disabled={locked}>Close till & record count</button></div>
         {counted !== '' && <p role="status">Difference from current expected cash: {fmt(Number(counted)-expected)}. The server checks the latest recorded cash when you close.</p>}

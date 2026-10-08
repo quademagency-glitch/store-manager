@@ -24,6 +24,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { computeTax } from '../lib/tax';
+import { taskStart, trackTask } from '../lib/analytics';
 import { useCurrency } from '../hooks/useCurrency';
 import { PageHeader } from '../components/ui';
 
@@ -88,6 +89,12 @@ export default function Sales() {
   // its own tracking codes and checkout stays blocked until all are filled.
   const wizardItems = baskets.workspace.items;
   const setWizardItems = baskets.setItems;
+  // Anonymous sale timing: from the first item in an empty cart to payment.
+  const saleStartedAt = useRef(null);
+  useEffect(() => {
+    if (wizardItems.length === 0) saleStartedAt.current = null;
+    else if (saleStartedAt.current === null) saleStartedAt.current = taskStart();
+  }, [wizardItems.length]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const productSearchRef = useRef(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
@@ -311,6 +318,7 @@ export default function Sales() {
       const saleData = response.sale;
       if (saleData.status === 'voided') throw Object.assign(new Error('This saved checkout expired or was cancelled. Clear it before creating another sale.'), { status:409 });
       if (saleData.status === 'completed' && !draft.payment) {
+        trackTask('sale', saleStartedAt.current);
         setReceiptData(saleData); setShowReceipt(true); await clearCheckoutDraft(scope); setSavedCheckout(null); setWizardItems([]); setSelectedCustomer(null); checkoutDraft.current = null; return;
       }
       setPendingSale(saleData);
@@ -410,6 +418,7 @@ export default function Sales() {
       });
       settlementAttempt.current = null;
       setPaymentUnconfirmed(false);
+      trackTask('sale', saleStartedAt.current);
       setReceiptData(fullReceipt);
       setShowPaymentModal(false);
       setShowReceipt(true);

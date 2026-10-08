@@ -8,6 +8,7 @@ import 'virtual:pwa-register'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { analyticsAllowed } from './lib/analyticsGate'
+import { scrubEvent } from './lib/analytics'
 
 /* Two conditions, not one. The key says analytics is configured; the start
    date says the 30 days' notice the DPA owes every business customer has
@@ -51,6 +52,9 @@ if (analyticsOn) {
     capture_dead_clicks: false,
     capture_exceptions: false,
     disable_surveys: true,
+    // Every event, including properties PostHog adds itself, leaves with the
+    // route pattern only: no query string, so nothing typed. See lib/analytics.
+    before_send: scrubEvent,
   })
 }
 

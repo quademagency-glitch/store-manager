@@ -19,6 +19,7 @@ import PurchaseOrderDocument from '../components/PurchaseOrderDocument';
 import PurchaseOrderForm from '../features/inventory/components/PurchaseOrderForm';
 import ReceiveGoodsModal from '../features/inventory/components/ReceiveGoodsModal';
 import { api } from '../lib/api';
+import { taskStart, trackTask } from '../lib/analytics';
 import { EmptyStateRow, SkeletonTable, ErrorBanner } from '../components/ui';
 
 export default function PurchaseOrders() {
@@ -42,8 +43,11 @@ export default function PurchaseOrders() {
   const scope = useOfflineScope();
   const location = useLocation();
   const initialDraft = location.state?.reorderDraft || null;
-  useEffect(() => { if (initialDraft && canManage) { setEditingOrder(null); setIsFormOpen(true); } }, [initialDraft, canManage]);
-  const saveAction = useRecordedAction('retail:purchase', async (_result, request) => { await clearOperationDraft(`po-form:${request.path === '/purchase-orders' ? 'new' : request.path.split('/').pop()}`, scope); await fetchOrders(1, statusFilter); setIsFormOpen(false); toast.success('Purchase order saved'); });
+  // Anonymous timing: opening a new order to saving it, and opening a delivery to receiving it.
+  const createStartedAt = useRef(null);
+  const receiveStartedAt = useRef(null);
+  useEffect(() => { if (initialDraft && canManage) { createStartedAt.current = taskStart(); setEditingOrder(null); setIsFormOpen(true); } }, [initialDraft, canManage]);
+  const saveAction = useRecordedAction('retail:purchase', async (_result, request) => { if (request.method === 'post' && request.path === '/purchase-orders') { trackTask('purchase_order', createStartedAt.current); createStartedAt.current = null; } await clearOperationDraft(`po-form:${request.path === '/purchase-orders' ? 'new' : request.path.split('/').pop()}`, scope); await fetchOrders(1, statusFilter); setIsFormOpen(false); toast.success('Purchase order saved'); });
 
   // Receive goods
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
@@ -109,6 +113,7 @@ export default function PurchaseOrders() {
   };
 
   const handleCreate = () => {
+    createStartedAt.current = taskStart();
     setEditingOrder(null);
     setFormError('');
     setIsFormOpen(true);
@@ -168,6 +173,7 @@ export default function PurchaseOrders() {
   };
 
   const handleReceiveOpen = async (po) => {
+    receiveStartedAt.current = taskStart();
     try {
       const detail = await api.get(`/purchase-orders/${po.id}`);
       receiveAttempt.current = scope ? await getOperationDraft(`receive:${po.id}`, scope) : null;
@@ -205,6 +211,7 @@ export default function PurchaseOrders() {
         throw new Error(result.error);
       }
       receiveAttempt.current = null; setReceiveLocked(false);
+      trackTask('goods_received', receiveStartedAt.current); receiveStartedAt.current = null;
 
       toast.success(result.data?.message || 'Goods received successfully');
       setIsReceiveOpen(false);

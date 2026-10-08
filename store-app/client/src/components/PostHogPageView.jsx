@@ -8,9 +8,8 @@ export default function PostHogPageView() {
 
   useEffect(() => {
     if (posthog) {
-      posthog.capture('$pageview', {
-        $current_url: window.location.href,
-      });
+      // The address is reduced to its route pattern by `before_send`.
+      posthog.capture('$pageview');
     }
   }, [location, posthog]);
 

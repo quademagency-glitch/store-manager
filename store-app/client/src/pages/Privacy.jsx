@@ -1,5 +1,5 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
-import { ENTITY, PRIVACY_VERSION, EFFECTIVE_DATE, identityPhrase } from '../legal/entity';
+import { ENTITY, PRIVACY_VERSION, PRIVACY_EFFECTIVE_DATE, identityPhrase } from '../legal/entity';
 import { analyticsAllowed, subprocessorAllowed } from '../lib/analyticsGate';
 
 /* Read from the same switch the software reads, so this page cannot describe
@@ -65,7 +65,7 @@ const SPEED_INSIGHTS_LIVE = subprocessorAllowed(
  */
 export default function Privacy() {
   return (
-    <LegalLayout title="Privacy Policy" version={PRIVACY_VERSION} effective={EFFECTIVE_DATE}>
+    <LegalLayout title="Privacy Policy" version={PRIVACY_VERSION} effective={PRIVACY_EFFECTIVE_DATE}>
       <p>
         This notice explains what personal data we hold, why we hold it, who else sees it, how long
         we keep it, and what you can require us to do about it. It is given under the Data
@@ -297,11 +297,13 @@ export default function Privacy() {
                 <tr>
                   <td>PostHog</td>
                   <td>
-                    Product analytics: which screens are opened and how often, with the approximate
-                    location taken from your IP address and your browser and device type. Page
-                    addresses are included and some contain the identifier of a record. It does not
-                    receive your customer records, your products, your prices or anything you type:
-                    click tracking and session recording are switched off.
+                    Product analytics: which screens are opened and how often, and which everyday
+                    tasks are completed (a sale, a till close, a return, receiving goods or a purchase
+                    order) with how long each took. It also receives the approximate location taken
+                    from your IP address and your browser and device type. Page addresses are
+                    included without their search text, and some contain the identifier of a record.
+                    It does not receive your customer records, your products, your prices, amounts
+                    or anything you type: click tracking and session recording are switched off.
                     {!ANALYTICS_LIVE && (
                       <> <strong>Not currently in use</strong>: the integration is present but is
                       not switched on, and nothing is sent to it.</>
@@ -470,7 +472,8 @@ export default function Privacy() {
             <>
               We do use product analytics, PostHog, listed in clause 7. It stores an identifier in
               your browser so that repeated visits from the same browser are counted once rather
-              than many times, and it records which screens are opened, not what is on them: click
+              than many times, and it records which screens are opened and how long everyday
+              tasks take, not what is on them: click
               tracking and session recording are switched off, and no profile of you is built.
               Clearing browser storage signs you out, discards unsynchronised offline data, and
               resets that identifier.

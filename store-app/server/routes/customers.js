@@ -52,7 +52,10 @@ router.get('/', authGuard, apiCache(5), async (req, res) => {
  */
 router.get('/search', authGuard, apiCache(5), async (req, res) => {
   try {
-    const { q } = req.query;
+    // Punctuation has meaning in PostgREST's OR grammar, so raw input could
+    // add clauses, e.g. a name search from a role limited to phone numbers.
+    // `_` matches any one character, so "St. John" still finds itself.
+    const q = String(req.query.q || '').trim().slice(0, 100).replace(/[,().%_"\\*:]/g, '_');
     if (!q) {
       return res.json([]);
     }

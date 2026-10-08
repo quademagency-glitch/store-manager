@@ -79,7 +79,7 @@ const shipments = [
 ];
 const resultCache = new Map();
 export function resolveOperationsMock(path, method, body = {}, query = {}) {
-  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search")
+  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links")
     return undefined;
   if (
     method !== "GET" &&
@@ -222,6 +222,8 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       labels.push(result);
     }
   }
+  if (path === "/receipt-links")
+    result = method === "DELETE" ? { revoked: 1 } : { token: "MockReceiptLinkToken_0123456789a", expires_at: "2026-11-07T10:42:00Z" };
   if (path === "/search") {
     const q = String(query.q || "").trim().toLowerCase();
     const day = time.slice(0, 10);

@@ -19,6 +19,9 @@ export default function SpeedInsightsRoute() {
   // Gate first, but AFTER the hook: bailing before useLocation would change
   // the hook order between renders the moment the date arrives.
   if (!subprocessorAllowed(import.meta.env.VITE_SPEED_INSIGHTS_START)) return null;
+  // A shared receipt link's path is its secret token, and its visitor is a
+  // shop's customer, not a user of the app.
+  if (pathname.startsWith('/r/')) return null;
 
   return <SpeedInsights route={routePattern(pathname)} />;
 }

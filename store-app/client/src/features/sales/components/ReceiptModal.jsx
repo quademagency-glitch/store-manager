@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from '../../../components/Modal';
 import LetterheadRenderer, { LetterheadFooter } from '../../../components/LetterheadRenderer';
+import ShareReceipt from './ShareReceipt';
 import {
   RECEIPT_WIDTHS,
   getReceiptWidth,
@@ -182,6 +183,7 @@ export default function ReceiptModal({ isOpen, onClose, receiptData, fmt, action
               {actions}
             </div>
           )}
+          <ShareReceipt key={receiptData.id} receipt={receiptData} business={business} fmt={fmt} />
           <div style={{ height: '1px', background: 'var(--color-border)', width: '100%' }}></div>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button 

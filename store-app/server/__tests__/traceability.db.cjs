@@ -56,6 +56,7 @@ before(async () => {
   await db.exec(read("db/migrations/090_traceability_operations.sql"));
   await db.exec(read("db/migrations/091_customer_work_and_settlements.sql"));
   await db.exec(read("db/migrations/092_bulk_customer_consent.sql"));
+  await db.exec(read("db/migrations/093_receipt_links.sql"));
   await q(
     "INSERT INTO businesses(id,name,slug) VALUES($1,'Retail test','retail-test'),($2,'Other','other-test')",
     [ids.biz, ids.other],
@@ -898,4 +899,17 @@ test("bulk consent is one journalled transaction, retry-safe, tenant-scoped and 
     0,
     "deleting a customer removes their preferences instead of blocking",
   );
+});
+
+test("receipt links store only a hash, expire after creation, go with their sale and deny browser roles", async () => {
+  const sale = uuid();
+  await q("INSERT INTO sales(id,business_id,location_id,salesperson_id,total_amount,payment_method) VALUES($1,$2,$3,$4,10,'cash')", [sale, ids.biz, ids.loc, ids.user]);
+  const hash = "a".repeat(64);
+  await q("INSERT INTO receipt_links(business_id,sale_id,token_hash,created_by,expires_at) VALUES($1,$2,$3,$4,now()+interval '30 days')", [ids.biz, sale, hash, ids.user]);
+  await assert.rejects(q("INSERT INTO receipt_links(business_id,sale_id,token_hash,expires_at) VALUES($1,$2,'plain-token',now()+interval '1 day')", [ids.biz, sale]), /check/i);
+  await assert.rejects(q("INSERT INTO receipt_links(business_id,sale_id,token_hash,expires_at) VALUES($1,$2,$3,now()-interval '1 day')", [ids.biz, sale, "b".repeat(64)]), /check/i);
+  for (const role of ["anon", "authenticated"])
+    assert.equal((await one("SELECT has_table_privilege($1,'receipt_links','SELECT') allowed", [role])).allowed, false);
+  await q("DELETE FROM sales WHERE id=$1", [sale]);
+  assert.equal((await one("SELECT count(*)::int n FROM receipt_links WHERE sale_id=$1", [sale])).n, 0);
 });

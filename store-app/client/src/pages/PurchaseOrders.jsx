@@ -20,6 +20,7 @@ import PurchaseOrderForm from '../features/inventory/components/PurchaseOrderFor
 import ReceiveGoodsModal from '../features/inventory/components/ReceiveGoodsModal';
 import { api } from '../lib/api';
 import { taskStart, trackTask } from '../lib/analytics';
+import { whatsappUrl, purchaseOrderMessage } from '../lib/whatsapp';
 import { EmptyStateRow, SkeletonTable, ErrorBanner } from '../components/ui';
 
 export default function PurchaseOrders() {
@@ -257,6 +258,9 @@ export default function PurchaseOrders() {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Opens WhatsApp with the order typed for the supplier; nothing is sent from QuadERP.
+  const poShare = selectedPO?.supplier?.phone ? whatsappUrl(selectedPO.supplier.phone, purchaseOrderMessage({ po: selectedPO, business }), business) : null;
+
   return (
     <div className="inventory-page">
       <div className="inventory-header page-header">
@@ -488,9 +492,14 @@ export default function PurchaseOrders() {
                 )}
 
                 {hasPermission('manage_financials') && <PurchaseBilling key={selectedPO.id} order={selectedPO} fmt={fmt} />}
-                <p className="workspace-status">Print or save the order and share it with your supplier. “Mark as sent” records that handoff; it does not send a message.</p>
+                <p className="workspace-status">Print, save or send the order to your supplier on WhatsApp. “Mark as sent” records that handoff; it does not send a message.</p>
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
+                  {poShare && (
+                    <a className="btn btn-secondary btn-sm" href={poShare} target="_blank" rel="noopener noreferrer">
+                      Send on WhatsApp
+                    </a>
+                  )}
                   {canManage && selectedPO.status === 'draft' && (
                     <button className="btn btn-primary btn-sm" onClick={() => handleSend(selectedPO)}>Mark as sent</button>
                   )}

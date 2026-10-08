@@ -11,6 +11,7 @@ import { api } from '../../../lib/api';
 import BillingDocumentModal from './BillingDocumentModal';
 import RecordPaymentModal from './RecordPaymentModal';
 import { EmptyStateRow, PageHeader, SkeletonRows, TabPanel, Tabs } from '../../../components/ui';
+import { whatsappUrl, reminderMessage } from '../../../lib/whatsapp';
 
 const STATUS_BADGE = {
   open: 'badge-secondary',
@@ -202,6 +203,10 @@ export default function BillingLedgerView({ kind, parties }) {
                 ) : (
                   documents.map(doc => {
                     const outstanding = Number(doc[amountField]) - Number(doc.amount_paid);
+                    // Opens WhatsApp with the reminder typed; nothing is sent from QuadERP.
+                    const reminder = kind === 'ar' && outstanding > 0 && !['void', 'paid'].includes(doc.status)
+                      ? whatsappUrl(doc.customer?.phone, reminderMessage({ name: partyName(doc), number: doc[docNumberKey], outstanding, dueDate: doc.due_date, business, fmt }), business)
+                      : null;
                     return (
                       <tr key={doc.id}>
                         <td className="font-bold">
@@ -214,6 +219,11 @@ export default function BillingLedgerView({ kind, parties }) {
                         <td className="text-muted">{doc.due_date ? new Date(doc.due_date).toLocaleDateString() : '-'}</td>
                         <td><span className={`badge ${STATUS_BADGE[doc.status] || 'badge-secondary'}`}>{doc.status}</span></td>
                         <td className="text-right">
+                          {reminder && (
+                            <a className="btn btn-sm btn-outline mr-sm" href={reminder} target="_blank" rel="noopener noreferrer" aria-label={`Send ${partyName(doc)} a payment reminder on WhatsApp`}>
+                              WhatsApp
+                            </a>
+                          )}
                           {doc.status !== 'void' && doc.status !== 'paid' && (
                             <button className="btn btn-sm btn-outline mr-sm" disabled={kind==='ap' && (!supplierPayment.ready || !!supplierPayment.pending || supplierPayment.busy)} onClick={() => setPaymentTarget({ ...doc, outstanding })}>Record Payment</button>
                           )}

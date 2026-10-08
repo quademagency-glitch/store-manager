@@ -348,7 +348,8 @@ const FIXTURES = {
   '/sales/history': {
     data: [
       { id: 'sale1', receipt_number: 'DEMO-00412', total_amount: 248.5, payment_method: 'cash',
-        status: 'completed', created_at: T0, customer: { name: 'Adwoa Nyarko' } },
+        status: 'completed', created_at: T0, customer: { id: 'c1', name: 'Adwoa Nyarko', phone: '+233203334455' },
+        sale_items: [{ id: 'si1', quantity: 2, unit_price: 124.25, product: { name: 'Gino Tomato Paste 400g' } }] },
       { id: 'sale2', receipt_number: 'DEMO-00411', total_amount: 96, payment_method: 'mobile',
         status: 'completed', created_at: T0, customer: { name: 'Yaw Owusu' } },
       { id: 'sale3', receipt_number: 'DEMO-00410', total_amount: 461.5, payment_method: 'mobile',
@@ -421,7 +422,7 @@ const FIXTURES = {
   '/ar/invoices': {
     data: [
       { id: 'i1', invoice_number: 'INV-201', status: 'partial', total_amount: 4820, amount_paid: 3180,
-        due_date: T0, created_at: T0, customer: { name: 'Adwoa Nyarko' } },
+        due_date: T0, created_at: T0, customer: { name: 'Adwoa Nyarko', phone: '+233203334455' } },
       { id: 'i2', invoice_number: 'INV-202', status: 'sent', total_amount: 1165, amount_paid: 0,
         due_date: T0, created_at: T0, customer: { name: 'Yaw Owusu' } },
     ],

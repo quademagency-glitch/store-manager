@@ -337,3 +337,32 @@
   font-size: 0.75rem;
   color: var(--color-text-tertiary);
 }
+
+/* Share on WhatsApp, in the receipt modal's action panel (screen only). */
+.receipt-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+.receipt-share-option,
+.receipt-share-status,
+.receipt-share-error {
+  flex-basis: 100%;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+.receipt-share-error {
+  color: var(--color-error-text);
+}
+@media print {
+  .receipt-share {
+    display: none;
+  }
+}

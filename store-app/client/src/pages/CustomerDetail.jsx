@@ -14,6 +14,7 @@ import { useOfflineScope } from '../hooks/useOfflineScope';
 import Modal from '../components/Modal';
 import RecordPaymentModal from '../features/financials/components/RecordPaymentModal';
 import { PageHeader, TabPanel, Tabs } from '../components/ui';
+import { whatsappUrl, statementMessage } from '../lib/whatsapp';
 
 const TABS = [
   { key: 'purchases', label: 'Purchase History' },
@@ -78,6 +79,10 @@ export default function CustomerDetail() {
 
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [statement, setStatement] = useState(null);
+  // Opens WhatsApp with a short statement summary typed; nothing is sent from QuadERP.
+  const statementShare = statement?.customer?.phone
+    ? whatsappUrl(statement.customer.phone, statementMessage({ name: statement.customer.name, period: statement.period, summary: statement.summary, business, fmt }), business)
+    : null;
   const [statementLoading, setStatementLoading] = useState(false);
   const [statementRange, setStatementRange] = useState({ from: '', to: '' });
 
@@ -819,6 +824,11 @@ export default function CustomerDetail() {
           <button className="btn btn-primary" onClick={() => printElement('customer-statement', 'a4')} disabled={!statement}>
             Print
           </button>
+          {statementShare && (
+            <a className="btn btn-secondary" href={statementShare} target="_blank" rel="noopener noreferrer">
+              Share on WhatsApp
+            </a>
+          )}
         </div>
 
         {statementLoading && <p className="text-muted">Building statement...</p>}

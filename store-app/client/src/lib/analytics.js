@@ -50,6 +50,9 @@ function scrubValue(value, key, depth) {
 /** @param {import('@posthog/types').CaptureResult | null} event */
 export function scrubEvent(event) {
   if (!event) return event;
+  // Nothing is sent from a shared receipt page: its path is a secret token and
+  // its visitor is a shop's customer.
+  if (window.location.pathname.startsWith('/r/')) return null;
   for (const bag of ['properties', '$set', '$set_once']) {
     if (event[bag]) scrubValue(event[bag], bag, 0);
   }

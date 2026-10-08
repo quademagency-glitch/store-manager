@@ -15,6 +15,7 @@ import Login from './pages/Login';
    removes a serialized hop from the slowest path we have. */
 import Signup from './pages/Signup';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const PublicReceipt = lazy(() => import('./pages/PublicReceipt'));
 const ItemHistory = lazy(() => import('./pages/ItemHistory'));
 const UnitTransfers = lazy(() => import('./pages/UnitTransfers'));
 const ReturnInspections = lazy(() => import('./pages/ReturnInspections'));
@@ -123,6 +124,7 @@ export default function App() {
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/dpa" element={<Dpa />} />
+                  <Route path="/r/:token" element={<PublicReceipt />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/platform-admin" element={

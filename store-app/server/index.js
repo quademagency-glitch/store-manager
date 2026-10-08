@@ -516,6 +516,9 @@ app.use('/api/till-sessions', require('./routes/tillSessions'));
 app.use('/api/traceability', require('./routes/traceability'));
 app.use('/api/operations', require('./routes/operations'));
 app.use('/api/search', require('./routes/search'));
+const receiptLinks = require('./routes/receiptLinks');
+app.use('/api/receipt-links', receiptLinks.staff);
+app.use('/api/public/receipts', receiptLinks.publicReceipts);
 
 // Accounting Templates routes
 app.use('/api/accounting/templates', accountingTemplatesRoutes);

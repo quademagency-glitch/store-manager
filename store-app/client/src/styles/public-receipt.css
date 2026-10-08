@@ -1,0 +1,87 @@
+/* /r/:token, a receipt a shop has shared with its customer. */
+.public-receipt {
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+.public-receipt-card {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.public-receipt-card h1 {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+}
+.public-receipt-note {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+.public-receipt-cancelled {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+  font-weight: 600;
+}
+.public-receipt-meta,
+.public-receipt-totals {
+  margin: 16px 0;
+}
+.public-receipt-meta div,
+.public-receipt-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+.public-receipt-meta dt,
+.public-receipt-totals dt {
+  color: var(--color-text-secondary);
+}
+.public-receipt-meta dd,
+.public-receipt-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.public-receipt-total {
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+  padding-top: 8px !important;
+  font-weight: 700;
+}
+.public-receipt-lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.public-receipt-lines th,
+.public-receipt-lines td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+.public-receipt-lines th:not(:first-child),
+.public-receipt-lines td:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-left: 12px;
+}
+.public-receipt footer {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+@media print {
+  .public-receipt footer button {
+    display: none;
+  }
+  .public-receipt-card {
+    border: none;
+  }
+}

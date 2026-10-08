@@ -7,7 +7,8 @@ export default function PostHogPageView() {
   const posthog = usePostHog();
 
   useEffect(() => {
-    if (posthog) {
+    // Shared receipt links carry a secret token and belong to a shop's customer.
+    if (posthog && !location.pathname.startsWith('/r/')) {
       // The address is reduced to its route pattern by `before_send`.
       posthog.capture('$pageview');
     }

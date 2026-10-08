@@ -6,6 +6,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useCurrency } from '../hooks/useCurrency';
 import { usePrintDocument } from '../hooks/usePrintDocument';
 import { useAuthContext } from '../lib/AuthContext';
+import { useQueryState } from '../hooks/useQueryState';
 import { api } from '../lib/api';
 import SupplierModal from '../features/inventory/components/SupplierModal';
 import { EmptyStateRow, SkeletonTable } from '../components/ui';
@@ -19,7 +20,7 @@ export default function Suppliers() {
   const { fmt } = useCurrency(business);
   const { suppliers, loading, fetchSuppliers, addSupplier, updateSupplier, archiveSupplier } = useSuppliers();
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useQueryState('q'); // in the URL so search results can link here
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);

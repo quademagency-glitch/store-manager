@@ -79,7 +79,7 @@ const shipments = [
 ];
 const resultCache = new Map();
 export function resolveOperationsMock(path, method, body = {}, query = {}) {
-  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/"))
+  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search")
     return undefined;
   if (
     method !== "GET" &&
@@ -221,6 +221,16 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       };
       labels.push(result);
     }
+  }
+  if (path === "/search") {
+    const q = String(query.q || "").trim().toLowerCase();
+    const day = time.slice(0, 10);
+    const all = [
+      { type: "customer", id: "c1", label: "Adwoa Nyarko", detail: "0203334455", path: "/customers/c1" },
+      { type: "receipt", id: "sale1", label: "DEMO-00412", detail: day, path: `/sales-record?date=${day}&highlight=sale1` },
+      { type: "item", id: unit.id, label: unit.item_code, detail: unit.product_name, path: `/item-history?code=${unit.item_code}&unit=${unit.id}` },
+    ];
+    result = { results: q.length < 2 ? [] : all.filter((r) => `${r.label} ${r.detail}`.toLowerCase().includes(q)) };
   }
   if (path === "/operations/customers/consent-preview") {
     const tail = (v) => String(v || "").replace(/\D/g, "").slice(-9);

@@ -3,6 +3,9 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { api } from '../lib/api';
+
+const KINDS = { product: 'Product', customer: 'Customer', receipt: 'Receipt', item: 'Item', supplier: 'Supplier', invoice: 'Invoice' };
 
 /**
  * Cmd/Ctrl+K navigation.
@@ -16,6 +19,10 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
  * palette can never offer a page the user would be refused, and a nav item
  * added later appears here automatically. Duplicating the list is how a
  * palette ends up advertising pages that 403.
+ *
+ * Typing two or more characters also searches records (products, customers,
+ * receipts, item codes, suppliers, invoices) through /api/search, which only
+ * returns kinds the user may open, scoped like the pages they link to.
  */
 
 /**
@@ -56,6 +63,9 @@ export default function CommandPalette({ navGroups = [] }) {
   const inputRef = useRef(null);
   const listRef = useRef(null);
   const dialogRef = useRef(null);
+  const [records, setRecords] = useState({ query: '', items: [] });
+  const [searching, setSearching] = useState(false);
+  const searchId = useRef(0);
   useFocusTrap({ active: open, containerRef: dialogRef, initialFocusRef: inputRef, onEscape: () => setOpen(false) });
 
   // Quick actions sit alongside navigation because "start a new sale" is a verb
@@ -94,6 +104,33 @@ export default function CommandPalette({ navGroups = [] }) {
       .map((r) => r.c);
   }, [query, commands]);
 
+  // Record search, debounced; an answer to an older query is discarded.
+  useEffect(() => {
+    const q = query.trim();
+    if (!open || q.length < 2) return undefined;
+    const id = ++searchId.current;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const data = await api.get(`/search?q=${encodeURIComponent(q)}`);
+        if (id === searchId.current) setRecords({ query: q, items: data?.results || [] });
+      } catch {
+        if (id === searchId.current) setRecords({ query: q, items: [] });
+      } finally {
+        if (id === searchId.current) setSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
+  const options = useMemo(() => {
+    const q = query.trim();
+    const found = q.length >= 2 && records.query === q
+      ? records.items.map((r) => ({ id: `rec:${r.type}:${r.id}`, label: r.label, detail: r.detail, group: KINDS[r.type] || 'Record', path: r.path }))
+      : [];
+    return [...results.slice(0, found.length ? 6 : 12), ...found];
+  }, [results, records, query]);
+
   useKeyboardShortcuts([
     { key: 'k', meta: true, allowInInput: true, handler: () => setOpen((v) => !v) },
   ]);
@@ -102,6 +139,7 @@ export default function CommandPalette({ navGroups = [] }) {
     if (open) {
       setQuery('');
       setActive(0);
+      setRecords({ query: '', items: [] });
       // Focus after paint, or the input does not exist yet.
       requestAnimationFrame(() => inputRef.current?.focus());
     }
@@ -123,13 +161,13 @@ export default function CommandPalette({ navGroups = [] }) {
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((i) => (results.length ? (i + 1) % results.length : 0));
+      setActive((i) => (options.length ? (i + 1) % options.length : 0));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive((i) => (results.length ? (i - 1 + results.length) % results.length : 0));
+      setActive((i) => (options.length ? (i - 1 + options.length) % options.length : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      go(results[active]);
+      go(options[active]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
@@ -145,21 +183,21 @@ export default function CommandPalette({ navGroups = [] }) {
       <div ref={dialogRef} className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
         <input
           ref={inputRef}
-          aria-label="Search pages and actions"
+          aria-label="Search pages, customers, products and receipts"
           className="command-palette-input"
-          placeholder="Search pages and actions…"
+          placeholder="Search pages, customers, products, receipts…"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setActive(0); }}
           onKeyDown={onKeyDown}
           aria-controls="command-palette-results"
-          aria-activedescendant={results[active] ? `cmd-${results[active].id}` : undefined}
+          aria-activedescendant={options[active] ? `cmd-${options[active].id}` : undefined}
         />
 
         <ul className="command-palette-results" id="command-palette-results" role="listbox" ref={listRef}>
-          {results.length === 0 && (
-            <li className="command-palette-empty">No matches for “{query}”</li>
+          {options.length === 0 && (
+            <li className="command-palette-empty">{searching ? 'Searching…' : `No matches for “${query}”`}</li>
           )}
-          {results.map((cmd, i) => (
+          {options.map((cmd, i) => (
             <li
               key={cmd.id}
               id={`cmd-${cmd.id}`}
@@ -170,7 +208,10 @@ export default function CommandPalette({ navGroups = [] }) {
               onMouseEnter={() => setActive(i)}
               onClick={() => go(cmd)}
             >
-              <span className="command-palette-label">{cmd.label}</span>
+              <span className="command-palette-label">
+                {cmd.label}
+                {cmd.detail && <small className="command-palette-detail">{cmd.detail}</small>}
+              </span>
               <span className="command-palette-group">{cmd.group}</span>
             </li>
           ))}

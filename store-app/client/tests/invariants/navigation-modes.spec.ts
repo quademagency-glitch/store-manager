@@ -49,3 +49,19 @@ test('the current page stays in the essentials menu and hidden pages are found w
   await dialog.getByRole('combobox').or(dialog.getByRole('textbox')).first().fill('loyalty');
   await expect(dialog.getByRole('option', { name: /Loyalty & Rewards/ })).toBeVisible();
 });
+
+test('Ctrl+K finds records as well as pages, and opens the record', async ({ page }) => {
+  await gotoApp(page, '/dashboard');
+  await page.keyboard.press('Control+k');
+  const input = page.getByRole('dialog').getByLabel('Search pages, customers, products and receipts');
+  await input.fill('QD-0048');
+  const item = page.getByRole('option', { name: /QD-004821/ });
+  await expect(item).toContainText('Item');
+  await input.fill('adwoa');
+  const customer = page.getByRole('option', { name: /Adwoa Nyarko/ });
+  await expect(customer).toContainText('Customer');
+  await expect(customer).toContainText('0203334455');
+  await page.keyboard.press('ArrowDown');
+  await customer.click();
+  await expect(page).toHaveURL(/\/customers\/c1$/);
+});

@@ -113,3 +113,11 @@
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* A record's identifying detail (phone, SKU, date) after its name. */
+.command-palette-detail {
+  margin-left: 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.8em;
+  font-weight: 400;
+}

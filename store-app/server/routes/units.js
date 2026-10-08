@@ -3,8 +3,28 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { ownsAll, usableBranch } = require('../utils/ownership');
 
 const router = express.Router();
+
+/**
+ * The product, branch and batch a unit is being assigned to must all be this
+ * business's, and the branch one the user may act on. Until 8 October 2026
+ * they were stored as given. Sends the refusal itself; true when refused.
+ */
+async function assignTargetRefused(req, res, { product_id, location_id, batch_id }) {
+  if (!(await usableBranch(supabaseAdmin, req.user, location_id))) {
+    res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that branch.' });
+    return true;
+  }
+  const owned = await ownsAll(supabaseAdmin, 'products', [product_id], req.user.business_id)
+    && await ownsAll(supabaseAdmin, 'product_batches', [batch_id], req.user.business_id);
+  if (!owned) {
+    res.status(404).json({ error: 'Not found', message: 'Product or batch not found.' });
+    return true;
+  }
+  return false;
+}
 
 /**
  * GET /api/units
@@ -109,6 +129,7 @@ router.post('/assign', authGuard, permissionCheck('manage_inventory'), async (re
     if (!product_id || !location_id) {
       return res.status(400).json({ error: 'Bad request', message: 'product_id and location_id are required.' });
     }
+    if (await assignTargetRefused(req, res, { product_id, location_id, batch_id })) return;
 
     // Fetch business mode
     const { data: business } = await supabaseAdmin
@@ -229,6 +250,7 @@ router.post('/bulk-assign', authGuard, permissionCheck('manage_inventory'), asyn
     if (!Array.isArray(qr_codes) || qr_codes.length === 0 || !product_id || !location_id) {
       return res.status(400).json({ error: 'Bad request', message: 'qr_codes array, product_id, and location_id are required.' });
     }
+    if (await assignTargetRefused(req, res, { product_id, location_id, batch_id })) return;
 
     const results = { assigned: 0, errors: [] };
 
@@ -264,7 +286,8 @@ router.post('/bulk-assign', authGuard, permissionCheck('manage_inventory'), asyn
         });
 
       if (unitErr) {
-        results.errors.push({ code, reason: unitErr.message });
+        logger.warn({ err: unitErr, code }, 'bulk-assign: unit not created');
+        results.errors.push({ code, reason: unitErr.code === '23505' ? 'Already assigned' : 'Could not be assigned' });
         continue;
       }
 
@@ -412,19 +435,22 @@ router.get('/:id/journey', authGuard, permissionCheck('manage_inventory'), async
     if (id === 'untracked') {
       const { product_id, location_id } = req.query;
       
-      // Fetch Product
-      const { data: product } = await supabaseAdmin
+      /* Scoped to the business: these were read by id alone, so any manager
+         could read another business's product, branch and supplier. */
+      const own = (query) => (req.user.role === 'Platform Admin' ? query : query.eq('business_id', req.user.business_id));
+      const { data: product } = await own(supabaseAdmin
         .from('products')
         .select('id, name, sku')
-        .eq('id', product_id)
-        .single();
-        
-      // Fetch Location
-      const { data: location } = await supabaseAdmin
+        .eq('id', product_id))
+        .maybeSingle();
+
+      const { data: location } = await own(supabaseAdmin
         .from('locations')
         .select('id, name')
-        .eq('id', location_id)
-        .single();
+        .eq('id', location_id))
+        .maybeSingle();
+
+      if (!product || !location) return res.status(404).json({ error: 'Not found' });
 
       // Fetch Supplier
       let supplier = null;

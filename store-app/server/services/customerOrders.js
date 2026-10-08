@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../db/supabase');
+const { ownsAll } = require('../utils/ownership');
 
 const ORDER_SELECT = `
   *,
@@ -76,6 +77,10 @@ function validateItems(items) {
  */
 async function createOrder({ businessId, customerId, items, notes, dueDate, depositAmount, depositPaid, createdBy }) {
   validateItems(items);
+  // Line products were stored as given until 8 October 2026, from staff and the public API alike.
+  if (!(await ownsAll(supabaseAdmin, 'products', items.map((item) => item.product_id), businessId))) {
+    throw new OrderError(400, 'One or more products were not found.');
+  }
 
   const orderNumber = await generateOrderNumber(businessId);
 

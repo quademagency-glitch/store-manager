@@ -28,7 +28,7 @@ function applyLocationFilter(query, req) {
  * GET /api/analytics/summary
  * Fetch high-level stats for the Dashboard.
  */
-router.get('/summary', authGuard, apiCache(60), async (req, res) => {
+router.get('/summary', authGuard, permissionCheck('view_analytics', 'view_sales', 'manage_business'), apiCache(60), async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const moneyPromise = loadSettledMoney(supabaseAdmin, req.user, reportRange(today, today));
@@ -102,7 +102,7 @@ router.get('/summary', authGuard, apiCache(60), async (req, res) => {
  * GET /api/analytics/sales-trend
  * Fetch the last 7 days of sales
  */
-router.get('/sales-trend', authGuard, apiCache(60), async (req, res) => {
+router.get('/sales-trend', authGuard, permissionCheck('view_analytics', 'manage_business'), apiCache(60), async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0,10);
     const start = new Date(Date.parse(today)-6*86400000).toISOString().slice(0,10);
@@ -122,7 +122,7 @@ router.get('/sales-trend', authGuard, apiCache(60), async (req, res) => {
 /**
  * GET /api/analytics/shrinkage
  */
-router.get('/shrinkage', authGuard, apiCache(60), async (req, res) => {
+router.get('/shrinkage', authGuard, permissionCheck('view_analytics', 'view_shrinkage_report'), apiCache(60), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('stock_movements')
@@ -192,7 +192,7 @@ router.get('/reconciliation', authGuard, permissionCheck('manage_reconciliation'
 /**
  * GET /api/analytics/recent-activity
  */
-router.get('/recent-activity', authGuard, apiCache(30), async (req, res) => {
+router.get('/recent-activity', authGuard, permissionCheck('view_analytics', 'view_sales', 'manage_business'), apiCache(30), async (req, res) => {
   try {
     let salesQuery = supabaseAdmin
       .from('sales')
@@ -291,11 +291,13 @@ router.delete('/reset', authGuard, async (req, res) => {
         message: 'Only Business Admins can reset dashboard data.'
       });
     }
+    /* Always the caller's own business. Until 8 October 2026 a Platform Admin
+       with no branch selected skipped the business filter, so one click
+       deleted every business's sales. */
+    if (!req.user.business_id) return res.status(400).json({ error: 'No business to reset.' });
 
     let salesIdQuery = supabaseAdmin.from('sales').select('id');
-    if (req.user.role !== 'Platform Admin') {
-      salesIdQuery = salesIdQuery.eq('business_id', req.user.business_id);
-    }
+    salesIdQuery = salesIdQuery.eq('business_id', req.user.business_id);
     salesIdQuery = applyLocationFilter(salesIdQuery, req);
     const { data: salesRows, error: salesIdErr } = await salesIdQuery;
     if (salesIdErr) throw salesIdErr;
@@ -312,25 +314,19 @@ router.delete('/reset', authGuard, async (req, res) => {
     }
 
     let salesDelQuery = supabaseAdmin.from('sales').delete();
-    if (req.user.role !== 'Platform Admin') {
-      salesDelQuery = salesDelQuery.eq('business_id', req.user.business_id);
-    }
+    salesDelQuery = salesDelQuery.eq('business_id', req.user.business_id);
     salesDelQuery = applyLocationFilter(salesDelQuery, req);
     const { error: salesErr } = await salesDelQuery;
     if (salesErr) throw salesErr;
 
     let stockDelQuery = supabaseAdmin.from('stock_movements').delete();
-    if (req.user.role !== 'Platform Admin') {
-      stockDelQuery = stockDelQuery.eq('business_id', req.user.business_id);
-    }
+    stockDelQuery = stockDelQuery.eq('business_id', req.user.business_id);
     stockDelQuery = applyLocationFilter(stockDelQuery, req);
     const { error: stockErr } = await stockDelQuery;
     if (stockErr) throw stockErr;
 
     let alertsDelQuery = supabaseAdmin.from('alerts').delete();
-    if (req.user.role !== 'Platform Admin') {
-      alertsDelQuery = alertsDelQuery.eq('business_id', req.user.business_id);
-    }
+    alertsDelQuery = alertsDelQuery.eq('business_id', req.user.business_id);
     alertsDelQuery = applyLocationFilter(alertsDelQuery, req);
     const { error: alertsErr } = await alertsDelQuery;
     if (alertsErr) throw alertsErr;
@@ -346,7 +342,7 @@ router.delete('/reset', authGuard, async (req, res) => {
  * GET /api/analytics/top-products
  * Top 5 products by revenue this month
  */
-router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
+router.get('/top-products', authGuard, permissionCheck('view_analytics'), apiCache(60), async (req, res) => {
   try {
     const start=new Date(Date.now()-30*86400000).toISOString();
     const {sales,refunds}=await loadSettledMoney(supabaseAdmin,req.user,reportRange(start,null),{items:true});
@@ -371,7 +367,7 @@ router.get('/top-products', authGuard, apiCache(60), async (req, res) => {
  * GET /api/analytics/inventory-health
  * Stock status counts: in-stock, low-stock, out-of-stock
  */
-router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
+router.get('/inventory-health', authGuard, permissionCheck('view_analytics'), apiCache(60), async (req, res) => {
   try {
     /* Stock lives in product_inventory, one row per product per location, `products` has no quantity column at all. This used to select
        `stock_quantity, min_stock_level` from products, which meant the
@@ -415,7 +411,7 @@ router.get('/inventory-health', authGuard, apiCache(60), async (req, res) => {
  * GET /api/analytics/staff-performance
  * Per-salesperson metrics this week
  */
-router.get('/staff-performance', authGuard, apiCache(60), async (req, res) => {
+router.get('/staff-performance', authGuard, permissionCheck('view_analytics'), apiCache(60), async (req, res) => {
   try {
     const weekStart=new Date();weekStart.setUTCDate(weekStart.getUTCDate()-weekStart.getUTCDay());weekStart.setUTCHours(0,0,0,0);
     const [{sales,refunds},users]=await Promise.all([

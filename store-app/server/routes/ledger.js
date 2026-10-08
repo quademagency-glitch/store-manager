@@ -10,6 +10,7 @@ const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 const { reportRange, applyReportRange } = require('../utils/reportDates');
 const { fetchAllRows } = require('../utils/fetchAllRows');
 const { SETTLED_STATUSES, saleCash, refundCash } = require('../utils/settledMoney');
+const { usableBranch } = require('../utils/ownership');
 
 const router = express.Router();
 
@@ -42,6 +43,18 @@ function applyLocationFilter(query, req) {
     // Failsafe if no locations assigned
     return query.eq('location_id', '00000000-0000-0000-0000-000000000000');
   }
+}
+
+/**
+ * A pending entry this approver may decide: their business and, below admin,
+ * a branch they are assigned to. Until 8 October 2026 approve and reject
+ * matched any entry of the business in any state, so a branch manager could
+ * reject an approved expense at another branch and change its till balance.
+ */
+function decidable(query, req) {
+  query = query.eq('business_id', req.user.business_id).eq('status', 'pending');
+  if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') return query;
+  return query.in('location_id', req.user.location_ids?.length ? req.user.location_ids : ['00000000-0000-0000-0000-000000000000']);
 }
 
 /**
@@ -226,6 +239,7 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
   try {
     const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
     if (metadata && ['liability_movement','flow_kind','operation_id'].some(key => key in metadata)) return res.status(400).json({error:'Customer wallet entries must be recorded through the customer wallet workflow.'});
+    if (!(await usableBranch(supabaseAdmin, req.user, location_id))) return res.status(403).json({ error: 'You do not have access to that branch.' });
 
     // If a template is specified, enforce receipt requirement and pull account category
     let accountCategory = null;
@@ -343,17 +357,18 @@ router.put('/:id/approve', authGuard, async (req, res) => {
     const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
     if (!canApprove) return res.status(403).json({ error: 'Unauthorized to approve entries.' });
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await decidable(supabaseAdmin
       .from('business_ledger')
       .update({
         status: 'approved',
         approved_by: req.user.id,
         approved_at: new Date().toISOString()
       })
-      .eq('id', req.params.id)
-      .eq('business_id', req.user.business_id);
+      .eq('id', req.params.id), req)
+      .select('id');
 
     if (error) throw error;
+    if (!data?.length) return res.status(404).json({ error: 'No pending entry found to approve.' });
     res.json({ message: 'Approved successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error approving entry:');
@@ -370,15 +385,16 @@ router.put('/:id/reject', authGuard, async (req, res) => {
     const canApprove = ['Manager', 'Business Admin', 'Platform Admin'].includes(req.user.role);
     if (!canApprove) return res.status(403).json({ error: 'Unauthorized to reject entries.' });
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await decidable(supabaseAdmin
       .from('business_ledger')
       .update({
         status: 'rejected'
       })
-      .eq('id', req.params.id)
-      .eq('business_id', req.user.business_id);
+      .eq('id', req.params.id), req)
+      .select('id');
 
     if (error) throw error;
+    if (!data?.length) return res.status(404).json({ error: 'No pending entry found to reject.' });
     res.json({ message: 'Rejected successfully' });
   } catch (err) {
     logger.error({ err: err }, 'Error rejecting entry:');

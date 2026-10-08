@@ -165,9 +165,11 @@ router.post('/gift-cards', authGuard, permissionCheck('manage_loyalty'), validat
 
 /**
  * GET /api/loyalty/gift-cards
- * List all gift cards for the business
+ * List all gift cards for the business, with their spendable codes. Needs
+ * manage_loyalty, as the Loyalty page does; until 8 October 2026 any signed-in
+ * staff member could read every code.
  */
-router.get('/gift-cards', authGuard, async (req, res) => {
+router.get('/gift-cards', authGuard, permissionCheck('manage_loyalty'), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req.query);
 
@@ -192,7 +194,7 @@ router.get('/gift-cards', authGuard, async (req, res) => {
 /**
  * GET /api/loyalty/gift-cards/lookup/:code
  */
-router.get('/gift-cards/lookup/:code', authGuard, async (req, res) => {
+router.get('/gift-cards/lookup/:code', authGuard, permissionCheck('manage_loyalty'), async (req, res) => {
   try {
     const { code } = req.params;
 

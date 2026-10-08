@@ -50,6 +50,7 @@ describe('Customer Orders API', () => {
         if (table === 'customers') return makeQueryMock({ data: { id: 'cust-1', business_id: 'biz-uuid-123' }, error: null });
         if (table === 'customer_orders') return makeQueryMock({ data: FULL_ORDER, error: null, count: 0 });
         if (table === 'customer_order_items') return makeQueryMock({ data: [], error: null });
+        if (table === 'products') return makeQueryMock({ data: [{ id: 'prod-1' }], error: null });
         return makeQueryMock({ data: [], error: null });
       });
 

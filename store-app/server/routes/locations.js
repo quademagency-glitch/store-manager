@@ -158,6 +158,8 @@ router.post('/', authGuard, permissionCheck('manage_business'), async (req, res)
       .single();
 
     if (error) throw error;
+    // The signed-in user's cached branch list is what X-Location-Id is checked against.
+    authGuard.invalidateBusinessCache(business_id);
     res.status(201).json(data);
   } catch (err) {
     logger.error({ err: err }, 'Error creating location:');
@@ -237,6 +239,8 @@ router.delete('/:id', authGuard, permissionCheck('manage_business'), async (req,
     }
     
     if (count === 0) return res.status(404).json({ error: 'Location not found' });
+    // A deleted branch left in a cached list for up to a minute is harmless; this just tidies it.
+    if (req.user.role !== 'Platform Admin') authGuard.invalidateBusinessCache(req.user.business_id);
 
     res.json({ message: 'Location deleted successfully' });
   } catch (err) {

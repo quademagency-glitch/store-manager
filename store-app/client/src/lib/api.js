@@ -58,6 +58,24 @@ function apiError(message, { endpoint, status, cause, body } = {}) {
 }
 
 /**
+ * The saved branch was refused: deleted, unassigned, or not this business's.
+ * Forget it and reload once, so the next load picks a valid default. Scoped
+ * replays never get here: they must stay on the branch they were saved for.
+ */
+function forgetRefusedBranch() {
+  try {
+    const last = Number(sessionStorage.getItem('branch_reset_at')) || 0;
+    if (Date.now() - last < 30_000) return; // already tried; do not loop
+    sessionStorage.setItem('branch_reset_at', String(Date.now()));
+    localStorage.removeItem('active_location_id');
+    Object.keys(localStorage).filter((key) => key.startsWith('active_location:')).forEach((key) => localStorage.removeItem(key));
+  } catch {
+    return;
+  }
+  window.location.reload();
+}
+
+/**
  * Base fetch wrapper that injects the Supabase JWT token.
  * This ensures the server can authenticate the request.
  */
@@ -124,6 +142,7 @@ async function fetchWithAuth(endpoint, options = {}, scope) {
     } catch {
       // Not JSON
     }
+    if (response.status === 403 && errorData?.code === 'BRANCH_NOT_ALLOWED' && !scope) forgetRefusedBranch();
     throw apiError(errorMessage, { endpoint, status: response.status, body:errorData });
   }
 

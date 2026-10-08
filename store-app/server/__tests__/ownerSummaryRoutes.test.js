@@ -13,7 +13,9 @@ let log = [];
 function mockRecording(table) {
   const calls = [];
   log.push({ table, calls });
-  const result = () => (table === 'users' ? { data: mockUsers[calls.find(([m, c]) => m === 'eq' && c === 'id')?.[2]] || null, error: null } : { data: null, error: null });
+  const result = () => (table === 'users' ? { data: mockUsers[calls.find(([m, c]) => m === 'eq' && c === 'id')?.[2]] || null, error: null }
+    : table === 'locations' ? { data: [{ id: 'loc-A' }], error: null } // the owner's branches (authGuard)
+      : { data: null, error: null });
   const chain = new Proxy({}, {
     get(_t, prop) {
       if (prop === 'then') return (ok, bad) => Promise.resolve(result()).then(ok, bad);

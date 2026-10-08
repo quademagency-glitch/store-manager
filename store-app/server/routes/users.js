@@ -8,8 +8,22 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { canAssignRole } = require('../utils/roleDelegation');
 const { sendBusinessWelcomeEmail } = require('../services/emailService');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+const { ownsAll } = require('../utils/ownership');
 
 const router = express.Router();
+
+const USER_STATUSES = ['active', 'banned'];
+
+/**
+ * May this actor manage this person's account at all? Not when the person's
+ * current role grants more than the actor could grant. Until 8 October 2026 a
+ * manager with manage_users could demote or ban the business owner, or set
+ * the owner's approval PIN and then approve as them.
+ */
+function mayManage(actor, targetRole) {
+  if (actor.role === 'Platform Admin' || !targetRole) return true;
+  return canAssignRole(actor, targetRole);
+}
 
 /**
  * GET /api/users
@@ -84,6 +98,10 @@ router.post('/create', authGuard, permissionCheck('manage_users'), async (req, r
       if (!canAssignRole(req.user, targetRole)) {
         return res.status(403).json({ error: `You cannot assign the "${requestedRoleName}" role because it grants permissions you do not have.` });
       }
+    }
+
+    if (Array.isArray(location_ids) && !(await ownsAll(supabaseAdmin, 'locations', location_ids, assigned_business_id))) {
+      return res.status(400).json({ error: 'One or more branches do not belong to this business.' });
     }
 
     // Use Supabase Admin API to create the user securely without logging out the admin
@@ -192,13 +210,25 @@ router.put('/:id', authGuard, permissionCheck('manage_users'), async (req, res) 
     // from/to, and after the UPDATE the previous state is gone.
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('role_id, status, business_id')
+      .select('role_id, status, business_id, roles:role_id (name, permissions, business_id)')
       .eq('id', req.params.id)
       .maybeSingle();
 
     if (!existingUser) return res.status(404).json({ error: 'User not found' });
     if (req.user.role !== 'Platform Admin' && existingUser.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'You can only update users in your own business.' });
+    }
+    if (!mayManage(req.user, existingUser.roles)) {
+      return res.status(403).json({ error: 'This person has access you do not have, so you cannot change their account.' });
+    }
+    if (status && !USER_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${USER_STATUSES.join(', ')}` });
+    }
+    if (req.params.id === req.user.id && ((status && status !== existingUser.status) || role_id !== existingUser.role_id)) {
+      return res.status(400).json({ error: 'You cannot change your own role or status. Ask another administrator.' });
+    }
+    if (Array.isArray(location_ids) && !(await ownsAll(supabaseAdmin, 'locations', location_ids, existingUser.business_id))) {
+      return res.status(400).json({ error: 'One or more branches do not belong to this business.' });
     }
 
     const updates = { name, role_id };
@@ -276,7 +306,7 @@ router.put('/:id/pin', authGuard, permissionCheck('manage_users'), async (req, r
 
     const { data: userToUpdate, error: fetchError } = await supabaseAdmin
       .from('users')
-      .select('business_id, roles(name)')
+      .select('business_id, roles:role_id (name, permissions, business_id)')
       .eq('id', req.params.id)
       .single();
 
@@ -286,6 +316,9 @@ router.put('/:id/pin', authGuard, permissionCheck('manage_users'), async (req, r
 
     if (req.user.role !== 'Platform Admin' && userToUpdate.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'You can only set PINs for users in your own business.' });
+    }
+    if (req.params.id !== req.user.id && !mayManage(req.user, userToUpdate.roles)) {
+      return res.status(403).json({ error: 'This person has access you do not have, so you cannot set their PIN.' });
     }
 
     const hashedPin = await bcrypt.hash(pin, 10);

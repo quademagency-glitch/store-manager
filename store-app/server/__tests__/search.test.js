@@ -26,7 +26,8 @@ function mockRecording(table) {
   };
   const chain = new Proxy({}, {
     get(_t, prop) {
-      if (prop === 'then') return (resolve, reject) => Promise.resolve(result()).then(resolve, reject);
+      // A list read of locations is the admin's branch list (authGuard).
+      if (prop === 'then') return (resolve, reject) => Promise.resolve(table === 'locations' ? { data: [result().data], error: null } : result()).then(resolve, reject);
       if (prop === 'single' || prop === 'maybeSingle') return () => Promise.resolve(result());
       return (...args) => { calls.push([prop, ...args]); return chain; };
     },

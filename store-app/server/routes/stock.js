@@ -5,6 +5,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { runChecks } = require('../services/lossPreventionEngine');
+const { ownsAll, branchAllowed, usableBranch } = require('../utils/ownership');
 
 const router = express.Router();
 
@@ -70,11 +71,11 @@ router.post('/adjust', authGuard, permissionCheck('manage_inventory'), async (re
       return res.status(400).json({ error: 'Bad request', message: 'product_id, location_id, and non-zero quantity_change are required' });
     }
 
-    // Verify location ownership
-    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
-      if (!req.user.location_ids.includes(location_id)) {
-        return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to adjust stock at this location.' });
-      }
+    if (!(await usableBranch(supabaseAdmin, req.user, location_id))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to adjust stock at this location.' });
+    }
+    if (!(await ownsAll(supabaseAdmin, 'products', [product_id], req.user.business_id))) {
+      return res.status(404).json({ error: 'Not found', message: 'Product not found.' });
     }
 
     const validTypes = ['RECEIPT', 'ADJUSTMENT', 'SHRINKAGE', 'RETURN'];
@@ -202,11 +203,9 @@ router.put('/:product_id/locations/:location_id/threshold', authGuard, permissio
       return res.status(400).json({ error: 'Bad request', message: 'Threshold must be a positive number.' });
     }
 
-    // Verify location ownership
-    if (req.user.role !== 'Platform Admin' && req.user.role !== 'Business Admin') {
-      if (!req.user.location_ids.includes(location_id)) {
-        return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to manage stock at this location.' });
-      }
+    // product_inventory has no business_id: the branch is what scopes it.
+    if (!(await usableBranch(supabaseAdmin, req.user, location_id))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to manage stock at this location.' });
     }
 
     const { data, error } = await supabaseAdmin
@@ -351,27 +350,58 @@ router.post('/transfers', authGuard, permissionCheck('manage_inventory'), async 
 });
 
 /**
+ * This business's transfer, still pending, at a branch the user may act on.
+ * Sends the refusal itself and returns null when any of that is not so.
+ */
+async function pendingTransfer(req, res, id, branchField) {
+  const { data: transfer, error } = await supabaseAdmin
+    .from('stock_transfers')
+    .select('id, status, from_location_id, to_location_id')
+    .eq('id', id)
+    .eq('business_id', req.user.business_id)
+    .maybeSingle();
+  if (error || !transfer) {
+    res.status(404).json({ error: 'Transfer not found.' });
+    return null;
+  }
+  if (transfer.status !== 'PENDING') {
+    res.status(400).json({ error: 'Bad request', message: `Transfer is already ${transfer.status}.` });
+    return null;
+  }
+  if (!branchAllowed(req.user, transfer[branchField])) {
+    res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that branch.' });
+    return null;
+  }
+  return transfer;
+}
+
+/**
  * PUT /api/stock/transfers/:id/complete
  * Complete a pending transfer, adds stock to destination location.
  */
 router.put('/transfers/:id/complete', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
     const { id } = req.params;
+    const found = await pendingTransfer(req, res, id, 'to_location_id');
+    if (!found) return;
 
-    // Fetch the transfer
-    const { data: transfer, error: fetchErr } = await supabaseAdmin
+    /* Claim it first: only the request whose update flips PENDING gets to
+       move stock, so two clicks cannot receive the same transfer twice. */
+    const { data: transfer, error: claimErr } = await supabaseAdmin
       .from('stock_transfers')
-      .select('*')
+      .update({
+        status: 'COMPLETED',
+        completed_by: req.user.id,
+        completed_at: new Date().toISOString()
+      })
       .eq('id', id)
-      .single();
+      .eq('business_id', req.user.business_id)
+      .eq('status', 'PENDING')
+      .select()
+      .maybeSingle();
 
-    if (fetchErr || !transfer) {
-      return res.status(404).json({ error: 'Transfer not found.' });
-    }
-
-    if (transfer.status !== 'PENDING') {
-      return res.status(400).json({ error: 'Bad request', message: `Transfer is already ${transfer.status}.` });
-    }
+    if (claimErr) throw claimErr;
+    if (!transfer) return res.status(409).json({ error: 'Conflict', message: 'This transfer has just been completed or cancelled.' });
 
     // Add stock to destination
     const { data: destInv } = await supabaseAdmin
@@ -402,21 +432,7 @@ router.put('/transfers/:id/complete', authGuard, permissionCheck('manage_invento
       notes: `Transfer received from another location`
     });
 
-    // Update transfer status
-    const { data: updated, error: updateErr } = await supabaseAdmin
-      .from('stock_transfers')
-      .update({
-        status: 'COMPLETED',
-        completed_by: req.user.id,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (updateErr) throw updateErr;
-
-    res.json({ message: 'Transfer completed successfully', transfer: updated });
+    res.json({ message: 'Transfer completed successfully', transfer });
   } catch (err) {
     logger.error({ err: err }, 'Error completing transfer:');
     res.status(500).json({ error: 'Failed to complete transfer' });
@@ -430,20 +446,24 @@ router.put('/transfers/:id/complete', authGuard, permissionCheck('manage_invento
 router.put('/transfers/:id/cancel', authGuard, permissionCheck('manage_inventory'), async (req, res) => {
   try {
     const { id } = req.params;
+    const found = await pendingTransfer(req, res, id, 'from_location_id');
+    if (!found) return;
 
-    const { data: transfer, error: fetchErr } = await supabaseAdmin
+    const { data: transfer, error: claimErr } = await supabaseAdmin
       .from('stock_transfers')
-      .select('*')
+      .update({
+        status: 'CANCELLED',
+        completed_by: req.user.id,
+        completed_at: new Date().toISOString()
+      })
       .eq('id', id)
-      .single();
+      .eq('business_id', req.user.business_id)
+      .eq('status', 'PENDING')
+      .select()
+      .maybeSingle();
 
-    if (fetchErr || !transfer) {
-      return res.status(404).json({ error: 'Transfer not found.' });
-    }
-
-    if (transfer.status !== 'PENDING') {
-      return res.status(400).json({ error: 'Bad request', message: `Transfer is already ${transfer.status}.` });
-    }
+    if (claimErr) throw claimErr;
+    if (!transfer) return res.status(409).json({ error: 'Conflict', message: 'This transfer has just been completed or cancelled.' });
 
     // Return stock to source
     const { data: srcInv } = await supabaseAdmin
@@ -470,21 +490,7 @@ router.put('/transfers/:id/cancel', authGuard, permissionCheck('manage_inventory
       notes: `Transfer cancelled, stock returned`
     });
 
-    // Update status
-    const { data: updated, error: updateErr } = await supabaseAdmin
-      .from('stock_transfers')
-      .update({
-        status: 'CANCELLED',
-        completed_by: req.user.id,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (updateErr) throw updateErr;
-
-    res.json({ message: 'Transfer cancelled', transfer: updated });
+    res.json({ message: 'Transfer cancelled', transfer });
   } catch (err) {
     logger.error({ err: err }, 'Error cancelling transfer:');
     res.status(500).json({ error: 'Failed to cancel transfer' });
@@ -537,6 +543,15 @@ router.post('/audits', authGuard, permissionCheck('manage_inventory'), async (re
 
     if (!location_id || !Array.isArray(counts) || counts.length === 0) {
       return res.status(400).json({ error: 'Bad request', message: 'location_id and a non-empty counts array are required.' });
+    }
+    if (counts.some((c) => !c?.product_id || !Number.isFinite(c.counted_quantity) || c.counted_quantity < 0)) {
+      return res.status(400).json({ error: 'Bad request', message: 'Every count needs a product and a counted quantity of zero or more.' });
+    }
+    if (!(await usableBranch(supabaseAdmin, req.user, location_id))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to count stock at this location.' });
+    }
+    if (!(await ownsAll(supabaseAdmin, 'products', counts.map((c) => c.product_id), req.user.business_id))) {
+      return res.status(404).json({ error: 'Not found', message: 'One or more products were not found.' });
     }
 
     const results = [];
@@ -659,6 +674,15 @@ router.post('/batches', authGuard, permissionCheck('manage_inventory'), async (r
 
     if (!product_id || !location_id || !batch_number || !quantity || !expiry_date) {
       return res.status(400).json({ error: 'Bad request', message: 'product_id, location_id, batch_number, quantity, and expiry_date are required.' });
+    }
+    if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
+      return res.status(400).json({ error: 'Bad request', message: 'Quantity must be more than zero.' });
+    }
+    if (!(await usableBranch(supabaseAdmin, req.user, location_id))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to manage stock at this location.' });
+    }
+    if (!(await ownsAll(supabaseAdmin, 'products', [product_id], req.user.business_id))) {
+      return res.status(404).json({ error: 'Not found', message: 'Product not found.' });
     }
 
     const { data: batch, error: insertErr } = await supabaseAdmin

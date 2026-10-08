@@ -5,6 +5,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const { getPagination } = require('../utils/paginate');
+const { ownsAll, branchAllowed } = require('../utils/ownership');
 
 const router = express.Router();
 
@@ -195,6 +196,17 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
       return res.status(400).json({ error: 'Name and SKU are required' });
     }
 
+    /* Only a Platform Admin may create a product for another business. Until
+       8 October 2026 any manager could, by sending business_id. */
+    const businessId = req.user.role === 'Platform Admin' && req.body.business_id ? req.body.business_id : req.user.business_id;
+    const qty = parseInt(initialQuantity, 10) || 0;
+    if (qty < 0) {
+      return res.status(400).json({ error: 'Opening stock cannot be negative.' });
+    }
+    if (locationId && !(branchAllowed(req.user, locationId) && await ownsAll(supabaseAdmin, 'locations', [locationId], businessId))) {
+      return res.status(403).json({ error: 'You do not have access to that branch.' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .insert([
@@ -207,7 +219,7 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
           qr_code_data: qr_code_data || sku,
           product_code,
           requires_serial: requires_serial === undefined ? true : !!requires_serial,
-          business_id: req.body.business_id || req.user.business_id
+          business_id: businessId
         }
       ])
       .select()
@@ -221,7 +233,6 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
     }
 
     if (locationId) {
-      const qty = parseInt(initialQuantity, 10) || 0;
       const { error: invError } = await supabaseAdmin
         .from('product_inventory')
         .insert({
@@ -239,7 +250,7 @@ router.post('/', authGuard, permissionCheck('manage_products'), async (req, res)
           .insert({
             product_id: data.id,
             user_id: req.user.id,
-            business_id: req.body.business_id || req.user.business_id,
+            business_id: businessId,
             location_id: locationId,
             quantity_change: qty,
             movement_type: 'RECEIPT',

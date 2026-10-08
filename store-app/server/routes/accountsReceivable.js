@@ -6,6 +6,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { ownsAll, branchAllowed } = require('../utils/ownership');
 const { getPagination } = require('../utils/paginate');
 const { resolveCurrency } = require('../utils/currency');
 
@@ -227,6 +228,10 @@ router.post('/invoices/:id/payments', authGuard, permissionCheck('manage_financi
     if (req.user.role !== 'Platform Admin') invQuery = invQuery.eq('business_id', req.user.business_id);
     const { data: invoice, error: invErr } = await invQuery.single();
     if (invErr || !invoice) return res.status(404).json({ error: 'Invoice not found' });
+    // Any branch id was accepted until 8 October 2026, posting the cash to another business's till.
+    if (location_id && !(branchAllowed(req.user, location_id) && await ownsAll(supabaseAdmin, 'locations', [location_id], invoice.business_id))) {
+      return res.status(403).json({ error: 'You do not have access to that branch.' });
+    }
 
     if (invoice.status === 'void') {
       return res.status(400).json({ error: 'Cannot record a payment against a voided invoice.' });

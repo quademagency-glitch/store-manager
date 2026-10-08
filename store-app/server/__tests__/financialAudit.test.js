@@ -102,6 +102,9 @@ describe('owner financial reports', () => {
   });
   test.each(['Sales Executive', 'Cashier', 'Custom Staff'])('%s expenses require approval', async role => {
     mockUser.role = role;
+    // Staff post to a branch they are assigned to, which belongs to the business.
+    mockUser.location_ids = [mockUser.active_location_id];
+    rows.locations = { data: [{ id: mockUser.active_location_id }] };
     rows.business_ledger = { data: { id: 'entry' } };
     const res = await request(app).post('/ledger').send({ type: 'expense', amount: 10, location_id: mockUser.active_location_id, metadata: { note: 'test' } });
     expect(res.status).toBe(201);
@@ -164,6 +167,8 @@ test('commission payout made at another branch is not counted again as an operat
 describe('delegated permissions', () => {
   test('scheduler can load staff and create a shift without user administration', async () => {
     mockUser.role = 'Scheduler'; mockUser.permissions = ['manage_hr_schedules'];
+    rows.users = { data: [{ id: mockUser.id }] };
+    rows.locations = { data: [{ id: mockUser.active_location_id }] };
     expect((await request(app).get('/hr/schedule-staff')).status).toBe(200);
     expect((await request(app).post('/hr/schedules').send({ user_id: mockUser.id, location_id: mockUser.active_location_id,
       date: '2026-09-19', start_time: '09:00', end_time: '17:00' })).status).toBe(201);

@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { branchAllowed } = require('../utils/ownership');
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ router.put('/:id/resolve', authGuard, permissionCheck('view_alerts', 'view_analy
     // Verify the alert belongs to the user's domain
     let verifyQuery = supabaseAdmin
       .from('alerts')
-      .select('id, business_id, location_id, status')
+      .select('id, business_id, location_id, status, user_id')
       .eq('id', alertId)
       .single();
 
@@ -87,6 +88,16 @@ router.put('/:id/resolve', authGuard, permissionCheck('view_alerts', 'view_analy
       if (alert.business_id !== req.user.business_id) {
         return res.status(403).json({ error: 'Unauthorized' });
       }
+    }
+    /* Until 8 October 2026 anyone who could see alerts could clear any of
+       them: at a branch they do not work at, or a theft or void alert raised
+       about themselves. */
+    const isAdmin = ['Platform Admin', 'Business Admin'].includes(req.user.role);
+    if (alert.location_id && !branchAllowed(req.user, alert.location_id)) {
+      return res.status(403).json({ error: 'You do not have access to that branch.' });
+    }
+    if (!isAdmin && alert.user_id && alert.user_id === req.user.id) {
+      return res.status(403).json({ error: 'An alert about your own activity has to be cleared by someone else.' });
     }
 
     const { data, error } = await supabaseAdmin

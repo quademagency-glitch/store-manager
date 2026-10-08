@@ -3,6 +3,8 @@ const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const permissionCheck = require('../middleware/permissionCheck');
+const { ownsAll } = require('../utils/ownership');
 const { OrderError, syncTotal, createOrder } = require('../services/customerOrders');
 const { dispatchWebhook } = require('../services/webhookDispatcher');
 
@@ -22,7 +24,7 @@ const STATUS_TRANSITIONS = {
  * GET /api/customer-orders
  * List orders with optional status/customer filter, paginated.
  */
-router.get('/', authGuard, async (req, res) => {
+router.get('/', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     const page   = parseInt(req.query.page)  || 1;
     const limit  = parseInt(req.query.limit) || 25;
@@ -60,7 +62,7 @@ router.get('/', authGuard, async (req, res) => {
  * GET /api/customer-orders/:id
  * Single order with full item + customer detail.
  */
-router.get('/:id', authGuard, async (req, res) => {
+router.get('/:id', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('customer_orders')
@@ -90,7 +92,7 @@ router.get('/:id', authGuard, async (req, res) => {
  * POST /api/customer-orders
  * Create a new customer order (draft) with line items.
  */
-router.post('/', authGuard, async (req, res) => {
+router.post('/', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     const { customer_id, items, notes, due_date, deposit_amount, deposit_paid } = req.body;
 
@@ -135,7 +137,7 @@ router.post('/', authGuard, async (req, res) => {
  * Items and header fields can only be edited on draft orders.
  * Notes, deposit, due_date can be updated at any non-terminal status.
  */
-router.put('/:id', authGuard, async (req, res) => {
+router.put('/:id', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     const { id } = req.params;
     const { items, notes, due_date, deposit_amount, deposit_paid } = req.body;
@@ -152,6 +154,10 @@ router.put('/:id', authGuard, async (req, res) => {
     }
     if (['fulfilled', 'cancelled'].includes(existing.status)) {
       return res.status(400).json({ error: `Cannot edit a ${existing.status} order` });
+    }
+    // Checked before anything is written, so a refused edit changes nothing.
+    if (Array.isArray(items) && !(await ownsAll(supabaseAdmin, 'products', items.map((item) => item?.product_id), existing.business_id))) {
+      return res.status(400).json({ error: 'One or more products were not found.' });
     }
 
     const headerUpdate = { updated_at: new Date().toISOString() };
@@ -211,7 +217,7 @@ router.put('/:id', authGuard, async (req, res) => {
  * PUT /api/customer-orders/:id/status
  * Transition order status.
  */
-router.put('/:id/status', authGuard, async (req, res) => {
+router.put('/:id/status', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status: newStatus } = req.body;
@@ -269,7 +275,7 @@ router.put('/:id/status', authGuard, async (req, res) => {
  * DELETE /api/customer-orders/:id
  * Delete a draft order.
  */
-router.delete('/:id', authGuard, async (req, res) => {
+router.delete('/:id', authGuard, permissionCheck('manage_sales'), async (req, res) => {
   try {
     if (req.user.role !== 'Business Admin' && req.user.role !== 'Platform Admin') {
       return res.status(403).json({ error: 'Only Business Admins can delete orders' });

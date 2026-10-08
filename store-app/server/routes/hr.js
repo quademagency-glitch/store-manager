@@ -8,6 +8,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { ownsAll } = require('../utils/ownership');
 
 const router = express.Router();
 
@@ -420,6 +421,12 @@ router.post('/schedules', authGuard, permissionCheck('manage_hr_schedules'), val
   try {
     const { user_id, location_id, date, start_time, end_time, role_label } = req.body;
 
+    // Both were stored as given until 8 October 2026.
+    if (!(await ownsAll(supabaseAdmin, 'users', [user_id], req.user.business_id))
+      || !(await ownsAll(supabaseAdmin, 'locations', [location_id], req.user.business_id))) {
+      return res.status(404).json({ error: 'Not found', message: 'Staff member or branch not found.' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('shift_schedules')
       .insert({
@@ -462,6 +469,9 @@ router.patch('/schedules/:id', authGuard, permissionCheck('manage_hr_schedules')
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     }
     updates.updated_at = new Date().toISOString();
+    if (updates.location_id && !(await ownsAll(supabaseAdmin, 'locations', [updates.location_id], req.user.business_id))) {
+      return res.status(404).json({ error: 'Not found', message: 'Branch not found.' });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('shift_schedules')
@@ -622,7 +632,9 @@ router.get('/commissions', authGuard, async (req, res) => {
     const { userId, startDate, endDate, unpaidOnly } = req.query;
 
     const range = reportRange(startDate, endDate);
-    const isManager = ['Manager', 'Admin', 'Business Admin', 'Platform Admin'].includes(req.user.role) || req.user.permissions?.includes('manage_business');
+    // Everyone's commissions: by permission, not by what a role happens to be called.
+    const isManager = ['Business Admin', 'Platform Admin'].includes(req.user.role)
+      || ['manage_business', 'manage_users'].some((perm) => req.user.permissions?.includes(perm));
     if (!isManager && !req.user.permissions?.includes('view_my_commissions')) return res.status(403).json({ error: 'Commission access denied' });
     const filtered = query => {
       query = query.eq('business_id', req.user.business_id);
@@ -766,13 +778,16 @@ router.get('/payroll-export', authGuard, permissionCheck('manage_business'), asy
 router.get('/geofence/:locationId', authGuard, async (req, res) => {
   try {
     const { locationId } = req.params;
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('locations')
       .select('id, name, latitude, longitude, geofence_radius_m, clock_in_start, clock_in_end, clock_out_start, clock_out_end')
-      .eq('id', locationId)
-      .single();
+      .eq('id', locationId);
+    // Read and written by id alone until 8 October 2026.
+    if (req.user.role !== 'Platform Admin') query = query.eq('business_id', req.user.business_id);
+    const { data, error } = await query.maybeSingle();
 
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Branch not found' });
     res.json(data);
   } catch (err) {
     logger.error({ err }, 'Geofence fetch error');
@@ -798,14 +813,17 @@ router.put('/geofence/:locationId', authGuard, permissionCheck('manage_business'
     if (clock_out_start !== undefined) updates.clock_out_start = clock_out_start || null;
     if (clock_out_end !== undefined) updates.clock_out_end = clock_out_end || null;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('locations')
       .update(updates)
-      .eq('id', locationId)
+      .eq('id', locationId);
+    if (req.user.role !== 'Platform Admin') query = query.eq('business_id', req.user.business_id);
+    const { data, error } = await query
       .select('id, name, latitude, longitude, geofence_radius_m, clock_in_start, clock_in_end, clock_out_start, clock_out_end')
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Branch not found' });
     res.json(data);
   } catch (err) {
     logger.error({ err }, 'Geofence update error');

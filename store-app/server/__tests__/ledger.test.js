@@ -92,6 +92,7 @@ describe('GET /api/ledger/pending', () => {
   it('surfaces a 500 rather than leaking the driver error', async () => {
     mockSupabase.from.mockImplementation((table) => {
       if (table === 'users') return makeQueryMock({ data: currentUser, error: null });
+      if (table === 'locations') return makeQueryMock({ data: [], error: null }); // the admin's branch list
       return makeQueryMock({ data: null, error: { message: 'invalid input syntax for type uuid' } });
     });
 

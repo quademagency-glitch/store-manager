@@ -5,6 +5,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
+const { ownsAll, branchAllowed } = require('../utils/ownership');
 const { transactionError } = require('../utils/transactionError');
 const { getPagination } = require('../utils/paginate');
 const { resolveCurrency } = require('../utils/currency');
@@ -218,6 +219,10 @@ router.post('/bills', authGuard, permissionCheck('manage_financials'), validateB
 router.post('/bills/:id/payments', authGuard, permissionCheck('manage_financials'), validateBody(paymentSchema), async (req, res) => {
   try {
     const { amount, payment_method, payment_date, location_id, notes } = req.body;
+    // Any branch id was accepted until 8 October 2026, posting the cash to another business's till.
+    if (location_id && !(branchAllowed(req.user, location_id) && await ownsAll(supabaseAdmin, 'locations', [location_id], req.user.business_id))) {
+      return res.status(403).json({ error: 'You do not have access to that branch.' });
+    }
     if (req.body.operation_id) {
       if (location_id && location_id !== req.user.active_location_id) return res.status(400).json({error:'Switch to the payment branch before recording this payment.'});
       const ledgerStatus = ['Salesperson','Cashier'].includes(req.user.role) ? 'pending' : 'approved';

@@ -3,8 +3,19 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { branchAllowed, usableBranch } = require('../utils/ownership');
 
 const router = express.Router();
+
+/* Sessions were fetched by id alone until 8 October 2026, so any signed-in
+   user could read, scan into, complete (marking units lost) or cancel
+   another business's stock take. */
+const ownSession = (query, req) => (req.user.role === 'Platform Admin' ? query : query.eq('business_id', req.user.business_id));
+const sessionBranchRefused = (req, res, session) => {
+  if (branchAllowed(req.user, session.location_id)) return false;
+  res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that branch.' });
+  return true;
+};
 
 /**
  * POST /api/stocktake/start
@@ -18,6 +29,9 @@ router.post('/start', authGuard, permissionCheck('manage_inventory'), async (req
 
     if (!loc) {
       return res.status(400).json({ error: 'Bad request', message: 'location_id is required.' });
+    }
+    if (!(await usableBranch(supabaseAdmin, req.user, loc))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that branch.' });
     }
 
     // Check for existing in-progress session at this location
@@ -89,11 +103,12 @@ router.get('/:id', authGuard, async (req, res) => {
         starter:users!started_by(id, name, email)
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (sessErr || !session) {
+    if (sessErr || !session || (req.user.role !== 'Platform Admin' && session.business_id !== req.user.business_id)) {
       return res.status(404).json({ error: 'Stock take session not found.' });
     }
+    if (sessionBranchRefused(req, res, session)) return;
 
     // Get scans for this session
     const { data: scans, error: scansErr } = await supabaseAdmin
@@ -177,15 +192,16 @@ router.post('/:id/scan', authGuard, async (req, res) => {
     }
 
     // Verify session exists and is in progress
-    const { data: session, error: sessErr } = await supabaseAdmin
+    const { data: session, error: sessErr } = await ownSession(supabaseAdmin
       .from('stock_take_sessions')
       .select('id, location_id, business_id, status')
-      .eq('id', id)
-      .single();
+      .eq('id', id), req)
+      .maybeSingle();
 
     if (sessErr || !session) {
       return res.status(404).json({ error: 'Stock take session not found.' });
     }
+    if (sessionBranchRefused(req, res, session)) return;
 
     if (session.status !== 'in_progress') {
       return res.status(400).json({ error: 'Stock take session is not active.' });
@@ -232,7 +248,8 @@ router.post('/:id/scan', authGuard, async (req, res) => {
       .from('inventory_units')
       .select('id, product_id, location_id, status, products!product_id(name, sku)')
       .eq('qr_code_id', qrRecord.id)
-      .single();
+      .eq('business_id', session.business_id)
+      .maybeSingle();
 
     if (!unit) {
       const { data: scan } = await supabaseAdmin
@@ -321,15 +338,16 @@ router.post('/:id/batch-scan', authGuard, async (req, res) => {
     const uniqueCodes = [...new Set(qr_codes.map(c => c.trim().toUpperCase()).filter(Boolean))];
 
     // Verify session exists and is in progress
-    const { data: session, error: sessErr } = await supabaseAdmin
+    const { data: session, error: sessErr } = await ownSession(supabaseAdmin
       .from('stock_take_sessions')
       .select('id, location_id, business_id, status')
-      .eq('id', id)
-      .single();
+      .eq('id', id), req)
+      .maybeSingle();
 
     if (sessErr || !session) {
       return res.status(404).json({ error: 'Stock take session not found.' });
     }
+    if (sessionBranchRefused(req, res, session)) return;
 
     if (session.status !== 'in_progress') {
       return res.status(400).json({ error: 'Stock take session is not active.' });
@@ -368,7 +386,8 @@ router.post('/:id/batch-scan', authGuard, async (req, res) => {
       const { data: units } = await supabaseAdmin
         .from('inventory_units')
         .select('id, qr_code_id, product_id, location_id, status, products!product_id(name, sku)')
-        .in('qr_code_id', qrRecordIds);
+        .in('qr_code_id', qrRecordIds)
+        .eq('business_id', session.business_id);
 
       unitsMap = new Map((units || []).map(u => [u.qr_code_id, u]));
     }
@@ -468,15 +487,16 @@ router.put('/:id/complete', authGuard, permissionCheck('manage_inventory'), asyn
     const { id } = req.params;
 
     // Get session
-    const { data: session, error: sessErr } = await supabaseAdmin
+    const { data: session, error: sessErr } = await ownSession(supabaseAdmin
       .from('stock_take_sessions')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id), req)
+      .maybeSingle();
 
     if (sessErr || !session) {
       return res.status(404).json({ error: 'Stock take session not found.' });
     }
+    if (sessionBranchRefused(req, res, session)) return;
 
     if (session.status !== 'in_progress') {
       return res.status(400).json({ error: 'Session is not in progress.' });
@@ -507,7 +527,8 @@ router.put('/:id/complete', authGuard, permissionCheck('manage_inventory'), asyn
       await supabaseAdmin
         .from('inventory_units')
         .update({ status: 'lost', notes: `Missing during stock take ${id}` })
-        .eq('id', unit.id);
+        .eq('id', unit.id)
+        .eq('business_id', session.business_id);
     }
 
     // Update session
@@ -573,13 +594,21 @@ router.put('/:id/cancel', authGuard, permissionCheck('manage_inventory'), async 
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabaseAdmin
+    const { data: session } = await ownSession(supabaseAdmin
+      .from('stock_take_sessions')
+      .select('id, location_id')
+      .eq('id', id), req)
+      .maybeSingle();
+    if (!session) return res.status(404).json({ error: 'No active session found to cancel.' });
+    if (sessionBranchRefused(req, res, session)) return;
+
+    const { data, error } = await ownSession(supabaseAdmin
       .from('stock_take_sessions')
       .update({ status: 'cancelled', completed_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('status', 'in_progress')
+      .eq('status', 'in_progress'), req)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return res.status(404).json({ error: 'No active session found to cancel.' });

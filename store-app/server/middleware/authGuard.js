@@ -186,7 +186,7 @@ async function authGuard(req, res, next) {
         if (req.get('X-Expected-Business-Id') && req.get('X-Expected-Business-Id') !== req.user.business_id) {
           return res.status(409).json({ error: 'The saved transaction belongs to another business. Sign in to its original business.' });
         }
-        if (!attachLocation(req)) return res.status(403).json({ error: 'Access to the selected branch was removed. Select an assigned branch.' });
+        if (!attachLocation(req)) return refuseBranch(res);
         return next();
       }
     }
@@ -212,6 +212,21 @@ async function authGuard(req, res, next) {
         if (data.status === 'banned') return { error: 'Forbidden', message: 'Your account has been banned.' };
         if (data.businesses && data.businesses.status === 'banned') return { error: 'Forbidden', message: 'Your business has been banned.' };
 
+        /* Every branch of the business: what a Business Admin's X-Location-Id
+           is checked against (attachLocation). A query of its own rather
+           than an embed above, so a schema change can never make the user
+           lookup itself ambiguous and sign everyone out. */
+        let businessLocationIds = [];
+        if (data.roles?.name === 'Business Admin' && data.business_id) {
+          const { data: branches, error: branchErr } = await supabaseAdmin
+            .from('locations').select('id').eq('business_id', data.business_id);
+          if (branchErr) {
+            logger.error({ err: branchErr }, 'Auth guard: branches could not be read');
+            return { error: 'Unavailable', status: 503, message: 'Your branches could not be loaded. Try again.' };
+          }
+          businessLocationIds = Array.isArray(branches) ? branches.map((l) => l.id) : [];
+        }
+
         const user = {
           id: data.id,
           name: data.name,
@@ -228,6 +243,7 @@ async function authGuard(req, res, next) {
           role_id: data.role_id,
           permissions: data.roles ? data.roles.permissions : [],
           location_ids: data.user_locations ? data.user_locations.map(ul => ul.location_id) : [],
+          business_location_ids: businessLocationIds,
         };
         return { user };
       })();
@@ -239,7 +255,7 @@ async function authGuard(req, res, next) {
 
     if (userDataObj.error) {
       if (userDataObj.error === 'Forbidden') invalidateUserCache(userId);
-      return res.status(userDataObj.error === 'Unauthorized' ? 401 : 403).json({
+      return res.status(userDataObj.status || (userDataObj.error === 'Unauthorized' ? 401 : 403)).json({
         error: userDataObj.error,
         message: userDataObj.message,
       });
@@ -260,7 +276,7 @@ async function authGuard(req, res, next) {
     if (req.get('X-Expected-Business-Id') && req.get('X-Expected-Business-Id') !== req.user.business_id) {
           return res.status(409).json({ error: 'The saved transaction belongs to another business. Sign in to its original business.' });
         }
-        if (!attachLocation(req)) return res.status(403).json({ error: 'Access to the selected branch was removed. Select an assigned branch.' });
+        if (!attachLocation(req)) return refuseBranch(res);
     next();
   } catch (err) {
     logger.error({ err }, 'Auth guard error');
@@ -292,11 +308,24 @@ function respondTrialExpired(res) {
   });
 }
 
+/* The code lets the client drop a stale saved branch (one since deleted or
+   unassigned) and carry on, instead of failing every request with it. */
+function refuseBranch(res) {
+  return res.status(403).json({ error: 'Access to the selected branch was removed. Select an assigned branch.', code: 'BRANCH_NOT_ALLOWED' });
+}
+
 function attachLocation(req) {
   const requestedLocationId = req.headers['x-location-id'];
   if (requestedLocationId && req.user.location_ids.includes(requestedLocationId)) {
     req.user.active_location_id = requestedLocationId;
-  } else if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+  } else if (req.user.role === 'Platform Admin') {
+    // Cross-tenant by design.
+    req.user.active_location_id = requestedLocationId;
+  } else if (req.user.role === 'Business Admin') {
+    /* Any branch of THEIR business. Until 8 October 2026 any id was accepted,
+       so a Business Admin (any signup) could point branch-scoped routes at
+       another tenant's branch. */
+    if (requestedLocationId && !(req.user.business_location_ids || []).includes(requestedLocationId)) return false;
     req.user.active_location_id = requestedLocationId;
   } else if (requestedLocationId) {
     return false;

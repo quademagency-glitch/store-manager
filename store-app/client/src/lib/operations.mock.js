@@ -261,6 +261,15 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
     Object.assign(whatsapp, { receipts: body.receipts, reminders: body.reminders });
     result = { receipts: body.receipts, reminders: body.reminders };
   }
+  if (path === "/crm-communications/whatsapp/test") {
+    // Mirrors the server: account, then the template for that kind, then a number.
+    if (!whatsapp.gateway) throw Object.assign(new Error("Connect your WhatsApp Business account first."), { status: 409 });
+    const template = whatsapp.gateway.config?.[`${body.kind}_template`];
+    if (!template) throw Object.assign(new Error(`Add the approved ${body.kind} template name first.`), { status: 409 });
+    const digits = String(body.phone || "").replace(/\D/g, "").replace(/^0/, "");
+    if (digits.length < 9) throw Object.assign(new Error("Enter the phone number to send the test to."), { status: 400 });
+    result = { accepted: true, to: `+233${digits.slice(-9)}`, template };
+  }
   if (path.startsWith("/crm-communications/gateways") && body?.type === "whatsapp") {
     whatsapp.gateway = { id: "wg1", display_name: body.display_name, sender_id: body.sender_id, is_active: true, config: body.config };
     result = { ...whatsapp.gateway, api_key: "••••••••" + String(body.api_key || "0000").slice(-4) };

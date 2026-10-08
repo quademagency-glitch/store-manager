@@ -40,6 +40,7 @@ const AUDIT_ACTIONS = {
   PIN_VERIFY_FAILED: 'user.pin_verify_failed',
   CUSTOMER_CODE_SENT: 'customer.verification_sent',
   CUSTOMER_VERIFY_FAILED: 'customer.verification_failed',
+  WHATSAPP_TEST_SENT: 'whatsapp.test_sent',
 
   // Roles
   ROLE_CREATED: 'role.created',

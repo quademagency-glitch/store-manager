@@ -30,6 +30,8 @@ function mockRecording(table) {
 }
 jest.mock('../db/supabase', () => ({ supabaseAdmin: { from: jest.fn((t) => mockRecording(t)), rpc: jest.fn(async () => ({ data: null, error: null })) } }));
 jest.mock('../utils/jwtVerifier', () => ({ verifyToken: jest.fn(async (t) => ({ userId: t })) }));
+const mockSendTemplate = jest.fn();
+jest.mock('../services/whatsappService', () => ({ ...jest.requireActual('../services/whatsappService'), sendTemplate: (...args) => mockSendTemplate(...args) }));
 
 const app = require('../index');
 const AUTH = { Authorization: 'Bearer owner' };
@@ -90,4 +92,46 @@ test('the settings read never selects the access token', async () => {
   const select = callsOn('communication_gateways')[0].find(([m]) => m === 'select')[1];
   expect(select).not.toMatch(/api_key|secret_key/);
   expect(res.body).toEqual({ receipts: false, reminders: false, gateway: null, recent: [] });
+});
+
+describe('a test message before switching anything on', () => {
+  const send = (body) => request(app).post('/api/crm-communications/whatsapp/test').set(AUTH).send(body);
+  const connected = { data: { id: 'wg1', api_key: 'EAAG-token', sender_id: '109876543210', config: { receipt_template: 'order_receipt', language: 'en' } }, error: null };
+  beforeEach(() => {
+    mockSendTemplate.mockReset();
+    results.businesses = { data: { country: 'GH', name: 'Omek Gigs', currency: 'GHS' }, error: null };
+    results.audit_logs = { count: 0, error: null };
+  });
+
+  test('goes to the number given, with the approved template and five sample values', async () => {
+    results.communication_gateways = connected;
+    mockSendTemplate.mockResolvedValue({ success: true, messageId: 'wamid.1' });
+    const res = await send({ phone: '024 123 4567', kind: 'receipt' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ accepted: true, to: '+233241234567', template: 'order_receipt' });
+    const [gateway, message] = mockSendTemplate.mock.calls[0];
+    expect(gateway.id).toBe('wg1');
+    expect(message).toMatchObject({ to: '233241234567', template: 'order_receipt', language: 'en' });
+    expect(message.params).toHaveLength(5);
+    expect(message.params[1]).toBe('Omek Gigs');
+  });
+
+  test("Meta's refusal is shown, because during setup it says what is wrong", async () => {
+    results.communication_gateways = connected;
+    mockSendTemplate.mockResolvedValue({ success: false, permanent: true, error: 'WhatsApp: Template name does not exist in the translation' });
+    const res = await send({ phone: '0241234567' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Template name does not exist/);
+  });
+
+  test('needs an account, the template for that kind, and a usable number; ten a day', async () => {
+    results.communication_gateways = { data: null, error: null };
+    expect((await send({ phone: '0241234567' })).body.error).toBe('Connect your WhatsApp Business account first.');
+    results.communication_gateways = connected;
+    expect((await send({ phone: '0241234567', kind: 'reminder' })).body.error).toBe('Add the approved reminder template name first.');
+    expect((await send({ phone: 'call me' })).status).toBe(400);
+    results.audit_logs = { count: 10, error: null };
+    expect((await send({ phone: '0241234567' })).status).toBe(429);
+    expect(mockSendTemplate).not.toHaveBeenCalled();
+  });
 });

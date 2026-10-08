@@ -6,6 +6,10 @@ const permissionCheck = require('../middleware/permissionCheck');
 const { seal, mask } = require('../utils/secretBox');
 const smsService = require('../services/smsService');
 const emailService = require('../services/emailService');
+const { sendTemplate } = require('../services/whatsappService');
+const { resolveCountry, toSmsFormat } = require('../utils/phone');
+const { resolveCurrency } = require('../utils/currency');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
 
@@ -295,6 +299,58 @@ router.put('/whatsapp/settings', authGuard, permissionCheck('manage_marketing'),
   } catch (err) {
     logger.error({ err }, 'Error saving WhatsApp settings');
     res.status(500).json({ error: 'WhatsApp settings could not be saved.' });
+  }
+});
+
+/**
+ * POST /api/crm-communications/whatsapp/test { phone, kind }
+ * Send one approved template, with sample values, to a number the owner
+ * chooses, so they can see the setup work before switching anything on.
+ * Meta's own refusal is passed back: during setup it is the useful part
+ * ("template name does not exist", "invalid token"). Ten a day per business;
+ * each one is a real message that Meta charges the business for.
+ */
+const WHATSAPP_TESTS_PER_DAY = 10;
+router.post('/whatsapp/test', authGuard, permissionCheck('manage_marketing'), async (req, res) => {
+  try {
+    const { phone, kind = 'receipt' } = req.body || {};
+    if (!['receipt', 'reminder'].includes(kind)) return res.status(400).json({ error: 'Choose a receipt or a payment reminder.' });
+    const businessId = req.user.business_id;
+    const country = await resolveCountry(supabaseAdmin, businessId, req.user.active_location_id);
+    const to = toSmsFormat(phone, country);
+    if (!to) return res.status(400).json({ error: 'Enter the phone number to send the test to.' });
+
+    const { data: gateway, error } = await supabaseAdmin.from('communication_gateways').select('*').eq('business_id', businessId)
+      .eq('type', 'whatsapp').eq('is_active', true).order('is_default', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    if (!gateway) return res.status(409).json({ error: 'Connect your WhatsApp Business account first.' });
+    const template = gateway.config?.[`${kind}_template`];
+    if (!template) return res.status(409).json({ error: `Add the approved ${kind} template name first.` });
+
+    const { count, error: countErr } = await supabaseAdmin.from('audit_logs').select('id', { count: 'exact', head: true })
+      .eq('action', AUDIT_ACTIONS.WHATSAPP_TEST_SENT).eq('business_id', businessId)
+      .gte('created_at', new Date(Date.now() - 86_400_000).toISOString());
+    if (countErr) throw countErr;
+    if ((count || 0) >= WHATSAPP_TESTS_PER_DAY) return res.status(429).json({ error: 'Ten test messages have been sent today. Try again tomorrow.' });
+
+    const [{ data: business }, currency] = await Promise.all([
+      supabaseAdmin.from('businesses').select('name').eq('id', businessId).maybeSingle(),
+      resolveCurrency(supabaseAdmin, businessId, req.user.active_location_id),
+    ]);
+    const shop = business?.name || 'Your shop';
+    const amount = `${currency || 'GHS'} 10.00`;
+    const due = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    const params = kind === 'receipt'
+      ? ['Ama', shop, 'TEST-0001', amount, process.env.APP_URL || 'https://app.quaderp.app']
+      : ['Ama', shop, 'INV-TEST', amount, due];
+
+    const result = await sendTemplate(gateway, { to, template, language: gateway.config?.language || 'en', params });
+    logAuditEvent(req, AUDIT_ACTIONS.WHATSAPP_TEST_SENT, 'communication_gateway', gateway.id, { kind, accepted: !!result.success });
+    if (!result.success) return res.status(400).json({ error: result.error });
+    res.json({ accepted: true, to: `+${to}`, template });
+  } catch (err) {
+    logger.error({ err }, 'WhatsApp test message failed');
+    res.status(500).json({ error: 'The test message could not be sent.' });
   }
 });
 

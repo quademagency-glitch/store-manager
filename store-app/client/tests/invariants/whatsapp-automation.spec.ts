@@ -12,6 +12,10 @@ test('connect an account, then switch on only what has a template', async ({ pag
   await gotoApp(page, '/crm-communications');
   await page.getByRole('tab', { name: 'WhatsApp' }).click();
 
+  // Before connecting: the Meta steps, open, with Meta's own links, and the templates to copy.
+  await expect(page.getByRole('link', { name: 'Meta App Dashboard' })).toHaveAttribute('href', 'https://developers.facebook.com/apps');
+  await expect(page.getByRole('button', { name: 'Copy receipt template text' })).toBeVisible();
+
   const receipts = page.getByLabel("Send a receipt when a customer's sale is completed");
   await receipts.click();
   await expect(page.getByRole('alert')).toHaveText('Connect your WhatsApp Business account first.');
@@ -23,6 +27,11 @@ test('connect an account, then switch on only what has a template', async ({ pag
   await page.getByRole('button', { name: 'Save account' }).click();
   await expect(page.getByText(/Connected: WhatsApp Business · phone number ID 109876543210/)).toBeVisible();
   await expect(page.getByText('EAAG-test-token-0123456789')).toHaveCount(0);
+
+  // A test before anything is switched on.
+  await page.getByLabel('Send the test to').fill('024 123 4567');
+  await page.getByRole('button', { name: 'Send test message' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Accepted by WhatsApp for +233241234567, using order_receipt.' })).toBeVisible();
 
   await receipts.click();
   await expect(page.getByRole('status').filter({ hasText: 'Automatic receipts switched on.' })).toBeVisible();

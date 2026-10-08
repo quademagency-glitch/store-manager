@@ -20,7 +20,10 @@ const ledgerEntrySchema = z.object({
   description: z.string().optional(),
   location_id: z.string().uuid('Location ID is required and must be a valid UUID'),
   template_id: z.string().uuid().optional().nullable(),
-  receipt_url: z.string().url().optional().nullable(),
+  /* A path in the receipts bucket, which is what the upload screen sends
+     (`<business id>/<file>`). This was z.string().url() from the first commit,
+     which refused every such path, so no expense with a receipt could be saved. */
+  receipt_url: z.string().max(500).optional().nullable(),
   metadata: z.record(z.string(), z.any()).optional().nullable(),
   date: z.string().optional().nullable(),
 });
@@ -240,6 +243,9 @@ router.post('/', authGuard, validateBody(ledgerEntrySchema), async (req, res) =>
     const { type, amount, description, location_id, template_id, receipt_url, metadata, date } = req.body;
     if (metadata && ['liability_movement','flow_kind','operation_id'].some(key => key in metadata)) return res.status(400).json({error:'Customer wallet entries must be recorded through the customer wallet workflow.'});
     if (!(await usableBranch(supabaseAdmin, req.user, location_id))) return res.status(403).json({ error: 'You do not have access to that branch.' });
+    if (receipt_url && (!receipt_url.startsWith(`${req.user.business_id}/`) || receipt_url.includes('..'))) {
+      return res.status(400).json({ error: 'Upload the receipt from this business before saving.' });
+    }
 
     // If a template is specified, enforce receipt requirement and pull account category
     let accountCategory = null;
@@ -428,6 +434,11 @@ router.get('/download-receipts', authGuard, async (req, res) => {
     for (const entry of data) {
       const match = entry.receipt_url.match(/receipts\/(.+)$/);
       const path = decodeURIComponent((match ? match[1] : entry.receipt_url).split('?')[0]);
+      // Uploads live under the business's own folder; receipt_url is typed by the client.
+      if (!path.startsWith(`${req.user.business_id}/`) || path.includes('..')) {
+        logger.warn({ receiptId: entry.id }, 'Receipt outside the business folder');
+        return res.status(409).json({ error: 'A receipt in this range points outside this business\'s files. No archive was created.' });
+      }
       const { data: file, error } = await supabaseAdmin.storage.from('receipts').download(path);
       if (error || !file) {
         logger.error({ err: error, receiptId: entry.id }, 'Receipt archive source unavailable');

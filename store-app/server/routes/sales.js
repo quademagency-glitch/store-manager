@@ -15,6 +15,8 @@ const { reportRange, applyReportRange } = require('../utils/reportDates');
 const { fetchAllRows } = require('../utils/fetchAllRows');
 const { transactionError } = require('../utils/transactionError');
 const { runChecks } = require('../services/lossPreventionEngine');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+const { csvCell } = require('../utils/csv');
 
 const router = express.Router();
 
@@ -135,11 +137,7 @@ router.get('/export', authGuard, permissionCheck('view_sales'), async (req, res)
       .select('id, created_at, accounting_at, receipt_number, status, total_amount, payment_method, customer:customers!customer_id(name), salesperson:users!salesperson_id(name)'), req.user), range, 'accounting_at')
       .order('accounting_at', { ascending: false }).order('id'));
     // Quote every cell and neutralize spreadsheet formulas from user-entered names.
-    const cell = value => {
-      let text = String(value ?? '');
-      if (/^[=+@\-\t\r]/.test(text)) text = `'${text}`;
-      return `"${text.replace(/"/g, '""')}"`;
-    };
+    const cell = csvCell;
     const rows = [['Sale ID', 'Date', 'Receipt #', 'Customer', 'Status', 'Total', 'Payment Method', 'Salesperson'],
       ...sales.map(sale => [sale.id, sale.accounting_at || sale.created_at, sale.receipt_number, sale.customer?.name, sale.status,
         Number(sale.total_amount).toFixed(2), sale.payment_method, sale.salesperson?.name])];
@@ -206,9 +204,11 @@ router.get('/history', authGuard, permissionCheck('view_sales'), apiCache(5), as
 /**
  * GET /api/sales/:id
  * Fetch a single sale's details
- * Access: All authenticated staff
+ * Access: view_sales; a cashier with only create_sales sees their own sales.
+ * Until 8 October 2026 any signed-in staff member could read any sale at
+ * their branches.
  */
-router.get('/:id', authGuard, async (req, res) => {
+router.get('/:id', authGuard, permissionCheck('view_sales', 'create_sales'), async (req, res) => {
   try {
     const saleId = req.params.id;
 
@@ -225,11 +225,14 @@ router.get('/:id', authGuard, async (req, res) => {
           product:products!product_id(id, name, sku)
         )
       `)
-      .eq('id', saleId)
-      .single();
+      .eq('id', saleId);
 
     if (req.user.role !== 'Platform Admin') {
       query = query.eq('business_id', req.user.business_id);
+    }
+    const isAdmin = ['Platform Admin', 'Business Admin'].includes(req.user.role);
+    if (!isAdmin && !req.user.permissions?.includes('view_sales')) {
+      query = query.eq('salesperson_id', req.user.id);
     }
 
     if (req.user.active_location_id) {
@@ -242,8 +245,9 @@ router.get('/:id', authGuard, async (req, res) => {
       }
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query.single();
 
+    if (error?.code === 'PGRST116') return res.status(404).json({ error: 'Sale not found' });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -320,9 +324,31 @@ for (const action of ['approve-void','reject-void']) {
  * POST /api/sales/verify-pin
  * Verify a manager PIN (for POS terminal use).
  */
+/* Failed manager-PIN attempts allowed per window. Counted in audit_logs, which
+   every worker shares: an in-process limiter is multiplied by the worker count
+   (utils/clusterLimits.js), and a 4-digit PIN has only 10,000 values. Until
+   8 October 2026 there was no limit at all, so a cashier could try every PIN
+   against every manager in the business. */
+const PIN_WINDOW_MS = 15 * 60 * 1000;
+const PIN_FAILURES_PER_USER = 5;
+const PIN_FAILURES_PER_BUSINESS = 20;
+
+async function pinFailures(column, value) {
+  const { count, error } = await supabaseAdmin.from('audit_logs').select('id', { count: 'exact', head: true })
+    .eq('action', AUDIT_ACTIONS.PIN_VERIFY_FAILED).eq(column, value)
+    .gte('created_at', new Date(Date.now() - PIN_WINDOW_MS).toISOString());
+  if (error) throw error;
+  return count || 0;
+}
+
 router.post('/verify-pin', authGuard, validateBody(verifyPinSchema), async (req, res) => {
   try {
     const { pin } = req.body;
+
+    if (await pinFailures('actor_user_id', req.user.id) >= PIN_FAILURES_PER_USER
+      || await pinFailures('business_id', req.user.business_id) >= PIN_FAILURES_PER_BUSINESS) {
+      return res.status(429).json({ valid: false, error: 'Too many wrong PINs. Wait 15 minutes, or ask a manager to approve in person.' });
+    }
 
     const { data: managers } = await supabaseAdmin
       .from('users')
@@ -338,6 +364,7 @@ router.post('/verify-pin', authGuard, validateBody(verifyPinSchema), async (req,
       }
     }
 
+    logAuditEvent(req, AUDIT_ACTIONS.PIN_VERIFY_FAILED, 'user', req.user.id);
     return res.status(403).json({ valid: false, error: 'Invalid PIN' });
   } catch (err) {
     logger.error({ err: err }, 'Error verifying PIN:');

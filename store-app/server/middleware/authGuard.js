@@ -135,6 +135,11 @@ cacheBus.subscribe((msg) => {
   else if (msg.kind === 'all') invalidateAllLocal();
 });
 
+/* The only routes that may carry the session token in the query string,
+   because the browser opens them with EventSource. Until 8 October 2026
+   every route accepted ?token=. */
+const QUERY_TOKEN_PATHS = new Set(['/api/scanner/events']);
+
 async function authGuard(req, res, next) {
   try {
     let token;
@@ -142,7 +147,9 @@ async function authGuard(req, res, next) {
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
-    } else if (req.query.token) {
+    } else if (req.query.token && QUERY_TOKEN_PATHS.has(req.baseUrl + req.path)) {
+      // EventSource cannot send headers. Everywhere else a token in the URL
+      // is refused: URLs are written to proxy and browser logs.
       token = req.query.token;
     }
 

@@ -34,20 +34,16 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('POST /api/auth/register', () => {
-  it('returns 401 without auth token', async () => {
-    const res = await request(app)
-      .post('/api/auth/register')
-      .send({ name: 'Test', email: 'new@example.com', password: 'pass123', role_id: 'uuid-here' });
-    expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Unauthorized');
-  });
-
-  it('returns 400 with invalid UUID for role_id when authenticated', async () => {
+  /* Removed on 8 October 2026. It took any role_id and no business, so
+     anyone with manage_users could create an account holding any role,
+     including Platform Admin. Staff are created through /api/users/create,
+     which checks what the creator may grant. */
+  it('no longer exists', async () => {
     const res = await request(app)
       .post('/api/auth/register')
       .set('Authorization', 'Bearer valid-test-token')
-      .send({ name: 'Test', email: 'new@example.com', password: 'pass123', role_id: 'not-a-uuid' });
-    expect(res.status).toBe(400);
+      .send({ name: 'Test', email: 'new@example.com', password: 'pass123', role_id: '11111111-1111-4111-8111-111111111111' });
+    expect(res.status).toBe(404);
   });
 });
 

@@ -37,6 +37,8 @@ const get = (path) => request(app).get(path).set('Authorization', 'Bearer valid-
 
 beforeEach(() => {
   for (const k of Object.keys(overrides)) delete overrides[k];
+  // Inventory is read branch by branch: the business's one branch.
+  overrides.locations = { data: [{ id: 'loc-1' }], error: null };
 });
 
 /* /summary reads product_inventory three times: the value, the below-reorder

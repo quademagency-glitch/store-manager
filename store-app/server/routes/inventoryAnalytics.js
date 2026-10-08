@@ -3,8 +3,26 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { fetchAllRows } = require('../utils/fetchAllRows');
 
 const router = express.Router();
+
+/**
+ * This business's product_inventory rows, every page of them.
+ *
+ * product_inventory has no business_id; its branch says whose it is. Until
+ * 8 October 2026 these routes read every business's stock and filtered it in
+ * JavaScript, which also stopped at PostgREST's row cap, so once the platform
+ * held more rows than that a business's own figures quietly came out short.
+ */
+async function businessInventory(businessId, columns, refine = (query) => query) {
+  const { data: branches, error } = await supabaseAdmin.from('locations').select('id').eq('business_id', businessId);
+  if (error) throw error;
+  const branchIds = (branches || []).map((b) => b.id);
+  if (branchIds.length === 0) return [];
+  const rows = await fetchAllRows(() => refine(supabaseAdmin.from('product_inventory').select(columns).in('location_id', branchIds)).order('id'));
+  return rows.filter((row) => row.product?.business_id === businessId);
+}
 
 /**
  * GET /api/inventory-analytics/summary
@@ -36,25 +54,15 @@ router.get('/summary', authGuard, permissionCheck('manage_inventory'), async (re
      * zero and is reported separately, so an understated total says so
      * instead of looking complete.
      */
-    const { data: inventoryData } = await supabaseAdmin
-      .from('product_inventory')
-      .select(`
-        quantity,
-        product:products!product_id(cost_price, business_id)
-      `)
-      .not('quantity', 'eq', 0);
+    const inventoryData = await businessInventory(businessId, 'quantity, product:products!product_id(cost_price, business_id)',
+      (query) => query.not('quantity', 'eq', 0));
 
     const ownStock = (inventoryData || []).filter(i => i.product?.business_id === businessId);
     const totalValue = ownStock.reduce((sum, i) => sum + (i.quantity * Number(i.product?.cost_price || 0)), 0);
     const uncostedCount = ownStock.filter(i => !(Number(i.product?.cost_price) > 0)).length;
 
     // Items below reorder point (using low_stock_threshold as default reorder point)
-    const { data: belowReorder } = await supabaseAdmin
-      .from('product_inventory')
-      .select(`
-        quantity, low_stock_threshold,
-        product:products!product_id(id, business_id)
-      `);
+    const belowReorder = await businessInventory(businessId, 'quantity, low_stock_threshold, product:products!product_id(id, business_id)');
 
     const belowReorderCount = (belowReorder || [])
       .filter(i => i.product?.business_id === businessId && i.quantity <= i.low_stock_threshold)
@@ -73,10 +81,8 @@ router.get('/summary', authGuard, permissionCheck('manage_inventory'), async (re
 
     const recentlySoldIds = new Set((recentSalesProducts || []).map(s => s.product_id));
 
-    const { data: allWithStock } = await supabaseAdmin
-      .from('product_inventory')
-      .select('product_id, quantity, product:products!product_id(business_id)')
-      .gt('quantity', 0);
+    const allWithStock = await businessInventory(businessId, 'product_id, quantity, product:products!product_id(business_id)',
+      (query) => query.gt('quantity', 0));
 
     const deadStockCount = (allWithStock || [])
       .filter(i => i.product?.business_id === businessId && !recentlySoldIds.has(i.product_id))
@@ -109,14 +115,11 @@ router.get('/valuation', authGuard, permissionCheck('manage_inventory'), async (
     const businessId = req.user.business_id;
 
     // At cost, matching /summary above. See the note there.
-    const { data } = await supabaseAdmin
-      .from('product_inventory')
-      .select(`
+    const data = await businessInventory(businessId, `
         quantity, location_id,
         product:products!product_id(id, name, sku, cost_price, category, business_id),
         location:locations!location_id(id, name)
-      `)
-      .gt('quantity', 0);
+      `, (query) => query.gt('quantity', 0));
 
     const filtered = (data || []).filter(i => i.product?.business_id === businessId);
 
@@ -178,9 +181,7 @@ router.get('/turnover', authGuard, permissionCheck('manage_inventory'), async (r
     }
 
     // Get current stock per product
-    const { data: inventory } = await supabaseAdmin
-      .from('product_inventory')
-      .select('product_id, quantity, product:products!product_id(id, name, sku, category, price, business_id)');
+    const inventory = await businessInventory(businessId, 'product_id, quantity, product:products!product_id(id, name, sku, category, price, business_id)');
 
     const productStock = {};
     for (const inv of (inventory || [])) {
@@ -250,14 +251,11 @@ router.get('/dead-stock', authGuard, permissionCheck('manage_inventory'), async 
     const recentlySoldIds = new Set((recentSales || []).map(s => s.product_id));
 
     // Get all products with stock
-    const { data: inventory } = await supabaseAdmin
-      .from('product_inventory')
-      .select(`
+    const inventory = await businessInventory(businessId, `
         quantity, location_id,
         product:products!product_id(id, name, sku, category, price, business_id, created_at),
         location:locations!location_id(id, name)
-      `)
-      .gt('quantity', 0);
+      `, (query) => query.gt('quantity', 0));
 
     const deadStock = (inventory || [])
       .filter(i => i.product?.business_id === businessId && !recentlySoldIds.has(i.product?.id))
@@ -318,9 +316,7 @@ router.get('/reorder-suggestions', authGuard, permissionCheck('manage_inventory'
     }
 
     // Get product inventory with thresholds
-    const { data: inventory, error: inventoryError } = await supabaseAdmin
-      .from('product_inventory')
-      .select(`
+    const inventory = await businessInventory(businessId, `
         quantity, low_stock_threshold, location_id,
         product:products!product_id(id, name, sku, category, price, cost_price, business_id),
         location:locations!location_id(id, name)
@@ -332,7 +328,6 @@ router.get('/reorder-suggestions', authGuard, permissionCheck('manage_inventory'
       .select('*, supplier:suppliers!preferred_supplier_id(id, name, lead_time_days)')
       .eq('business_id', businessId);
 
-    if (inventoryError) throw inventoryError;
     if (configError) throw configError;
     const configMap = {};
     for (const rc of (reorderConfigs || [])) {

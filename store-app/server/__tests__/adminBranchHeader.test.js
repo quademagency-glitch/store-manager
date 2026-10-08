@@ -16,8 +16,9 @@ jest.mock('../utils/jwtVerifier', () => ({ verifyToken: jest.fn().mockResolvedVa
 process.env.AUTH_CACHE_TTL_MS = '60000';
 const guard = require('../middleware/authGuard');
 
-async function authorize(branch) {
-  const req = { method: 'GET', path: '/x', baseUrl: '/api/test', headers: { authorization: 'Bearer synthetic', ...(branch ? { 'x-location-id': branch } : {}) }, get: () => undefined };
+async function authorize(branch, { baseUrl = '/api/test', path = '/x', queryToken } = {}) {
+  const headers = { ...(queryToken ? {} : { authorization: 'Bearer synthetic' }), ...(branch ? { 'x-location-id': branch } : {}) };
+  const req = { method: 'GET', path, baseUrl, headers, query: queryToken ? { token: queryToken } : {}, get: () => undefined };
   const res = { statusCode: 200, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
   let passed = false;
   await guard(req, res, () => { passed = true; });
@@ -59,4 +60,9 @@ test('no header still means every branch of the business', async () => {
   expect(passed).toBe(true);
   expect(req.user.active_location_id).toBeUndefined();
   expect(req.user.business_location_ids).toEqual(['branch-1', 'branch-2']);
+});
+
+test('a session token in the URL is accepted only where EventSource needs it', async () => {
+  expect((await authorize(undefined, { baseUrl: '/api/products', path: '/', queryToken: 'synthetic' })).res.statusCode).toBe(401);
+  expect((await authorize(undefined, { baseUrl: '/api/scanner', path: '/events', queryToken: 'synthetic' })).passed).toBe(true);
 });

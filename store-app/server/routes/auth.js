@@ -3,7 +3,6 @@ const logger = require('../utils/logger');
 const { z } = require('zod');
 const { supabaseAdmin, supabaseSignIn } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
-const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { seedAccountingTemplates } = require('../services/accountingTemplateSeeder');
 const { sendBusinessWelcomeEmail, resolveBusinessLoginUrl, sendSignupAlert } = require('../services/emailService');
@@ -264,13 +263,6 @@ const resendConfirmationSchema = z.object({
      wrong failure. The route lowercases separately, so the rate-limit key and
      the lookup agree. */
   email: z.string().trim().email('Invalid email address'),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role_id: z.string().uuid('Invalid role ID'),
 });
 
 /* One attribution field. Truncates instead of rejecting, deliberately.
@@ -690,70 +682,6 @@ router.post('/demo-login', demoLoginCeiling, demoLoginLimiter, async (req, res) 
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Could not start the demo. Please try again.',
-    });
-  }
-});
-
-/**
- * POST /api/auth/register
- * Create a new user (Supabase Auth + users table).
- * Requires authentication and manager role.
- */
-router.post('/register', authGuard, permissionCheck('manage_users'), validateBody(registerSchema), async (req, res) => {
-  try {
-    const { name, email, password, role_id } = req.body;
-
-    // ── Create auth user in Supabase ────────────────────
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // auto-confirm so the user can login immediately
-      });
-
-    if (authError) {
-      // Supabase returns a clear message for duplicates, etc.
-      return res.status(400).json({
-        error: 'Registration failed',
-        message: authError.message,
-      });
-    }
-
-    // ── Insert profile row in users table ───────────────
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        name,
-        email,
-        role_id,
-      })
-      .select('id, name, email, role_id, created_at')
-      .single();
-
-    if (userError) {
-      // Rollback: remove the auth user we just created
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return res.status(500).json({
-        error: 'Registration failed',
-        message: 'Could not create user profile. Auth user rolled back.',
-      });
-    }
-
-    logAuditEvent(req, AUDIT_ACTIONS.USER_CREATED, 'user', userData?.id, {
-      email: userData?.email,
-      role_id: userData?.role_id,
-    });
-
-    return res.status(201).json({
-      message: 'User created successfully.',
-      user: userData,
-    });
-  } catch (err) {
-    logger.error({ err: err }, 'Register error:');
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: 'Registration failed. Please try again.',
     });
   }
 });

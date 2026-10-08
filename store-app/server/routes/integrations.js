@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const { webhookUrlProblem } = require('../utils/safeUrl');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
@@ -134,6 +135,8 @@ router.post('/webhooks', async (req, res) => {
   try {
     const { url, events } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
+    const urlProblem = webhookUrlProblem(url);
+    if (urlProblem) return res.status(400).json({ error: urlProblem });
 
     const subscribedEvents = Array.isArray(events) && events.length > 0 ? events : ['order.status_changed'];
     const invalidEvents = subscribedEvents.filter(e => !VALID_EVENTS.includes(e));
@@ -169,7 +172,11 @@ router.put('/webhooks/:id', async (req, res) => {
   try {
     const { url, events, status } = req.body;
     const update = { updated_at: new Date().toISOString() };
-    if (url !== undefined) update.url = url;
+    if (url !== undefined) {
+      const urlProblem = webhookUrlProblem(url);
+      if (urlProblem) return res.status(400).json({ error: urlProblem });
+      update.url = url;
+    }
     if (status !== undefined) {
       if (!['active', 'disabled'].includes(status)) {
         return res.status(400).json({ error: "status must be 'active' or 'disabled'" });

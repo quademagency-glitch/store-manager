@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
 const { open } = require('../utils/secretBox');
+const { publicFetchOptions, assertPublicTarget } = require('../utils/safeUrl');
 
 // Capped exponential backoff: 1m, 5m, 30m. Once attempt_count exceeds this,
 // retries are exhausted and the delivery is marked permanently failed.
@@ -86,7 +87,10 @@ async function attemptDelivery(delivery, endpoint) {
   const attemptCount = delivery.attempt_count + 1;
 
   try {
+    // Customer-chosen URL: public addresses only, no redirects (utils/safeUrl).
+    assertPublicTarget(endpoint.url);
     const res = await fetch(endpoint.url, {
+      ...publicFetchOptions,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,7 +101,10 @@ async function attemptDelivery(delivery, endpoint) {
       timeout: DELIVERY_TIMEOUT_MS,
     });
 
-    const responseBody = await res.text().catch(() => '');
+    // A redirect is not a delivery, and its target is not followed.
+    const responseBody = res.status >= 300 && res.status < 400
+      ? `Redirect to another address was not followed (HTTP ${res.status}).`
+      : await res.text().catch(() => '');
     const delivered = res.status >= 200 && res.status < 300;
     const retryAt = delivered ? null : nextRetryTime(attemptCount);
 
@@ -121,7 +128,9 @@ async function attemptDelivery(delivery, endpoint) {
         attempt_count: attemptCount,
         last_attempt_at: new Date().toISOString(),
         next_retry_at: retryAt,
-        response_body: String(err.message).slice(0, 2000),
+        // The business reads this field. Inward addresses are refused before any
+        // connection, so other errors describe their own public endpoint.
+        response_body: err.code === 'ENONPUBLIC' ? 'Refused: the URL resolves to a non-public address.' : String(err.message).slice(0, 2000),
       })
       .eq('id', delivery.id);
   }

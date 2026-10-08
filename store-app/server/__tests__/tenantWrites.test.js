@@ -29,7 +29,8 @@ const app = express();
 app.use(express.json());
 for (const [path, file] of [['/stock', 'stock'], ['/stocktake', 'stocktake'], ['/products', 'products'], ['/units', 'units'],
   ['/hr', 'hr'], ['/users', 'users'], ['/ledger', 'ledger'], ['/ar', 'accountsReceivable'], ['/customer-orders', 'customerOrders'],
-  ['/analytics', 'analytics'], ['/loyalty', 'loyalty'], ['/alerts', 'alerts']]) {
+  ['/analytics', 'analytics'], ['/loyalty', 'loyalty'], ['/alerts', 'alerts'],
+  ['/sales', 'sales'], ['/customers', 'customers'], ['/inventory-analytics', 'inventoryAnalytics']]) {
   app.use(path, require(`../routes/${file}`));
 }
 
@@ -243,6 +244,23 @@ describe('money', () => {
     expect(writes()).toHaveLength(0);
   });
 
+  test('an expense carries a receipt from this business\'s own folder, and only that', async () => {
+    rows.business_ledger = { data: { id: 'e1' }, error: null };
+    const expense = (receipt_url) => request(app).post('/ledger').send({ type: 'expense', amount: 10, location_id: LOC, receipt_url });
+    expect((await expense(`${BIZ}/1728380000000_ab12c.png`)).status).toBe(201);
+    expect((await expense('biz-other/1728380000000_ab12c.png')).status).toBe(400);
+    expect((await expense(`${BIZ}/../biz-other/x.png`)).status).toBe(400);
+    expect(writes()).toHaveLength(1);
+  });
+
+  test('a receipt archive never reads outside the business\'s folder', async () => {
+    rows.business_ledger = { data: [{ id: 'r1', type: 'expense', receipt_url: 'biz-other/x.png' }], error: null };
+    const download = jest.fn();
+    mockDb.storage = { from: () => ({ download }) };
+    expect((await request(app).get('/ledger/download-receipts?start_date=2026-10-01&end_date=2026-10-08')).status).toBe(409);
+    expect(download).not.toHaveBeenCalled();
+  });
+
   test('approve and reject act only on pending entries at the approver\'s branches', async () => {
     Object.assign(mockUser, { role: 'Manager', permissions: [], location_ids: [LOC] });
     rows.business_ledger = { data: [], error: null };
@@ -302,5 +320,52 @@ describe('orders, analytics, loyalty, alerts', () => {
     rows.alerts = { data: { id: 'a1', business_id: BIZ, location_id: LOC2, status: 'open', user_id: STAFF }, error: null };
     expect((await request(app).put('/alerts/a1/resolve')).status).toBe(403);
     expect(writes()).toHaveLength(0);
+  });
+});
+
+describe('limits on guessing and sending codes', () => {
+  const realFetch = global.fetch;
+  beforeEach(() => { global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ status: 'success' }) })); });
+  afterAll(() => { global.fetch = realFetch; });
+
+  test('manager PINs stop being checked after five failures', async () => {
+    Object.assign(mockUser, { role: 'Cashier', permissions: ['create_sales'] });
+    rows.audit_logs = { count: 5, error: null };
+    expect((await request(app).post('/sales/verify-pin').send({ pin: '1234' })).status).toBe(429);
+    expect(queriesOn('users')).toHaveLength(0); // no PIN was compared
+  });
+
+  test('a customer code is not re-sent more than three times in ten minutes', async () => {
+    rows.customers = { data: { business_id: BIZ, phone: '+233241234567', name: 'C', verification_code: null, otp_expires_at: null }, error: null };
+    rows.audit_logs = { count: 3, error: null };
+    expect((await request(app).post('/customers/c1/send-verification')).status).toBe(429);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(writes()).toHaveLength(0);
+  });
+
+  test('five wrong guesses void the code', async () => {
+    rows.customers = { data: { business_id: BIZ, verification_code: '4821', otp_expires_at: new Date(Date.now() + 5 * 60_000).toISOString() }, error: null };
+    rows.audit_logs = { count: 5, error: null };
+    expect((await request(app).post('/customers/c1/verify').send({ code: '0000' })).status).toBe(429);
+    expect(mutations).toContainEqual(expect.objectContaining({ table: 'customers', op: 'update', payload: { verification_code: null, otp_expires_at: null } }));
+  });
+});
+
+describe('reads', () => {
+  test('a sale needs view_sales, or create_sales and being its salesperson', async () => {
+    Object.assign(mockUser, { role: 'Stock Clerk', permissions: ['view_inventory'], location_ids: [LOC] });
+    expect((await request(app).get('/sales/s1')).status).toBe(403);
+    Object.assign(mockUser, { role: 'Cashier', permissions: ['create_sales'] });
+    rows.sales = { data: { id: 's1' }, error: null };
+    expect((await request(app).get('/sales/s1')).status).toBe(200);
+    expect(queriesOn('sales')[0]).toContainEqual(['eq', 'salesperson_id', ME]);
+  });
+
+  test('inventory analytics read only this business\'s branches', async () => {
+    rows.locations = { data: [{ id: LOC }, { id: LOC2 }], error: null };
+    expect((await request(app).get('/inventory-analytics/valuation')).status).toBe(200);
+    const inventory = queriesOn('product_inventory');
+    expect(inventory.length).toBeGreaterThan(0);
+    for (const calls of inventory) expect(calls).toContainEqual(['in', 'location_id', [LOC, LOC2]]);
   });
 });

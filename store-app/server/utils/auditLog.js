@@ -37,6 +37,9 @@ const AUDIT_ACTIONS = {
   USER_STATUS_CHANGED: 'user.status_changed',
   USER_DELETED: 'user.deleted',
   USER_PIN_SET: 'user.pin_set',
+  PIN_VERIFY_FAILED: 'user.pin_verify_failed',
+  CUSTOMER_CODE_SENT: 'customer.verification_sent',
+  CUSTOMER_VERIFY_FAILED: 'customer.verification_failed',
 
   // Roles
   ROLE_CREATED: 'role.created',

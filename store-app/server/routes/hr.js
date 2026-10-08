@@ -9,6 +9,7 @@ const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { validateBody } = require('../middleware/validate');
 const { ownsAll } = require('../utils/ownership');
+const { csvCell } = require('../utils/csv');
 
 const router = express.Router();
 
@@ -751,12 +752,15 @@ router.get('/payroll-export', authGuard, permissionCheck('manage_business'), asy
 
     if (format === 'csv') {
       const headers = 'Name,Email,Hours Worked,Shifts,Commission Earned,Commission Paid,Commission Unpaid\n';
+      // Names and emails were written raw until 8 October 2026: a staff name
+      // beginning with = ran as a formula in the owner's spreadsheet.
       const rows = payroll.map(r =>
-        `"${r.name}","${r.email}",${r.hours_worked},${r.shifts},${r.commission_earned.toFixed(2)},${r.commission_paid.toFixed(2)},${r.commission_unpaid.toFixed(2)}`
+        [r.name, r.email, r.hours_worked, r.shifts, r.commission_earned.toFixed(2), r.commission_paid.toFixed(2), r.commission_unpaid.toFixed(2)].map(csvCell).join(',')
       ).join('\n');
 
+      const day = (value) => String(value).replace(/[^0-9-]/g, '').slice(0, 10);
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=payroll_${startDate}_${endDate}.csv`);
+      res.setHeader('Content-Disposition', `attachment; filename=payroll_${day(startDate)}_${day(endDate)}.csv`);
       return res.send(headers + rows);
     }
 

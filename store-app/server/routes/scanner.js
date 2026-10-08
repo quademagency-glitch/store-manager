@@ -37,6 +37,10 @@ const router = express.Router();
 // cleanly reporting "invalid token", so reject bad formats before querying.
 const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidToken = (token) => typeof token === 'string' && TOKEN_RE.test(token);
+/* The scanner app's credential. Prefer the X-Scanner-Token header: a token in
+   a URL ends up in proxy and browser logs. The body and query forms stay for
+   scanner app builds already installed. */
+const scannerToken = (req) => req.get('X-Scanner-Token') || req.body?.token || req.query.token;
 
 const scanLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
@@ -131,7 +135,7 @@ router.get('/token', authGuard, async (req, res) => {
     res.json({ token });
   } catch (err) {
     logger.error({ err: err }, 'Error generating scanner token:');
-    res.status(500).json({ error: `Failed to generate scanner token: ${err.message || JSON.stringify(err)}` });
+    res.status(500).json({ error: 'Failed to generate scanner token' });
   }
 });
 
@@ -164,7 +168,7 @@ router.get('/status', authGuard, async (req, res) => {
  */
 router.post('/link', async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -208,10 +212,8 @@ router.post('/link', async (req, res) => {
       }
     });
   } catch (err) {
-    logger.info('====== CRITICAL ERROR LINKING SCANNER ======');
-    logger.info(JSON.stringify(err, null, 2));
-    logger.info(err.message);
-    res.status(500).json({ error: 'Failed to link scanner', details: err.message || err });
+    logger.error({ err }, 'Error linking scanner');
+    res.status(500).json({ error: 'Failed to link scanner' });
   }
 });
 
@@ -222,7 +224,7 @@ router.post('/link', async (req, res) => {
  */
 router.get('/me', async (req, res) => {
   try {
-    const token = req.query.token;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -290,7 +292,7 @@ router.post('/unlink', authGuard, async (req, res) => {
  */
 router.post('/app-unlink', async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -389,7 +391,7 @@ router.post('/push-scan', scanLimiter, async (req, res) => {
  */
 router.post('/cancel-scan', scanLimiter, async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -489,7 +491,7 @@ router.get('/events', authGuard, (req, res) => {
  */
 router.get('/app-events', async (req, res) => {
   try {
-    const { token } = req.query;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -593,7 +595,7 @@ async function resolveScanner(token) {
  */
 router.get('/attendance-status', async (req, res) => {
   try {
-    const user = await resolveScanner(req.query.token);
+    const user = await resolveScanner(scannerToken(req));
     if (!user) return res.status(401).json({ error: 'Invalid token' });
 
     const { data: openLog } = await supabaseAdmin
@@ -635,7 +637,8 @@ router.get('/attendance-status', async (req, res) => {
  */
 router.post('/clock-in', scanLimiter, async (req, res) => {
   try {
-    const { token, latitude, longitude, note } = req.body;
+    const { latitude, longitude, note } = req.body;
+    const token = scannerToken(req);
     const user = await resolveScanner(token);
     if (!user) return res.status(401).json({ error: 'Invalid token' });
 
@@ -723,7 +726,8 @@ router.post('/clock-in', scanLimiter, async (req, res) => {
  */
 router.post('/clock-out', scanLimiter, async (req, res) => {
   try {
-    const { token, latitude, longitude, note } = req.body;
+    const { latitude, longitude, note } = req.body;
+    const token = scannerToken(req);
     const user = await resolveScanner(token);
     if (!user) return res.status(401).json({ error: 'Invalid token' });
 

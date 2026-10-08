@@ -8,6 +8,24 @@ const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const { resolveCountry, normalizePhone, toSmsFormat, phoneSearchDigits } = require('../utils/phone');
 const crypto = require('crypto');
 const { fetchAllRows } = require('../utils/fetchAllRows');
+const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+
+/* Customer phone verification. A 4-digit code (the screens say so) is only
+   safe behind limits. Until 8 October 2026 it came from Math.random, could be
+   guessed without limit, and could be re-sent without limit at QuadERP's SMS
+   cost. Counted in audit_logs so every worker sees the same count. */
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_SENDS_PER_WINDOW = 3;
+const OTP_FAILURES_PER_CODE = 5;
+const newOtp = () => String(crypto.randomInt(1000, 10000));
+
+async function customerEventsSince(action, customerId, since) {
+  const { count, error } = await supabaseAdmin.from('audit_logs').select('id', { count: 'exact', head: true })
+    .eq('action', action).eq('resource_type', 'customer').eq('resource_id', customerId)
+    .gte('created_at', new Date(since).toISOString());
+  if (error) throw error;
+  return count || 0;
+}
 
 const router = express.Router();
 
@@ -155,8 +173,8 @@ router.post('/', authGuard, async (req, res) => {
     }
 
     const customer_code = 'CUST-' + crypto.randomBytes(2).toString('hex').toUpperCase() + Math.floor(Math.random() * 1000);
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const code = newOtp();
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
 
     const { data, error } = await supabaseAdmin
       .from('customers')
@@ -210,6 +228,8 @@ router.post('/', authGuard, async (req, res) => {
         const smsData = await smsRes.json();
         if (!smsRes.ok || smsData.status === 'error' || smsData.code === 400) {
           logger.error({ err: smsData }, 'Arkesel SMS failed during customer creation:');
+        } else {
+          logAuditEvent(req, AUDIT_ACTIONS.CUSTOMER_CODE_SENT, 'customer', data.id);
         }
       } catch (smsErr) {
         logger.error({ err: smsErr }, 'Arkesel SMS exception during customer creation:');
@@ -389,6 +409,9 @@ router.post('/:id/send-verification', authGuard, async (req, res) => {
     if (req.user.role !== 'Platform Admin' && customer.business_id !== req.user.business_id) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
+    if (await customerEventsSince(AUDIT_ACTIONS.CUSTOMER_CODE_SENT, customerId, Date.now() - OTP_TTL_MS) >= OTP_SENDS_PER_WINDOW) {
+      return res.status(429).json({ error: 'Several codes were sent in the last 10 minutes. Wait a few minutes before sending another.' });
+    }
 
     const now = new Date();
     let code = customer.verification_code;
@@ -396,8 +419,8 @@ router.post('/:id/send-verification', authGuard, async (req, res) => {
 
     // Generate new code if expired or missing
     if (!code || !expiresAt || new Date(expiresAt) < now) {
-      code = Math.floor(1000 + Math.random() * 9000).toString();
-      expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+      code = newOtp();
+      expiresAt = new Date(now.getTime() + OTP_TTL_MS).toISOString();
 
       // Save code to database
       const { error: updateError } = await supabaseAdmin
@@ -436,10 +459,9 @@ router.post('/:id/send-verification', authGuard, async (req, res) => {
       
       if (!smsRes.ok || smsData.status === 'error' || smsData.code === 400) {
         logger.error({ err: smsData }, 'Arkesel SMS failed:');
-        return res.status(400).json({ 
-          error: `SMS failed: ${smsData.message || 'Invalid phone number or API key'}` 
-        });
+        return res.status(400).json({ error: 'The SMS could not be sent. Check the phone number and try again.' });
       }
+      logAuditEvent(req, AUDIT_ACTIONS.CUSTOMER_CODE_SENT, 'customer', customerId);
     } else {
       logger.warn('ARKESEL_API_KEY not set. Verification code generated but SMS not sent.');
       // Optionally return the code in dev mode, but in prod we shouldn't.
@@ -478,7 +500,17 @@ router.post('/:id/verify', authGuard, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    if (!customer.verification_code || customer.verification_code !== code) {
+    // Failures are counted per code: from when this code was issued.
+    const issuedAt = customer.otp_expires_at ? new Date(customer.otp_expires_at).getTime() - OTP_TTL_MS : Date.now() - OTP_TTL_MS;
+    if (customer.verification_code
+      && await customerEventsSince(AUDIT_ACTIONS.CUSTOMER_VERIFY_FAILED, customerId, issuedAt) >= OTP_FAILURES_PER_CODE) {
+      await supabaseAdmin.from('customers').update({ verification_code: null, otp_expires_at: null })
+        .eq('id', customerId).eq('business_id', customer.business_id);
+      return res.status(429).json({ error: 'Too many wrong codes. Send the customer a new code.' });
+    }
+
+    if (!customer.verification_code || customer.verification_code !== String(code).trim()) {
+      if (customer.verification_code) logAuditEvent(req, AUDIT_ACTIONS.CUSTOMER_VERIFY_FAILED, 'customer', customerId);
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 

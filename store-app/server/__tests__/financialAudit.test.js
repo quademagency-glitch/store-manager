@@ -138,7 +138,7 @@ test('export includes more than one database page and preserves branch scope', a
 });
 
 test('receipt source failure is explicit and sends no incomplete ZIP', async () => {
-  rows.business_ledger = { data: [{ id: 'r1', type: 'expense', receipt_url: 'file1.png' }, { id: 'r2', type: 'expense', receipt_url: 'file2.png' }] };
+  rows.business_ledger = { data: [{ id: 'r1', type: 'expense', receipt_url: `${mockUser.business_id}/file1.png` }, { id: 'r2', type: 'expense', receipt_url: `${mockUser.business_id}/file2.png` }] };
   const download = jest.fn().mockResolvedValueOnce({ data: { arrayBuffer: async () => Buffer.from('first file') } }).mockResolvedValueOnce({ error: new Error('missing') });
   mockDb.storage.from.mockReturnValue({ download });
   const res = await request(app).get('/ledger/download-receipts');

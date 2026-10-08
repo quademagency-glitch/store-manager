@@ -17,7 +17,11 @@ import { scrubEvent } from './lib/analytics'
 const analyticsOn = analyticsAllowed(
   import.meta.env.VITE_POSTHOG_KEY,
   import.meta.env.VITE_POSTHOG_START,
-)
+) &&
+  /* A shared receipt (/r/<token>) is opened by a shop's customer, who is not a
+     user of the app and is not covered by its analytics notice. Not loading
+     PostHog at all keeps their device from contacting it or storing an id. */
+  !window.location.pathname.startsWith('/r/')
 
 if (analyticsOn) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {

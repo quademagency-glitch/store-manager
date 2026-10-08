@@ -286,7 +286,7 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Resend</td>
-                  <td>Transactional email: invoices, account and security notices</td>
+                  <td>Transactional email: invoices, account and security notices, and the end-of-day summary an owner chooses to receive</td>
                   <td>Outside Ghana</td>
                 </tr>
                 <tr>

@@ -110,7 +110,7 @@ export const ENTITY = {
  * a fact, and the whole agreement rests on it.
  */
 export const TERMS_VERSION = '1.0';
-export const PRIVACY_VERSION = '1.2';
+export const PRIVACY_VERSION = '1.3';
 export const DPA_VERSION = '1.2';
 
 export const EFFECTIVE_DATE = '19 August 2026';
@@ -121,7 +121,10 @@ export const EFFECTIVE_DATE = '19 August 2026';
    1.2 adds DPA 5.4 and Privacy 7.3: messaging accounts a business connects
    with its own credentials (WhatsApp Business) are the business's, not our
    sub-processors, and automatic WhatsApp messages need the business's switch
-   and the customer's WhatsApp permission. */
+   and the customer's WhatsApp permission.
+   Privacy 1.3 adds the owner's end-of-day summary to Resend's row: same
+   recipient and purpose (transactional email), sent only to owners who
+   switch it on. The DPA's "transactional email" already covers it. */
 export const PRIVACY_EFFECTIVE_DATE = '8 October 2026';
 export const DPA_EFFECTIVE_DATE = '8 October 2026';
 

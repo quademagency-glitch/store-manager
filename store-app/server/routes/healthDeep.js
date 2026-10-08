@@ -123,6 +123,7 @@ const CRON_JOBS = {
   'pending-sale-sweep': 15 * 60 * 1000,
   'whatsapp-queue': 15 * 60 * 1000,
   'whatsapp-reminders': 26 * 60 * 60 * 1000,
+  'owner-summaries': 26 * 60 * 60 * 1000,
 };
 
 /**

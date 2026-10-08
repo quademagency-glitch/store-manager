@@ -489,3 +489,20 @@
   padding-left: 10px;
   padding-right: 10px;
 }
+/* The end-of-day summary switch on the dashboard. */
+.owner-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+}
+.owner-summary h2 {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 1rem;
+}

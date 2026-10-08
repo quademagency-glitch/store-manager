@@ -62,6 +62,7 @@ before(async () => {
     "CREATE TABLE communication_gateways(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid,provider text NOT NULL,type text NOT NULL CHECK (type IN ('sms','email','both')),display_name text NOT NULL,api_key text,secret_key text,sender_id text,is_active boolean NOT NULL DEFAULT false,is_default boolean NOT NULL DEFAULT false,config jsonb DEFAULT '{}',created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());",
   );
   await db.exec(read("db/migrations/094_whatsapp_automation.sql"));
+  await db.exec(read("db/migrations/095_owner_daily_summary.sql"));
   await q(
     "INSERT INTO businesses(id,name,slug) VALUES($1,'Retail test','retail-test'),($2,'Other','other-test')",
     [ids.biz, ids.other],
@@ -945,4 +946,13 @@ test("WhatsApp automation: new channel and gateway type, a deduplicated queue, a
     assert.equal((await one("SELECT has_table_privilege($1,'whatsapp_messages','SELECT') allowed", [role])).allowed, false);
   const flags = await one("SELECT whatsapp_receipts, whatsapp_reminders FROM businesses WHERE id=$1", [ids.biz]);
   assert.deepEqual(flags, { whatsapp_receipts: false, whatsapp_reminders: false }, "both kinds start switched off");
+});
+
+test("owner summaries: off by default per person, and one claim per business per day", async () => {
+  assert.equal((await one("SELECT daily_summary_email FROM users WHERE id=$1", [ids.user])).daily_summary_email, false);
+  await q("INSERT INTO owner_daily_summaries(business_id,summary_date) VALUES($1,'2026-10-08')", [ids.biz]);
+  await assert.rejects(q("INSERT INTO owner_daily_summaries(business_id,summary_date) VALUES($1,'2026-10-08')", [ids.biz]), /duplicate|unique/i);
+  await q("INSERT INTO owner_daily_summaries(business_id,summary_date) VALUES($1,'2026-10-09')", [ids.biz]);
+  for (const role of ["anon", "authenticated"])
+    assert.equal((await one("SELECT has_table_privilege($1,'owner_daily_summaries','SELECT') allowed", [role])).allowed, false);
 });

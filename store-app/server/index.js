@@ -60,6 +60,7 @@ const { initWebhookRetryCron } = require('./services/webhookRetryCron');
 const { initDemoResetCron } = require('./services/demoResetCron');
 const { initPendingSaleCron } = require('./services/pendingSaleCron');
 const { initWhatsAppCron } = require('./services/whatsappAutomation');
+const { initOwnerSummaryCron } = require('./services/ownerSummary');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -519,6 +520,7 @@ app.use('/api/operations', require('./routes/operations'));
 app.use('/api/search', require('./routes/search'));
 const receiptLinks = require('./routes/receiptLinks');
 app.use('/api/receipt-links', receiptLinks.staff);
+app.use('/api/owner-summary', require('./routes/ownerSummary'));
 app.use('/api/public/receipts', receiptLinks.publicReceipts);
 
 // Accounting Templates routes
@@ -648,6 +650,7 @@ if (require.main === module) {
         initDemoResetCron(),
         initPendingSaleCron(),
         initWhatsAppCron(),
+        initOwnerSummaryCron(),
       );
     }
   });

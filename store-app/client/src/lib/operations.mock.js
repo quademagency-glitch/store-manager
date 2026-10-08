@@ -59,6 +59,7 @@ const customers = [
     preference: "Opted out",
   },
 ];
+const ownerSummary = { enabled: false, eligible: true };
 const whatsapp = {
   receipts: false,
   reminders: false,
@@ -88,10 +89,11 @@ const shipments = [
 ];
 const resultCache = new Map();
 export function resolveOperationsMock(path, method, body = {}, query = {}) {
+  const ownerSummaryPath = path === "/owner-summary" || path === "/owner-summary/preview";
   const whatsappPath =
     path.startsWith("/crm-communications/whatsapp") ||
     (path.startsWith("/crm-communications/gateways") && method !== "GET" && body?.type === "whatsapp");
-  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links" && !whatsappPath)
+  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links" && !whatsappPath && !ownerSummaryPath)
     return undefined;
   if (
     method !== "GET" &&
@@ -234,6 +236,20 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       labels.push(result);
     }
   }
+  if (path === "/owner-summary") {
+    if (method === "PUT") ownerSummary.enabled = body.enabled;
+    result = { ...ownerSummary };
+  }
+  if (path === "/owner-summary/preview")
+    result = {
+      business: { name: "Omek Gigs", currency: "GHS" }, date: time.slice(0, 10),
+      sales: { count: 14, gross: 3820, refunds: 120, refundCount: 1, net: 3700 },
+      branches: [{ name: "Osu", sales: 2600, count: 9, refunds: 120 }, { name: "Tema", sales: 1220, count: 5, refunds: 0 }],
+      tills: [{ branch: "Osu", register: "Main", expected: 1450, counted: 1440, variance: -10, reviewed: false }],
+      openTills: [{ branch: "Tema", register: "Front" }],
+      lowStock: { count: 3, items: [{ name: "Gino Tomato Paste 400g", branch: "Osu", quantity: 2 }] },
+      pending: { tillReviews: 1, returnInspections: 1, investigations: 0, deliveries: 2, billsDue: 0 },
+    };
   if (path === "/crm-communications/whatsapp") result = whatsapp;
   if (path === "/crm-communications/whatsapp/settings") {
     // Mirrors the server: a kind switches on only with the account and its template.

@@ -134,6 +134,7 @@ if (cluster.isPrimary) {
   const { initDemoResetCron } = require('./services/demoResetCron');
   const { initPendingSaleCron } = require('./services/pendingSaleCron');
   const { initWhatsAppCron } = require('./services/whatsappAutomation');
+  const { initOwnerSummaryCron } = require('./services/ownerSummary');
 
   cronTasks.push(
     initSubscriptionCron(),
@@ -141,6 +142,7 @@ if (cluster.isPrimary) {
     initDemoResetCron(),
     initPendingSaleCron(),
     initWhatsAppCron(),
+    initOwnerSummaryCron(),
   );
 
   logger.info('📋 Crons initialized in primary process');

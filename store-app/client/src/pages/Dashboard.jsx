@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { IS_MOCK } from '../lib/mockMode';
+import OwnerSummary from '../features/operations/OwnerSummary';
 
 export default function Dashboard() {
   const { role, hasPermission, activeLocationId } = useAuthContext();
@@ -63,6 +64,7 @@ export default function Dashboard() {
       <div className="dashboard-content">
         <ErrorBanner error={error} onRetry={() => { fetchSummary(); fetchRecentActivity(); if (hasPermission('view_analytics')) { fetchSalesTrend(); fetchTopProducts(); fetchInventoryHealth(); fetchStaffPerformance(); } }} />
         <DailyWork summary={resources?.summary?.error ? null : summary} updatedAt={resources?.summary?.updatedAt} />
+        <OwnerSummary fmt={fmt} />
 
         {/* Quick Actions Panel */}
         <div className="dashboard-quick-actions">

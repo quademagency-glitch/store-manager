@@ -5,6 +5,14 @@ export const API_BASE = 'https://app.quaderp.app/api';
 
 const REQUEST_TIMEOUT_MS = 12000;
 
+// The scanner's credential travels in a header, never in a URL: URLs end up in
+// proxy logs. The server still accepts the older body and query forms from
+// builds already installed.
+const tokenHeaders = (token: string, json = false): Record<string, string> => ({
+  'X-Scanner-Token': token,
+  ...(json ? { 'Content-Type': 'application/json' } : {}),
+});
+
 // Thrown when the server returns 401, caller should unlink and redirect to setup
 export class AuthExpiredError extends Error {
   constructor() {
@@ -54,8 +62,7 @@ export const removeToken = async () => {
     try {
       await fetchWithTimeout(`${API_BASE}/scanner/app-unlink`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        headers: tokenHeaders(token),
       });
     } catch {
       // Best-effort unlink on backend
@@ -67,8 +74,7 @@ export const removeToken = async () => {
 export const linkScanner = async (token: string) => {
   const response = await fetchWithTimeout(`${API_BASE}/scanner/link`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
+    headers: tokenHeaders(token),
   });
   const data = await handleResponse(response);
   await saveToken(token);
@@ -79,7 +85,7 @@ export const getMe = async () => {
   const token = await getToken();
   if (!token) throw new Error('Scanner not linked. Please scan the QR code to connect.');
 
-  const response = await fetchWithTimeout(`${API_BASE}/scanner/me?token=${token}`);
+  const response = await fetchWithTimeout(`${API_BASE}/scanner/me`, { headers: tokenHeaders(token) });
   return handleResponse(response);
 };
 
@@ -89,8 +95,8 @@ export const pushScan = async (payload: any) => {
 
   const response = await fetchWithTimeout(`${API_BASE}/scanner/push-scan`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, payload }),
+    headers: tokenHeaders(token, true),
+    body: JSON.stringify({ payload }),
   });
   return handleResponse(response);
 };
@@ -102,8 +108,7 @@ export const cancelScan = async () => {
   try {
     const response = await fetchWithTimeout(`${API_BASE}/scanner/cancel-scan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      headers: tokenHeaders(token),
     });
     return handleResponse(response);
   } catch {
@@ -114,7 +119,7 @@ export const cancelScan = async () => {
 export const createEventSource = async () => {
   const token = await getToken();
   if (!token) throw new Error('Scanner not linked');
-  return new EventSource(`${API_BASE}/scanner/app-events?token=${token}`);
+  return new EventSource(`${API_BASE}/scanner/app-events`, { headers: tokenHeaders(token) });
 };
 
 // ─── Attendance ───
@@ -122,7 +127,7 @@ export const createEventSource = async () => {
 export const getAttendanceStatus = async () => {
   const token = await getToken();
   if (!token) throw new Error('Scanner not linked');
-  const response = await fetchWithTimeout(`${API_BASE}/scanner/attendance-status?token=${token}`);
+  const response = await fetchWithTimeout(`${API_BASE}/scanner/attendance-status`, { headers: tokenHeaders(token) });
   return handleResponse(response);
 };
 
@@ -130,14 +135,14 @@ export const clockIn = async (latitude?: number, longitude?: number, note?: stri
   const token = await getToken();
   if (!token) throw new Error('Scanner not linked');
 
-  const body: any = { token };
+  const body: any = {};
   if (latitude != null) body.latitude = latitude;
   if (longitude != null) body.longitude = longitude;
   if (note) body.note = note;
 
   const response = await fetchWithTimeout(`${API_BASE}/scanner/clock-in`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: tokenHeaders(token, true),
     body: JSON.stringify(body),
   });
   return handleResponse(response);
@@ -147,14 +152,14 @@ export const clockOut = async (latitude?: number, longitude?: number, note?: str
   const token = await getToken();
   if (!token) throw new Error('Scanner not linked');
 
-  const body: any = { token };
+  const body: any = {};
   if (latitude != null) body.latitude = latitude;
   if (longitude != null) body.longitude = longitude;
   if (note) body.note = note;
 
   const response = await fetchWithTimeout(`${API_BASE}/scanner/clock-out`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: tokenHeaders(token, true),
     body: JSON.stringify(body),
   });
   return handleResponse(response);

@@ -32,15 +32,54 @@ const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 
-// scanner_session_token is a uuid column, a non-uuid token (stray whitespace,
-// truncated copy/paste, garbage QR data) crashes the Postgres query instead of
-// cleanly reporting "invalid token", so reject bad formats before querying.
+// Scanner tokens are UUIDs. Reject anything else (stray whitespace, truncated
+// copy/paste, garbage QR data) before it is hashed and looked up.
 const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidToken = (token) => typeof token === 'string' && TOKEN_RE.test(token);
 /* The scanner app's credential. Prefer the X-Scanner-Token header: a token in
    a URL ends up in proxy and browser logs. The body and query forms stay for
    scanner app builds already installed. */
 const scannerToken = (req) => req.get('X-Scanner-Token') || req.body?.token || req.query.token;
+
+/* Scanner tokens are stored as a SHA-256 hash (migration 102); the raw value
+   exists only in the QR code and on the scanner. Until 8 October 2026 they
+   were stored as given and never expired. Now a QR code must be used within
+   15 minutes of being shown, and a linked scanner unused for 30 days has to
+   be linked again. Both refusals answer 404, which the scanner app already
+   treats as "link me again". */
+const SCANNER_LINK_WINDOW_MS = 15 * 60 * 1000;
+const SCANNER_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
+const SCANNER_TOUCH_MS = 60 * 60 * 1000; // record use at most hourly, not on every scan
+const hashScannerToken = (token) => crypto.createHash('sha256').update(String(token).toLowerCase()).digest('hex');
+const SCANNER_CLEARED = { scanner_token_hash: null, scanner_token_issued_at: null, scanner_linked_at: null, scanner_last_used_at: null };
+
+/**
+ * The user a scanner token belongs to, or null when it is unknown or expired.
+ * `linking`: the token is being redeemed from a QR code (POST /link).
+ */
+async function findScannerUser(token, columns, { linking = false } = {}) {
+  if (!isValidToken(token)) return null;
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select(`${columns}, scanner_token_issued_at, scanner_linked_at, scanner_last_used_at`)
+    .eq('scanner_token_hash', hashScannerToken(token))
+    .maybeSingle();
+  if (error) throw error;
+  if (!user) return null;
+  const now = Date.now();
+  if (linking) {
+    if (!user.scanner_token_issued_at || now - Date.parse(user.scanner_token_issued_at) > SCANNER_LINK_WINDOW_MS) return null;
+    return user;
+  }
+  if (!user.scanner_linked_at) return null; // a QR code that was never redeemed is not a scanner
+  const lastUse = Date.parse(user.scanner_last_used_at || user.scanner_linked_at);
+  if (now - lastUse > SCANNER_IDLE_MS) return null;
+  if (now - lastUse > SCANNER_TOUCH_MS) {
+    supabaseAdmin.from('users').update({ scanner_last_used_at: new Date(now).toISOString() }).eq('id', user.id)
+      .then(({ error: touchErr }) => { if (touchErr) logger.warn({ err: touchErr }, 'scanner: last use not recorded'); });
+  }
+  return user;
+}
 
 const scanLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
@@ -125,8 +164,9 @@ router.get('/token', authGuard, async (req, res) => {
     const { error } = await supabaseAdmin
       .from('users')
       .update({
-        scanner_session_token: token,
-        scanner_linked_at: null // reset link status on new token generation
+        ...SCANNER_CLEARED, // a new code replaces any earlier link
+        scanner_token_hash: hashScannerToken(token),
+        scanner_token_issued_at: new Date().toISOString(),
       })
       .eq('id', req.user.id);
 
@@ -177,23 +217,16 @@ router.post('/link', async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired token' });
     }
 
-    // Find user by token
-    const { data: users, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id, name, roles(name)')
-      .eq('scanner_session_token', token);
-
-    if (fetchError) throw fetchError;
-    if (!users || users.length === 0) {
+    const user = await findScannerUser(token, 'id, name, roles(name)', { linking: true });
+    if (!user) {
       return res.status(404).json({ error: 'Invalid or expired token' });
     }
 
-    const user = users[0];
-
     // Update link status
+    const linkedAt = new Date().toISOString();
     const { error: updateError } = await supabaseAdmin
       .from('users')
-      .update({ scanner_linked_at: new Date().toISOString() })
+      .update({ scanner_linked_at: linkedAt, scanner_last_used_at: linkedAt })
       .eq('id', user.id);
 
     if (updateError) throw updateError;
@@ -233,17 +266,10 @@ router.get('/me', async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired token' });
     }
 
-    const { data: users, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id, name, roles(name)')
-      .eq('scanner_session_token', token);
-
-    if (fetchError) throw fetchError;
-    if (!users || users.length === 0) {
+    const user = await findScannerUser(token, 'id, name, roles(name)');
+    if (!user) {
       return res.status(404).json({ error: 'Invalid or expired token' });
     }
-
-    const user = users[0];
 
     res.json({
       id: user.id,
@@ -265,10 +291,7 @@ router.post('/unlink', authGuard, async (req, res) => {
   try {
     const { error } = await supabaseAdmin
       .from('users')
-      .update({
-        scanner_session_token: null,
-        scanner_linked_at: null
-      })
+      .update(SCANNER_CLEARED)
       .eq('id', req.user.id);
 
     if (error) throw error;
@@ -301,18 +324,12 @@ router.post('/app-unlink', async (req, res) => {
       return res.json({ message: 'Scanner unlinked successfully' });
     }
 
-    const { data: users } = await supabaseAdmin
+    // Unlinking needs only the token, expired or not.
+    const { data: users, error } = await supabaseAdmin
       .from('users')
-      .select('id')
-      .eq('scanner_session_token', token);
-
-    const { error } = await supabaseAdmin
-      .from('users')
-      .update({
-        scanner_session_token: null,
-        scanner_linked_at: null
-      })
-      .eq('scanner_session_token', token);
+      .update(SCANNER_CLEARED)
+      .eq('scanner_token_hash', hashScannerToken(token))
+      .select('id');
 
     if (error) throw error;
 
@@ -345,7 +362,8 @@ const activeScanners = {};
  */
 router.post('/push-scan', scanLimiter, async (req, res) => {
   try {
-    const { token, qr_code, payload } = req.body;
+    const { qr_code, payload } = req.body;
+    const token = scannerToken(req);
 
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
@@ -358,18 +376,12 @@ router.post('/push-scan', scanLimiter, async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
-    // Find user by token
-    const { data: users, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('scanner_session_token', token);
-
-    if (fetchError) throw fetchError;
-    if (!users || users.length === 0) {
+    const scannerUser = await findScannerUser(token, 'id');
+    if (!scannerUser) {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
-    const userId = users[0].id;
+    const userId = scannerUser.id;
 
     // Send the scan event directly if the user's Web App is connected via SSE
     const client = activeClients[userId];
@@ -400,18 +412,12 @@ router.post('/cancel-scan', scanLimiter, async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
-    // Find user by token
-    const { data: users, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('scanner_session_token', token);
-
-    if (fetchError) throw fetchError;
-    if (!users || users.length === 0) {
+    const scannerUser = await findScannerUser(token, 'id');
+    if (!scannerUser) {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
-    const userId = users[0].id;
+    const userId = scannerUser.id;
 
     // Send the cancel event directly if the user's Web App is connected via SSE
     const client = activeClients[userId];
@@ -500,18 +506,10 @@ router.get('/app-events', async (req, res) => {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
 
-    // Find user by token
-    const { data: users, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id, name, roles(name)')
-      .eq('scanner_session_token', token);
-
-    if (fetchError) throw fetchError;
-    if (!users || users.length === 0) {
+    const user = await findScannerUser(token, 'id, name, roles(name)');
+    if (!user) {
       return res.status(404).json({ error: 'Invalid or expired scanner token' });
     }
-
-    const user = users[0];
     const userId = user.id;
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -574,17 +572,14 @@ function checkTimeWindow(location, action) {
 
 /** Helper: resolve user + location from scanner token */
 async function resolveScanner(token) {
-  if (!isValidToken(token)) return null;
-  const { data: users, error } = await supabaseAdmin
-    .from('users')
-    .select('id, name, business_id, user_locations(location_id), roles(name)')
-    .eq('scanner_session_token', token);
-  if (error || !users?.length) {
-    if (error) logger.error({ err: error }, 'resolveScanner error');
+  let user;
+  try {
+    user = await findScannerUser(token, 'id, name, business_id, user_locations(location_id), roles(name)');
+  } catch (error) {
+    logger.error({ err: error }, 'resolveScanner error');
     return null;
   }
-  
-  const user = users[0];
+  if (!user) return null;
   user.active_location_id = user.user_locations && user.user_locations.length > 0 ? user.user_locations[0].location_id : null;
   return user;
 }

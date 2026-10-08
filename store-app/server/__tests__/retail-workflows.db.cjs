@@ -154,3 +154,19 @@ test('SKUs are unique per business, and one QR code marks one unit',async()=>{
  // Units without a single code (double-QR packs) are unaffected.
  await q("INSERT INTO inventory_units(business_id,product_id,location_id,assigned_by) VALUES($1,$2,$3,$4),($1,$2,$3,$4)",[ids.biz,ids.product,ids.loc,ids.user]);
 });
+test('scanner tokens move to a hash the server computes identically',async()=>{
+ await db.exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS scanner_session_token uuid, ADD COLUMN IF NOT EXISTS scanner_linked_at timestamptz');
+ const linked=uuid(),fresh=uuid(),linkedUser=uuid(),freshUser=uuid();
+ await q("INSERT INTO users(id,business_id,name,email,role_id,scanner_session_token,scanner_linked_at) VALUES($1,$2,'Linked','l@example.invalid',$3,$4,now()-interval '2 days'),($5,$2,'Fresh','f@example.invalid',$3,$6,NULL)",[linkedUser,ids.biz,uuid(),linked,freshUser,fresh]);
+ await db.exec(read('db/migrations/102_scanner_token_hash.sql'));
+ const row=async(id)=>one('SELECT scanner_token_hash h,scanner_token_issued_at i,scanner_last_used_at u,scanner_linked_at l FROM users WHERE id=$1',[id]);
+ const node=(t)=>require('node:crypto').createHash('sha256').update(t.toLowerCase()).digest('hex');
+ assert.equal((await row(linkedUser)).h,node(linked));
+ assert.equal((await row(freshUser)).h,node(fresh.toUpperCase()));
+ // A linked scanner counts as used when it was linked; an unredeemed code is issued now.
+ assert.deepEqual((await row(linkedUser)).u,(await row(linkedUser)).l);
+ assert.ok((await row(freshUser)).i);
+ // Re-running is harmless, and one hash cannot belong to two people.
+ await db.exec(read('db/migrations/102_scanner_token_hash.sql'));
+ await assert.rejects(q("UPDATE users SET scanner_token_hash=$1 WHERE id=$2",[node(linked),freshUser]),/duplicate key/);
+});

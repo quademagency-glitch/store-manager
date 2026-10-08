@@ -70,9 +70,9 @@ export default function UserProfile() {
     }
   }, []);
 
-  const generateToken = useCallback(async () => {
+  const generateToken = useCallback(async ({ quiet = false } = {}) => {
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const { token } = await api.get('/scanner/token');
       setScannerToken(token);
       setIsLinked(false);
@@ -80,9 +80,20 @@ export default function UserProfile() {
       setError(err.message || 'Failed to generate scanner token');
       if (import.meta.env.DEV) console.error('generateToken error:', err);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
+
+  // The server refuses a QR code 15 minutes after issuing it, so a page left
+  // open shows a fresh one every 10. Status first: a scanner that has just
+  // linked must not have its code replaced underneath it.
+  useEffect(() => {
+    if (activeTab !== 'scanner' || isLinked || !scannerToken) return undefined;
+    const timer = setInterval(async () => {
+      if (!(await fetchStatus())) await generateToken({ quiet: true });
+    }, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [activeTab, isLinked, scannerToken, fetchStatus, generateToken]);
 
   const handleUnlink = async () => {
     const confirmed = await confirm({ title: 'Unlink Scanner', message: 'Are you sure you want to unlink your scanner?', confirmText: 'Unlink' });

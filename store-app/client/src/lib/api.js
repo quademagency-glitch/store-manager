@@ -260,6 +260,22 @@ async function fetchBlobWithAuth(endpoint) {
   return response.blob();
 }
 
+/** GET a public endpoint (no session), e.g. the price on the signup page. */
+export async function getPublic(endpoint) {
+  if (IS_MOCK) {
+    const { hit, data } = resolveMock(endpoint, 'GET');
+    if (hit) return data;
+  }
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`);
+  } catch (networkErr) {
+    throw apiError("Couldn't reach the server. Check your connection and try again.", { endpoint, cause: networkErr });
+  }
+  if (!response.ok) throw apiError(HTTP_MESSAGES[response.status] || `Something went wrong (error ${response.status}).`, { endpoint, status: response.status });
+  return response.json();
+}
+
 /**
  * POST to a public endpoint, signup, demo login, where there is no session
  * yet, so `fetchWithAuth` would throw before it ever reached the network.

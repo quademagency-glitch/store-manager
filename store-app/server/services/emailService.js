@@ -493,12 +493,10 @@ function buildSignupAlertHtml(business, admin, { planName, trialEndsAt, attribut
     ['Person', admin?.name || 'Not given'],
     ['Email', admin?.email || 'Not given'],
     ['Plan', planName || 'None chosen'],
-    [
-      'Trial ends',
-      trialEndsAt
-        ? new Date(trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-        : 'Not set',
-    ],
+    // No free trial since 8 October 2026: a signup waits for its first payment.
+    trialEndsAt
+      ? ['Trial ends', new Date(trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })]
+      : ['Status', 'Awaiting first payment'],
     ['Signed up', `${when} (Accra)`],
   ].map(([l, v]) => row(l, v)).join('');
 
@@ -585,7 +583,9 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
 
   const cta = verifying
     ? {
-        intro: `Good to have <strong>${business.name}</strong> with us. Your free trial is set up and waiting. The only thing left is to confirm this email address, and then you're in.`,
+        intro: trialEndsAt
+          ? `Good to have <strong>${business.name}</strong> with us. Your free trial is set up and waiting. The only thing left is to confirm this email address, and then you're in.`
+          : `Good to have <strong>${business.name}</strong> with us. Your account is set up. Confirm this email address, then sign in and pay the one-time setup fee and your first year under Billing, and you're in.`,
         withLink: { label: 'Confirm your email', note: 'The link is good for about an hour. If it runs out, sign in and we’ll send you a fresh one.' },
         withoutLink: { label: `Go to ${PLATFORM_NAME}`, note: 'Head to the sign-in page and use the password you chose during signup.' },
       }
@@ -596,6 +596,7 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
       };
 
   const steps = [
+    ...(verifying && !trialEndsAt ? ['Pay the setup fee and your first year under Billing'] : []),
     'Fill in your business details, like your logo and currency',
     'Set up your locations and opening stock',
     'Bring over your products, customers and suppliers',
@@ -907,7 +908,7 @@ async function sendSignupAlert(business, admin, opts = {}) {
   }
 
   const html = buildSignupAlertHtml(business, admin, opts);
-  const subject = `New QuadERP trial: ${headerSafe(business?.name) || 'a new business'}`;
+  const subject = `New QuadERP signup: ${headerSafe(business?.name) || 'a new business'}`;
 
   try {
     const { error } = await withRetry(

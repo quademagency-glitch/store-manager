@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../lib/AuthContext';
 import { api } from '../../lib/api';
 import Modal from '../../components/Modal';
@@ -12,6 +13,7 @@ export default function Locations() {
   const { user } = useAuthContext();
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -93,6 +95,12 @@ export default function Locations() {
       fetchLocations();
       toast.success(formData.id ? 'Location updated' : 'Location created');
     } catch (err) {
+      // Every branch paid for is in use: offer the way to pay for another.
+      if (err.status === 402 && err.body?.code === 'LOCATION_LIMIT_REACHED') {
+        const go = await confirm({ title: 'Add a branch', message: err.message, confirmText: 'Go to Billing' });
+        if (go) navigate('/business-admin/billing');
+        return;
+      }
       toast.error("Error saving location: " + err.message);
     }
   };

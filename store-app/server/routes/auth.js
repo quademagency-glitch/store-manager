@@ -16,35 +16,10 @@ const { clientAddressKey } = require('../utils/clientAddress');
 const { perWorker } = require('../utils/clusterLimits');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
-// How long a self-service free trial lasts. Deliberately not read from the
-// plan's `trial_days` (currently 7 across the board), that column drives
-// operator-assigned subscriptions, and the public offer is 30 days.
-const TRIAL_DAYS = 30;
-const DEFAULT_SIGNUP_PLAN = 'Single Branch';
-
-/**
- * Tiers the public signup form may attach, by platform_plans.name.
- *
- * An allowlist rather than "whatever the caller asked for", because /signup is
- * unauthenticated and the plan row carries real limits (max_locations,
- * max_users). The marketing site's third tier is quoted by hand and routes to
- * sales; a guessed `?plan=franchise` must not hand somebody unlimited
- * locations for thirty days just because they edited a URL.
- */
-const SELF_SERVICE_PLANS = ['Single Branch', 'Multi-Branch'];
-
-/**
- * Mirror of public.slugify (migration 058), matching the client's copy in
- * Signup.jsx and the marketing site's in config/site.ts. Lets `Multi-Branch`
- * arrive as `multi-branch` without a slug→name table that has to be edited
- * every time an operator renames a plan.
- */
-function planSlug(name) {
-  return String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+/* Since 8 October 2026 there is one plan and no free trial: a new business
+   signs up 'unpaid' on the plan on sale and pays its setup fee and first
+   year under Billing before it can use QuadERP (authGuard narrows it until
+   then). A `plan` field from older signup links is accepted and ignored. */
 
 /**
  * The account being attempted, lowercased, as the throttling key.
@@ -329,7 +304,7 @@ const loginSchema = z.object({
  * Access: Public, rate-limited to 5/hour per IP.
  */
 router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema), async (req, res) => {
-  const { name, email, password, business_name, phone, plan: requestedPlan, attribution } = req.body;
+  const { name, email, password, business_name, phone, attribution } = req.body;
 
   // An empty object is the same as none: storing {} would make a row look
   // attributed in a report when nothing was actually known about the visit.
@@ -370,45 +345,22 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
       });
     }
 
-    // ── Resolve the plan the trial runs against ─────────────────
-    // Not fatal if it is missing: the trial is defined by trial_ends_at, and
-    // a business with no plan attached still works. It just shows nothing on
-    // the billing page until someone picks one.
-    const { data: planRows } = await supabaseAdmin
+    // ── The plan on sale. Not fatal if missing: Billing falls back to it ──
+    const { data: plan } = await supabaseAdmin
       .from('platform_plans')
       .select('id, name')
-      .in('name', SELF_SERVICE_PLANS)
-      .eq('is_active', true);
-
-    const plans = Array.isArray(planRows) ? planRows : [];
-    const wanted = planSlug(requestedPlan);
-    const plan =
-      (wanted && plans.find((p) => planSlug(p.name) === wanted)) ||
-      plans.find((p) => p.name === DEFAULT_SIGNUP_PLAN) ||
-      null;
-
-    // Worth a line in the log: the caller saw one tier on the pricing table and
-    // is getting another, which is exactly the mismatch this parameter exists
-    // to stop. Usually means a plan was renamed or deactivated in Platform
-    // Admin without the marketing site being updated.
-    if (wanted && (!plan || planSlug(plan.name) !== wanted)) {
-      logger.warn({ requested: requestedPlan, attached: plan ? plan.name : null },
-        'Signup asked for a plan that is not available; fell back');
-    }
-
-    if (!plan) {
-      logger.warn({ plan: DEFAULT_SIGNUP_PLAN }, 'Signup default plan not found; business will start with no plan');
-    }
-
-    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!plan) logger.warn('Signup found no plan on sale; business starts with none');
 
     // ── 1. The business (slug + templates come from triggers) ───
     const { data: business, error: businessError } = await supabaseAdmin
       .from('businesses')
       .insert({
         name: business_name,
-        status: 'trialing',
-        trial_ends_at: trialEndsAt,
+        status: 'unpaid',
         subscription_plan_id: plan ? plan.id : null,
         contact_email: email,
         phone: phone || null,
@@ -489,7 +441,6 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
           planName: plan ? plan.name : null,
           setPasswordUrl: confirmationUrl,
           ctaMode: 'verify-email',
-          trialEndsAt,
         },
       );
       if (!result.success) {
@@ -520,7 +471,6 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
     try {
       const alert = await sendSignupAlert(business, { name, email }, {
         planName: plan ? plan.name : null,
-        trialEndsAt,
         attribution: signupAttribution,
       });
       if (!alert.success) {
@@ -533,7 +483,6 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
     return res.status(201).json({
       message: 'Check your email to verify your account',
       business: { name: business.name, slug: business.slug, login_url: loginUrl },
-      trial_ends_at: trialEndsAt,
       plan: plan ? plan.name : null,
     });
   } catch (err) {

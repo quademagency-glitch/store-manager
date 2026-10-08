@@ -5,7 +5,7 @@ import { PageHeader } from '../../../components/ui';
 
 export default function PricingTab() {
   const {
-    plans, billingCycle, setBillingCycle,
+    plans, billingCycle,
     openPlanModal, handleDeletePlan, handleRestorePlan, handleDuplicatePlan,
     subscriptions, FEATURE_LABELS, formatCurrency
   } = usePlatformAdmin();
@@ -23,10 +23,6 @@ export default function PricingTab() {
         subtitle="Define subscription tiers and pricing for your tenants."
         actions={
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <div className="pa-cycle-toggle">
-            <button className={`pa-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
-            <button className={`pa-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`} onClick={() => setBillingCycle('yearly')}>Yearly</button>
-            </div>
             <button className="btn btn-primary" onClick={() => openPlanModal()}>
             {Icons.plus} New Plan
             </button>
@@ -36,8 +32,9 @@ export default function PricingTab() {
 
       <div className="pa-pricing-grid">
         {activePlans.map((plan, idx) => {
-          const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-          let comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
+          // Yearly only since 8 October 2026; checkout reads no monthly price.
+          const price = plan.price_yearly;
+          let comparePrice = null;
           const subCount = subscriptions.filter(s => s.plan_id === plan.id).length;
           const features = plan.features || {};
 
@@ -94,7 +91,7 @@ export default function PricingTab() {
                     {Number(comparePrice).toLocaleString()}
                   </span>
                 )}
-                <span className="pa-plan-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                <span className="pa-plan-period">/yr</span>
               </div>
 
               {isTrial && trialValue > 0 && (
@@ -116,10 +113,8 @@ export default function PricingTab() {
               )}
 
               <div className="pa-plan-limits mt-md">
-                <span className="pa-plan-limit"><strong>{plan.setup_fee > 0 ? formatCurrency(plan.setup_fee, plan.currency) : 'Free'}</strong> Setup Fee</span>
-                <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
-                <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
-                <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>
+                <span className="pa-plan-limit"><strong>{formatCurrency(plan.setup_fee || 0, plan.currency)}</strong> one-time setup</span>
+                <span className="pa-plan-limit"><strong>{formatCurrency(plan.price_per_extra_location || 0, plan.currency)}</strong> a year per additional branch</span>
               </div>
               {/* Collapsible features toggle */}
               <button 

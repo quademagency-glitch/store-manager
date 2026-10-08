@@ -24,9 +24,8 @@
 const crypto = require('crypto');
 const { supabaseAdmin } = require('../db/supabase');
 const { verifyWebhookSignature, resolvePaystackGateway } = require('../services/paystack');
-const { invalidateBusinessCache } = require('../middleware/authGuard');
 const logger = require('../utils/logger');
-const { grantForCharge } = require('../utils/subscriptionCharge');
+const { applySubscriptionPayment, fromPaystack } = require('../services/subscriptionPayments');
 
 // Postgres unique-violation. Both this handler and POST /verify-paystack insert
 // an invoice for the same payment, and Paystack retries on any non-2xx, so
@@ -103,128 +102,23 @@ async function paystackWebhookHandler(req, res) {
 }
 
 /**
- * Applies a successful charge: activate the subscription, clear the trial,
- * record the invoice, and reactivate the business.
- *
- * Merges what the two previous handlers each did, between them they set
- * different subsets of the same columns, so dropping either would have
- * regressed whichever fields only the other one wrote.
+ * Applies a successful charge through services/subscriptionPayments, the same
+ * path the Billing page's verify call takes. Whichever of the two arrives
+ * second finds the payment already applied (it is keyed on the reference).
  */
 async function handleChargeSuccess(event, gateway, reqId) {
-  const data = event.data || {};
-  const metadata = data.metadata || {};
-  const businessId = metadata.business_id;
-  const planId = metadata.plan_id;
-
-  if (!businessId || !planId) {
-    logger.warn({ reqId, reference: data.reference }, '[WEBHOOK] charge.success without business_id/plan_id, ignoring');
+  const claim = fromPaystack(event.data || {});
+  if (!claim.businessId || !claim.planId) {
+    logger.warn({ reqId, reference: claim.reference }, '[WEBHOOK] charge.success without business_id/plan_id, ignoring');
     return;
   }
-
-  // A redelivery (or the client's /verify-paystack racing this) must not push
-  // the period out again: settle duplicates before touching the subscription.
-  const { data: recorded, error: recordedError } = await supabaseAdmin
-    .from('billing_invoices').select('id').eq('paystack_reference', data.reference).maybeSingle();
-  if (recordedError) throw recordedError;
-  if (recorded) {
-    logger.info({ reqId, reference: data.reference }, '[WEBHOOK] Charge already applied, ignoring redelivery');
-    return;
-  }
-
-  const cycle = metadata.billing_cycle || 'monthly';
-  // Metadata is whoever started the checkout's claim; the amount paid decides.
-  const grant = await grantForCharge(supabaseAdmin, {
-    businessId, planId, cycle, paid: typeof data.amount === 'number' ? data.amount / 100 : 0, currency: data.currency,
-  });
-  if (grant.error) {
+  const outcome = await applySubscriptionPayment(claim);
+  if (outcome.error) {
     // Logged for a refund or manual review; not thrown, or Paystack retries forever.
-    logger.warn({ reqId, reference: data.reference, businessId, reason: grant.error }, '[WEBHOOK] Charge does not match the plan, nothing granted');
+    logger.warn({ reqId, reference: claim.reference, businessId: claim.businessId, reason: outcome.error }, '[WEBHOOK] Charge does not match what it claims to buy, nothing granted');
     return;
   }
-  const now = grant.periodStart;
-  const periodEnd = grant.periodEnd;
-
-  const { data: existingSub } = await supabaseAdmin
-    .from('business_subscriptions')
-    .select('id')
-    .eq('business_id', businessId)
-    .single();
-
-  const subData = {
-    plan_id: planId,
-    gateway_id: gateway.id,
-    status: grant.status,
-    billing_cycle: cycle,
-    current_period_start: now.toISOString(),
-    current_period_end: periodEnd.toISOString(),
-    // A paid charge clears the trial; a trial fee starts one.
-    trial_ends_at: grant.trialEndsAt ? grant.trialEndsAt.toISOString() : null,
-    amount: typeof data.amount === 'number' ? data.amount / 100 : null,
-    currency: data.currency || 'GHS',
-    paystack_subscription_code: data.reference,
-    updated_at: now.toISOString(),
-  };
-
-  if (data.customer?.customer_code) {
-    subData.paystack_customer_code = data.customer.customer_code;
-  }
-
-  let subscriptionId = existingSub?.id ?? null;
-  if (existingSub) {
-    const { error } = await supabaseAdmin
-      .from('business_subscriptions')
-      .update(subData)
-      .eq('id', existingSub.id);
-    if (error) throw error;
-  } else {
-    const { data: newSub, error } = await supabaseAdmin
-      .from('business_subscriptions')
-      .insert([{ business_id: businessId, ...subData }])
-      .select('id')
-      .single();
-    if (error) throw error;
-    subscriptionId = newSub?.id ?? null;
-  }
-
-  const { error: invoiceError } = await supabaseAdmin
-    .from('billing_invoices')
-    .insert([{
-      business_id: businessId,
-      subscription_id: subscriptionId,
-      amount: typeof data.amount === 'number' ? data.amount / 100 : null,
-      currency: data.currency || 'GHS',
-      status: 'paid',
-      payment_method: data.channel || 'paystack',
-      paystack_reference: data.reference,
-      description: `${metadata.plan_name || 'Subscription'}, ${cycle} payment`,
-      paid_at: now.toISOString(),
-    }]);
-
-  // Already recorded, by a webhook retry, or by the client-side
-  // /verify-paystack call that races this one. Not an error; the payment is
-  // applied either way and re-raising would make Paystack retry forever.
-  if (invoiceError && invoiceError.code !== PG_UNIQUE_VIOLATION) throw invoiceError;
-  if (invoiceError) {
-    logger.info({ reqId, reference: data.reference }, '[WEBHOOK] Invoice already recorded, treating as success');
-  }
-
-  const { error: bizError } = await supabaseAdmin
-    .from('businesses')
-    .update({
-      status: grant.status === 'trialing' ? 'trialing' : 'active',
-      subscription_plan_id: planId,
-      ...(grant.trialEndsAt ? { trial_ends_at: grant.trialEndsAt.toISOString() } : {}),
-    })
-    .eq('id', businessId);
-  if (bizError) throw bizError;
-
-  // The whole point of the payment, from the customer's side: they can use the
-  // app again. authGuard gates every route on a cached copy of
-  // businesses.status, so without this they keep hitting "your trial has ended"
-  // on whichever workers still hold the stale entry, having just paid.
-  invalidateBusinessCache(businessId);
-
-  logger.info({ reqId, businessId, reference: data.reference }, '[WEBHOOK] Payment applied');
+  logger.info({ reqId, businessId: claim.businessId, reference: claim.reference, already: outcome.already }, outcome.already ? '[WEBHOOK] Charge already applied' : '[WEBHOOK] Payment applied');
 }
 
 module.exports = { paystackWebhookHandler, PG_UNIQUE_VIOLATION };

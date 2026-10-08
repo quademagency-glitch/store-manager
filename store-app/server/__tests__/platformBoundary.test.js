@@ -70,17 +70,13 @@ describe('a Business Admin against platform routes', () => {
     expect((await request(app)[method](path).set(AUTH).send({})).status).toBe(403);
   });
 
-  test('may switch only its own business, only to an active free plan', async () => {
+  test('cannot assign itself a plan at all; plans start through checkout', async () => {
+    // The yearly plan's monthly price is 0: a "free plan" path here would
+    // have activated QuadERP for nothing.
+    plan = { ...plan, price_monthly: 0, price_yearly: 1000 };
+    expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p' })).status).toBe(403);
+    expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p', billing_cycle: 'monthly' })).status).toBe(403);
     expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-B', plan_id: 'p' })).status).toBe(403);
-    expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p', billing_cycle: 'yearly' })).status).toBe(403);
-    plan = { ...plan, price_monthly: 199 };
-    expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p' })).status).toBe(403);
-    plan = { ...plan, price_monthly: 0, is_active: false };
-    expect((await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p' })).status).toBe(403);
     expect(subscriptionWrites()).toHaveLength(0);
-    plan = { ...plan, is_active: true };
-    const ok = await request(app).post('/api/subscriptions/assign').set(AUTH).send({ business_id: 'biz-A', plan_id: 'p', billing_cycle: 'monthly' });
-    expect(ok.status).not.toBe(403);
-    expect(subscriptionWrites().length).toBeGreaterThan(0);
   });
 });

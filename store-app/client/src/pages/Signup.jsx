@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
-import { postPublic } from '../lib/api';
+import { getPublic, postPublic } from '../lib/api';
 
 /**
  * How long to disable the resend button after a successful request, in
@@ -41,29 +41,13 @@ function slugify(name) {
     .replace(/^-+|-+$/g, '');
 }
 
-const TRIAL_DAYS = 30;
-
-/**
- * The tiers the marketing site can send here, via `/signup?plan=multi-branch`
- * (see quaderp-landing/src/config/site.ts, which builds the slug from the same
- * rule as slugify above).
- *
- * This map is a label, not a decision. The API re-resolves the plan name
- * against platform_plans and is the only thing that decides what gets
- * attached, so a stale entry here can show the wrong blurb, it cannot put
- * anyone on the wrong plan. Franchise is deliberately absent: it is quoted by
- * hand and the pricing table routes it to sales, not to this form.
- */
-const PLANS = {
-  'single-branch': {
-    name: 'Single Branch',
-    detail: 'One location with up to 3 POS terminals, plus inventory, customers and financials.',
-  },
-  'multi-branch': {
-    name: 'Multi-Branch',
-    detail: 'Up to 5 locations with unlimited POS terminals, loss-prevention alerts and cross-branch transfers.',
-  },
-};
+/* One plan and no free trial since 8 October 2026: a new business signs up,
+   then pays its setup fee and first year under Billing before using QuadERP.
+   The price is fetched from the API (GET /subscriptions/price) rather than
+   written here, so this page cannot quote a figure the server would not
+   charge. A `?plan=` on older links is ignored. */
+const money = (amount, currency = 'GHS') =>
+  new Intl.NumberFormat('en-GH', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount || 0);
 
 /**
  * What the marketing site forwards about where a visitor came from.
@@ -86,25 +70,10 @@ export default function Signup() {
   const { isAuthenticated, isDemo, signOut, loading } = useAuthContext();
   const [searchParams] = useSearchParams();
 
-  /* The tier the link named, when we recognise it. hasOwn rather than a bare
-     lookup, or `?plan=constructor` renders a tier called "Object".
-
-     A missing or unrecognised plan resolves to null now, where it used to
-     fall back to the cheapest tier. Nav, the mobile drawer and the hero all
-     link here deliberately without one, because a visitor who has not opened
-     the pricing table has not chosen anything, and the fallback was telling
-     every one of them they had picked Single Branch, five-branch prospects
-     included. Null means "not chosen yet", and the chooser below asks. */
-  const planKey = searchParams.get('plan');
-  const linkedPlanKey = planKey && Object.hasOwn(PLANS, planKey) ? planKey : null;
-
-  /* Seeded from the link, then owned by the visitor.
-     Deliberately not written back to the URL when they change it: the query
-     string is the record of where they arrived from and what they were first
-     shown, which is what attribution reads. The payload below sends this
-     state, never the param, so the two cannot disagree. */
-  const [chosenPlanKey, setChosenPlanKey] = useState(linkedPlanKey);
-  const plan = chosenPlanKey ? PLANS[chosenPlanKey] : null;
+  const [price, setPrice] = useState(null);
+  useEffect(() => {
+    getPublic('/subscriptions/price').then(setPrice).catch(() => setPrice(null));
+  }, []);
 
   /* Where this visitor came from, put on the href by the marketing site.
      Read once on mount and kept in sessionStorage, because the params only
@@ -253,10 +222,6 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
-    if (!plan) {
-      setError('Please choose a plan to start your trial.');
-      return;
-    }
     if (!form.business_name.trim() || !form.name.trim() || !form.email.trim() || !form.password) {
       setError('Please fill in your business name, your name, email and a password.');
       return;
@@ -274,10 +239,6 @@ export default function Signup() {
         email: form.email.trim(),
         password: form.password,
         phone: form.phone.trim(),
-        // What the card above actually shows, not the raw query param, so the
-        // label and the plan attached can never disagree. Non-null by the
-        // check at the top of this function.
-        plan: plan.name,
         // Omitted entirely when there is nothing to say, so the server can
         // tell "arrived with no source" apart from "arrived with an empty one".
         ...(attribution ? { attribution } : {}),
@@ -356,18 +317,10 @@ export default function Signup() {
                     <dd>{result.plan}</dd>
                   </div>
                 )}
-                {result.trial_ends_at && (
-                  <div>
-                    <dt>Trial ends</dt>
-                    <dd>
-                      {new Date(result.trial_ends_at).toLocaleDateString(undefined, {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </dd>
-                  </div>
-                )}
+                <div>
+                  <dt>Next</dt>
+                  <dd>Confirm your email, sign in, and pay the setup fee and first year under Billing.</dd>
+                </div>
               </dl>
 
               <p className="signup-success-note">
@@ -457,63 +410,27 @@ export default function Signup() {
                 <rect x="294" y="206" width="30" height="120" rx="11" fill="url(#signup-logo-b3)" />
               </svg>
             </div>
-            <h1 className="login-title">Start your free trial</h1>
+            <h1 className="login-title">Create your account</h1>
             <p className="login-subtitle">Set up Quad<span className="brand-erp">ERP</span> for your business in under a minute.</p>
           </div>
 
-          {plan ? (
-            <div className="signup-plan-card">
-              <div className="signup-plan-head">
-                <span className="signup-plan-name">{plan.name}</span>
-                <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
-              </div>
-              <p className="signup-plan-detail">
-                {plan.detail} No card needed. We&rsquo;ll only ask when the trial ends.
-              </p>
-              <button
-                type="button"
-                className="signup-plan-change"
-                onClick={() => setChosenPlanKey(null)}
-              >
-                Choose a different plan
-              </button>
+          <div className="signup-plan-card">
+            <div className="signup-plan-head">
+              <span className="signup-plan-name">{price?.name || 'QuadERP'}: every feature</span>
             </div>
-          ) : (
-            <fieldset className="signup-plan-choice">
-              <legend className="signup-plan-choice-legend">
-                <span>Choose your plan</span>
-                <span className="signup-plan-badge">{TRIAL_DAYS}-day free trial</span>
-              </legend>
-
-              <div className="signup-plan-options">
-                {Object.entries(PLANS).map(([key, option]) => (
-                  <label key={key} className="signup-plan-option">
-                    <input
-                      type="radio"
-                      name="plan"
-                      value={key}
-                      checked={chosenPlanKey === key}
-                      onChange={() => setChosenPlanKey(key)}
-                      className="signup-plan-option-input"
-                    />
-                    <span className="signup-plan-option-body">
-                      <span className="signup-plan-name">{option.name}</span>
-                      <span className="signup-plan-detail">{option.detail}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              <p className="signup-plan-choice-note">
-                Either one is {TRIAL_DAYS} days free with no card, and you can move between
-                them later. Running more than five locations?{' '}
-                <a href="mailto:info@quaderp.app?subject=Franchise%20Plan%20Inquiry">
-                  Ask us about Franchise
-                </a>
-                .
+            {price ? (
+              <p className="signup-plan-detail">
+                {money(price.price_yearly, price.currency)} a year for one branch, {money(price.price_per_extra_location, price.currency)} a year
+                for each additional branch, and a one-time setup fee of {money(price.setup_fee, price.currency)}. You pay the setup
+                fee and first year ({money(price.setup_fee + price.price_yearly, price.currency)} for one branch) after confirming your
+                email, and QuadERP opens straight away.
               </p>
-            </fieldset>
-          )}
+            ) : (
+              <p className="signup-plan-detail">
+                You pay the one-time setup fee and your first year after confirming your email, and QuadERP opens straight away.
+              </p>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit} className="login-form" id="signup-form">
             {error && (
@@ -662,7 +579,7 @@ export default function Signup() {
                   Creating your account...
                 </span>
               ) : (
-                `Start ${TRIAL_DAYS}-day free trial`
+                'Create account'
               )}
             </button>
 

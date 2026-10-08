@@ -170,3 +170,58 @@ test('scanner tokens move to a hash the server computes identically',async()=>{
  await db.exec(read('db/migrations/102_scanner_token_hash.sql'));
  await assert.rejects(q("UPDATE users SET scanner_token_hash=$1 WHERE id=$2",[node(linked),freshUser]),/duplicate key/);
 });
+test('a subscription payment grants once: start, early renewal, branches, and a repeated reference',async()=>{
+ // The billing tables as 015, 018, 069 and 104 define them, then 105.
+ await db.exec(`
+  CREATE TABLE IF NOT EXISTS platform_plans(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text UNIQUE NOT NULL,description text,
+   price_monthly numeric(10,2) NOT NULL DEFAULT 0,price_yearly numeric(10,2) NOT NULL DEFAULT 0,currency text NOT NULL DEFAULT 'GHS',
+   max_users int NOT NULL DEFAULT -1,max_locations int NOT NULL DEFAULT 1,max_products int NOT NULL DEFAULT -1,features jsonb DEFAULT '{}',
+   trial_days int NOT NULL DEFAULT 7,is_active boolean NOT NULL DEFAULT true,sort_order int NOT NULL DEFAULT 0,
+   promo_mode text DEFAULT 'none',intro_price_monthly numeric,intro_price_yearly numeric,setup_fee numeric(10,2) NOT NULL DEFAULT 0,
+   compare_at_price_monthly numeric,compare_at_price_yearly numeric,trial_days_monthly int NOT NULL DEFAULT 0,trial_days_yearly int NOT NULL DEFAULT 30,
+   created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+  CREATE TABLE IF NOT EXISTS business_subscriptions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL UNIQUE,plan_id uuid,gateway_id uuid,
+   status text NOT NULL DEFAULT 'active',billing_cycle text NOT NULL DEFAULT 'monthly',current_period_start timestamptz NOT NULL DEFAULT now(),
+   current_period_end timestamptz NOT NULL DEFAULT now()+interval '30 days',trial_ends_at timestamptz,paystack_subscription_code text,paystack_customer_code text,
+   amount numeric(10,2),currency text DEFAULT 'GHS',created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+  CREATE TABLE IF NOT EXISTS billing_invoices(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid NOT NULL,subscription_id uuid,amount numeric(10,2) NOT NULL,
+   currency text NOT NULL DEFAULT 'GHS',status text NOT NULL DEFAULT 'draft',payment_method text,paystack_reference text,description text,paid_at timestamptz,
+   created_at timestamptz NOT NULL DEFAULT now());
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_billing_invoices_paystack_reference ON billing_invoices(paystack_reference) WHERE paystack_reference IS NOT NULL;
+  ALTER TABLE businesses ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active', ADD COLUMN IF NOT EXISTS subscription_plan_id uuid,
+   ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz;
+  INSERT INTO platform_plans(name,price_monthly,price_yearly,setup_fee) VALUES('Single Branch',250,2750,1000) ON CONFLICT DO NOTHING;`);
+ await db.exec(read('db/migrations/105_single_plan_pricing.sql'));
+
+ const plan=await one("SELECT * FROM platform_plans WHERE name='QuadERP'");
+ assert.deepEqual([Number(plan.price_yearly),Number(plan.setup_fee),Number(plan.price_per_extra_location),plan.is_active],[1000,1000,200,true]);
+ assert.equal((await one("SELECT is_active FROM platform_plans WHERE name='Single Branch'")).is_active,false);
+
+ const shop=uuid();
+ await q("INSERT INTO businesses(id,name,slug,status) VALUES($1,'New shop','new-shop-105','unpaid')",[shop]);
+ const pay=(kind,branches,amount,reference)=>one('SELECT apply_subscription_payment($1,$2,$3,$4,$5,$6,$7,$8,$9) AS r',[shop,plan.id,kind,branches,amount,'GHS',reference,'card','test']);
+ const state=async()=>one("SELECT b.status,b.paid_locations,s.current_period_end FROM businesses b LEFT JOIN business_subscriptions s ON s.business_id=b.id WHERE b.id=$1",[shop]);
+
+ // Start: active for a year, one branch.
+ await pay('start',1,2000,'ref-start');
+ let s=await state();
+ assert.equal(s.status,'active'); assert.equal(s.paid_locations,1);
+ const year=Math.round((new Date(s.current_period_end)-Date.now())/86_400_000);
+ assert.ok(year>=364&&year<=366,`${year} days`);
+ // The same payment arriving twice (verify + webhook) grants once.
+ assert.equal((await pay('start',1,2000,'ref-start')).r.already_applied,true);
+ assert.equal(Number((await one('SELECT count(*) n FROM billing_invoices WHERE business_id=$1',[shop])).n),1);
+ // Two branches added mid-year.
+ await pay('branches',2,400,'ref-branches');
+ assert.equal((await state()).paid_locations,3);
+ // Renewing early adds a year to the end of the current one; nothing paid is lost.
+ const before=new Date((await state()).current_period_end);
+ await pay('renew',3,1400,'ref-renew');
+ const after=new Date((await state()).current_period_end);
+ const added=Math.round((after-before)/86_400_000);
+ assert.ok(added>=365&&added<=366,`${added} days`);
+ assert.equal((await state()).paid_locations,3);
+ // Browser roles cannot call it.
+ const grants=await one("SELECT has_function_privilege('anon','apply_subscription_payment(uuid,uuid,text,integer,numeric,text,text,text,text)','EXECUTE') a, has_function_privilege('authenticated','apply_subscription_payment(uuid,uuid,text,integer,numeric,text,text,text,text)','EXECUTE') b");
+ assert.deepEqual([grants.a,grants.b],[false,false]);
+});

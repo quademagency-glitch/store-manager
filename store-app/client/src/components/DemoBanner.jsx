@@ -27,7 +27,7 @@ export default function DemoBanner() {
         You&rsquo;re exploring a sample store. Nothing here is real, and it resets every night.
       </span>
       <Link to="/signup" className="demo-banner-cta">
-        Start your free trial
+        Get QuadERP for your business
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

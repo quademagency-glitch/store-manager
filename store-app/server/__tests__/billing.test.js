@@ -53,17 +53,14 @@ describe('GET /api/billing/invoices', () => {
 });
 
 describe('POST /api/billing/paystack/initialize', () => {
-  it('returns 401 without auth', async () => {
-    const res = await request(app).post('/api/billing/paystack/initialize').send({});
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 400 or 500 with missing body fields', async () => {
+  // Removed on 8 October 2026: it charged a plan's raw price, ignoring the
+  // setup fee and branches. Checkout is POST /api/subscriptions/initialize-paystack.
+  it('no longer exists', async () => {
     const res = await request(app)
       .post('/api/billing/paystack/initialize')
       .set('Authorization', 'Bearer valid-test-token')
-      .send({});
-    expect([400, 500]).toContain(res.status);
+      .send({ plan_id: 'p', email: 'x@example.invalid' });
+    expect(res.status).toBe(404);
   });
 });
 

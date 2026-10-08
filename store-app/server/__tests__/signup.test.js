@@ -9,14 +9,13 @@
 const request = require('supertest');
 const { buildMockSupabase } = require('./helpers/mockSupabase');
 
-const PLAN = { id: 'plan-uuid-single', name: 'Single Branch' };
-const PLAN_MULTI = { id: 'plan-uuid-multi', name: 'Multi-Branch' };
+const PLAN = { id: 'plan-uuid-quaderp', name: 'QuadERP' };
 const BUSINESS = {
   id: 'biz-uuid-new',
   name: 'Acme Hardware',
   slug: 'acme-hardware',
-  status: 'trialing',
-  trial_ends_at: '2026-09-01T00:00:00.000Z',
+  status: 'unpaid',
+  trial_ends_at: null,
   subscription_plan_id: PLAN.id,
 };
 const OWNER_PROFILE = {
@@ -84,9 +83,8 @@ function happyPathOverrides() {
     // 1st read: duplicate check, must find nothing.
     // 2nd read: the profile row handle_new_user() just created.
     users: [{ data: null, error: null }, { data: OWNER_PROFILE, error: null }],
-    // A list, not a row: the route reads every self-service plan and picks,
-    // so that `?plan=multi-branch` from the pricing table can be honoured.
-    platform_plans: { data: [PLAN, PLAN_MULTI], error: null },
+    // The one plan on sale.
+    platform_plans: { data: PLAN, error: null },
     businesses: { data: BUSINESS, error: null },
     accounting_templates: { data: [{ id: 'tpl-1' }], error: null },
   };
@@ -129,17 +127,21 @@ describe('POST /api/auth/signup, validation', () => {
 });
 
 describe('POST /api/auth/signup, happy path', () => {
-  it('creates a trialing business with a 30-day trial and returns the slug', async () => {
+  it('creates an unpaid business on the plan on sale, with no trial, and returns the slug', async () => {
+    const fresh = useMock(happyPathOverrides());
     const res = await postSignup(VALID_BODY);
 
     expect(res.status).toBe(201);
     expect(res.body.message).toMatch(/check your email/i);
     expect(res.body.business.slug).toBe('acme-hardware');
-    expect(res.body.plan).toBe('Single Branch');
+    expect(res.body.plan).toBe('QuadERP');
+    expect(res.body).not.toHaveProperty('trial_ends_at');
 
-    const daysOfTrial = (new Date(res.body.trial_ends_at) - Date.now()) / 86_400_000;
-    expect(daysOfTrial).toBeGreaterThan(29.9);
-    expect(daysOfTrial).toBeLessThan(30.1);
+    // No free trial since 8 October 2026: the business waits for its first payment.
+    const insert = fresh.mutations.find((m) => m.table === 'businesses' && m.op === 'insert');
+    const row = Array.isArray(insert.payload) ? insert.payload[0] : insert.payload;
+    expect(row).toMatchObject({ status: 'unpaid', subscription_plan_id: PLAN.id });
+    expect(row).not.toHaveProperty('trial_ends_at');
   });
 
   it('creates the business before the auth user, so the profile trigger has a business to file it under', async () => {
@@ -178,8 +180,8 @@ describe('POST /api/auth/signup, the alert to us', () => {
     const [business, admin, opts] = sendSignupAlert.mock.calls[0];
     expect(business).toMatchObject({ id: BUSINESS.id, name: BUSINESS.name });
     expect(admin).toMatchObject({ email: VALID_BODY.email });
-    expect(opts.planName).toBe('Single Branch');
-    expect(opts.trialEndsAt).toBeTruthy();
+    expect(opts.planName).toBe('QuadERP');
+    expect(opts.trialEndsAt).toBeUndefined();
   });
 
   it('passes on where they came from', async () => {
@@ -294,68 +296,27 @@ describe('POST /api/auth/signup, rollback', () => {
 });
 
 describe('POST /api/auth/signup, missing plan', () => {
-  it('still creates the trial when the Single Branch plan is not configured', async () => {
+  it('still creates the account when no plan is on sale', async () => {
     useMock({ ...happyPathOverrides(), platform_plans: { data: null, error: null } });
 
     const res = await postSignup(VALID_BODY);
 
     expect(res.status).toBe(201);
     expect(res.body.plan).toBeNull();
-    expect(res.body.trial_ends_at).toBeTruthy();
   });
 });
 
 /**
- * The tier a visitor picks on the pricing table travels as `?plan=<slug>` and
- * has to survive the trip. It used to be dropped entirely: every tier linked
- * to a bare /signup and the page hardcoded Single Branch, so anyone choosing
- * Multi-Branch was quietly signed up for the cheaper plan.
+ * Older links from the marketing site carry `?plan=<slug>`. There is one plan
+ * since 8 October 2026, so a named plan is accepted and ignored: it can
+ * neither fail the signup nor attach anything but the plan on sale.
  */
-describe('POST /api/auth/signup, plan selection', () => {
-  it('attaches the requested plan', async () => {
-    const res = await postSignup({ ...VALID_BODY, plan: 'Multi-Branch' });
+describe('POST /api/auth/signup, a plan named in the link', () => {
+  it.each(['Multi-Branch', 'multi-branch', 'franchise', 'enterprise-unlimited'])('%s gets the plan on sale', async (plan) => {
+    const res = await postSignup({ ...VALID_BODY, plan });
 
     expect(res.status).toBe(201);
-    expect(res.body.plan).toBe('Multi-Branch');
-  });
-
-  it('accepts the slug form the marketing site sends', async () => {
-    const res = await postSignup({ ...VALID_BODY, plan: 'multi-branch' });
-
-    expect(res.status).toBe(201);
-    expect(res.body.plan).toBe('Multi-Branch');
-  });
-
-  it('defaults to Single Branch when no plan is named', async () => {
-    const res = await postSignup(VALID_BODY);
-
-    expect(res.status).toBe(201);
-    expect(res.body.plan).toBe('Single Branch');
-  });
-
-  it('falls back rather than failing when the plan is not recognised', async () => {
-    const res = await postSignup({ ...VALID_BODY, plan: 'enterprise-unlimited' });
-
-    expect(res.status).toBe(201);
-    expect(res.body.plan).toBe('Single Branch');
-  });
-
-  /* /signup is unauthenticated, so the query string is attacker-controlled.
-     Franchise is quoted by hand and never offered self-service; editing a URL
-     must not hand somebody its limits for thirty days.
-
-     This asserts the half that is testable here: a plan the query did not
-     return cannot be attached, however the URL asks for it. The other half is
-     the `.in(SELF_SERVICE_PLANS)` filter that keeps Franchise out of that
-     result in the first place, and the shared mock cannot check it, it
-     ignores filter arguments and replays whatever fixture it was given, so
-     adding a Franchise row here would prove the mock's behaviour, not the
-     route's. */
-  it('will not attach a plan outside the self-service list', async () => {
-    const res = await postSignup({ ...VALID_BODY, plan: 'franchise' });
-
-    expect(res.status).toBe(201);
-    expect(res.body.plan).toBe('Single Branch');
+    expect(res.body.plan).toBe('QuadERP');
   });
 });
 

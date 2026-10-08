@@ -300,7 +300,7 @@ export default function Login() {
           {!slug && (
             <>
               <div className="login-signup-prompt">
-                Don&rsquo;t have an account? <Link to="/signup">Start free trial</Link>
+                Don&rsquo;t have an account? <Link to="/signup">Create one</Link>
               </div>
 
               <div className="login-demo-prompt">

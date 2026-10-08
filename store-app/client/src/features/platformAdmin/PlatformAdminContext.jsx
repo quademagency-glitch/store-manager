@@ -80,17 +80,17 @@ export function PlatformAdminProvider({ children }) {
 
   // ── Pricing & Plans ──
   const [plans, setPlans] = useState([]);
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [billingCycle, setBillingCycle] = useState('yearly');
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [planForm, setPlanForm] = useState({
     name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS',
-    setup_fee: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
+    setup_fee: 0, price_per_extra_location: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
     max_users: -1, max_locations: 1, max_products: -1,
     promo_mode: 'none',
     intro_price_monthly: '', intro_price_yearly: '',
     trial_days_monthly: 0, trial_unit_monthly: 'days',
-    trial_days_yearly: 30, trial_unit_yearly: 'days',
+    trial_days_yearly: 0, trial_unit_yearly: 'days',
     sort_order: 0, features: {},
   });
 
@@ -457,7 +457,7 @@ export function PlatformAdminProvider({ children }) {
       setEditingPlan(plan);
       setPlanForm({
         name: plan.name, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly,
-        setup_fee: plan.setup_fee || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
+        setup_fee: plan.setup_fee || 0, price_per_extra_location: plan.price_per_extra_location || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
         currency: plan.currency || 'GHS', max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products,
         promo_mode: plan.promo_mode || 'none',
         intro_price_monthly: plan.intro_price_monthly ?? '', intro_price_yearly: plan.intro_price_yearly ?? '',
@@ -469,12 +469,12 @@ export function PlatformAdminProvider({ children }) {
       setEditingPlan(null);
       setPlanForm({ 
         name: '', description: '', price_monthly: 0, price_yearly: 0, currency: 'GHS', 
-        setup_fee: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
+        setup_fee: 0, price_per_extra_location: 0, compare_at_price_monthly: '', compare_at_price_yearly: '',
         max_users: -1, max_locations: 1, max_products: -1,
         promo_mode: 'none',
         intro_price_monthly: '', intro_price_yearly: '',
         trial_days_monthly: 0, trial_unit_monthly: 'days',
-        trial_days_yearly: 30, trial_unit_yearly: 'days',
+        trial_days_yearly: 0, trial_unit_yearly: 'days',
         sort_order: 0, features: {} 
       });
     }
@@ -511,7 +511,7 @@ export function PlatformAdminProvider({ children }) {
     setEditingPlan(null);
     setPlanForm({
       name: `${plan.name} (Copy)`, description: plan.description || '', price_monthly: plan.price_monthly, price_yearly: plan.price_yearly,
-      setup_fee: plan.setup_fee || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
+      setup_fee: plan.setup_fee || 0, price_per_extra_location: plan.price_per_extra_location || 0, compare_at_price_monthly: plan.compare_at_price_monthly || '', compare_at_price_yearly: plan.compare_at_price_yearly || '',
       currency: plan.currency || 'GHS', max_users: plan.max_users, max_locations: plan.max_locations, max_products: plan.max_products,
       promo_mode: plan.promo_mode || 'none',
       intro_price_monthly: plan.intro_price_monthly ?? '', intro_price_yearly: plan.intro_price_yearly ?? '',

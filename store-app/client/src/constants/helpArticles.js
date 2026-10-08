@@ -94,11 +94,12 @@ Once you have more than one, a branch selector appears in the sidebar. What you
 see across the app, stock, sales, reports, follows whichever location is
 selected. Staff only see the locations they are assigned to.
 
-## Plan limits
+## How many branches you can have
 
-Your plan caps how many locations you can create. Single Branch allows one;
-Multi-Branch allows five. If you need more, upgrade under
-**Administration → Billing**.
+Your subscription covers one branch. Each additional branch costs GHS 200 a
+year: pay for it under **Administration → Billing → Add branches**, then
+create it here. A branch you add is charged in full when you add it, and again
+at every renewal.
 `,
   },
   {

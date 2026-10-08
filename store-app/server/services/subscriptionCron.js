@@ -82,11 +82,15 @@ async function processExpiredSubscriptions() {
         })
         .eq('id', sub.id);
 
-      // Suspend the business (set status to 'banned')
+      /* Narrow the business to sign-in, billing and its data export
+         ('expired', authGuard), never 'banned'. Until 8 October 2026 a lapsed
+         year banned the business outright, which locked out the one thing
+         it needed to do, renew, and broke Terms 9.2 and the email below. */
       await supabaseAdmin
         .from('businesses')
-        .update({ status: 'banned' })
-        .eq('id', sub.business_id);
+        .update({ status: 'expired' })
+        .eq('id', sub.business_id)
+        .eq('status', 'active');
 
       // Runs in the PRIMARY, which holds no cache of its own, cacheBus.publish
       // detects that and broadcasts straight to the workers. Without it a
@@ -101,7 +105,7 @@ async function processExpiredSubscriptions() {
         AUDIT_ACTIONS.BUSINESS_STATUS_CHANGED,
         'business',
         sub.business_id,
-        { to_status: 'banned', reason: 'subscription_expired' },
+        { to_status: 'expired', reason: 'subscription_expired' },
       );
 
       // Send suspension notice email

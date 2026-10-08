@@ -23,11 +23,13 @@ jest.mock('../db/supabase', () => ({ supabaseAdmin: mock }));
 
 const app = require('../index');
 
-const PLAN = (max, name = 'Single Branch') => ({
-  data: { id: 'plan-1', name, max_locations: max },
+// Since 8 October 2026 the limit is the branches the business has paid for.
+const PAID = (paid_locations, extra = {}) => ({
+  data: { paid_locations, is_demo: false, platform_plans: { price_per_extra_location: 200, currency: 'GHS' }, ...extra },
   error: null,
 });
-const ON_A_PLAN = { data: { subscription_plan_id: 'plan-1' }, error: null };
+const PLAN = () => ({ data: null, error: null });
+const ON_A_PLAN = PAID(1);
 
 function given({ businesses, platform_plans, locations }) {
   overrides.businesses = businesses;
@@ -49,8 +51,8 @@ beforeEach(() => {
 describe('POST /api/locations, plan allowance', () => {
   it('refuses with 402 once the allowance is used up, and writes nothing', async () => {
     given({
-      businesses: ON_A_PLAN,
-      platform_plans: PLAN(1),
+      businesses: PAID(1),
+      platform_plans: PLAN(),
       locations: { data: [], error: null, count: 1 },
     });
     const res = await addShop();
@@ -58,16 +60,17 @@ describe('POST /api/locations, plan allowance', () => {
     expect(res.body.code).toBe('LOCATION_LIMIT_REACHED');
     expect(res.body.limit).toBe(1);
     expect(res.body.used).toBe(1);
+    expect(res.body.price_per_branch).toBe(200);
     // The message is what the shop owner reads, so it names real numbers.
-    expect(res.body.message).toContain('Single Branch');
-    expect(res.body.message).toContain('1 shop');
+    expect(res.body.message).toContain('covers 1 branch');
+    expect(res.body.message).toContain('GHS 200 a year');
     expect(mock.mutations.filter((m) => m.table === 'locations')).toHaveLength(0);
   });
 
-  it('allows the create while the business is under its allowance', async () => {
+  it('allows the create while the business is under the branches it paid for', async () => {
     given({
-      businesses: ON_A_PLAN,
-      platform_plans: PLAN(5, 'Multi-Branch'),
+      businesses: PAID(3),
+      platform_plans: PLAN(),
       locations: { data: { id: 'loc-9', name: 'Kumasi Branch' }, error: null, count: 2 },
     });
     const res = await addShop();
@@ -75,21 +78,11 @@ describe('POST /api/locations, plan allowance', () => {
     expect(mock.mutations.some((m) => m.table === 'locations' && m.op === 'insert')).toBe(true);
   });
 
-  it('treats max_locations of -1 as unlimited', async () => {
+  it('does not limit the public demo', async () => {
     given({
-      businesses: ON_A_PLAN,
-      platform_plans: PLAN(-1, 'Franchise (Custom)'),
-      locations: { data: { id: 'loc-9' }, error: null, count: 99 },
-    });
-    expect((await addShop()).status).toBe(201);
-  });
-
-  it('allows the create when the business has no plan attached', async () => {
-    // Accounts predate the plans table. Our bookkeeping is not their problem.
-    given({
-      businesses: { data: { subscription_plan_id: null }, error: null },
-      platform_plans: PLAN(1),
-      locations: { data: { id: 'loc-9' }, error: null, count: 40 },
+      businesses: PAID(1, { is_demo: true }),
+      platform_plans: PLAN(),
+      locations: { data: { id: 'loc-9' }, error: null, count: 6 },
     });
     expect((await addShop()).status).toBe(201);
   });
@@ -98,14 +91,14 @@ describe('POST /api/locations, plan allowance', () => {
     // A commercial limit must not become an outage for a paying customer.
     given({
       businesses: { data: null, error: { message: 'db down' } },
-      platform_plans: PLAN(1),
+      platform_plans: PLAN(),
       locations: { data: { id: 'loc-9' }, error: null, count: 40 },
     });
     expect((await addShop()).status).toBe(201);
   });
 
   it('rejects an unauthenticated caller before any of this', async () => {
-    given({ businesses: ON_A_PLAN, platform_plans: PLAN(1), locations: { data: [], error: null, count: 5 } });
+    given({ businesses: ON_A_PLAN, platform_plans: PLAN(), locations: { data: [], error: null, count: 5 } });
     const res = await request(app).post('/api/locations').send({ name: 'X' });
     expect(res.status).toBe(401);
   });

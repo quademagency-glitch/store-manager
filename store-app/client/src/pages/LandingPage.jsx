@@ -16,7 +16,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link to="/signup" className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-500/25">
-              Start free trial
+              Get started
             </Link>
           </div>
         </div>
@@ -36,7 +36,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/signup" className="w-full sm:w-auto px-8 py-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-xl shadow-indigo-500/20 text-lg">
-              Start free trial
+              Get started
             </Link>
             {/* Straight into the sandbox, no form, no email. The heavier
                 secondary weight is deliberate: for a shop owner deciding
@@ -145,7 +145,7 @@ export default function LandingPage() {
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to transform your business?</h2>
           <p className="text-xl text-slate-300 mb-10">Join the platform built for modern retail excellence.</p>
           <Link to="/signup" className="inline-flex items-center justify-center px-8 py-4 rounded-full bg-white text-indigo-950 hover:bg-slate-100 font-bold transition-all text-lg shadow-xl shadow-white/10">
-            Start your 30-day free trial
+            Get started
           </Link>
         </div>
       </section>

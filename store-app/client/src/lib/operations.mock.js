@@ -93,7 +93,8 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
   const whatsappPath =
     path.startsWith("/crm-communications/whatsapp") ||
     (path.startsWith("/crm-communications/gateways") && method !== "GET" && body?.type === "whatsapp");
-  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links" && !whatsappPath && !ownerSummaryPath)
+  const billingPath = ["/subscriptions/mine", "/subscriptions/price", "/subscriptions/initialize-paystack"].includes(path);
+  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links" && !whatsappPath && !ownerSummaryPath && !billingPath)
     return undefined;
   if (
     method !== "GET" &&
@@ -250,6 +251,28 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       lowStock: { count: 3, items: [{ name: "Gino Tomato Paste 400g", branch: "Osu", quantity: 2 }] },
       pending: { tillReviews: 1, returnInspections: 1, investigations: 0, deliveries: 2, billsDue: 0 },
     };
+  // One plan, paid before use (server/utils/subscriptionCharge.js prices these).
+  if (path === "/subscriptions/price") result = { name: "QuadERP", currency: "GHS", price_yearly: 1000, setup_fee: 1000, price_per_extra_location: 200 };
+  if (path === "/subscriptions/mine") {
+    let status = "active";
+    try { status = localStorage.getItem("mock_business_status") || "active"; } catch { /* default */ }
+    const plan = { id: "plan-q", name: "QuadERP", currency: "GHS", price_yearly: 1000, setup_fee: 1000, price_per_extra_location: 200 };
+    const paidBefore = status !== "unpaid";
+    result = {
+      status, is_demo: false, paid_before: paidBefore, paid_locations: paidBefore ? 2 : 1, locations_used: paidBefore ? 2 : 0,
+      subscription: paidBefore ? { status: status === "expired" ? "expired" : "active", current_period_start: "2026-10-08T00:00:00Z", current_period_end: status === "expired" ? "2026-10-01T00:00:00Z" : "2027-10-08T00:00:00Z" } : null,
+      plan,
+      offers: paidBefore
+        ? { start: null, renew: { kind: "renew", branches: 2, amount: 1200, lines: [] }, branch: { kind: "branches", branches: 1, amount: 200, lines: [] } }
+        : { start: { kind: "start", branches: 1, amount: 2000, lines: [] }, renew: null, branch: null },
+    };
+  }
+  if (path === "/subscriptions/initialize-paystack") {
+    const branches = Number(body.branches || 1);
+    const amount = { start: 1000 + 1000 + 200 * (branches - 1), renew: 1200, branches: 200 * branches }[body.kind];
+    if (!amount) throw Object.assign(new Error("Unknown payment."), { status: 400 });
+    result = { authorization_url: "about:blank#paystack-mock", reference: "mock-ref", amount, currency: "GHS" };
+  }
   if (path === "/crm-communications/whatsapp") result = whatsapp;
   if (path === "/crm-communications/whatsapp/settings") {
     // Mirrors the server: a kind switches on only with the account and its template.

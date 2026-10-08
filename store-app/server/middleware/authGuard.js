@@ -37,13 +37,14 @@ const fetchPromises = new Map();
 const CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS ?? '60000', 10);
 
 /**
- * Route mounts an owner can still reach after their free trial lapses.
+ * Route mounts an owner can still reach while their business is not paid up.
  *
- * A lapsed trial (`businesses.status = 'expired'`, set by subscriptionCron)
- * is not a ban. Banning locks the account out entirely, which for an unpaid
- * trial would mean the one thing the business most needs to do, pay, is the
- * one thing it cannot do. So the app narrows to exactly the surface required
- * to sign in, see what happened, and buy a plan.
+ * Two statuses narrow the app to these: 'unpaid', a business that has signed
+ * up but not yet paid its setup fee and first year (no free trial since
+ * 8 October 2026), and 'expired', one whose year has run out
+ * (subscriptionCron). Neither is a ban: banning locks the account out
+ * entirely, so the one thing the business most needs to do, pay, would be
+ * the one thing it cannot do. Terms 9.2 also promises the data export.
  *
  * Matched against req.baseUrl, i.e. the path the router was mounted at.
  */
@@ -187,7 +188,7 @@ async function authGuard(req, res, next) {
       if (cached && cached.expiresAt > Date.now()) {
         req.user = { ...cached.user };
         tagSentryScope(req);
-        if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
+        if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res, req);
         const cachedRefusal = demoWriteRefusal(req);
         if (cachedRefusal) return respondDemoRefusal(res, cachedRefusal);
         if (req.get('X-Expected-Business-Id') && req.get('X-Expected-Business-Id') !== req.user.business_id) {
@@ -275,7 +276,7 @@ async function authGuard(req, res, next) {
       userCache.set(userId, { user: req.user, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
-    if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res);
+    if (isBlockedByExpiredTrial(req)) return respondTrialExpired(res, req);
 
     const refusal = demoWriteRefusal(req);
     if (refusal) return respondDemoRefusal(res, refusal);
@@ -301,17 +302,26 @@ async function authGuard(req, res, next) {
  * Platform Admins are exempt: they operate across tenants and may well need
  * to go and look at the expired business.
  */
+const NARROWED_STATUSES = new Set(['expired', 'unpaid']);
+
 function isBlockedByExpiredTrial(req) {
-  if (req.user.business_status !== 'expired') return false;
-  if (req.user.role === 'Platform Admin') return false;
+  if (!NARROWED_STATUSES.has(req.user.business_status)) return false;
+  if (req.user.role === 'Platform Admin' || req.user.is_demo) return false;
   return !EXPIRED_TRIAL_ALLOWED_MOUNTS.has(req.baseUrl);
 }
 
-function respondTrialExpired(res) {
+function respondTrialExpired(res, req) {
+  if (req.user.business_status === 'unpaid') {
+    return res.status(403).json({
+      error: 'Payment required',
+      code: 'PAYMENT_REQUIRED',
+      message: 'Pay the setup fee and your first year under Billing to start using QuadERP.',
+    });
+  }
   return res.status(403).json({
-    error: 'Trial expired',
-    code: 'TRIAL_EXPIRED',
-    message: 'Your free trial has ended. Choose a plan to carry on using QuadERP.',
+    error: 'Subscription expired',
+    code: 'SUBSCRIPTION_EXPIRED',
+    message: 'Your subscription has ended. Renew it under Billing to carry on; your data is safe.',
   });
 }
 

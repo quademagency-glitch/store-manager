@@ -1,65 +1,81 @@
 /**
- * What a subscription payment must be and what it grants. Until 8 October
- * 2026 a charge granted whatever its metadata named: a "trial" plan on the
- * yearly cycle charged GHS 1 and activated a paid year.
+ * What a payment costs and whether a paid amount covers it
+ * (utils/subscriptionCharge). One plan since 8 October 2026: a one-time setup
+ * fee, a yearly price for the first branch, and a yearly price for each
+ * further branch, charged in full whenever it is added.
  */
-const { expectedCharge, chargeForCheckout, grantForCharge } = require('../utils/subscriptionCharge');
+const { quote, checkoutQuote, verifyCharge } = require('../utils/subscriptionCharge');
 
-const plan = (extra = {}) => ({ id: 'p', is_active: true, currency: 'GHS', price_monthly: 199, price_yearly: 1990, promo_mode: 'none', ...extra });
-const db = (planRow, paidBefore = 0) => ({
-  from(table) {
-    const chain = {
-      select: () => chain, eq: () => chain,
-      maybeSingle: async () => ({ data: planRow, error: null }),
-      then: (ok) => ok(table === 'billing_invoices' ? { count: paidBefore, error: null } : { data: null, error: null }),
-    };
+const PLAN = { id: 'p1', name: 'QuadERP', is_active: true, currency: 'GHS', price_yearly: 1000, setup_fee: 1000, price_per_extra_location: 200 };
+
+const db = (paidInvoices) => ({
+  from: () => {
+    const chain = { select: () => chain, eq: () => chain, then: (ok) => ok({ count: paidInvoices, error: null }) };
     return chain;
   },
 });
 
-describe('expectedCharge', () => {
-  test('full price, intro and trial only on a first purchase', () => {
-    expect(expectedCharge(plan(), 'yearly', { firstPurchase: true })).toEqual({ kind: 'full', amount: 1990 });
-    const intro = plan({ promo_mode: 'intro', intro_price_monthly: 99 });
-    expect(expectedCharge(intro, 'monthly', { firstPurchase: true })).toEqual({ kind: 'intro', amount: 99 });
-    expect(expectedCharge(intro, 'monthly', { firstPurchase: false })).toEqual({ kind: 'full', amount: 199 });
-    const trial = plan({ promo_mode: 'trial', trial_days_yearly: 30 });
-    expect(expectedCharge(trial, 'yearly', { firstPurchase: true })).toEqual({ kind: 'trial', amount: 1, trialDays: 30 });
-    expect(expectedCharge(trial, 'yearly', { firstPurchase: false })).toEqual({ kind: 'full', amount: 1990 });
+describe('quote', () => {
+  test('starting with one branch is the setup fee and the first year: GHS 2,000', () => {
+    const q = quote(PLAN, { kind: 'start', branches: 1 });
+    expect(q.amount).toBe(2000);
+    expect(q.lines).toEqual([
+      { label: 'One-time setup', amount: 1000 },
+      { label: 'First branch, for a year', amount: 1000 },
+    ]);
   });
-  test('a missing price is not zero', () => {
-    expect(Number.isNaN(expectedCharge(plan({ price_yearly: null }), 'yearly', { firstPurchase: false }).amount)).toBe(true);
+
+  test('starting with three branches adds GHS 200 for each one after the first', () => {
+    expect(quote(PLAN, { kind: 'start', branches: 3 }).amount).toBe(2400);
+  });
+
+  test('a renewal has no setup fee and covers every branch paid for', () => {
+    expect(quote(PLAN, { kind: 'renew', branches: 1 }).amount).toBe(1000);
+    expect(quote(PLAN, { kind: 'renew', branches: 4 }).amount).toBe(1600);
+  });
+
+  test('a branch added mid-year is the full GHS 200', () => {
+    expect(quote(PLAN, { kind: 'branches', branches: 1 }).amount).toBe(200);
+    expect(quote(PLAN, { kind: 'branches', branches: 2 }).amount).toBe(400);
+  });
+
+  test('nonsense is refused, and a missing price is not zero', () => {
+    expect(quote(PLAN, { kind: 'monthly', branches: 1 }).error).toBeTruthy();
+    expect(quote(PLAN, { kind: 'branches', branches: 0 }).error).toBeTruthy();
+    expect(quote(PLAN, { kind: 'branches', branches: 1.5 }).error).toBeTruthy();
+    expect(quote({ ...PLAN, price_yearly: null }, { kind: 'renew', branches: 1 }).error).toBeTruthy();
   });
 });
 
-describe('grantForCharge', () => {
-  const claim = (extra) => ({ businessId: 'b', planId: 'p', cycle: 'yearly', currency: 'GHS', ...extra });
+describe('checkoutQuote', () => {
+  const business = { id: 'b1', paid_locations: 3 };
 
-  test('GHS 1 on a trial plan grants a trial with an end date, not a paid year', async () => {
-    const g = await grantForCharge(db(plan({ promo_mode: 'trial', trial_days_yearly: 30 })), claim({ paid: 1 }));
-    expect(g.status).toBe('trialing');
-    expect(Math.round((g.trialEndsAt - g.periodStart) / 86_400_000)).toBe(30);
-    expect(g.periodEnd).toEqual(g.trialEndsAt);
+  test('a business that has never paid can only start', async () => {
+    expect((await checkoutQuote(db(0), { business, plan: PLAN, kind: 'start', branches: 1 })).amount).toBe(2000);
+    expect((await checkoutQuote(db(0), { business, plan: PLAN, kind: 'renew' })).error).toMatch(/Start your subscription first/);
+    expect((await checkoutQuote(db(0), { business, plan: PLAN, kind: 'branches', branches: 1 })).error).toMatch(/Start your subscription first/);
   });
-  test('GHS 1 again, after the first purchase, grants nothing', async () => {
-    const g = await grantForCharge(db(plan({ promo_mode: 'trial', trial_days_yearly: 30 }), 1), claim({ paid: 1 }));
-    expect(g.error).toMatch(/costs 1990/);
+
+  test('after the first payment: renew every paid branch, or add more; never start again', async () => {
+    const renew = await checkoutQuote(db(1), { business, plan: PLAN, kind: 'renew', branches: 1 });
+    expect(renew).toMatchObject({ amount: 1400, branches: 3 }); // what the client asked for is ignored
+    expect((await checkoutQuote(db(1), { business, plan: PLAN, kind: 'branches', branches: 2 })).amount).toBe(400);
+    expect((await checkoutQuote(db(1), { business, plan: PLAN, kind: 'start', branches: 1 })).error).toMatch(/already started/);
   });
-  test('the full price grants a calendar year; underpaying or another currency grants nothing', async () => {
-    const g = await grantForCharge(db(plan()), claim({ paid: 1990 }));
-    expect(g.status).toBe('active');
-    expect(g.periodEnd.getUTCFullYear() - g.periodStart.getUTCFullYear()).toBe(1);
-    expect((await grantForCharge(db(plan()), claim({ paid: 1989.99 }))).error).toBeDefined();
-    expect((await grantForCharge(db(plan()), claim({ paid: 1990, currency: 'USD' }))).error).toMatch(/USD/);
-    expect((await grantForCharge(db(plan()), claim({ paid: 1990, cycle: 'weekly' }))).error).toBeDefined();
-    expect((await grantForCharge(db(null), claim({ paid: 1990 }))).error).toBe('Plan not found.');
+
+  test('a plan no longer on sale cannot be bought', async () => {
+    expect((await checkoutQuote(db(0), { business, plan: { ...PLAN, is_active: false }, kind: 'start', branches: 1 })).error).toBeTruthy();
   });
 });
 
-describe('chargeForCheckout', () => {
-  test('inactive plans and missing prices cannot be bought', async () => {
-    expect((await chargeForCheckout(db(null), { businessId: 'b', plan: plan({ is_active: false }), cycle: 'monthly' })).error).toBeDefined();
-    expect((await chargeForCheckout(db(null), { businessId: 'b', plan: plan({ price_yearly: null }), cycle: 'yearly' })).error).toBeDefined();
-    expect((await chargeForCheckout(db(null), { businessId: 'b', plan: plan(), cycle: 'monthly' })).charge).toEqual({ kind: 'full', amount: 199 });
+describe('verifyCharge', () => {
+  test('the full price grants; less, or another currency, grants nothing', () => {
+    expect(verifyCharge(PLAN, { kind: 'start', branches: 1, paid: 2000, currency: 'GHS' })).toMatchObject({ ok: true });
+    expect(verifyCharge(PLAN, { kind: 'start', branches: 1, paid: 1999.99, currency: 'GHS' }).error).toMatch(/costs 2000/);
+    expect(verifyCharge(PLAN, { kind: 'branches', branches: 1, paid: 200, currency: 'NGN' }).error).toMatch(/Paid in NGN/);
+  });
+
+  test('a claim of more branches than were paid for is refused', () => {
+    expect(verifyCharge(PLAN, { kind: 'branches', branches: 5, paid: 200, currency: 'GHS' }).error).toBeTruthy();
   });
 });

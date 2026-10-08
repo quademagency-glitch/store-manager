@@ -15,6 +15,9 @@ export function useAuth() {
   const [activeLocationId, setActiveLocationId] = useState(localStorage.getItem('active_location_id') || null);
   const [businessId, setBusinessId] = useState(null);
   const [isDemo, setIsDemo] = useState(false);
+  // 'unpaid' (signed up, not paid yet) and 'expired' (the year ran out) narrow
+  // the app to Billing: see ProtectedRoute.
+  const [businessStatus, setBusinessStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   /* The user id whose role is already in state.
@@ -55,7 +58,7 @@ export function useAuth() {
       setPermissions([]);
       setLocationIds([]);
       setBusinessId(null);
-      setIsDemo(false);
+      setIsDemo(false); setBusinessStatus(null);
     };
 
     // Check for bans globally on the frontend
@@ -72,6 +75,7 @@ export function useAuth() {
     setLocationIds(userLocations);
     setBusinessId(userBusinessId);
     setIsDemo(demoFlag);
+    setBusinessStatus(businessStatus || null);
 
     // Attach identity to error reports so a crash says which tenant hit it.
     // Id and business only, never email or name. No-op without a DSN.
@@ -130,7 +134,7 @@ export function useAuth() {
         setPermissions([]);
         setLocationIds([]);
         setBusinessId(null);
-        setIsDemo(false);
+        setIsDemo(false); setBusinessStatus(null);
         return null;
       }
 
@@ -151,7 +155,7 @@ export function useAuth() {
       setPermissions([]);
       setLocationIds([]);
       setBusinessId(null);
-      setIsDemo(false);
+      setIsDemo(false); setBusinessStatus(null);
       return null;
     }
   }, [applyRoleData]);
@@ -170,7 +174,7 @@ export function useAuth() {
         const nextUserId = newSession?.user?.id ?? null;
         if (identityUserId.current !== nextUserId) {
           identityUserId.current = nextUserId;
-          setRole(null); setPermissions([]); setLocationIds([]); setBusinessId(null); setIsDemo(false);
+          setRole(null); setPermissions([]); setLocationIds([]); setBusinessId(null); setIsDemo(false); setBusinessStatus(null);
           setActiveLocationId(null); localStorage.removeItem('active_location_id');
           setLoading(Boolean(nextUserId));
         }
@@ -182,7 +186,7 @@ export function useAuth() {
           setPermissions([]);
           setLocationIds([]);
           setBusinessId(null);
-          setIsDemo(false);
+          setIsDemo(false); setBusinessStatus(null);
           setActiveLocationId(null);
           localStorage.removeItem('active_location_id');
           setLoading(false);
@@ -348,7 +352,7 @@ export function useAuth() {
       setPermissions([]);
       setLocationIds([]);
       setBusinessId(null);
-      setIsDemo(false);
+      setIsDemo(false); setBusinessStatus(null);
       setActiveLocationId(null);
       localStorage.removeItem('active_location_id');
     } catch (err) {
@@ -387,6 +391,7 @@ export function useAuth() {
     activeLocationId,
     businessId,
     isDemo,
+    businessStatus,
     loading,
     signIn,
     signInAsDemo,

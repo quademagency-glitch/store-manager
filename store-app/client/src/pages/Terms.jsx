@@ -7,7 +7,7 @@ import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION, identityPhrase, po
  * This is drafted in the form a commercial agreement is normally drafted in:
  * defined terms, numbered clauses, and the risk-allocation clauses (warranties,
  * indemnity, liability, termination) stated explicitly rather than left to be
- * implied. Every commercial fact in it, the 30-day trial, what a lapsed
+ * implied. Every commercial fact in it, the fees and when they fall due, what a lapsed
  * subscription still permits, the export route, how suspension behaves, was
  * checked against the code, not copied from a template. Where the product does
  * not do something, the clause says so instead of promising it.
@@ -21,7 +21,7 @@ import { ENTITY, TERMS_VERSION, EFFECTIVE_DATE, JURISDICTION, identityPhrase, po
  *      veil: see the note in entity.js. Incorporating is the cheapest real
  *      protection available.
  *
- * When the commercial terms change: price, trial length, what a lapsed
+ * When the commercial terms change: price structure, what a lapsed
  * account can still reach: change the clause AND bump TERMS_VERSION, so the
  * version recorded against each account still means something.
  */
@@ -69,7 +69,7 @@ export default function Terms() {
               a paid right to use the Service for a stated period.
             </Defined>
             <Defined term="“Subscription Period”">
-              the period a Subscription is paid for in advance: monthly or annually, as selected.
+              the year a Subscription is paid for in advance.
             </Defined>
             <Defined term="“Personal Data”">
               has the meaning given in the Data Protection Act, 2012 (Act 843).
@@ -149,31 +149,29 @@ export default function Terms() {
         </Sub>
       </Clause>
 
-      <Clause n={6} title="Free trial">
+      <Clause n={6} title="Starting a Subscription">
         <Sub n="6.1">
-          New businesses may use the Service free for 30 days. No payment details are required to
-          start a trial.
+          There is no free trial. To start using the Service you pay a one-time setup fee and the
+          fee for your first Subscription Period. Until then your account is limited to sign-in and
+          the billing area.
         </Sub>
         <Sub n="6.2">
-          A trial is provided as-is and without any warranty at all. Clause 17 applies to it in
-          full, and our liability in respect of a trial is limited to the maximum extent the law
-          allows.
+          The setup fee is charged once, with your first payment. It is not charged again when you
+          renew, when you add a branch, or when you return after a Subscription has lapsed.
         </Sub>
         <Sub n="6.3">
-          At the end of the trial, access narrows as described in clause 9.2 unless you have
-          started a Subscription. We do not charge you automatically when a trial ends, and we do
-          not delete Your Data when it ends.
-        </Sub>
-        <Sub n="6.4">
-          Trials are for evaluation by a business that has not used the Service before. We may
-          withdraw a trial, or decline to offer one, where it is being used to avoid paying.
+          A business that started a free trial before 8 October 2026 keeps it until it ends. At the
+          end of such a trial, access narrows as described in clause 9.2 unless a Subscription has
+          started; nothing is charged automatically and Your Data is not deleted.
         </Sub>
       </Clause>
 
       <Clause n={7} title="Fees, taxes and payment">
         <Sub n="7.1">
-          Fees are those shown for your plan when you subscribe. They are payable in advance for
-          each Subscription Period and are charged in Ghana Cedis unless stated otherwise.
+          Fees are those shown in the billing area when you pay: a yearly fee that includes one
+          branch, a yearly fee for each additional branch, and the one-time setup fee in clause 6.
+          They are payable in advance for each Subscription Period and are charged in Ghana Cedis
+          unless stated otherwise.
         </Sub>
         <Sub n="7.2">
           Fees are exclusive of value added tax and of any other levy, duty or withholding imposed
@@ -186,7 +184,8 @@ export default function Terms() {
           also subject to Paystack’s own terms.
         </Sub>
         <Sub n="7.4">
-          Fees are non-refundable, including for a partly used Subscription Period. This does not
+          Fees, including the setup fee, are non-refundable, including for a partly used
+          Subscription Period or a branch added part-way through one. This does not
           apply where a refund is required by law, or where we have failed to provide the Service
           in a material respect and have not put it right within a reasonable time of you telling
           us.
@@ -195,16 +194,23 @@ export default function Terms() {
           If you believe an invoice is wrong, tell us within 30 days of its date. After that the
           invoice is treated as accepted, except for manifest error.
         </Sub>
+        <Sub n="7.6">
+          An additional branch is paid for when you add it, at the full yearly fee for a branch,
+          however much of the current Subscription Period is left. It is then included, at the
+          yearly fee for a branch, in each renewal.
+        </Sub>
       </Clause>
 
       <Clause n={8} title="Renewal, price changes and cancellation">
         <Sub n="8.1">
-          A Subscription continues for successive Subscription Periods until cancelled.
+          A Subscription lasts for the Subscription Period paid for. We do not charge you
+          automatically: you renew by paying for the next Subscription Period in the billing area,
+          before or after the current one ends. Paying before it ends adds the new period to the end
+          of the current one, so no time you have paid for is lost.
         </Sub>
         <Sub n="8.2">
-          You may cancel at any time from the billing area. Cancellation takes effect at the end of
-          the Subscription Period you have already paid for; you keep access until then, and you
-          are not charged again.
+          You may cancel at any time by not renewing. You keep access until the end of the
+          Subscription Period you have already paid for, and nothing further is charged.
         </Sub>
         <Sub n="8.3">
           We may change our prices. We will give you at least 30 days’ notice by email before a
@@ -222,7 +228,7 @@ export default function Terms() {
           first and give you a chance to put it right.
         </Sub>
         <Sub n="9.2">
-          When a Subscription lapses or a trial ends without one, we do not lock you out. Your
+          When a Subscription lapses, or before the first one has started, we do not lock you out. Your
           account narrows to sign-in, the billing area and the data export in clause 10.4, so that
           you can always either pay or retrieve your records. Suspension under clause 9.1 for
           harm, unlawfulness or fraud may be broader.
@@ -459,8 +465,7 @@ export default function Terms() {
             Our total liability to you for all claims arising in any period of 12 consecutive
             months is limited to the total fees you paid us in that period.
           </strong>{' '}
-          Where you are on a free trial and have paid nothing, our total liability is limited to
-          GHS 500.
+          Where you have paid nothing in that period, our total liability is limited to GHS 500.
         </Sub>
         <Sub n="19.4">
           Clause 19.3 applies whether the claim is in contract, in tort (including negligence), for

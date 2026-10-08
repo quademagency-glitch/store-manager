@@ -1,18 +1,24 @@
 /**
- * What a subscription payment must be, and what it grants, computed on the
- * server from the plan.
+ * What a QuadERP payment costs, computed on the server from the plan.
  *
- * Paystack's metadata (business, plan, cycle) is set by whoever started the
- * checkout, and the public key needed to start one is public, so those are
- * only claims. Until 8 October 2026 a charge granted whatever its metadata
- * named, whatever was paid: picking a "trial" plan on the yearly cycle
- * charged GHS 1 and activated a paid year. Now the amount actually paid
- * decides. An intro price or a trial is offered only on a business's first
- * purchase, and a trial grants a trial, not a paid period.
+ * Since 8 October 2026 there is one plan, paid before use:
+ *   start     the one-time setup fee + the first year for the first branch
+ *             + a year for each further branch bought with it
+ *   renew     a year for the first branch + a year for each further branch
+ *             paid for (businesses.paid_locations)
+ *   branches  the yearly price of each branch added, in full, however much of
+ *             the year is left
+ *
+ * Paystack's metadata (business, plan, kind, branches) is set by whoever
+ * started the checkout, so it is only a claim: the amount actually paid
+ * decides whether anything is granted (verifyCharge). What a verified payment
+ * grants is applied in the database by apply_subscription_payment (105).
  */
-const CYCLES = ['monthly', 'yearly'];
-const TRIAL_FEE = 1; // GHS card authorisation for a free trial
-const DAY_MS = 86_400_000;
+const KINDS = ['start', 'renew', 'branches'];
+const MAX_BRANCHES = 100;
+
+const money = (value) => (value === null || value === undefined || value === '' ? NaN : Number(value));
+const plural = (n) => `${n} branch${n === 1 ? '' : 'es'}`;
 
 async function hasPaidBefore(db, businessId) {
   const { count, error } = await db.from('billing_invoices').select('id', { count: 'exact', head: true })
@@ -22,56 +28,62 @@ async function hasPaidBefore(db, businessId) {
 }
 
 /**
- * @returns {{ kind: 'full'|'intro'|'trial', amount: number, trialDays?: number }}
+ * The price of one payment.
+ * @returns {{ amount: number, lines: {label: string, amount: number}[], description: string } | { error: string }}
  */
-function expectedCharge(plan, cycle, { firstPurchase }) {
-  const full = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-  const promo = plan.promo_mode || 'none';
-  if (firstPurchase && promo === 'intro') {
-    const intro = cycle === 'yearly' ? plan.intro_price_yearly : plan.intro_price_monthly;
-    if (intro !== null && intro !== undefined && intro !== '') return { kind: 'intro', amount: Number(intro) };
-  }
-  if (firstPurchase && promo === 'trial') {
-    const value = Number(cycle === 'yearly' ? plan.trial_days_yearly : plan.trial_days_monthly) || 0;
-    const unit = (cycle === 'yearly' ? plan.trial_unit_yearly : plan.trial_unit_monthly) || 'days';
-    if (value > 0 && Number(full) > 0) return { kind: 'trial', amount: TRIAL_FEE, trialDays: unit === 'months' ? value * 30 : value };
-  }
-  return { kind: 'full', amount: full === null || full === undefined || full === '' ? NaN : Number(full) };
-}
+function quote(plan, { kind, branches }) {
+  if (!KINDS.includes(kind)) return { error: 'Unknown payment.' };
+  if (!Number.isInteger(branches) || branches < 1 || branches > MAX_BRANCHES) return { error: `Choose between 1 and ${MAX_BRANCHES} branches.` };
+  const yearly = money(plan.price_yearly);
+  const setup = money(plan.setup_fee ?? 0);
+  const extra = money(plan.price_per_extra_location ?? 0);
+  if (![yearly, setup, extra].every(Number.isFinite)) return { error: 'This plan has no price set.' };
 
-/** The charge to ask for when starting a checkout. */
-async function chargeForCheckout(db, { businessId, plan, cycle }) {
-  if (!CYCLES.includes(cycle)) return { error: 'Choose monthly or yearly billing.' };
-  if (!plan?.is_active) return { error: 'This plan is not available.' };
-  const charge = expectedCharge(plan, cycle, { firstPurchase: !(await hasPaidBefore(db, businessId)) });
-  if (!Number.isFinite(charge.amount) || charge.amount <= 0) return { error: 'This plan has no price for that billing cycle.' };
-  return { charge };
+  const lines = [];
+  if (kind === 'branches') {
+    lines.push({ label: `${plural(branches)} added, for a year`, amount: extra * branches });
+  } else {
+    if (kind === 'start' && setup > 0) lines.push({ label: 'One-time setup', amount: setup });
+    lines.push({ label: 'First branch, for a year', amount: yearly });
+    if (branches > 1) lines.push({ label: `${plural(branches - 1)} more, for a year`, amount: extra * (branches - 1) });
+  }
+  const amount = Math.round(lines.reduce((sum, l) => sum + l.amount, 0) * 100) / 100;
+  if (!(amount > 0)) return { error: 'This plan has no price set.' };
+  const description = {
+    start: `${plan.name}: setup and first year, ${plural(branches)}`,
+    renew: `${plan.name}: a year's renewal, ${plural(branches)}`,
+    branches: `${plan.name}: ${plural(branches)} added`,
+  }[kind];
+  return { amount, lines, description, currency: plan.currency || 'GHS' };
 }
 
 /**
- * What a verified successful charge grants, or why it grants nothing.
- * @param {{ businessId: string, planId: string, cycle: string, paid: number, currency?: string }} claim
+ * The payment a business may start now, priced.
+ * `start` before the first payment; `renew` and `branches` after it. A
+ * renewal always covers every branch paid for.
  */
-async function grantForCharge(db, { businessId, planId, cycle, paid, currency }) {
-  if (!CYCLES.includes(cycle)) return { error: 'Unknown billing cycle.' };
-  const { data: plan, error } = await db.from('platform_plans').select('*').eq('id', planId).maybeSingle();
-  if (error) throw error;
-  if (!plan) return { error: 'Plan not found.' };
-  if ((currency || 'GHS') !== (plan.currency || 'GHS')) return { error: `Paid in ${currency}, the plan is priced in ${plan.currency || 'GHS'}.` };
-  const charge = expectedCharge(plan, cycle, { firstPurchase: !(await hasPaidBefore(db, businessId)) });
-  if (!Number.isFinite(charge.amount)) return { error: 'This plan has no price for that billing cycle.' };
-  if (Math.round(Number(paid) * 100) < Math.round(charge.amount * 100)) {
-    return { error: `Paid ${paid}, but this plan costs ${charge.amount} for the ${cycle} cycle.` };
-  }
-  const now = new Date();
-  if (charge.kind === 'trial') {
-    const end = new Date(now.getTime() + charge.trialDays * DAY_MS);
-    return { plan, status: 'trialing', periodStart: now, periodEnd: end, trialEndsAt: end };
-  }
-  const end = new Date(now);
-  if (cycle === 'yearly') end.setFullYear(end.getFullYear() + 1);
-  else end.setDate(end.getDate() + 30);
-  return { plan, status: 'active', periodStart: now, periodEnd: end, trialEndsAt: null };
+async function checkoutQuote(db, { business, plan, kind, branches }) {
+  if (!plan?.is_active) return { error: 'This plan is not available.' };
+  const paidBefore = await hasPaidBefore(db, business.id);
+  if (kind === 'start' && paidBefore) return { error: 'Your subscription has already started. Renew it or add branches instead.' };
+  if ((kind === 'renew' || kind === 'branches') && !paidBefore) return { error: 'Start your subscription first.' };
+  const count = kind === 'renew' ? Math.max(1, Number(business.paid_locations) || 1) : Number(branches ?? 1);
+  const priced = quote(plan, { kind, branches: count });
+  return priced.error ? priced : { ...priced, kind, branches: count };
 }
 
-module.exports = { expectedCharge, chargeForCheckout, grantForCharge, hasPaidBefore, CYCLES, TRIAL_FEE };
+/**
+ * Whether a verified payment covers what it claims to buy. A `start` paid by
+ * a business that has paid before is accepted as a renewal: it paid more.
+ */
+function verifyCharge(plan, { kind, branches, paid, currency }) {
+  const priced = quote(plan, { kind, branches });
+  if (priced.error) return priced;
+  if ((currency || 'GHS') !== (plan.currency || 'GHS')) return { error: `Paid in ${currency}, the plan is priced in ${plan.currency || 'GHS'}.` };
+  if (Math.round(Number(paid) * 100) < Math.round(priced.amount * 100)) {
+    return { error: `Paid ${paid}, but this costs ${priced.amount}.` };
+  }
+  return { ok: true, description: priced.description };
+}
+
+module.exports = { quote, checkoutQuote, verifyCharge, hasPaidBefore, KINDS, MAX_BRANCHES };

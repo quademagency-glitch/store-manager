@@ -1,0 +1,13 @@
+/* Billing (pages/BusinessAdmin/Billing.jsx): one plan, paid before use. */
+.billing-page .content-card { margin-bottom: var(--space-lg); }
+.billing-page h2 { font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); margin: 0 0 var(--space-sm); }
+.billing-page p { margin: 0 0 var(--space-md); color: var(--color-text-secondary); line-height: 1.6; }
+.billing-action .btn { min-height: 44px; }
+.billing-qty { max-width: 8rem; min-height: 44px; margin-bottom: var(--space-md); }
+.billing-lines { margin: var(--space-sm) 0 var(--space-lg); max-width: 32rem; }
+.billing-lines th { font-weight: 700; }
+.billing-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); padding: var(--space-md) 0; border-top: 1px solid var(--color-border); }
+.billing-row .billing-qty { margin-bottom: 0; }
+.billing-row .form-label { margin: 0; }
+.billing-heading { margin: var(--space-xl) 0 var(--space-md); }
+.billing-mono { font-family: var(--font-mono, monospace); font-size: 0.85rem; }

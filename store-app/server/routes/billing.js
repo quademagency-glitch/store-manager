@@ -3,11 +3,11 @@ const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
-const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendInvoiceEmail } = require('../services/emailService');
-const { initializeTransaction } = require('../services/paystack');
-const { seal, mask, open } = require('../utils/secretBox');
+const crypto = require('crypto');
+const { applySubscriptionPayment } = require('../services/subscriptionPayments');
+const { seal, mask } = require('../utils/secretBox');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
@@ -170,86 +170,10 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), as
   }
 });
 
-/* ============================================================
-   PAYSTACK INTEGRATION
-   ============================================================ */
-
-/**
- * POST /api/billing/paystack/initialize
- * Initialize a Paystack transaction to subscribe to a plan
- */
-router.post('/paystack/initialize', authGuard, async (req, res) => {
-  try {
-    const { plan_id, email, billing_cycle } = req.body;
-    const business_id = req.user.business_id;
-
-    if (!plan_id || !email) {
-      return res.status(400).json({ error: 'plan_id and email are required' });
-    }
-
-    // Get the plan details
-    const { data: plan, error: planError } = await supabaseAdmin
-      .from('platform_plans')
-      .select('*')
-      .eq('id', plan_id)
-      .single();
-
-    if (planError || !plan || !plan.is_active) {
-      return res.status(404).json({ error: 'Plan not found' });
-    }
-
-    // Get Paystack Gateway Config
-    const { data: gateway, error: gwError } = await supabaseAdmin
-      .from('payment_gateways')
-      .select('*')
-      .eq('provider', 'paystack')
-      .eq('is_active', true)
-      .single();
-
-    if (gwError || !gateway || !gateway.secret_key) {
-      return res.status(400).json({ error: 'Paystack gateway is not configured or inactive' });
-    }
-
-    const amount = billing_cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-
-    // Build payload for Paystack
-    const callback_url = process.env.APP_URL
-      ? `${process.env.APP_URL}/billing?success=true`
-      : 'https://quaderp.app/billing?success=true';
-
-    const paystackParams = {
-      email,
-      amount, // The service multiplies by 100
-      callback_url,
-      metadata: {
-        business_id,
-        plan_id,
-        billing_cycle: billing_cycle || 'monthly'
-      }
-    };
-
-    const result = await initializeTransaction(paystackParams, open(gateway.secret_key));
-
-    res.json({
-      authorization_url: result.data.authorization_url,
-      reference: result.data.reference
-    });
-
-  } catch (err) {
-    logger.error({ err: err }, 'Paystack Initialize Error:');
-    res.status(500).json({ error: 'Failed to initialize payment' });
-  }
-});
-
-// NOTE: POST /api/billing/paystack/webhook is no longer defined here.
-// It is registered in index.js, above the global JSON body parser, because
-// signature verification needs the raw request bytes and the parser destroys
-// them. The handler lives in routes/paystackWebhook.js and serves this URL as
-// well as the /api/subscriptions/paystack-webhook one. Do not re-add it here.
-
-/* ============================================================
-   INVOICES / BILLING HISTORY
-   ============================================================ */
+/* POST /api/billing/paystack/initialize was removed on 8 October 2026. No
+   screen called it, and it charged a plan's raw monthly or yearly price,
+   ignoring the setup fee and branches. Checkout is
+   POST /api/subscriptions/initialize-paystack. */
 
 /**
  * GET /api/billing/invoices
@@ -370,83 +294,53 @@ router.post('/invoices/send', authGuard, permissionCheck('manage_platform'), asy
 });
 
 /**
- * POST /api/billing/record-payment
- * Manually record a payment, Platform Admin only
+ * POST /api/billing/record-payment { business_id, kind, branches?, amount, payment_method?, reference? }
+ * A payment taken outside checkout (mobile money, a transfer), recorded by a
+ * Platform Admin. It grants exactly what the same payment through Paystack
+ * would (services/subscriptionPayments): `start` or `renew` a year, or add
+ * `branches`. The amount is whatever was agreed and is not checked against
+ * the price. Until 8 October 2026 this always added 30 days, whatever was paid.
  */
 router.post('/record-payment', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
-    const { business_id, amount, currency, payment_method, description, plan_id } = req.body;
-
-    if (!business_id || !amount) {
-      return res.status(400).json({ error: 'business_id and amount are required' });
+    const { business_id, kind, branches, amount, payment_method, reference } = req.body || {};
+    if (!business_id || !(Number(amount) > 0)) {
+      return res.status(400).json({ error: 'business_id and an amount above zero are required' });
+    }
+    if (!['start', 'renew', 'branches'].includes(kind)) {
+      return res.status(400).json({ error: 'Say what the payment is for: start, renew or branches.' });
     }
 
-    // Get the business's subscription
-    const { data: subscription } = await supabaseAdmin
-      .from('business_subscriptions')
-      .select('id, plan_id')
-      .eq('business_id', business_id)
-      .single();
+    const { data: business, error: bizError } = await supabaseAdmin
+      .from('businesses').select('id, paid_locations, subscription_plan_id').eq('id', business_id).maybeSingle();
+    if (bizError) throw bizError;
+    if (!business) return res.status(404).json({ error: 'Business not found' });
+    const { data: plan, error: planError } = await supabaseAdmin.from('platform_plans').select('id')
+      .eq('is_active', true).order('sort_order', { ascending: true }).limit(1).maybeSingle();
+    if (planError) throw planError;
+    const planId = business.subscription_plan_id || plan?.id;
+    if (!planId) return res.status(409).json({ error: 'No plan is on sale.' });
 
-    // Create the invoice record
-    const { data: invoice, error } = await supabaseAdmin
-      .from('billing_invoices')
-      .insert([{
-        business_id,
-        subscription_id: subscription?.id || null,
-        amount,
-        currency: currency || 'GHS',
-        status: 'paid',
-        payment_method: payment_method || 'manual',
-        description: description || 'Manual payment recorded by Platform Admin',
-        paid_at: new Date().toISOString(),
-      }])
-      .select()
-      .single();
+    const count = kind === 'renew' ? Math.max(1, business.paid_locations || 1) : Number(branches ?? 1);
+    const outcome = await applySubscriptionPayment({
+      businessId: business_id,
+      planId,
+      kind,
+      branches: count,
+      paid: Number(amount),
+      currency: 'GHS',
+      reference: reference ? String(reference).slice(0, 120) : `manual-${crypto.randomUUID()}`,
+      channel: payment_method || 'manual',
+      recordedByHand: true,
+    });
+    if (outcome.error) return res.status(400).json({ error: outcome.error });
+    if (outcome.already) return res.status(409).json({ error: 'A payment with that reference is already recorded.' });
 
-    if (error) throw error;
-
-    // If a plan_id was provided or subscription exists, renew the subscription
-    const effectivePlanId = plan_id || subscription?.plan_id;
-    if (effectivePlanId) {
-      const now = new Date();
-      const periodEnd = new Date(now);
-      periodEnd.setDate(periodEnd.getDate() + 30); // Default 30 days
-
-      if (subscription) {
-        await supabaseAdmin
-          .from('business_subscriptions')
-          .update({
-            status: 'active',
-            current_period_start: now.toISOString(),
-            current_period_end: periodEnd.toISOString(),
-            updated_at: now.toISOString(),
-          })
-          .eq('id', subscription.id);
-      }
-
-      // Reactivate business if banned
-      await supabaseAdmin
-        .from('businesses')
-        .update({ status: 'active' })
-        .eq('id', business_id)
-        .eq('status', 'banned');
-    }
-
-    // Recording a payment can reactivate a banned business, see the note in
-    // routes/subscriptions.js.
-    invalidateBusinessCache(business_id);
-
-    logAuditEvent(req, AUDIT_ACTIONS.PAYMENT_RECORDED, 'invoice', invoice?.id, {
-      business_id,
-      amount: invoice?.amount,
-      currency: invoice?.currency,
+    logAuditEvent(req, AUDIT_ACTIONS.PAYMENT_RECORDED, 'invoice', outcome.result?.invoice_id, {
+      business_id, amount: Number(amount), kind, branches: count,
     });
 
-    res.status(201).json({
-      message: 'Payment recorded successfully',
-      invoice,
-    });
+    res.status(201).json({ message: 'Payment recorded successfully', ...outcome.result });
   } catch (err) {
     logger.error({ err: err }, 'Error recording payment:');
     res.status(500).json({ error: 'Failed to record payment' });
@@ -483,7 +377,7 @@ router.get('/stats', authGuard, permissionCheck('manage_platform'), async (req, 
     // Active subscriptions count
     const { data: activeSubs, error: subErr } = await supabaseAdmin
       .from('business_subscriptions')
-      .select('amount')
+      .select('amount, billing_cycle, businesses(paid_locations), platform_plans(price_yearly, price_per_extra_location)')
       .in('status', ['active', 'trialing']);
 
     if (subErr) throw subErr;
@@ -506,7 +400,16 @@ router.get('/stats', authGuard, permissionCheck('manage_platform'), async (req, 
 
     const totalRevenue = (paidInvoices || []).reduce((sum, inv) => sum + Number(inv.amount), 0);
     const monthlyRevenue = (monthlyInvoices || []).reduce((sum, inv) => sum + Number(inv.amount), 0);
-    const mrr = (activeSubs || []).reduce((sum, sub) => sum + Number(sub.amount), 0);
+    /* What each subscription earns a month at today's price. Summing the last
+       payment counted a yearly subscription as twelve months' revenue a
+       month, and the first payment includes the one-time setup fee. */
+    const monthlyValue = (sub) => {
+      const plan = sub.platform_plans;
+      if (sub.billing_cycle !== 'yearly' || !plan) return Number(sub.amount) || 0;
+      const branches = Math.max(1, sub.businesses?.paid_locations || 1);
+      return (Number(plan.price_yearly) + Number(plan.price_per_extra_location || 0) * (branches - 1)) / 12;
+    };
+    const mrr = Math.round((activeSubs || []).reduce((sum, sub) => sum + monthlyValue(sub), 0) * 100) / 100;
     const totalOutstanding = (outstanding || []).reduce((sum, inv) => sum + Number(inv.amount), 0);
     const totalFailed = (failed || []).reduce((sum, inv) => sum + Number(inv.amount), 0);
 

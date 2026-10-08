@@ -1,597 +1,254 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuthContext } from '../../lib/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import Modal from '../../components/Modal';
 import { useToast } from '../../hooks/useToast';
-import { FEATURE_LABELS } from '../../lib/planFeatures';
-import { EmptyStateRow, PageHeader } from '../../components/ui';
-import { ErrorBanner } from '../../components/ui';
+import { EmptyStateRow, PageHeader, ErrorBanner } from '../../components/ui';
+
+/**
+ * One plan, paid before use (since 8 October 2026): a one-time setup fee,
+ * a year for the first branch, and a year for each additional branch, which
+ * is charged in full whenever it is added. Every amount shown here comes from
+ * GET /subscriptions/mine, priced on the server; checkout charges the
+ * server's figure, not this page's.
+ */
+const MAX_BRANCHES = 100;
+const formatMoney = (amount, currency = 'GHS') =>
+  new Intl.NumberFormat('en-GH', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount || 0);
+const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+const branchWord = (n) => `${n} branch${n === 1 ? '' : 'es'}`;
+const clampBranches = (value) => Math.min(MAX_BRANCHES, Math.max(1, Math.floor(Number(value) || 1)));
+
+function Lines({ lines, currency }) {
+  const total = lines.reduce((sum, l) => sum + l.amount, 0);
+  return (
+    <table className="data-table billing-lines">
+      <tbody>
+        {lines.map((l) => (
+          <tr key={l.label}><td>{l.label}</td><td className="text-right">{formatMoney(l.amount, currency)}</td></tr>
+        ))}
+        <tr><th scope="row">Total</th><th className="text-right">{formatMoney(total, currency)}</th></tr>
+      </tbody>
+    </table>
+  );
+}
 
 export default function Billing() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const toast = useToast();
-  const [subscription, setSubscription] = useState(null);
-  /* A self-serve trial has NO business_subscriptions row, so `subscription`
-     is null and every detail below used to be hidden behind it. The trial
-     lives on the business record instead, which /businesses/me already
-     returns in full. */
-  const [business, setBusiness] = useState(null);
-  const [plans, setPlans] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [billingCycle, setBillingCycle] = useState('monthly');
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [expandedCards, setExpandedCards] = useState({});
-
-  const toggleFeatures = (planId) => setExpandedCards(prev => ({ ...prev, [planId]: !prev[planId] }));
-
-  const formatCurrency = (amount, currency = 'GHS') => {
-    return new Intl.NumberFormat('en-GH', { style: 'currency', currency }).format(amount || 0);
-  };
+  const [startBranches, setStartBranches] = useState(1);
+  const [addBranches, setAddBranches] = useState(1);
+  const [paying, setPaying] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchBillingData = useCallback(async () => {
     setLoading(true);
-    try {
-      // allSettled, not per-call .catch fallbacks: this is the page an owner
-      // looks at to decide whether they are paid up. Silently rendering "no
-      // invoices" or "no plan" when the request merely failed is the worst
-      // possible answer to that question.
-      const [plansR, subR, invR, bizR] = await Promise.allSettled([
-        api.get('/subscriptions/plans'),
-        api.get(`/subscriptions/business/${user?.business_id}`),
-        api.get(`/billing/invoices/${user?.business_id}`),
-        api.get('/businesses/me'),
-      ]);
-
-      setPlans(plansR.status === 'fulfilled' ? (plansR.value || []) : []);
-      setSubscription(subR.status === 'fulfilled' ? subR.value : null);
-      setInvoices(invR.status === 'fulfilled' ? (invR.value || []) : []);
-      setBusiness(bizR.status === 'fulfilled' ? bizR.value : null);
-
-      const failed = [
-        plansR.status === 'rejected' && 'the plan list',
-        subR.status === 'rejected' && 'your current subscription',
-        invR.status === 'rejected' && 'your invoices',
-        bizR.status === 'rejected' && 'your trial status',
-      ].filter(Boolean);
-
-      if (failed.length > 0) {
-        const partial = new Error(
-          `Couldn't load ${failed.join(', ')}. What's shown below may be incomplete.`
-        );
-        partial.userMessage = partial.message;
-        setError(partial);
-        return;
-      }
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Error fetching billing data:', err);
-      setError(err);
-    } finally {
-      setLoading(false);
+    // allSettled: this is the page an owner reads to decide whether they are
+    // paid up. Rendering "nothing to pay" when a request merely failed would
+    // be the worst possible answer.
+    const [mineR, invR] = await Promise.allSettled([
+      api.get('/subscriptions/mine'),
+      api.get(`/billing/invoices/${user?.business_id}`),
+    ]);
+    setSummary(mineR.status === 'fulfilled' ? mineR.value : null);
+    setInvoices(invR.status === 'fulfilled' ? (invR.value || []) : []);
+    const failed = [mineR.status === 'rejected' && 'your subscription', invR.status === 'rejected' && 'your invoices'].filter(Boolean);
+    if (failed.length) {
+      const partial = new Error(`Couldn't load ${failed.join(' or ')}. What's shown below may be incomplete.`);
+      partial.userMessage = partial.message;
+      setError(partial);
+    } else {
+      setError(null);
     }
+    setLoading(false);
   }, [user?.business_id]);
 
-  useEffect(() => {
-    fetchBillingData();
-  }, [fetchBillingData]);
+  useEffect(() => { fetchBillingData(); }, [fetchBillingData]);
 
-  const handleSelectPlan = (plan) => {
-    setSelectedPlan(plan);
-    setShowUpgradeModal(true);
-  };
-
-  const handlePayWithPaystack = async () => {
-    if (!selectedPlan) return;
-    setProcessing(true);
-    try {
-      const result = await api.post('/subscriptions/initialize-paystack', {
-        plan_id: selectedPlan.id,
-        billing_cycle: billingCycle,
-        callback_url: window.location.origin + '/business-admin/billing?payment=success',
-      });
-
-      if (result.authorization_url) {
-        window.location.href = result.authorization_url;
-      } else {
-        toast.error('Could not initialize payment. Please try again.');
-      }
-    } catch (err) {
-      toast.error(err.message || 'Payment initialization failed. Please contact support.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Check for payment success callback and verify synchronously
+  // Back from Paystack: apply the payment now rather than waiting for the webhook.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const trxref = params.get('trxref') || params.get('reference');
-
-    if (trxref) {
-      const verifyPayment = async () => {
-        try {
-          // Verify with our new synchronous endpoint
-          await api.post('/subscriptions/verify-paystack', { reference: trxref });
-          
-          // Clear URL parameters so we don't verify again
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          // Force a full reload. This ensures the AuthContext completely refetches 
-          // the user's role, permissions, and business status from the database,
-          // granting them immediate access to their new features.
-          window.location.reload();
-        } catch (err) {
-          if (import.meta.env.DEV) console.error('Payment verification failed:', err);
-          toast.warning('We received your payment, but could not verify it immediately. It will be processed shortly by our system.');
-          window.history.replaceState({}, document.title, window.location.pathname);
-          fetchBillingData();
-        }
-      };
-      
-      verifyPayment();
-    } else if (params.get('payment') === 'success') {
-      // Clear URL and refresh if it's just a generic success flag
-      window.history.replaceState({}, document.title, window.location.pathname);
-      setTimeout(() => fetchBillingData(), 1000);
-    }
-    // `toast` is memoized by the provider, so it is stable across renders and
-    // safe to depend on, it will not retrigger this payment-verification pass.
+    const reference = params.get('trxref') || params.get('reference');
+    if (!reference) return;
+    (async () => {
+      try {
+        await api.post('/subscriptions/verify-paystack', { reference });
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // A full reload refetches the business status, which opens the app.
+        window.location.reload();
+      } catch {
+        toast.warning('We received your payment but could not confirm it yet. It will be applied shortly; refresh this page in a minute.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        fetchBillingData();
+      }
+    })();
   }, [fetchBillingData, toast]);
+
+  const pay = async (kind, branches) => {
+    setPaying(kind);
+    try {
+      const result = await api.post('/subscriptions/initialize-paystack', {
+        kind,
+        ...(branches ? { branches } : {}),
+        callback_url: `${window.location.origin}/business-admin/billing`,
+      });
+      if (result.authorization_url) window.location.href = result.authorization_url;
+      else toast.error('Could not start the payment. Please try again.');
+    } catch (err) {
+      toast.error(err.message || 'Could not start the payment. Please try again.');
+    } finally {
+      setPaying(null);
+    }
+  };
+
+  const exportData = async () => {
+    setExporting(true);
+    try {
+      const blob = await api.getBlob('/businesses/me/export');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quaderp-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err?.status === 429 ? 'An export can only be generated once per hour. Try again shortly.' : (err?.userMessage || "Couldn't generate the export."));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) {
     return <div className="p-xl text-center"><div className="spinner" style={{ margin: '2rem auto' }}></div>Loading billing...</div>;
   }
 
-  const currentPlan = subscription?.platform_plans;
-  const isActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-  const isTrialing = subscription?.status === 'trialing';
-  const daysLeft = subscription?.current_period_end
-    ? Math.max(0, Math.ceil((new Date(subscription.current_period_end) - new Date()) / (1000 * 60 * 60 * 24)))
-    : 0;
-
-  /* On a free trial: no subscription row, but the business says trialing. */
-  const onTrial = !subscription && business?.status === 'trialing' && Boolean(business?.trial_ends_at);
-  const trialPlan = business?.subscription_plan_id
-    ? plans.find((p) => p.id === business.subscription_plan_id)
-    : null;
-  const trialDaysLeft = onTrial
-    ? Math.max(0, Math.ceil((new Date(business.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
-    : 0;
+  const plan = summary?.plan;
+  const currency = plan?.currency || 'GHS';
+  const status = summary?.status;
+  const sub = summary?.subscription;
+  const offers = summary?.offers || {};
+  const extraPrice = plan?.price_per_extra_location || 0;
+  // Shown before checkout; checkout charges the server's own figure.
+  const startLines = plan ? [
+    ...(plan.setup_fee > 0 ? [{ label: 'One-time setup', amount: plan.setup_fee }] : []),
+    { label: 'First branch, for a year', amount: plan.price_yearly },
+    ...(startBranches > 1 ? [{ label: `${branchWord(startBranches - 1)} more, for a year`, amount: extraPrice * (startBranches - 1) }] : []),
+  ] : [];
 
   return (
-    <div>
-      <PageHeader
-        title="Billing & Subscription"
-        subtitle="Manage your subscription plan, view invoices, and make payments."
-      />
-
+    <div className="billing-page">
+      <PageHeader title="Billing" subtitle="Your QuadERP subscription, branches and invoices." />
       <ErrorBanner error={error} onRetry={fetchBillingData} />
 
-      {/* Current Subscription Card */}
-      <div className="pa-sub-card" style={{ marginBottom: 'var(--space-2xl)' }}>
-        <div className="pa-sub-header">
-          <span className="pa-sub-plan-name">{currentPlan?.name || trialPlan?.name || 'No Plan'}</span>
-          {subscription && (
-            <span className={`pa-sub-status ${subscription.status}`}>
-              {isTrialing ? '🧪 Trial' : subscription.status}
-            </span>
+      {plan && (
+        <section className="content-card billing-plan" aria-labelledby="billing-plan">
+          <h2 id="billing-plan">{plan.name}: every feature, for every branch</h2>
+          <p>
+            {formatMoney(plan.price_yearly, currency)} a year for your first branch, and {formatMoney(extraPrice, currency)} a year
+            for each additional branch. A one-time setup fee of {formatMoney(plan.setup_fee, currency)} is paid with your first year.
+          </p>
+        </section>
+      )}
+
+      {summary?.is_demo && (
+        <section className="content-card" role="status"><p>The demo does not take payments. Everything is open for you to try.</p></section>
+      )}
+
+      {!summary?.is_demo && status === 'unpaid' && offers.start && (
+        <section className="content-card billing-action" aria-labelledby="billing-start">
+          <h2 id="billing-start">Pay to start using QuadERP</h2>
+          <p>Pay the setup fee and your first year. QuadERP opens as soon as Paystack confirms the payment.</p>
+          <label className="form-label" htmlFor="start-branches">Branches to start with</label>
+          <input id="start-branches" className="form-input billing-qty" type="number" min={1} max={MAX_BRANCHES} value={startBranches}
+            onChange={(e) => setStartBranches(clampBranches(e.target.value))} />
+          <Lines lines={startLines} currency={currency} />
+          <button type="button" className="btn btn-primary" disabled={paying === 'start'} onClick={() => pay('start', startBranches)}>
+            {paying === 'start' ? 'Starting payment…' : 'Pay with Paystack'}
+          </button>
+          <p className="text-muted">You can add branches later for {formatMoney(extraPrice, currency)} a year each.</p>
+        </section>
+      )}
+
+      {!summary?.is_demo && summary?.paid_before && (
+        <section className="content-card billing-action" aria-labelledby="billing-year">
+          <h2 id="billing-year">{status === 'expired' ? 'Your subscription has ended' : 'Your subscription'}</h2>
+          {sub?.current_period_end && (
+            <p>
+              {status === 'expired'
+                ? <>It ended on <strong>{formatDate(sub.current_period_end)}</strong>. Renew to open QuadERP again; nothing has been lost.</>
+                : <>Paid until <strong>{formatDate(sub.current_period_end)}</strong>.</>}
+            </p>
           )}
-          {!subscription && onTrial && (
-            <span className="pa-sub-status trialing">🧪 Trial</span>
-          )}
-          {!subscription && !onTrial && (
-            <span className="pa-sub-status expired">No Subscription</span>
-          )}
-        </div>
-
-        {subscription && (
-          <div className="pa-sub-details">
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">Amount</span>
-              <span className="pa-sub-detail-value">
-                {formatCurrency(subscription.amount, subscription.currency)}
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                  /{subscription.billing_cycle === 'yearly' ? 'yr' : 'mo'}
-                </span>
-              </span>
-            </div>
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">Billing Cycle</span>
-              <span className="pa-sub-detail-value capitalize">{subscription.billing_cycle}</span>
-            </div>
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">{isTrialing ? 'Trial Ends' : 'Renews On'}</span>
-              <span className="pa-sub-detail-value">
-                {isTrialing && subscription.trial_ends_at
-                  ? new Date(subscription.trial_ends_at).toLocaleDateString()
-                  : subscription.current_period_end
-                    ? new Date(subscription.current_period_end).toLocaleDateString()
-                    : '-'}
-              </span>
-            </div>
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">Days Remaining</span>
-              <span className="pa-sub-detail-value" style={{ color: daysLeft <= 5 ? 'var(--color-error-text)' : daysLeft <= 10 ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}>
-                {daysLeft} days
-              </span>
-            </div>
-          </div>
-        )}
-
-        {onTrial && (
-          <div className="pa-sub-details">
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">Free trial ends</span>
-              <span className="pa-sub-detail-value">
-                {new Date(business.trial_ends_at).toLocaleDateString()}
-              </span>
-            </div>
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">Days Remaining</span>
-              <span
-                className="pa-sub-detail-value"
-                style={{ color: trialDaysLeft <= 5 ? 'var(--color-error-text)' : trialDaysLeft <= 10 ? 'var(--color-warning-text)' : 'var(--color-success-text)' }}
-              >
-                {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'}
-              </span>
-            </div>
-            <div className="pa-sub-detail">
-              <span className="pa-sub-detail-label">When it ends</span>
-              {/* Matches Terms 6.3 and 9.2, and the reminder email. */}
-              <span className="pa-sub-detail-value" style={{ fontWeight: 400 }}>
-                Nothing is charged. Choose a plan to keep going, and your data stays either way.
-              </span>
-            </div>
-          </div>
-        )}
-
-        {currentPlan && (
-          <div className="pa-plan-limits" style={{ marginTop: 'var(--space-sm)' }}>
-            <span className="pa-plan-limit"><strong>{currentPlan.max_users === -1 ? '∞' : currentPlan.max_users}</strong> Users</span>
-            <span className="pa-plan-limit"><strong>{currentPlan.max_locations === -1 ? '∞' : currentPlan.max_locations}</strong> Locations</span>
-            <span className="pa-plan-limit"><strong>{currentPlan.max_products === -1 ? '∞' : currentPlan.max_products}</strong> Products</span>
-          </div>
-        )}
-      </div>
-
-      {/* Available Plans */}
-      <div style={{ marginBottom: 'var(--space-2xl)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
-            {isActive ? 'Change Plan' : 'Choose a Plan'}
-          </h2>
-          <div className="pa-cycle-toggle">
-            <button className={`pa-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`} onClick={() => setBillingCycle('monthly')}>Monthly</button>
-            <button className={`pa-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`} onClick={() => setBillingCycle('yearly')}>Yearly</button>
-          </div>
-        </div>
-
-        <div className="pa-pricing-grid">
-          {plans.map((plan, idx) => {
-            const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-            let comparePrice = billingCycle === 'yearly' ? plan.compare_at_price_yearly : plan.compare_at_price_monthly;
-            const isCurrent = currentPlan?.id === plan.id;
-            const features = plan.features || {};
-
-            // Split features into available / not available
-            const allFeatureEntries = Object.entries(FEATURE_LABELS || {});
-            const availableFeatures = allFeatureEntries.filter(([key]) => features[key]);
-            const unavailableFeatures = allFeatureEntries.filter(([key]) => !features[key]);
-            const isExpanded = expandedCards[plan.id];
-            const isFranchise = plan.name?.toLowerCase().includes('franchise');
-
-            // Promo Logic
-            const promoMode = plan.promo_mode || 'none';
-            const isTrial = promoMode === 'trial';
-            const isIntro = promoMode === 'intro';
-            const introPrice = billingCycle === 'yearly' ? plan.intro_price_yearly : plan.intro_price_monthly;
-            const trialValue = billingCycle === 'yearly' ? (plan.trial_days_yearly ?? 0) : (plan.trial_days_monthly ?? 0);
-            const trialUnit = billingCycle === 'yearly' ? (plan.trial_unit_yearly || 'days') : (plan.trial_unit_monthly || 'days');
-
-            // Auto-calculate discount intelligence
-            let discountLabel = null;
-            if (isIntro && introPrice !== null && introPrice !== '' && Number(introPrice) < price) {
-              const percentOff = Math.round(((price - Number(introPrice)) / price) * 100);
-              discountLabel = `Save ${percentOff}%`;
-            } else if (billingCycle === 'yearly' && plan.price_monthly > 0) {
-              const naturalYearly = plan.price_monthly * 12;
-              if (price < naturalYearly) {
-                if (!comparePrice) comparePrice = naturalYearly;
-                const monthsFree = Math.round((naturalYearly - price) / plan.price_monthly);
-                if (monthsFree > 0 && monthsFree < 12) {
-                  discountLabel = `${monthsFree} month${monthsFree > 1 ? 's' : ''} free`;
-                } else {
-                  const percentOff = Math.round(((naturalYearly - price) / naturalYearly) * 100);
-                  discountLabel = `Save ${percentOff}%`;
-                }
-              }
-            }
-
-            return (
-              <div key={plan.id} className={`pa-plan-card ${idx === 1 ? 'featured' : ''} ${isCurrent ? 'featured' : ''}`}>
-                {(isCurrent || (!isCurrent && idx === 1) || discountLabel) && (
-                  <div style={{ position: 'absolute', top: '-12px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-                    {isCurrent && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none' }}>Current</span>}
-                    {!isCurrent && idx === 1 && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none' }}>Popular</span>}
-                    {discountLabel && <span className="pa-plan-badge" style={{ position: 'relative', top: 0, transform: 'none', background: 'var(--color-primary)', color: 'white' }}>{discountLabel}</span>}
-                  </div>
-                )}
-                <div className="pa-plan-header">
-                  <h3 className="pa-plan-name" style={{ fontSize: '1.3rem' }}>{plan.name}</h3>
-                  <p className="pa-plan-desc" style={{ fontSize: '0.9rem' }}>{plan.description || 'No description'}</p>
-                </div>
-                <div className="pa-plan-price">
-                  {isFranchise ? (
-                    <span className="pa-plan-amount" style={{ fontSize: '1.8rem', color: 'var(--color-primary)' }}>Custom Pricing</span>
-                  ) : (
-                    <>
-                      <span className="pa-plan-currency" style={{ fontSize: '1.1rem' }}>{plan.currency || 'GHS'}</span>
-                      <span className="pa-plan-amount" style={{ fontSize: '2.4rem' }}>{Number(price).toLocaleString()}</span>
-                      {comparePrice && Number(comparePrice) > Number(price) && (
-                        <span style={{ textDecoration: 'line-through', color: 'var(--color-text-tertiary)', fontSize: '1.1rem', marginLeft: '0.5rem' }}>
-                          {Number(comparePrice).toLocaleString()}
-                        </span>
-                      )}
-                      <span className="pa-plan-period" style={{ fontSize: '0.95rem' }}>/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
-                    </>
-                  )}
-                </div>
-
-                {isTrial && trialValue > 0 && (
-                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#22d3ee' }}>🧪 {trialValue} {trialUnit} free trial</span>
-                    <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.75rem' }}>
-                      Requires a GHS 1.00 card authorization
-                    </span>
-                  </div>
-                )}
-
-                {isIntro && Number(introPrice) > 0 && (
-                  <div style={{ textAlign: 'center', padding: '0.5rem 0.75rem', marginTop: '0.25rem', background: 'var(--color-success-bg)', border: '1px solid var(--color-success-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--color-success-text)', fontWeight: 'bold' }}>🎁 Introductory Offer</span>
-                    <span style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: '2px', fontSize: '0.8rem' }}>
-                      First payment: <strong style={{ color: 'var(--color-success-text)' }}>{new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(introPrice)}</strong>
-                    </span>
-                  </div>
-                )}
-
-                {/* Setup is NOT a fee on the plan, and this chip used to say so.
-                    It rendered "GHS 1,000 Setup Fee" beside Users and Locations,
-                    as though signing up cost a thousand cedis, while the pricing
-                    page told the same person "No setup fee to start" and the FAQ
-                    answered "Do I have to pay a setup fee?" with "No."
-
-                    Nothing charges it: subscriptions.js builds the Paystack
-                    amount from price_monthly or price_yearly and never reads
-                    setup_fee. The column is what OPTIONAL guided setup costs if
-                    a customer asks us to load their stock and train their staff,
-                    which is a service sold separately and once.
-
-                    So the chip states the fact, and the offer is spelled out
-                    below it in the site's own words rather than being implied by
-                    a number with a fee label on it. */}
-                <div className="pa-plan-limits" style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
-                  <span className="pa-plan-limit"><strong>No</strong> Setup Fee</span>
-                  <span className="pa-plan-limit"><strong>{plan.max_users === -1 ? '∞' : plan.max_users}</strong> Users</span>
-                  <span className="pa-plan-limit"><strong>{plan.max_locations === -1 ? '∞' : plan.max_locations}</strong> Locations</span>
-                  <span className="pa-plan-limit"><strong>{plan.max_products === -1 ? '∞' : plan.max_products}</strong> Products</span>
-                </div>
-                {plan.setup_fee > 0 && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem', lineHeight: 1.5 }}>
-                    Set it up yourself at no charge. If you would rather we did it, guided setup is our
-                    team loading your products, prices and opening stock and training your staff:{' '}
-                    {new Intl.NumberFormat('en-GH', { style: 'currency', currency: plan.currency || 'GHS' }).format(plan.setup_fee)}, optional, charged once.
-                  </p>
-                )}
-                {/* Collapsible features toggle */}
-                <button 
-                  onClick={() => toggleFeatures(plan.id)}
-                  style={{
-                    width: '100%', background: 'transparent', border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-sm)', padding: '0.5rem 0.75rem', cursor: 'pointer',
-                    color: 'var(--color-text-secondary)', fontSize: '0.85rem', fontWeight: 600,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginTop: 'var(--space-sm)', transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>{availableFeatures.length} of {allFeatureEntries.length} features</span>
-                  <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s ease', fontSize: '0.7rem' }}>▼</span>
-                </button>
-
-                {isExpanded && (
-                  <div style={{ marginTop: 'var(--space-sm)', animation: 'fadeIn 0.2s ease' }}>
-                    {/* Available features */}
-                    {availableFeatures.length > 0 && (
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success-text)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid var(--color-success-bg)' }}>
-                          ✓ Included ({availableFeatures.length})
-                        </div>
-                        {availableFeatures.map(([key, label]) => (
-                          <div key={key} className="pa-plan-feature" style={{ fontSize: '0.85rem', padding: '0.25rem 0' }}>
-                            <span className="pa-plan-feature-check enabled" style={{ fontSize: '0.9rem' }}>✓</span>
-                            {label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {/* Unavailable features */}
-                    {unavailableFeatures.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', paddingBottom: '0.3rem', borderBottom: '1px solid var(--color-border)' }}>
-                          ✗ Not Included ({unavailableFeatures.length})
-                        </div>
-                        {unavailableFeatures.map(([key, label]) => (
-                          <div key={key} className="pa-plan-feature" style={{ fontSize: '0.85rem', padding: '0.25rem 0', opacity: 0.5 }}>
-                            <span className="pa-plan-feature-check disabled" style={{ fontSize: '0.9rem' }}>✗</span>
-                            {label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="pa-plan-actions" style={{ marginTop: 'auto' }}>
-                  {isCurrent ? (
-                    <button className="btn btn-secondary btn-sm" disabled style={{ width: '100%', opacity: 0.6 }}>
-                      Current Plan
-                    </button>
-                  ) : isFranchise ? (
-                    <a
-                      href="mailto:info@quaderp.app?subject=Franchise%20Plan%20Inquiry"
-                      className="btn btn-primary btn-sm"
-                      style={{ width: '100%', textAlign: 'center', textDecoration: 'none' }}
-                    >
-                      Contact Sales
-                    </a>
-                  ) : (
-                    <button
-                      className="btn btn-primary btn-sm w-full"
-                      onClick={() => handleSelectPlan(plan)}
-                    >
-                      {Number(price) === 0 ? 'Switch to Free' : (isActive ? 'Upgrade' : 'Subscribe')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {plans.length === 0 && (
-            <div className="text-center py-xl text-muted" style={{ gridColumn: '1 / -1' }}>
-              No plans available yet. Contact your platform administrator.
+          <p>
+            <strong>{branchWord(summary.paid_locations)}</strong> paid for, {summary.locations_used} in use.
+          </p>
+          {offers.renew && (
+            <div className="billing-row">
+              <span>Renew for a year, {branchWord(offers.renew.branches)}: <strong>{formatMoney(offers.renew.amount, currency)}</strong>
+                {status !== 'expired' && ' (added to the end of your current year)'}</span>
+              <button type="button" className="btn btn-primary" disabled={paying === 'renew'} onClick={() => pay('renew')}>
+                {paying === 'renew' ? 'Starting payment…' : 'Renew with Paystack'}
+              </button>
             </div>
           )}
-        </div>
-      </div>
+          {offers.branch && status !== 'expired' && (
+            <div className="billing-row">
+              <label className="form-label" htmlFor="add-branches">Add branches</label>
+              <input id="add-branches" className="form-input billing-qty" type="number" min={1} max={MAX_BRANCHES} value={addBranches}
+                onChange={(e) => setAddBranches(clampBranches(e.target.value))} />
+              <span><strong>{formatMoney(extraPrice * addBranches, currency)}</strong> for the rest of this year, then {formatMoney(extraPrice, currency)} each at every renewal</span>
+              <button type="button" className="btn btn-secondary" disabled={paying === 'branches'} onClick={() => pay('branches', addBranches)}>
+                {paying === 'branches' ? 'Starting payment…' : 'Pay for branches'}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
-      {/* Invoice History */}
-      <div>
-        <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 'var(--space-lg)' }}>
-          Invoice History
-        </h2>
+      {!summary?.is_demo && status === 'expired' && (
+        <section className="content-card" aria-labelledby="billing-export">
+          <h2 id="billing-export">Your data</h2>
+          <p>Download everything QuadERP holds for your business at any time, paid up or not.</p>
+          <button type="button" className="btn btn-secondary" disabled={exporting} onClick={exportData}>
+            {exporting ? 'Preparing…' : 'Download your data'}
+          </button>
+        </section>
+      )}
+
+      <section aria-labelledby="billing-invoices">
+        <h2 id="billing-invoices" className="billing-heading">Invoices</h2>
         <div className="content-card">
           <div className="table-container">
             <table className="data-table">
               <thead>
-                <tr>
-                  <th>Invoice #</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Method</th>
-                  <th className="text-right">Actions</th>
-                </tr>
+                <tr><th>Invoice #</th><th>For</th><th>Amount</th><th>Status</th><th>Date</th><th className="text-right">Actions</th></tr>
               </thead>
               <tbody>
-                {invoices.map(inv => (
+                {invoices.map((inv) => (
                   <tr key={inv.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{inv.invoice_number}</td>
-                    <td className="font-bold">{formatCurrency(inv.amount, inv.currency)}</td>
+                    <td className="billing-mono">{inv.invoice_number}</td>
+                    <td>{inv.description || 'Subscription payment'}</td>
+                    <td className="font-bold">{formatMoney(inv.amount, inv.currency)}</td>
                     <td><span className={`pa-invoice-badge ${inv.status}`}>{inv.status}</span></td>
-                    <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{new Date(inv.created_at).toLocaleDateString()}</td>
-                    <td style={{ textTransform: 'capitalize', fontSize: '0.85rem' }}>{inv.payment_method || '-'}</td>
+                    <td>{new Date(inv.created_at).toLocaleDateString()}</td>
                     <td className="text-right">
-                      <button 
-                        className="btn btn-secondary btn-sm" 
-                        onClick={() => navigate(`/invoice/${inv.id}`)}
-                      >
-                        View
-                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/invoice/${inv.id}`)}>View</button>
                     </td>
                   </tr>
                 ))}
-                {invoices.length === 0 && (
-                  <EmptyStateRow colSpan={6} icon="billing" title="No invoices yet" />
-                )}
+                {invoices.length === 0 && <EmptyStateRow colSpan={6} icon="billing" title="No invoices yet" />}
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-
-      {/* Upgrade / Payment Modal */}
-      {showUpgradeModal && selectedPlan && (
-        <Modal isOpen={true} title={`Subscribe to ${selectedPlan.name}`} onClose={() => { setShowUpgradeModal(false); setSelectedPlan(null); }}>
-          <div className="mb-lg">
-            <div className="pa-plan-price" style={{ justifyContent: 'center', padding: 'var(--space-lg) 0' }}>
-              <span className="pa-plan-currency">{selectedPlan.currency || 'GHS'}</span>
-              <span className="pa-plan-amount">
-                {Number(billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly).toLocaleString()}
-              </span>
-              <span className="pa-plan-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
-            </div>
-
-            {selectedPlan.trial_days > 0 && Number(billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly) > 0 && (
-              <div style={{ textAlign: 'center', padding: '0.75rem', background: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.2)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem', color: '#22d3ee' }}>
-                🎉 Includes a {selectedPlan.trial_days}-day free trial
-              </div>
-            )}
-
-            <div className="pa-plan-limits" style={{ justifyContent: 'center', marginBottom: 'var(--space-md)' }}>
-              <span className="pa-plan-limit"><strong>{selectedPlan.max_users === -1 ? '∞' : selectedPlan.max_users}</strong> Users</span>
-              <span className="pa-plan-limit"><strong>{selectedPlan.max_locations === -1 ? '∞' : selectedPlan.max_locations}</strong> Locations</span>
-              <span className="pa-plan-limit"><strong>{selectedPlan.max_products === -1 ? '∞' : selectedPlan.max_products}</strong> Products</span>
-            </div>
-          </div>
-
-          {Number(billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly) === 0 ? (
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowUpgradeModal(false)}>Cancel</button>
-              <button
-                className="btn btn-primary"
-                onClick={async () => {
-                  setProcessing(true);
-                  try {
-                    await api.post('/subscriptions/assign', {
-                      business_id: user?.business_id,
-                      plan_id: selectedPlan.id,
-                      billing_cycle: billingCycle,
-                    });
-                    toast.success('Switched to Free plan!');
-                    setShowUpgradeModal(false);
-                    fetchBillingData();
-                  } catch (err) {
-                    toast.error(err.message || 'Failed to switch plan');
-                  } finally {
-                    setProcessing(false);
-                  }
-                }}
-                disabled={processing}
-              >
-                {processing ? 'Processing...' : 'Switch to Free'}
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', textAlign: 'center', marginBottom: 'var(--space-lg)' }}>
-                You will be redirected to Paystack to complete the payment securely.
-              </p>
-              <div className="modal-actions">
-                <button className="btn btn-secondary" onClick={() => setShowUpgradeModal(false)}>Cancel</button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handlePayWithPaystack}
-                  disabled={processing}
-                  style={{ background: '#00a4ef' }}
-                >
-                  {processing ? (
-                    <>
-                      <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px', display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}></div>
-                      Processing...
-                    </>
-                  ) : (
-                    'Pay with Paystack'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </Modal>
-      )}
+      </section>
     </div>
   );
 }

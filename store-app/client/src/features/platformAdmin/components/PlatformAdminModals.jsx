@@ -267,105 +267,25 @@ export default function PlatformAdminModals() {
         <label className="form-label">Description</label>
         <textarea className="form-input" rows="2" value={planForm.description} onChange={e => setPlanForm({ ...planForm, description: e.target.value })} placeholder="Brief plan description..." />
       </div>
+      {/* One plan, yearly, since 8 October 2026: what checkout charges is
+          setup fee + yearly price + per-branch price for each further branch
+          (server/utils/subscriptionCharge.js). Monthly prices, limits and the
+          trial/intro promotions are no longer read by checkout. */}
       <div className="form-row mb-md">
         <div className="form-group">
-          <label className="form-label">Monthly Price</label>
-          <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_monthly} onChange={e => {
-            const val = Number(e.target.value);
-            setPlanForm({ ...planForm, price_monthly: val, price_yearly: val * 12 });
-          }} />
+          <label className="form-label" htmlFor="plan-price-yearly">Yearly price, first branch</label>
+          <input id="plan-price-yearly" className="form-input" type="number" step="0.01" min="0" value={planForm.price_yearly} onChange={e => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })} />
         </div>
         <div className="form-group">
-          <label className="form-label">Yearly Price</label>
-          <input className="form-input" type="number" step="0.01" min="0" value={planForm.price_yearly} onChange={e => setPlanForm({ ...planForm, price_yearly: Number(e.target.value) })} />
+          <label className="form-label" htmlFor="plan-extra-branch">Yearly price, each additional branch</label>
+          <input id="plan-extra-branch" className="form-input" type="number" step="0.01" min="0" value={planForm.price_per_extra_location} onChange={e => setPlanForm({ ...planForm, price_per_extra_location: Number(e.target.value) })} />
         </div>
       </div>
       <div className="form-row mb-md">
         <div className="form-group">
-          <label className="form-label">Max Users <span className="text-tertiary">(-1 = unlimited)</span></label>
-          <input className="form-input" type="number" value={planForm.max_users} onChange={e => setPlanForm({ ...planForm, max_users: Number(e.target.value) })} />
+          <label className="form-label" htmlFor="plan-setup-fee">One-time setup fee</label>
+          <input id="plan-setup-fee" className="form-input" type="number" step="0.01" min="0" value={planForm.setup_fee} onChange={e => setPlanForm({ ...planForm, setup_fee: Number(e.target.value) })} />
         </div>
-        <div className="form-group">
-          <label className="form-label">Max Locations</label>
-          <input className="form-input" type="number" min="1" value={planForm.max_locations} onChange={e => setPlanForm({ ...planForm, max_locations: Number(e.target.value) })} />
-        </div>
-      </div>
-      <div className="form-row mb-md">
-        <div className="form-group">
-          <label className="form-label">Max Products <span className="text-tertiary">(-1 = unlimited)</span></label>
-          <input className="form-input" type="number" value={planForm.max_products} onChange={e => setPlanForm({ ...planForm, max_products: Number(e.target.value) })} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Max Products <span className="text-tertiary">(-1 = unlimited)</span></label>
-          <input className="form-input" type="number" value={planForm.max_products} onChange={e => setPlanForm({ ...planForm, max_products: Number(e.target.value) })} />
-        </div>
-      </div>
-      
-      <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(6, 182, 212, 0.06)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-md)' }}>
-        <label className="form-label" style={{ color: '#22d3ee', marginBottom: '0.5rem', fontSize: '0.85rem' }}>🎁 Introductory Promotion</label>
-        
-        <div className="flex gap-md mb-md">
-          <label className="checkbox-label" style={{ fontSize: '0.85rem' }}>
-            <input type="radio" name="promo_mode" checked={planForm.promo_mode === 'none'} onChange={() => setPlanForm({ ...planForm, promo_mode: 'none' })} />
-            No Promotion
-          </label>
-          <label className="checkbox-label" style={{ fontSize: '0.85rem' }}>
-            <input type="radio" name="promo_mode" checked={planForm.promo_mode === 'trial'} onChange={() => setPlanForm({ ...planForm, promo_mode: 'trial' })} />
-            Free Trial (Delay)
-          </label>
-          <label className="checkbox-label" style={{ fontSize: '0.85rem' }}>
-            <input type="radio" name="promo_mode" checked={planForm.promo_mode === 'intro'} onChange={() => setPlanForm({ ...planForm, promo_mode: 'intro' })} />
-            Discounted First Payment
-          </label>
-        </div>
-
-        {planForm.promo_mode === 'trial' && (
-          <div>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
-              Customer pays a tiny GHS 1.00 card authorization fee today, and normal billing starts after the trial.
-            </span>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Trial Days (Monthly Plan) <span className="text-tertiary">(usually 0)</span></label>
-                <div className="flex gap-sm">
-                  <input className="form-input" type="number" min="0" value={planForm.trial_days_monthly} onChange={e => setPlanForm({ ...planForm, trial_days_monthly: Number(e.target.value) })} />
-                  <select className="form-input" style={{ width: '100px' }} value={planForm.trial_unit_monthly} onChange={e => setPlanForm({ ...planForm, trial_unit_monthly: e.target.value })}>
-                    <option value="days">Days</option>
-                    <option value="months">Months</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Trial Days (Yearly Plan) <span className="text-tertiary">(e.g. 1 month)</span></label>
-                <div className="flex gap-sm">
-                  <input className="form-input" type="number" min="0" value={planForm.trial_days_yearly} onChange={e => setPlanForm({ ...planForm, trial_days_yearly: Number(e.target.value) })} />
-                  <select className="form-input" style={{ width: '100px' }} value={planForm.trial_unit_yearly} onChange={e => setPlanForm({ ...planForm, trial_unit_yearly: e.target.value })}>
-                    <option value="days">Days</option>
-                    <option value="months">Months</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {planForm.promo_mode === 'intro' && (
-          <div>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
-              Customer pays this custom amount today, and normal billing starts on their second payment.
-            </span>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">First Payment (Monthly Plan) <span className="text-tertiary">(Normal: {planForm.price_monthly})</span></label>
-                <input className="form-input" type="number" min="0" step="0.01" value={planForm.intro_price_monthly} onChange={e => setPlanForm({ ...planForm, intro_price_monthly: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">First Payment (Yearly Plan) <span className="text-tertiary">(Normal: {planForm.price_yearly})</span></label>
-                <input className="form-input" type="number" min="0" step="0.01" value={planForm.intro_price_yearly} onChange={e => setPlanForm({ ...planForm, intro_price_yearly: e.target.value })} />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
       <div className="form-group mb-md">
         <label className="form-label">Features</label>

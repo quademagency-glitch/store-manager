@@ -8,8 +8,15 @@ import { routePattern } from './routePattern';
  * the full address to every event by itself, so each event is reduced to the
  * route pattern before it leaves the browser. It runs as `before_send` so the
  * properties PostHog adds on its own are covered, not only the ones we pass.
+ *
+ * Every string value is checked, not a list of known keys: on 8 October 2026
+ * the live check found the full address in `$session_entry_url`, a property
+ * outside the six we had listed. Any absolute URL, at any depth, and any key
+ * naming a path is reduced.
  */
-const URL_PROPS = ['$current_url', '$initial_current_url', '$pathname', '$initial_pathname', '$referrer', '$initial_referrer'];
+const PATH_KEY = /pathname$/i;
+// A bare query string or fragment carries exactly what users type. Dropped.
+const QUERY_KEY = /_(query|search|hash)$/i;
 
 /**
  * @param {string} value an absolute URL, a path, or a PostHog marker such as `$direct`
@@ -26,12 +33,25 @@ export function scrubUrl(value) {
   }
 }
 
+function scrubValue(value, key, depth) {
+  if (typeof value === 'string') {
+    if (/^https?:\/\//i.test(value) || (PATH_KEY.test(key) && value.startsWith('/'))) return scrubUrl(value);
+    return value;
+  }
+  if (value && typeof value === 'object' && depth < 4) {
+    for (const k of Object.keys(value)) {
+      if (QUERY_KEY.test(k)) delete value[k];
+      else value[k] = scrubValue(value[k], k, depth + 1);
+    }
+  }
+  return value;
+}
+
 /** @param {import('@posthog/types').CaptureResult | null} event */
 export function scrubEvent(event) {
   if (!event) return event;
-  for (const bag of [event.properties, event.$set, event.$set_once]) {
-    if (!bag) continue;
-    for (const key of URL_PROPS) if (typeof bag[key] === 'string') bag[key] = scrubUrl(bag[key]);
+  for (const bag of ['properties', '$set', '$set_once']) {
+    if (event[bag]) scrubValue(event[bag], bag, 0);
   }
   return event;
 }

@@ -176,42 +176,46 @@ export default function CustomerSegments() {
                   <thead>
                     <tr>
                       <th>
-                        <input
-                          type="checkbox"
-                          aria-label="Select all customers on this page"
-                          checked={allPicked}
-                          disabled={!pageRows.length}
-                          onChange={(e) =>
-                            setPicked({
-                              key: pageKey,
-                              rows: e.target.checked ? Object.fromEntries(pageRows.map((r) => [r.id, r])) : {},
-                            })
-                          }
-                        />
+                        <span className="work-pick">
+                          <input
+                            type="checkbox"
+                            aria-label="Select all customers on this page"
+                            checked={allPicked}
+                            disabled={!pageRows.length}
+                            onChange={(e) =>
+                              setPicked({
+                                key: pageKey,
+                                rows: e.target.checked ? Object.fromEntries(pageRows.map((r) => [r.id, r])) : {},
+                              })
+                            }
+                          />
+                          Customer
+                        </span>
                       </th>
-                      <th>Customer</th>
                       <th>Last purchase</th>
-                      <th>Contact preference</th>
+                      <th>Permission</th>
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {!audience.data.rows.length&&<tr className="empty-state-row"><td colSpan={5}><Empty>No customers match these filters.</Empty></td></tr>}
+                    {!audience.data.rows.length&&<tr className="empty-state-row"><td colSpan={4}><Empty>No customers match these filters.</Empty></td></tr>}
                     {audience.data.rows.map((row) => (
                       <tr key={row.id}>
                         <td>
-                          <input
-                            type="checkbox"
-                            aria-label={`Select ${row.name}`}
-                            checked={!!(picked.key === pageKey && picked.rows[row.id])}
-                            onChange={() => toggleRow(row)}
-                          />
-                        </td>
-                        <td>
-                          <strong>{row.name}</strong>
-                          <small>
-                            {Number(row.spent).toFixed(2)} recorded spend
-                          </small>
+                          <span className="work-pick">
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${row.name}`}
+                              checked={!!(picked.key === pageKey && picked.rows[row.id])}
+                              onChange={() => toggleRow(row)}
+                            />
+                            <span>
+                              <strong>{row.name}</strong>
+                              <small>
+                                {Number(row.spent).toFixed(2)} recorded spend
+                              </small>
+                            </span>
+                          </span>
                         </td>
                         <td>
                           {row.last_purchase

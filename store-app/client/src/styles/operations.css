@@ -306,6 +306,19 @@
   padding: 16px 0;
   border-top: 1px solid var(--color-border);
 }
+/* A single-column form for narrow panels; work-form-grid scatters a
+   textarea, file input and buttons across columns there. */
+.work-stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.work-stack .work-field {
+  margin: 0;
+}
+.work-stack > .btn {
+  justify-self: start;
+}
 .work-list {
   list-style: none;
   padding: 0;
@@ -349,12 +362,12 @@
   text-align: left;
   color: var(--color-text-secondary);
   font-weight: 550;
-  padding: 12px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
 }
 .work-table td {
-  padding: 14px 12px;
+  padding: 14px 10px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
   font-variant-numeric: tabular-nums;
@@ -454,4 +467,25 @@
   .work-search .btn {
     flex-grow: 1;
   }
+}
+/* Row selection sits inside the first cell rather than in its own column,
+   so a half-width panel keeps its action buttons in view. */
+.work-pick {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.work-pick input[type="checkbox"] {
+  margin-top: 2px;
+  flex: none;
+}
+.work-table th:last-child,
+.work-table td:last-child {
+  padding-right: 0;
+}
+/* Buttons in a table cell sit in a narrow column; trim their sides so two
+   stacked actions fit without a horizontal scrollbar. */
+.work-table .btn {
+  padding-left: 10px;
+  padding-right: 10px;
 }

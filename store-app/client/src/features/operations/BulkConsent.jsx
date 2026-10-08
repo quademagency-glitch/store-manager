@@ -96,7 +96,7 @@ export default function BulkConsent({ channel, selected, onClearSelection, onRec
         </p>
       )}
       {mode === "import" && (
-        <div className="work-form-grid">
+        <div className="work-stack">
           <Field label="Phone numbers, one per line or as a CSV column">
             <textarea
               className="form-input"
@@ -132,7 +132,7 @@ export default function BulkConsent({ channel, selected, onClearSelection, onRec
       )}
       {(mode === "selected" || (mode === "import" && preview?.matched.length > 0)) && (
         <form
-          className="work-form-grid"
+          className="work-stack"
           onSubmit={(e) => {
             e.preventDefault();
             if (!ids.length || tooMany) return;

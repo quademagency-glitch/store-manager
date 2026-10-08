@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { withRetry } = require('../utils/retry');
 const { supabaseAdmin } = require('../db/supabase');
+const { openRow } = require('../utils/secretBox');
 
 let Resend;
 let resend;
@@ -934,6 +935,9 @@ async function sendSignupAlert(business, admin, opts = {}) {
  * Send custom email for platform communications
  */
 async function sendCustomEmail(recipients, subject, htmlContent, gateway = null, options = {}) {
+  // Provider keys are encrypted at rest (utils/secretBox).
+  try { gateway = gateway && openRow(gateway, ['api_key', 'secret_key']); }
+  catch (err) { logger.error({ err }, 'email: provider key could not be read'); return { success: false, error: 'The provider key could not be read.' }; }
   if (!recipients || recipients.length === 0) return { success: false, error: 'No recipients' };
 
   let activeClient = getResendClient();

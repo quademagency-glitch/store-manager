@@ -26,6 +26,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const { verifyWebhookSignature, resolvePaystackGateway } = require('../services/paystack');
 const { invalidateBusinessCache } = require('../middleware/authGuard');
 const logger = require('../utils/logger');
+const { grantForCharge } = require('../utils/subscriptionCharge');
 
 // Postgres unique-violation. Both this handler and POST /verify-paystack insert
 // an invoice for the same payment, and Paystack retries on any non-2xx, so
@@ -120,15 +121,28 @@ async function handleChargeSuccess(event, gateway, reqId) {
     return;
   }
 
-  const cycle = metadata.billing_cycle || 'monthly';
-  const now = new Date();
-  const periodEnd = new Date(now);
-  // Calendar-correct, unlike the old billing.js which added a flat 365 days.
-  if (cycle === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-  } else {
-    periodEnd.setDate(periodEnd.getDate() + 30);
+  // A redelivery (or the client's /verify-paystack racing this) must not push
+  // the period out again: settle duplicates before touching the subscription.
+  const { data: recorded, error: recordedError } = await supabaseAdmin
+    .from('billing_invoices').select('id').eq('paystack_reference', data.reference).maybeSingle();
+  if (recordedError) throw recordedError;
+  if (recorded) {
+    logger.info({ reqId, reference: data.reference }, '[WEBHOOK] Charge already applied, ignoring redelivery');
+    return;
   }
+
+  const cycle = metadata.billing_cycle || 'monthly';
+  // Metadata is whoever started the checkout's claim; the amount paid decides.
+  const grant = await grantForCharge(supabaseAdmin, {
+    businessId, planId, cycle, paid: typeof data.amount === 'number' ? data.amount / 100 : 0, currency: data.currency,
+  });
+  if (grant.error) {
+    // Logged for a refund or manual review; not thrown, or Paystack retries forever.
+    logger.warn({ reqId, reference: data.reference, businessId, reason: grant.error }, '[WEBHOOK] Charge does not match the plan, nothing granted');
+    return;
+  }
+  const now = grant.periodStart;
+  const periodEnd = grant.periodEnd;
 
   const { data: existingSub } = await supabaseAdmin
     .from('business_subscriptions')
@@ -139,14 +153,12 @@ async function handleChargeSuccess(event, gateway, reqId) {
   const subData = {
     plan_id: planId,
     gateway_id: gateway.id,
-    status: 'active',
+    status: grant.status,
     billing_cycle: cycle,
     current_period_start: now.toISOString(),
     current_period_end: periodEnd.toISOString(),
-    // Clearing this is what actually ends the trial. Only the subscriptions.js
-    // handler set it; a payment through the billing.js URL left the trial date
-    // in place.
-    trial_ends_at: null,
+    // A paid charge clears the trial; a trial fee starts one.
+    trial_ends_at: grant.trialEndsAt ? grant.trialEndsAt.toISOString() : null,
     amount: typeof data.amount === 'number' ? data.amount / 100 : null,
     currency: data.currency || 'GHS',
     paystack_subscription_code: data.reference,
@@ -198,7 +210,11 @@ async function handleChargeSuccess(event, gateway, reqId) {
 
   const { error: bizError } = await supabaseAdmin
     .from('businesses')
-    .update({ status: 'active', subscription_plan_id: planId })
+    .update({
+      status: grant.status === 'trialing' ? 'trialing' : 'active',
+      subscription_plan_id: planId,
+      ...(grant.trialEndsAt ? { trial_ends_at: grant.trialEndsAt.toISOString() } : {}),
+    })
     .eq('id', businessId);
   if (bizError) throw bizError;
 

@@ -10,6 +10,7 @@ const { attemptDelivery } = require('../services/webhookDispatcher');
 const { generateApiKey } = require('../utils/apiKeyUtils');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
+const { seal } = require('../utils/secretBox');
 
 const router = express.Router();
 
@@ -147,7 +148,7 @@ router.post('/webhooks', async (req, res) => {
       .insert({
         business_id: req.user.business_id,
         url,
-        secret,
+        secret: seal(secret), // encrypted at rest; the plain value is shown once below
         events: subscribedEvents,
         created_by: req.user.id,
       })

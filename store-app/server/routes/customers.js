@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
+const permissionCheck = require('../middleware/permissionCheck');
 const { apiCache, invalidateCachePrefix } = require('../middleware/apiCache');
 const { resolveCountry, normalizePhone, toSmsFormat, phoneSearchDigits } = require('../utils/phone');
 const crypto = require('crypto');
@@ -654,7 +655,7 @@ router.delete('/:id/notes/:noteId', authGuard, async (req, res) => {
  * statement that disagreed with the sales report would be the more confusing
  * of the two documents.
  */
-router.get('/:id/statement', authGuard, async (req, res) => {
+router.get('/:id/statement', authGuard, permissionCheck('manage_sales', 'view_customers', 'manage_financials'), async (req, res) => {
   try {
     /* `*` rather than a column list on purpose: credit_limit only exists once
        migration 075 has run, and naming a missing column fails the whole
@@ -727,7 +728,9 @@ router.get('/:id/statement', authGuard, async (req, res) => {
     const arOutstanding = round2(sum(invoices, (i) => i.total_amount) - sum(invoices, (i) => i.amount_paid));
 
     res.json({
-      customer,
+      // publicCustomer: the raw row carries verification_code, which authorises
+      // store-credit withdrawals (migration 082 revoked it from staff).
+      customer: publicCustomer(customer),
       period: {
         from: from.toISOString(),
         to: toExclusive.toISOString(),

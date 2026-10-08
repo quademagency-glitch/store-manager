@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuthContext } from '../lib/AuthContext';
 import { PageHeader, PageState, EmptyState, SkeletonTable } from '../components/ui';
 
 export default function InvoiceList() {
@@ -8,6 +9,7 @@ export default function InvoiceList() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { role, businessId } = useAuthContext();
 
   // Previously the catch only logged in DEV, so a failed request rendered
   // the "No Invoices Yet" empty state, telling the user their billing
@@ -15,7 +17,8 @@ export default function InvoiceList() {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/billing/invoices');
+      // The unscoped list is the platform operator's; a business sees only its own.
+      const res = await api.get(role === 'Platform Admin' ? '/billing/invoices' : `/billing/invoices/${businessId}`);
       setInvoices(res || []);
       setError(null);
     } catch (err) {
@@ -24,7 +27,7 @@ export default function InvoiceList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role, businessId]);
 
   useEffect(() => {
     fetchInvoices();

@@ -15,7 +15,17 @@ const { buildMockSupabase } = require('./helpers/mockSupabase');
  *
  * One app, one mock, results swapped per test, matching locations.test.js.
  */
-const overrides = {};
+// /activity is the platform operator's alone: a Business Admin gets 403
+// (platformBoundary.test.js), so this suite signs in as the Platform Admin.
+const PLATFORM_ADMIN = {
+    data: {
+      id: 'user-uuid-123', name: 'Platform Operator', email: 'ops@example.invalid', business_id: 'biz-uuid-123',
+      status: 'active', role_id: 'role-platform', roles: { name: 'Platform Admin', permissions: ['manage_platform'] },
+      businesses: { status: 'active' }, user_locations: [],
+    },
+    error: null,
+};
+const overrides = { users: PLATFORM_ADMIN };
 const mock = buildMockSupabase(overrides);
 jest.mock('../db/supabase', () => ({ supabaseAdmin: mock }));
 
@@ -59,6 +69,7 @@ const get = () =>
 
 beforeEach(() => {
   for (const k of Object.keys(overrides)) delete overrides[k];
+  overrides.users = PLATFORM_ADMIN;
 });
 
 describe('GET /api/platform/activity', () => {

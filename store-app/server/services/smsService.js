@@ -1,6 +1,7 @@
 const fetch = require('node-fetch');
 const logger = require('../utils/logger');
 const { withRetry } = require('../utils/retry');
+const { openRow } = require('../utils/secretBox');
 
 class SmsService {
   constructor() {
@@ -8,6 +9,9 @@ class SmsService {
   }
 
   async sendCustomSMS(recipients, message, gateway) {
+  // Provider keys are encrypted at rest (utils/secretBox).
+  try { gateway = gateway && openRow(gateway, ['api_key', 'secret_key']); }
+  catch (err) { logger.error({ err }, 'sms: provider key could not be read'); return { success: false, error: 'The provider key could not be read.' }; }
     if (!gateway || !gateway.api_key) {
       logger.warn('SMS gateway API key missing, simulating send');
       return { success: true, simulated: true, recipients };

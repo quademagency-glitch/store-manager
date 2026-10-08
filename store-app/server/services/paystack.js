@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const logger = require('../utils/logger');
+const { openRow } = require('../utils/secretBox');
 
 // Utility to make requests to Paystack API
 async function paystackRequest(endpoint, method = 'GET', body = null, secretKey) {
@@ -146,7 +147,8 @@ async function resolvePaystackGateway(supabaseAdmin) {
     .single();
 
   if (error || !data) return { gateway: null, error: error || null };
-  return { gateway: { ...data, mode: 'live' }, error: null };
+  // Keys are encrypted at rest (utils/secretBox); callers get them opened.
+  return { gateway: { ...openRow(data, ['secret_key', 'webhook_secret']), mode: 'live' }, error: null };
 }
 
 module.exports = {

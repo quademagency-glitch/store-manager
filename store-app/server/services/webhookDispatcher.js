@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const fetch = require('node-fetch');
 const { supabaseAdmin } = require('../db/supabase');
 const logger = require('../utils/logger');
+const { open } = require('../utils/secretBox');
 
 // Capped exponential backoff: 1m, 5m, 30m. Once attempt_count exceeds this,
 // retries are exhausted and the delivery is marked permanently failed.
@@ -80,7 +81,8 @@ async function dispatchWebhook(businessId, event, payload) {
  */
 async function attemptDelivery(delivery, endpoint) {
   const body = JSON.stringify({ event: delivery.event, data: delivery.payload, delivery_id: delivery.id });
-  const signature = crypto.createHmac('sha256', endpoint.secret).update(body).digest('hex');
+  // The signing secret is encrypted at rest (utils/secretBox).
+  const signature = crypto.createHmac('sha256', open(endpoint.secret)).update(body).digest('hex');
   const attemptCount = delivery.attempt_count + 1;
 
   try {

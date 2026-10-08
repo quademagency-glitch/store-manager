@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { openRow } = require('../utils/secretBox');
 
 /**
  * WhatsApp Cloud API, through the business's own WhatsApp Business account.
@@ -28,6 +29,9 @@ const TIMEOUT_MS = 15_000;
  * @returns {Promise<{ success: true, messageId: string } | { success: false, error: string, permanent: boolean }>}
  */
 async function sendTemplate(gateway, { to, template, language = 'en', params = [] }) {
+  // Provider keys are encrypted at rest (utils/secretBox).
+  try { gateway = gateway && openRow(gateway, ['api_key', 'secret_key']); }
+  catch (err) { logger.error({ err }, 'whatsapp: provider key could not be read'); return { success: false, permanent: true, error: 'The provider key could not be read.' }; }
   if (!gateway?.api_key || !gateway?.sender_id) return { success: false, permanent: true, error: 'WhatsApp is not connected.' };
   if (!template) return { success: false, permanent: true, error: 'No WhatsApp template name is set for this message.' };
   if (!/^\d{8,15}$/.test(String(to || ''))) return { success: false, permanent: true, error: 'The phone number cannot be used on WhatsApp.' };

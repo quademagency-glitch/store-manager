@@ -7,6 +7,7 @@ const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
 const { sendInvoiceEmail } = require('../services/emailService');
 const { initializeTransaction } = require('../services/paystack');
+const { seal, mask, open } = require('../utils/secretBox');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
 
 const router = express.Router();
@@ -31,8 +32,8 @@ router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (re
     // Mask secret keys for frontend display
     const masked = (data || []).map(gw => ({
       ...gw,
-      secret_key: gw.secret_key ? '••••••••' + gw.secret_key.slice(-4) : null,
-      webhook_secret: gw.webhook_secret ? '••••••••' + gw.webhook_secret.slice(-4) : null,
+      secret_key: mask(gw.secret_key),
+      webhook_secret: mask(gw.webhook_secret),
       // Keep public_key visible
     }));
 
@@ -69,8 +70,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
         provider,
         display_name,
         public_key: public_key || null,
-        secret_key: secret_key || null,
-        webhook_secret: webhook_secret || null,
+        secret_key: seal(secret_key || null),
+        webhook_secret: seal(webhook_secret || null),
         is_active: req.body.is_active ?? true,
         is_default: req.body.is_default ?? false,
         supported_currencies: supported_currencies || ['GHS'],
@@ -90,8 +91,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
 
     res.status(201).json({
       ...data,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
-      webhook_secret: data.webhook_secret ? '••••••••' + data.webhook_secret.slice(-4) : null,
+      secret_key: mask(data.secret_key),
+      webhook_secret: mask(data.webhook_secret),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating gateway:');
@@ -113,6 +114,8 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
     // Don't update keys if they are masked values
     if (updates.secret_key && updates.secret_key.startsWith('••')) delete updates.secret_key;
     if (updates.webhook_secret && updates.webhook_secret.startsWith('••')) delete updates.webhook_secret;
+    if (updates.secret_key) updates.secret_key = seal(updates.secret_key);
+    if (updates.webhook_secret) updates.webhook_secret = seal(updates.webhook_secret);
 
     // If this is set as default, unset all others
     if (updates.is_default) {
@@ -139,8 +142,8 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
 
     res.json({
       ...data,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
-      webhook_secret: data.webhook_secret ? '••••••••' + data.webhook_secret.slice(-4) : null,
+      secret_key: mask(data.secret_key),
+      webhook_secret: mask(data.webhook_secret),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating gateway:');
@@ -191,7 +194,7 @@ router.post('/paystack/initialize', authGuard, async (req, res) => {
       .eq('id', plan_id)
       .single();
 
-    if (planError || !plan) {
+    if (planError || !plan || !plan.is_active) {
       return res.status(404).json({ error: 'Plan not found' });
     }
 
@@ -225,7 +228,7 @@ router.post('/paystack/initialize', authGuard, async (req, res) => {
       }
     };
 
-    const result = await initializeTransaction(paystackParams, gateway.secret_key);
+    const result = await initializeTransaction(paystackParams, open(gateway.secret_key));
 
     res.json({
       authorization_url: result.data.authorization_url,

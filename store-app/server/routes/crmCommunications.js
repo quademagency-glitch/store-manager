@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { seal, mask } = require('../utils/secretBox');
 const smsService = require('../services/smsService');
 const emailService = require('../services/emailService');
 
@@ -99,8 +100,8 @@ router.get('/gateways', authGuard, permissionCheck('manage_marketing'), async (r
     // Mask secrets
     const masked = (data || []).map(gw => ({
       ...gw,
-      api_key: gw.api_key ? '••••••••' + gw.api_key.slice(-4) : null,
-      secret_key: gw.secret_key ? '••••••••' + gw.secret_key.slice(-4) : null,
+      api_key: mask(gw.api_key),
+      secret_key: mask(gw.secret_key),
     }));
     
     res.json(masked);
@@ -141,8 +142,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_marketing'), async (
         provider,
         type,
         display_name,
-        api_key: api_key || null,
-        secret_key: secret_key || null,
+        api_key: seal(api_key || null),
+        secret_key: seal(secret_key || null),
         sender_id: sender_id || null,
         is_active: req.body.is_active ?? true,
         is_default: req.body.is_default ?? false,
@@ -154,8 +155,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_marketing'), async (
     if (error) throw error;
     res.status(201).json({
       ...data,
-      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+      api_key: mask(data.api_key),
+      secret_key: mask(data.secret_key),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating CRM gateway:');
@@ -186,6 +187,8 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_marketing'), asyn
       const problem = checkWhatsAppGateway({ ...current, ...updates });
       if (problem) return res.status(400).json({ error: problem });
     }
+    if (updates.api_key) updates.api_key = seal(updates.api_key);
+    if (updates.secret_key) updates.secret_key = seal(updates.secret_key);
 
     if (updates.is_default) {
       // Get the type of this gateway to unset others
@@ -219,8 +222,8 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_marketing'), asyn
 
     res.json({
       ...data,
-      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+      api_key: mask(data.api_key),
+      secret_key: mask(data.secret_key),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating CRM gateway:');

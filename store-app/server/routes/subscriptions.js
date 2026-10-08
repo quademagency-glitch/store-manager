@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const { invalidateBusinessCache } = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { chargeForCheckout, grantForCharge } = require('../utils/subscriptionCharge');
 const { PG_UNIQUE_VIOLATION } = require('./paystackWebhook');
 const { resolvePaystackGateway } = require('../services/paystack');
 const { logAuditEvent, AUDIT_ACTIONS } = require('../utils/auditLog');
@@ -210,14 +211,25 @@ router.get('/', authGuard, permissionCheck('manage_platform'), async (req, res) 
 
 /**
  * POST /api/subscriptions/assign
- * Assign or change a plan for a business, Platform Admin only
+ * Assign or change a plan. The platform operator may assign any plan to any
+ * business. A business may switch only itself, and only to an active FREE
+ * plan (Billing's "Switch to Free"); paid plans start through Paystack.
+ * Until 8 October 2026 any Business Admin passed this route's
+ * manage_platform check and could activate a paid plan for any business.
  */
-router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req, res) => {
+router.post('/assign', authGuard, async (req, res) => {
   try {
     const { business_id, plan_id, billing_cycle } = req.body;
+    const platform = req.user.role === 'Platform Admin';
 
     if (!business_id || !plan_id) {
       return res.status(400).json({ error: 'business_id and plan_id are required' });
+    }
+    if (!platform) {
+      const mayManageBilling = req.user.role === 'Business Admin' || req.user.permissions?.includes('manage_billing');
+      if (!mayManageBilling || business_id !== req.user.business_id) {
+        return res.status(403).json({ error: 'You can only change your own business\'s plan.' });
+      }
     }
 
     // Fetch the plan
@@ -245,6 +257,11 @@ router.post('/assign', authGuard, permissionCheck('manage_platform'), async (req
     let trialEndsAt = null;
     let status = 'active';
     const amount = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+    // Only an explicit zero is free: a missing yearly price must not read as 0.
+    const free = amount !== null && amount !== undefined && amount !== '' && Number(amount) === 0;
+    if (!platform && (!plan.is_active || !free || !['monthly', 'yearly'].includes(cycle))) {
+      return res.status(403).json({ error: 'Paid plans start through payment. Choose the plan and pay to activate it.' });
+    }
 
     const promoMode = plan.promo_mode || 'none';
     const trialValue = cycle === 'yearly' ? (plan.trial_days_yearly || 0) : (plan.trial_days_monthly || 0);
@@ -385,24 +402,11 @@ router.post('/initialize-paystack', authGuard, async (req, res) => {
     }
 
     const cycle = billing_cycle || 'monthly';
-    const baseAmount = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-    let finalAmount = baseAmount;
-    
-    // Promo Logic
-    const promoMode = plan.promo_mode || 'none';
-    if (promoMode === 'intro') {
-      const introPrice = cycle === 'yearly' ? plan.intro_price_yearly : plan.intro_price_monthly;
-      if (introPrice !== null && introPrice !== undefined) {
-        finalAmount = Number(introPrice);
-      }
-    } else if (promoMode === 'trial') {
-      const trialValue = cycle === 'yearly' ? (plan.trial_days_yearly || 0) : (plan.trial_days_monthly || 0);
-      if (trialValue > 0) {
-        // Charge a 1 GHS authorization fee for true free trial
-        finalAmount = 1;
-      }
-    }
-    
+    // The amount is the plan's, decided on the server; an intro price or a
+    // trial applies only to a business's first purchase (utils/subscriptionCharge).
+    const { charge, error: chargeError } = await chargeForCheckout(supabaseAdmin, { businessId: req.user.business_id, plan, cycle });
+    if (chargeError) return res.status(400).json({ error: chargeError });
+    const finalAmount = charge.amount;
     const amountInPesewas = Math.round(finalAmount * 100); // Paystack uses smallest currency unit
 
     // Initialize Paystack transaction
@@ -494,15 +498,22 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
       return res.json({ message: 'Payment verified and already processed', status: 'success' });
     }
 
+    if (metadata.business_id && req.user.role !== 'Platform Admin' && metadata.business_id !== req.user.business_id) {
+      return res.status(403).json({ error: 'This payment belongs to another business.' });
+    }
+
     if (metadata.business_id && metadata.plan_id) {
-      const now = new Date();
-      const periodEnd = new Date(now);
       const cycle = metadata.billing_cycle || 'monthly';
-      if (cycle === 'yearly') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-      } else {
-        periodEnd.setDate(periodEnd.getDate() + 30);
+      // What was paid decides what is granted, not the metadata's claims.
+      const grant = await grantForCharge(supabaseAdmin, {
+        businessId: metadata.business_id, planId: metadata.plan_id, cycle, paid: data.amount / 100, currency: data.currency,
+      });
+      if (grant.error) {
+        logger.warn({ reference, businessId: metadata.business_id, reason: grant.error }, 'Paystack payment does not match the plan');
+        return res.status(400).json({ error: `${grant.error} Contact support with payment reference ${reference}.` });
       }
+      const now = grant.periodStart;
+      const periodEnd = grant.periodEnd;
 
       // Upsert subscription
       const { data: existingSub } = await supabaseAdmin
@@ -513,11 +524,11 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
 
       const subData = {
         plan_id: metadata.plan_id,
-        status: 'active',
+        status: grant.status,
         billing_cycle: cycle,
         current_period_start: now.toISOString(),
         current_period_end: periodEnd.toISOString(),
-        trial_ends_at: null,
+        trial_ends_at: grant.trialEndsAt ? grant.trialEndsAt.toISOString() : null,
         amount: data.amount / 100, // Convert from pesewas/kobo
         currency: data.currency || 'GHS',
         paystack_subscription_code: reference,
@@ -544,7 +555,8 @@ router.post('/verify-paystack', authGuard, async (req, res) => {
         .from('businesses')
         .update({
           subscription_plan_id: metadata.plan_id,
-          status: 'active',
+          status: grant.status === 'trialing' ? 'trialing' : 'active',
+          ...(grant.trialEndsAt ? { trial_ends_at: grant.trialEndsAt.toISOString() } : {}),
         })
         .eq('id', metadata.business_id);
 

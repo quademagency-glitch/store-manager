@@ -17,14 +17,24 @@ function permissionCheck(...requiredPermissions) {
       });
     }
 
-    if (req.user.role === 'Platform Admin' || req.user.role === 'Business Admin') {
+    if (req.user.role === 'Platform Admin') return next();
+
+    /* A Business Admin holds every permission of their own business, but
+       never manage_platform: that is the platform operator's alone. Every
+       self-service signup is a Business Admin, and until 8 October 2026 this
+       shortcut let any of them through manage_platform routes (Paystack
+       keys, plan assignment, platform settings, platform messaging, the
+       shared QR pool). This mirrors the client's hasPermission. */
+    if (req.user.role === 'Business Admin' && requiredPermissions.some((perm) => perm !== 'manage_platform')) {
       return next();
     }
 
     const userPermissions = req.user.permissions || [];
     
     // Check if the user has AT LEAST ONE of the required permissions
-    const hasPermission = requiredPermissions.some(perm => userPermissions.includes(perm));
+    // manage_platform is satisfied only by the Platform Admin role above, never
+    // by a permissions array, whatever a role row happens to contain.
+    const hasPermission = requiredPermissions.some(perm => perm !== 'manage_platform' && userPermissions.includes(perm));
 
     if (!hasPermission) {
       return res.status(403).json({

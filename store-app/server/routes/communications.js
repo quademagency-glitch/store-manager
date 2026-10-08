@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { supabaseAdmin } = require('../db/supabase');
 const authGuard = require('../middleware/authGuard');
 const permissionCheck = require('../middleware/permissionCheck');
+const { seal, mask } = require('../utils/secretBox');
 const smsService = require('../services/smsService');
 const emailService = require('../services/emailService');
 
@@ -87,6 +88,7 @@ router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (re
     const { data, error } = await supabaseAdmin
       .from('communication_gateways')
       .select('*')
+      .is('business_id', null) // platform gateways only; tenants' rows are theirs
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -94,8 +96,8 @@ router.get('/gateways', authGuard, permissionCheck('manage_platform'), async (re
     // Mask secrets
     const masked = (data || []).map(gw => ({
       ...gw,
-      api_key: gw.api_key ? '••••••••' + gw.api_key.slice(-4) : null,
-      secret_key: gw.secret_key ? '••••••••' + gw.secret_key.slice(-4) : null,
+      api_key: mask(gw.api_key),
+      secret_key: mask(gw.secret_key),
     }));
     
     res.json(masked);
@@ -122,6 +124,7 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
       await supabaseAdmin
         .from('communication_gateways')
         .update({ is_default: false })
+        .is('business_id', null) // platform gateways only; tenants' rows are theirs
         .eq('type', type)
         .eq('is_default', true);
     }
@@ -132,8 +135,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
         provider,
         type,
         display_name,
-        api_key: api_key || null,
-        secret_key: secret_key || null,
+        api_key: seal(api_key || null),
+        secret_key: seal(secret_key || null),
         sender_id: sender_id || null,
         is_active: req.body.is_active ?? true,
         is_default: req.body.is_default ?? false,
@@ -145,8 +148,8 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
     if (error) throw error;
     res.status(201).json({
       ...data,
-      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+      api_key: mask(data.api_key),
+      secret_key: mask(data.secret_key),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error creating communication gateway:');
@@ -161,20 +164,24 @@ router.post('/gateways', authGuard, permissionCheck('manage_platform'), async (r
 router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = { ...req.body, updated_at: new Date().toISOString() };
-    delete updates.id;
-    delete updates.created_at;
+    const updates = { updated_at: new Date().toISOString() };
+    for (const field of ['provider', 'type', 'display_name', 'api_key', 'secret_key', 'sender_id', 'is_active', 'is_default', 'config']) {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
 
     if (updates.api_key && updates.api_key.startsWith('••')) delete updates.api_key;
     if (updates.secret_key && updates.secret_key.startsWith('••')) delete updates.secret_key;
+    if (updates.api_key) updates.api_key = seal(updates.api_key);
+    if (updates.secret_key) updates.secret_key = seal(updates.secret_key);
 
     if (updates.is_default) {
       // Get the type of this gateway to unset others
-      const { data: existingGw } = await supabaseAdmin.from('communication_gateways').select('type').eq('id', id).single();
+      const { data: existingGw } = await supabaseAdmin.from('communication_gateways').select('type').eq('id', id).is('business_id', null).single();
       if (existingGw) {
         await supabaseAdmin
           .from('communication_gateways')
           .update({ is_default: false })
+          .is('business_id', null) // platform gateways only; tenants' rows are theirs
           .eq('type', existingGw.type)
           .neq('id', id);
       }
@@ -183,6 +190,7 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
     const { data, error } = await supabaseAdmin
       .from('communication_gateways')
       .update(updates)
+      .is('business_id', null) // platform gateways only; tenants' rows are theirs
       .eq('id', id)
       .select()
       .single();
@@ -192,8 +200,8 @@ router.put('/gateways/:id', authGuard, permissionCheck('manage_platform'), async
 
     res.json({
       ...data,
-      api_key: data.api_key ? '••••••••' + data.api_key.slice(-4) : null,
-      secret_key: data.secret_key ? '••••••••' + data.secret_key.slice(-4) : null,
+      api_key: mask(data.api_key),
+      secret_key: mask(data.secret_key),
     });
   } catch (err) {
     logger.error({ err: err }, 'Error updating communication gateway:');
@@ -210,6 +218,7 @@ router.delete('/gateways/:id', authGuard, permissionCheck('manage_platform'), as
     const { error } = await supabaseAdmin
       .from('communication_gateways')
       .delete()
+      .is('business_id', null) // platform gateways only; tenants' rows are theirs
       .eq('id', req.params.id);
 
     if (error) throw error;
@@ -265,6 +274,7 @@ router.post('/send', authGuard, permissionCheck('manage_platform'), async (req, 
       const { data } = await supabaseAdmin
         .from('communication_gateways')
         .select('*')
+        .is('business_id', null) // platform gateways only; tenants' rows are theirs
         .eq('type', 'sms')
         .eq('is_active', true)
         .eq('is_default', true)
@@ -276,6 +286,7 @@ router.post('/send', authGuard, permissionCheck('manage_platform'), async (req, 
       const { data } = await supabaseAdmin
         .from('communication_gateways')
         .select('*')
+        .is('business_id', null) // platform gateways only; tenants' rows are theirs
         .eq('type', 'email')
         .eq('is_active', true)
         .eq('is_default', true)

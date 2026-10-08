@@ -81,8 +81,14 @@ catch-all, not above it. It sat above for a long time, so the catch-all's
 content-hashed bundle was revalidated on every visit, the rule was present
 and had never once taken effect. The catch-all still supplies the security
 headers to `/assets/` because it matches first; only `Cache-Control` is
-overridden. After changing this, verify against the deploy rather than
-assuming:
+overridden. The catch-all also lands on API responses: `/api/:path*` is a rewrite to
+Railway, and Vercel applies `headers` to rewritten responses, replacing
+whatever the server sent. Until 8 October 2026 every API response, including
+private evidence photos and token-unlocked receipts, went out as
+`public, max-age=0, must-revalidate`. The `/api/(.*)` rule below the
+catch-all sets `private, no-store`; nothing in the API relies on HTTP caching
+(the service worker caches fonts only). After changing this, verify against
+the deploy rather than assuming:
 
 ```sh
 curl -sI https://<deployment>/assets/<hashed>.js | grep -i cache-control

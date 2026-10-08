@@ -81,3 +81,17 @@ describe('GET /api/customers/search', () => {
     expect(orArgs()[0]).toContain('name.ilike.%St_ John%');
   });
 });
+
+describe('GET /api/businesses/me/setup-status', () => {
+  it("counts opening stock only within the caller's business and reports module setup", async () => {
+    results.businesses = { data: { name: 'Shop', contact_email: 'o@example.invalid', currency: 'GHS', setup_checklist_dismissed_at: null }, error: null };
+    results.loyalty_rules = { data: null, count: 1, error: null };
+    results.communication_gateways = { data: null, count: null, error: { message: 'unavailable' } };
+    const res = await request(app).get('/api/businesses/me/setup-status').set({ Authorization: 'Bearer admin' });
+    expect(res.status).toBe(200);
+    const [stock] = callsOn('product_inventory');
+    expect(stock).toContainEqual(['eq', 'products.business_id', 'biz-A']);
+    // A failed count is unknown, never "not set up".
+    expect(res.body.modules).toEqual({ loyalty: true, commissions: false, messaging: null, branches: 0 });
+  });
+});

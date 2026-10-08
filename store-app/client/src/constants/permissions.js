@@ -43,6 +43,7 @@ export const PERMISSION_TREE = [
           { id: 'delete_products', label: 'Delete Products' },
           { id: 'bulk_update_prices', label: 'Bulk Update Prices' },
           { id: 'print_price_tags', label: 'Print Price Lists & Tags' },
+          { id: 'manage_products', label: 'Manage Products & Bulk Pricing' },
         ]
       },
       {
@@ -55,6 +56,7 @@ export const PERMISSION_TREE = [
           { id: 'receive_goods', label: 'Receive Goods (GRN)' },
           { id: 'manage_batches', label: 'Manage Batches & Expiries' },
           { id: 'manage_stock_thresholds', label: 'Set Low Stock Thresholds' },
+          { id: 'manage_inventory', label: 'Manage Stock, Counts, Item History & Investigations' },
         ]
       },
       {
@@ -67,6 +69,7 @@ export const PERMISSION_TREE = [
         ]
       },
       { id: 'view_alerts', label: 'View System Alerts & Notifications' },
+      { id: 'view_analytics', label: 'View Dashboard Analytics & Alerts' },
       { id: 'manage_imports', label: 'Bulk Import Data (Import Wizard)' },
     ]
   },
@@ -81,6 +84,7 @@ export const PERMISSION_TREE = [
           { id: 'view_till', label: 'View Till Account Balance' },
           { id: 'manage_till_open_close', label: 'Open & Close Till' },
           { id: 'manage_till_cash_drops', label: 'Perform Cash Drops' },
+          { id: 'manage_till', label: 'Open the Till Account Page' },
         ]
       },
       {
@@ -117,6 +121,7 @@ export const PERMISSION_TREE = [
           { id: 'view_customers', label: 'View Customer Directory' },
           { id: 'view_customer_orders', label: 'View Customer Specific Orders' },
           { id: 'manage_customers', label: 'Add & Edit Customers' },
+          { id: 'manage_sales', label: 'Open Customers & Customer Orders Pages' },
         ]
       },
       { id: 'manage_marketing', label: 'Manage Marketing & Comms (SMS/Email)' },

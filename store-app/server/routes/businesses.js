@@ -162,15 +162,20 @@ router.get('/me/setup-status', authGuard, async (req, res) => {
       return res.status(404).json({ error: 'No business associated with this account' });
     }
 
-    const [business, locations, templates, products, productInventory, customers, suppliers, users] = await Promise.all([
+    const [business, locations, templates, products, productInventory, customers, suppliers, users, loyalty, commissions, gateways] = await Promise.all([
       supabaseAdmin.from('businesses').select('name, contact_email, currency, setup_checklist_dismissed_at').eq('id', businessId).single(),
       supabaseAdmin.from('locations').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
       supabaseAdmin.from('accounting_templates').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
       supabaseAdmin.from('products').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
-      supabaseAdmin.from('product_inventory').select('id', { count: 'exact', head: true }),
+      // product_inventory has no business_id; without the join this counted
+      // every tenant's stock rows, so a new business looked stocked.
+      supabaseAdmin.from('product_inventory').select('id, products!inner(business_id)', { count: 'exact', head: true }).eq('products.business_id', businessId),
       supabaseAdmin.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
       supabaseAdmin.from('suppliers').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
       supabaseAdmin.from('users').select('id', { count: 'exact', head: true }).eq('business_id', businessId),
+      supabaseAdmin.from('loyalty_rules').select('id', { count: 'exact', head: true }).eq('business_id', businessId).eq('active', true),
+      supabaseAdmin.from('commission_rules').select('id', { count: 'exact', head: true }).eq('business_id', businessId).eq('active', true),
+      supabaseAdmin.from('communication_gateways').select('id', { count: 'exact', head: true }).eq('business_id', businessId).eq('is_active', true),
     ]);
 
     if (business.error) throw business.error;
@@ -187,7 +192,17 @@ router.get('/me/setup-status', authGuard, async (req, res) => {
       { key: 'team', label: 'Invite your team', complete: (users.count || 0) > 1, actionPath: '/business-admin/team' },
     ];
 
-    res.json({ steps, dismissed: !!business.data?.setup_checklist_dismissed_at });
+    // Which optional modules this business has set up, so the menu can say so.
+    // A failed count is unknown (null), never "not set up".
+    const configured = (r) => (r.error ? null : (r.count || 0) > 0);
+    const modules = {
+      loyalty: configured(loyalty),
+      commissions: configured(commissions),
+      messaging: configured(gateways),
+      branches: locations.error ? null : locations.count || 0,
+    };
+
+    res.json({ steps, dismissed: !!business.data?.setup_checklist_dismissed_at, modules });
   } catch (err) {
     logger.error({ err: err }, 'Error fetching setup status:');
     res.status(500).json({ error: 'Failed to fetch setup status' });

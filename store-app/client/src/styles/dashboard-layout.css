@@ -696,3 +696,41 @@
 .route-suspense-fallback {
   min-height: 100dvh;
 }
+
+/* "Show all features" / "Show essentials only" at the foot of the menu. */
+.sidebar-mode-toggle {
+  display: block;
+  width: calc(100% - 2 * var(--space-md));
+  margin: var(--space-sm) var(--space-md) 0;
+  padding: 0.5rem var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-mode-toggle:hover {
+  color: var(--color-text-primary);
+}
+.sidebar-mode-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+/* A module this business has not set up yet, shown only in the full menu. */
+.sidebar-setup-note {
+  margin-left: auto;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* A note pushes the label to wrap; the icon must keep its size. */
+.sidebar-link > svg {
+  flex-shrink: 0;
+}

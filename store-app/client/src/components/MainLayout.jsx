@@ -12,6 +12,16 @@ import DemoBanner from './DemoBanner';
 import { useTour } from './ProductTour';
 import CommandPalette from './CommandPalette';
 
+/* The everyday pages, for whoever has permission to see them. Everything else
+   is one switch away ("Show all features") and always reachable from Ctrl+K,
+   which searches the full, permission-filtered list. */
+const ESSENTIAL_PATHS = new Set([
+  '/dashboard', '/sales', '/sales-record', '/returns', '/inventory', '/suppliers', '/purchase-orders',
+  '/till-account', '/accounts-receivable', '/reports/pnl', '/reports/accounts-receivable', '/customers',
+  '/hr/attendance', '/business-admin/team', '/business-admin', '/business-admin/setup', '/platform-admin', '/help',
+]);
+const NAV_MODE_KEY = 'nav-mode';
+
 const Icons = {
   dashboard: (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -110,6 +120,12 @@ const Icons = {
       <path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       <circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
       <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  ),
+  key: (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="6.5" cy="13.5" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M9 11l8-8M14 6l2 2M12 8l1.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
   help: (
@@ -296,7 +312,7 @@ export default function MainLayout() {
       icon: Icons.products,
       items: [
         { path: '/sales', label: 'Sales POS', icon: Icons.sales, visible: hasPermission('create_sales'), tour: 'sales' },
-        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory'), tour: 'inventory' },
+        { path: '/inventory', label: 'Inventory', icon: Icons.inventory, visible: hasPermission('view_inventory') || hasPermission('manage_inventory'), tour: 'inventory' },
         { path: '/suppliers', label: 'Suppliers', icon: Icons.suppliers, visible: hasPermission('manage_suppliers'), tour: 'suppliers' },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: Icons.purchaseOrder, visible: ['view_purchases', 'manage_purchases', 'receive_goods'].some(hasPermission) },
         { path: '/sales-record', label: 'Sales Record', icon: Icons.history, visible: hasPermission('view_sales') },
@@ -308,7 +324,7 @@ export default function MainLayout() {
     const purchasingPaths = ['/suppliers', '/purchase-orders'];
     const inventoryItems = storeOps.items.filter(item => inventoryPaths.includes(item.path));
     if (hasPermission('manage_inventory') || hasPermission('manage_returns')) inventoryItems.push({path:'/item-history',label:'Item History',icon:Icons.history});
-    if (hasPermission('manage_inventory')) inventoryItems.push({path:'/unit-transfers',label:'Scanned Transfers',icon:Icons.inventory},{path:'/investigations',label:'Investigations',icon:Icons.alerts});
+    if (hasPermission('manage_inventory')) inventoryItems.push({path:'/unit-transfers',label:'Scanned Transfers',icon:Icons.inventory,setup:'branches'},{path:'/investigations',label:'Investigations',icon:Icons.alerts});
     if (hasPermission('manage_returns')) inventoryItems.push({path:'/return-inspections',label:'Return Inspections',icon:Icons.reconciliation});
     const purchasingItems = storeOps.items.filter(item => purchasingPaths.includes(item.path));
     storeOps.title = 'Sales';
@@ -342,8 +358,8 @@ export default function MainLayout() {
         { path: '/customers', label: 'Customers', icon: Icons.team, visible: hasPermission('manage_sales'), tour: 'customers' },
         { path: '/customer-segments', label: 'Segments & Follow-ups', icon: Icons.crm, visible: hasPermission('manage_marketing') },
         { path: '/customer-orders', label: 'Customer Orders', icon: Icons.invoice, visible: hasPermission('manage_sales') },
-        { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_marketing') },
-        { path: '/loyalty', label: 'Loyalty & Rewards', icon: Icons.billing, visible: hasPermission('manage_loyalty') },
+        { path: '/crm-communications', label: 'Marketing & Comms', icon: Icons.alerts, visible: hasPermission('manage_marketing'), setup: 'messaging' },
+        { path: '/loyalty', label: 'Loyalty & Rewards', icon: Icons.billing, visible: hasPermission('manage_loyalty'), setup: 'loyalty' },
       ].filter(i => i.visible)
     };
     if (crm.items.length > 0) groups.push(crm);
@@ -376,7 +392,7 @@ export default function MainLayout() {
         { path: '/business-admin/billing', label: 'Billing', icon: Icons.billing, visible: hasPermission('manage_billing') },
         { path: '/business-admin/shrinkage', label: 'Loss Prevention', icon: Icons.alerts, visible: hasPermission('view_shrinkage_report') },
         { path: '/business-admin/attendance-report', label: 'Attendance Report', icon: Icons.reconciliation, visible: hasPermission('view_attendance_report') },
-        { path: '/business-admin/commission-rules', label: 'Commission Rules', icon: Icons.billing, visible: hasPermission('manage_commission_rules') },
+        { path: '/business-admin/commission-rules', label: 'Commission Rules', icon: Icons.billing, visible: hasPermission('manage_commission_rules'), setup: 'commissions' },
         { path: '/business-admin/integrations', label: 'Integrations', icon: Icons.key, visible: hasPermission('manage_integrations') },
         { path: '/business-admin/audit-log', label: 'Audit Log', icon: Icons.key, visible: hasPermission('manage_business') },
       ].filter(i => i.visible)
@@ -405,6 +421,51 @@ export default function MainLayout() {
 
     return groups;
   }, [hasPermission, canSeeAlerts]);
+
+  /* Essentials or everything, remembered per person on this device so a
+     shared till keeps each cashier's choice. */
+  const [navModes, setNavModes] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(NAV_MODE_KEY)) ?? {}; } catch { return {}; }
+  });
+  const showAll = navModes[user?.id] === 'all';
+  const toggleNavMode = () => {
+    setNavModes(prev => {
+      const next = { ...prev, [user?.id]: showAll ? 'essentials' : 'all' };
+      try { localStorage.setItem(NAV_MODE_KEY, JSON.stringify(next)); } catch { /* a nicety only */ }
+      return next;
+    });
+  };
+
+  // Which optional modules are set up, for the labels in the full menu.
+  const [modules, setModules] = useState(null);
+  const canSeeSetup = hasPermission('manage_business');
+  useEffect(() => {
+    if (!showAll || !canSeeSetup) return undefined;
+    let active = true;
+    api.get('/businesses/me/setup-status')
+      .then(res => { if (active) setModules(res?.modules || null); })
+      .catch(() => { /* labels are optional; the menu works without them */ });
+    return () => { active = false; };
+  }, [showAll, canSeeSetup, businessId]);
+
+  const pathActive = (item) => (item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path));
+  const setupNote = (item) => {
+    if (!item.setup || !modules) return null;
+    if (item.setup === 'branches') return modules.branches !== null && modules.branches < 2 ? 'One branch' : null;
+    return modules[item.setup] === false ? 'Not set up' : null;
+  };
+  const menuGroups = useMemo(() => navGroups
+    .map(group => ({
+      ...group,
+      items: group.items
+        .filter(item => showAll || ESSENTIAL_PATHS.has(item.path) || pathActive(item))
+        .map(item => (showAll ? { ...item, note: setupNote(item) } : item)),
+    }))
+    .filter(group => group.items.length),
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pathActive/setupNote read only location and modules
+  [navGroups, showAll, modules, location.pathname]);
+  const totalItems = navGroups.reduce((n, g) => n + g.items.length, 0);
+  const hiddenItems = totalItems - menuGroups.reduce((n, g) => n + g.items.length, 0);
 
   /* The account menu hangs off the chip in the sidebar footer, which sits at
      the *bottom* of a 100dvh sidebar, so it has to open upward.
@@ -618,7 +679,7 @@ export default function MainLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {navGroups.map((group, idx) => {
+          {menuGroups.map((group, idx) => {
             const hasActiveItem = group.items.some(item =>
               item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path)
             );
@@ -675,6 +736,7 @@ export default function MainLayout() {
                         >
                           {item.icon}
                           {item.label}
+                          {item.note && <span className="sidebar-setup-note">{item.note}</span>}
                         </Link>
                       );
                     })}
@@ -683,6 +745,11 @@ export default function MainLayout() {
               </div>
             );
           })}
+          {(showAll || hiddenItems > 0) && (
+            <button type="button" className="sidebar-mode-toggle" aria-pressed={showAll} onClick={toggleNavMode}>
+              {showAll ? 'Show essentials only' : `Show all features (${hiddenItems} more)`}
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-footer">

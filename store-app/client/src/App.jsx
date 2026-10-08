@@ -194,13 +194,13 @@ export default function App() {
                       <ProtectedRoute requiredPermission="manage_financials"><ImportWizard /></ProtectedRoute>
                     } />
                     <Route path="/inventory" element={
-                      <ProtectedRoute requiredPermission="view_inventory"><Inventory /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission={['view_inventory', 'manage_inventory']}><Inventory /></ProtectedRoute>
                     } />
                     {/* Nested under /inventory so the permission, the sidebar
                         highlight and the back button all stay with the list
                         this page was opened from. */}
                     <Route path="/inventory/products/:id" element={
-                      <ProtectedRoute requiredPermission="view_inventory"><ProductDetail /></ProtectedRoute>
+                      <ProtectedRoute requiredPermission={['view_inventory', 'manage_inventory']}><ProductDetail /></ProtectedRoute>
                     } />
                     <Route path="/alerts" element={
                       <ProtectedRoute requiredPermission={ALERTS_PERMISSIONS}><Alerts /></ProtectedRoute>

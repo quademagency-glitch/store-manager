@@ -592,6 +592,7 @@ const FIXTURES = {
       { key: 'team', label: 'Invite your team', complete: true, actionPath: '/business-admin/team' },
     ],
     dismissed: false,
+    modules: { loyalty: false, commissions: true, messaging: false, branches: 2 },
   },
   '/scanner/status': { linked: false },
   // Fixed, obviously-fake value: a changing token would make the QR on the

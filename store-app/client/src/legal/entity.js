@@ -110,8 +110,8 @@ export const ENTITY = {
  * a fact, and the whole agreement rests on it.
  */
 export const TERMS_VERSION = '1.0';
-export const PRIVACY_VERSION = '1.3';
-export const DPA_VERSION = '1.2';
+export const PRIVACY_VERSION = '1.4';
+export const DPA_VERSION = '1.3';
 
 export const EFFECTIVE_DATE = '19 August 2026';
 /* 1.1 adds anonymous task timing to the product analytics description and
@@ -124,7 +124,15 @@ export const EFFECTIVE_DATE = '19 August 2026';
    and the customer's WhatsApp permission.
    Privacy 1.3 adds the owner's end-of-day summary to Resend's row: same
    recipient and purpose (transactional email), sent only to owners who
-   switch it on. The DPA's "transactional email" already covers it. */
+   switch it on. The DPA's "transactional email" already covers it.
+   Privacy 1.4 and DPA 1.3 name Arkesel (SMS, Ghana) in Privacy 7.1 and DPA
+   5.2. It was already sending customer phone-verification codes from
+   QuadERP's own account, and SMS for businesses without their own, and had
+   never been listed. A correction of an omission rather than a new
+   sub-processor; DPA 5.3's 30 days' notice had nobody to go to, as there
+   were no subscribing businesses yet. The same versions describe Resend
+   fully: it also carries CRM email a business sends before connecting its
+   own email account, not only transactional email. */
 export const PRIVACY_EFFECTIVE_DATE = '8 October 2026';
 export const DPA_EFFECTIVE_DATE = '8 October 2026';
 

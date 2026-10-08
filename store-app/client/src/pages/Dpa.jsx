@@ -156,8 +156,10 @@ export default function Dpa() {
         </Sub>
         <Sub n="5.2">
           Our current sub-processors are Supabase (database, authentication and file storage),
-          Railway (application hosting), Vercel (web application hosting and delivery{SPEED_INSIGHTS_LIVE ? ', and page performance timings recorded against the route visited rather than against you' : ''})
-          {ANALYTICS_LIVE ? ', Resend (transactional email) and PostHog (product analytics, in the United States, which records which screens are opened and how long everyday tasks take, not what is on them)' : ' and Resend (transactional email)'}.
+          Railway (application hosting), Vercel (web application hosting and delivery{SPEED_INSIGHTS_LIVE ? ', and page performance timings recorded against the route visited rather than against you' : ''}),
+          Arkesel (text messages, in Ghana: the code that confirms a customer’s phone number, and SMS
+          you send before connecting an SMS account of your own)
+          {ANALYTICS_LIVE ? ', Resend (email: account and service notices, and email you send to your customers before connecting an email account of your own) and PostHog (product analytics, in the United States, which records which screens are opened and how long everyday tasks take, not what is on them)' : ' and Resend (email: account and service notices, and email you send to your customers before connecting an email account of your own)'}.
           Paystack processes your own billing data but does not process the data covered by this
           agreement.
         </Sub>

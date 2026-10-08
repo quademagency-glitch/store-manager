@@ -286,8 +286,13 @@ export default function Privacy() {
                 </tr>
                 <tr>
                   <td>Resend</td>
-                  <td>Transactional email: invoices, account and security notices, and the end-of-day summary an owner chooses to receive</td>
+                  <td>Email: invoices, account and security notices, the end-of-day summary an owner chooses to receive, and email a business sends to its customers from QuadERP before it has connected an email account of its own</td>
                   <td>Outside Ghana</td>
+                </tr>
+                <tr>
+                  <td>Arkesel</td>
+                  <td>Text messages (SMS): the code that confirms a customer’s phone number, and SMS a business sends from QuadERP before it has connected its own SMS account. Receives the phone number and the message, which can include the customer’s name.</td>
+                  <td>Ghana</td>
                 </tr>
                 <tr>
                   <td>Sentry</td>

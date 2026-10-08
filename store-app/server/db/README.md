@@ -58,7 +58,11 @@ Both destructive footguns are guarded:
 npm run db:drift                                  # throwaway local cluster
 SHADOW_DATABASE_URL=postgres://… npm run db:drift # reuse a scratch database
 npm run db:drift -- --keep                        # leave the cluster up to poke at
+npm run db:drift -- --definitions                 # also print the source of production-only objects
 ```
+
+This machine has Postgres 17 from Homebrew, keg-only, so put it on PATH for
+the run: `PATH="/usr/local/opt/postgresql@17/bin:$PATH" npm run db:drift`.
 
 Builds the schema the migration files describe in a throwaway Postgres cluster,
 introspects it and production, and diffs. Comparison is over catalog queries
@@ -71,27 +75,26 @@ the `anon` / `authenticated` / `service_role` roles, `auth.users`, the `storage`
 schema, and Supabase's default grant posture. **It is a test scaffold and must
 never run against production.**
 
-### It currently reports drift, and that is the point
+### Where it stands (2026-10-08): 0 differences
 
-Two real findings, both consequences of the missing `027` and `063`, `065`:
+The first full run found production holding objects no file created (from 027
+and 063-065, applied by hand and never committed), and a rebuild that came out
+less secure than production because 072 aborts on a fresh database. Migration
+104 reconciled both, removing the two leftovers it found (`debug_whoami()`,
+executable by anon, and an unused `is_manager()`) and closing `promotions`,
+which no code reads but any signed-in user could list. The report is now
+**0 differences**. Since the baseline also recorded 059 and 062 without
+running them, a non-zero result after any hand change is worth reading at once.
 
-1. **A rebuilt database would be less secure than production.** 22 function
-   grants exist in a fresh rebuild that production has revoked, including
-   `generate_po_number`, `generate_ar_invoice_number`, `handle_new_user` and
-   `apply_accounting_starter_pack` being executable by **`anon`**, i.e.
-   unauthenticated callers. Migration 063 revoked these in production; no file
-   in this repo does. Three functions (`debug_whoami`, `is_manager`,
-   `rls_auto_enable`) exist only in production for the same reason.
+Two kinds of object are ignored as not ours: the runner's `schema_migrations`
+table and Supabase's `rls_auto_enable()`.
 
-2. **Three migrations do not replay cleanly** on an empty database:
-   `013_fix_user_creation.sql` (drops a constraint other objects depend on),
-   `032_inventory_management.sql` (recreates an existing policy), and
-   `056_fix_ar_invoices_column_names.sql` (renames a column that is not there
-   yet). They succeeded against the live schema at the time; they would not
-   survive a rebuild.
-
-So treat the output as a report to read, not a gate to switch on. Do not wire
-it into CI until the count reaches zero, or it will simply fail every build.
+Four files still do not replay on an empty database, and they cannot be edited
+(the runner checksums applied files): `013_fix_user_creation.sql`,
+`032_inventory_management.sql`, `056_fix_ar_invoices_column_names.sql` and
+`072_reassert_security_hardening.sql`. The rebuild continues past them and 104
+restores what they would have produced, which is why the diff is still zero.
+The tool exits 1 while they fail, so keep it out of CI.
 
 ## Exit codes
 

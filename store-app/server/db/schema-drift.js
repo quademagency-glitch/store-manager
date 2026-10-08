@@ -34,6 +34,9 @@ const { readMigrations } = require('./migrate');
 
 const BOOTSTRAP = path.join(__dirname, 'shadow-bootstrap.sql');
 const KEEP = process.argv.includes('--keep');
+// Print the source of functions and policies that exist only in production,
+// so an unexplained one can be judged without a separate query.
+const DEFINITIONS = process.argv.includes('--definitions');
 
 /* ── Introspection ───────────────────────────────────────────────────────
    Scoped to `public`, and to object classes our migrations actually create.
@@ -83,11 +86,16 @@ const QUERIES = {
     GROUP BY 1 ORDER BY 1`,
 };
 
+/* Production objects no migration should create: the runner's own table
+   (db/migrate.js makes it before any migration runs) and Supabase's
+   rls_auto_enable() event trigger function, which the platform installs. */
+const NOT_OURS = /^(schema_migrations\b|rls_auto_enable\b)/;
+
 async function introspect(client) {
   const out = {};
   for (const [name, sql] of Object.entries(QUERIES)) {
     const { rows } = await client.query(sql);
-    out[name] = new Map(rows.map((r) => [r.key, r.val]));
+    out[name] = new Map(rows.filter((r) => !NOT_OURS.test(r.key)).map((r) => [r.key, r.val]));
   }
   return out;
 }
@@ -240,6 +248,46 @@ function report(shadowSchema, liveSchema) {
   return drifted;
 }
 
+/** Source of the functions and policies production has and the migrations do not. */
+async function printProductionOnly(live, shadow, prod) {
+  const fns = [...prod.functions.keys()].filter((k) => !shadow.functions.has(k));
+  const pols = [...prod.policies.keys()].filter((k) => !shadow.policies.has(k));
+  if (fns.length) {
+    console.log('\n### definitions of production-only functions');
+    const { rows } = await live.query(
+      `SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS key, pg_get_functiondef(p.oid) AS def
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public' AND p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' = ANY($1)`, [fns]);
+    for (const r of rows) console.log(`\n-- ${r.key}\n${r.def.trim()}`);
+  }
+  const cols = [...prod.columns.keys()].filter((k) => !shadow.columns.has(k));
+  if (cols.length) {
+    console.log('\n### definitions of production-only columns');
+    const { rows } = await live.query(
+      `SELECT table_name || '.' || column_name AS key, format_type(a.atttypid, a.atttypmod) AS type, is_nullable, column_default
+       FROM information_schema.columns c
+       JOIN pg_attribute a ON a.attrelid = ('public.' || quote_ident(c.table_name))::regclass AND a.attname = c.column_name
+       WHERE c.table_schema = 'public' AND table_name || '.' || column_name = ANY($1) ORDER BY c.table_name, c.ordinal_position`, [cols]);
+    for (const r of rows) console.log(`  ${r.key} ${r.type}${r.is_nullable === 'NO' ? ' NOT NULL' : ''}${r.column_default ? ` DEFAULT ${r.column_default}` : ''}`);
+  }
+  const cons = [...prod.constraints.keys()].filter((k) => !shadow.constraints.has(k));
+  if (cons.length) {
+    console.log('\n### definitions of production-only constraints');
+    const { rows } = await live.query(
+      `SELECT rel.relname || '.' || con.conname AS key, pg_get_constraintdef(con.oid) AS def
+       FROM pg_constraint con JOIN pg_class rel ON rel.oid = con.conrelid JOIN pg_namespace n ON n.oid = rel.relnamespace
+       WHERE n.nspname = 'public' AND rel.relname || '.' || con.conname = ANY($1) ORDER BY 1`, [cons]);
+    for (const r of rows) console.log(`  ${r.key} ${r.def}`);
+  }
+  if (pols.length) {
+    console.log('\n### definitions of production-only policies');
+    const { rows } = await live.query(
+      `SELECT tablename || '.' || policyname AS key, cmd, roles, qual, with_check FROM pg_policies
+       WHERE schemaname = 'public' AND tablename || '.' || policyname = ANY($1) ORDER BY 1`, [pols]);
+    for (const r of rows) console.log(`  ${r.key} [${r.cmd} to ${r.roles}] using ${r.qual ?? '-'} check ${r.with_check ?? '-'}`);
+  }
+}
+
 async function main() {
   if (!process.env.DIRECT_URL) throw new Error('DIRECT_URL is not set; cannot read production.');
 
@@ -281,9 +329,10 @@ async function main() {
       console.log('\nNo drift. The migration set reproduces production.');
       return 0;
     }
+    if (DEFINITIONS) await printProductionOnly(live, shadowSchema, liveSchema);
     console.log(
       `\n${drifted} difference(s). Objects listed as "in production but NOT produced by the ` +
-        'migrations" are the fingerprint of the missing 027 and 063-065 files.',
+        'migrations" are objects someone created by hand; 104 reconciled those found on 2026-10-08.',
     );
     return 1;
   } finally {

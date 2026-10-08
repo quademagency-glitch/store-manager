@@ -119,6 +119,11 @@ test('an invoice paid from a deposit debits the deposit and pays the invoice tog
  await q("INSERT INTO ar_invoices(id,business_id,customer_id,invoice_number,total_amount) VALUES($1,$3,$4,'INV-D1',40),($2,$3,$4,'INV-D2',100)",[inv,big,ids.biz,customer]);
  const pay=(invoice,amount)=>one('SELECT record_ar_deposit_payment($1,$2,CURRENT_DATE,NULL,$3,$4) AS r',[invoice,amount,ids.user,ids.biz]);
  const credit=async()=>Number((await one('SELECT coalesce(sum(amount),0) AS s FROM store_credit_ledger WHERE customer_id=$1',[customer])).s);
+ // Production as found on 2026-10-08: 044's check did not allow the method. The payment fails and the debit goes with it.
+ await db.exec("ALTER TABLE ar_payments ADD CONSTRAINT ar_payments_payment_method_check CHECK (payment_method IN ('cash','mobile_money','bank_transfer','card','other'))");
+ await assert.rejects(pay(inv,30),/ar_payments_payment_method_check/);
+ assert.equal(await credit(),50);
+ await db.exec(read('db/migrations/101_ar_payment_customer_deposit.sql'));
  assert.equal((await pay(inv,30)).r.new_status,'partial');
  assert.equal(await credit(),20);
  // More than is outstanding: the invoice step fails, and the debit goes with it.
@@ -132,11 +137,16 @@ test('an invoice paid from a deposit debits the deposit and pays the invoice tog
  await assert.rejects(one('SELECT record_ar_deposit_payment($1,1,CURRENT_DATE,NULL,$2,$3)',[inv,ids.otherUser,ids.other]),/Invoice not found/);
 });
 test('SKUs are unique per business, and one QR code marks one unit',async()=>{
+ // Production carries 018's platform-wide index on qr_code_data, which the fixture omits.
+ await db.exec('ALTER TABLE products ADD COLUMN IF NOT EXISTS qr_code_data text; CREATE UNIQUE INDEX IF NOT EXISTS idx_products_qr_code_data ON products(qr_code_data) WHERE qr_code_data IS NOT NULL;');
  await db.exec(read('db/migrations/098_products_sku_per_business.sql'));
+ await db.exec(read('db/migrations/100_products_qr_code_data_per_business.sql'));
  await db.exec(read('db/migrations/099_unique_unit_qr_code.sql'));
  // The same manufacturer code in two shops; never twice in one.
- await q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV','SAM-55')",[uuid(),ids.biz]);
- await q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV','SAM-55')",[uuid(),ids.other]);
+ // As routes/products.js writes them: qr_code_data defaults to the SKU.
+ await q("INSERT INTO products(id,business_id,name,sku,qr_code_data) VALUES($1,$2,'TV','SAM-55','SAM-55')",[uuid(),ids.biz]);
+ await q("INSERT INTO products(id,business_id,name,sku,qr_code_data) VALUES($1,$2,'TV','SAM-55','SAM-55')",[uuid(),ids.other]);
+ await assert.rejects(q("INSERT INTO products(id,business_id,name,sku,qr_code_data) VALUES($1,$2,'TV again','SAM-56','SAM-55')",[uuid(),ids.biz]),/duplicate key/);
  await assert.rejects(q("INSERT INTO products(id,business_id,name,sku) VALUES($1,$2,'TV again','SAM-55')",[uuid(),ids.biz]),/duplicate key/);
  const code=uuid(),unit=()=>q("INSERT INTO inventory_units(business_id,product_id,location_id,qr_code_id,assigned_by) VALUES($1,$2,$3,$4,$5)",[ids.biz,ids.product,ids.loc,code,ids.user]);
  await unit();

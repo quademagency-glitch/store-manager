@@ -287,6 +287,25 @@ describe('money', () => {
     expect(mutations.filter((m) => m.table === 'store_credit_ledger')).toHaveLength(0);
   });
 
+  test('voiding a deposit payment returns the deposit, once', async () => {
+    rows.ar_payments = (calls) => (calls.some((c) => c[0] === 'update')
+      ? { data: { id: 'p1', voided_at: 'now' }, error: null }
+      : { data: { id: 'p1', business_id: BIZ, invoice_id: 'inv1', amount: 30, payment_method: 'customer_deposit', voided_at: null, ledger_entry_id: null }, error: null });
+    rows.ar_invoices = { data: { id: 'inv1', total_amount: 40, amount_paid: 30, customer_id: 'c1', invoice_number: 'INV-1' }, error: null };
+    expect((await request(app).put('/ar/payments/p1/void')).status).toBe(200);
+    const claim = queriesOn('ar_payments').find((calls) => calls.some((c) => c[0] === 'update'));
+    expect(claim).toContainEqual(['is', 'voided_at', null]);
+    expect(mutations).toContainEqual(expect.objectContaining({ table: 'store_credit_ledger', op: 'insert', payload: expect.objectContaining({ customer_id: 'c1', type: 'refund', amount: 30 }) }));
+
+    // A second click finds nothing left to claim and returns nothing.
+    mutations.length = 0;
+    rows.ar_payments = (calls) => (calls.some((c) => c[0] === 'update')
+      ? { data: null, error: null }
+      : { data: { id: 'p1', business_id: BIZ, invoice_id: 'inv1', amount: 30, payment_method: 'customer_deposit', voided_at: null, ledger_entry_id: null }, error: null });
+    expect((await request(app).put('/ar/payments/p1/void')).status).toBe(400);
+    expect(mutations.filter((m) => m.table === 'store_credit_ledger')).toHaveLength(0);
+  });
+
   test('a customer payment cannot be posted to another business\'s branch', async () => {
     rows.ar_invoices = { data: { id: 'inv1', business_id: BIZ, total_amount: 100, amount_paid: 0, status: 'open' }, error: null };
     const res = await request(app).post('/ar/invoices/inv1/payments').send({ amount: 10, payment_method: 'cash', location_id: FOREIGN_LOC });

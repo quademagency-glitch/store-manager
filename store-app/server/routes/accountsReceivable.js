@@ -315,10 +315,24 @@ router.put('/payments/:id/void', authGuard, permissionCheck('manage_financials')
 
     const { data: invoice, error: invErr } = await supabaseAdmin
       .from('ar_invoices')
-      .select('id, total_amount, amount_paid')
+      .select('id, total_amount, amount_paid, customer_id, invoice_number')
       .eq('id', payment.invoice_id)
+      .eq('business_id', payment.business_id)
       .single();
     if (invErr || !invoice) return res.status(404).json({ error: 'Related invoice not found' });
+
+    /* Claim the void first: only the request that flips voided_at goes on to
+       reverse money, so a double click cannot refund a deposit twice. */
+    const { data, error } = await supabaseAdmin
+      .from('ar_payments')
+      .update({ voided_at: new Date().toISOString(), voided_by: req.user.id })
+      .eq('id', req.params.id)
+      .eq('business_id', payment.business_id)
+      .is('voided_at', null)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(400).json({ error: 'Payment is already voided.' });
 
     const newAmountPaid = Math.max(0, Number(invoice.amount_paid) - Number(payment.amount));
     const newStatus = newAmountPaid <= 0 ? 'sent' : (newAmountPaid >= Number(invoice.total_amount) ? 'paid' : 'partial');
@@ -328,14 +342,21 @@ router.put('/payments/:id/void', authGuard, permissionCheck('manage_financials')
       .update({ amount_paid: newAmountPaid, status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', payment.invoice_id);
 
-    const { data, error } = await supabaseAdmin
-      .from('ar_payments')
-      .update({ voided_at: new Date().toISOString(), voided_by: req.user.id })
-      .eq('id', req.params.id)
-      .select()
-      .single();
+    // A payment drawn from the customer's deposit goes back to that deposit.
+    if (payment.payment_method === 'customer_deposit' && invoice.customer_id) {
+      const { error: refundErr } = await supabaseAdmin.from('store_credit_ledger').insert({
+        customer_id: invoice.customer_id,
+        business_id: payment.business_id,
+        type: 'refund',
+        amount: Number(payment.amount),
+        note: `Voided payment for AR Invoice #${invoice.invoice_number}`,
+      });
+      if (refundErr) {
+        logger.error({ err: refundErr, paymentId: payment.id }, 'AR payment voided but the deposit was not returned');
+        return res.status(500).json({ error: 'The payment was voided but the deposit could not be returned. Add it back from the customer\'s page.' });
+      }
+    }
 
-    if (error) throw error;
     res.json(data);
   } catch (err) {
     logger.error({ err }, 'Error voiding AR payment:');

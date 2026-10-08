@@ -320,6 +320,13 @@ export default function Privacy() {
           regulator; and to a buyer if the business is sold, in which case this notice continues to
           apply until the buyer gives you its own.
         </Sub>
+        <Sub n="7.3">
+          A business using QuadERP can connect its own messaging account, for example WhatsApp
+          Business through Meta. Messages sent that way go through that business’s account, under
+          its own agreement with the provider it chose. QuadERP sends a business’s automatic
+          WhatsApp messages only when the business has switched them on and only to customers who
+          have given that business WhatsApp permission.
+        </Sub>
       </Clause>
 
       <Clause n={8} title="Where your data is stored">

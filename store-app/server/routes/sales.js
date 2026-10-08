@@ -1,4 +1,5 @@
 const express = require('express');
+const { queueReceipt } = require('../services/whatsappAutomation');
 const logger = require('../utils/logger');
 const { getPagination, buildPaginationMeta } = require('../utils/paginate');
 const bcrypt = require('bcryptjs');
@@ -269,6 +270,7 @@ router.post('/', authGuard, permissionCheck('create_sales'), validateBody(create
       if (req.body.discount > 0) runChecks('discount', context);
     }
     for (const prefix of ['/api/sales','/api/products','/api/inventory']) invalidateCachePrefix(prefix);
+    queueReceipt(req.user.business_id, data?.sale); // only a sale already completed (nothing to pay); never awaited
     res.status(data.replayed ? 200 : 201).json(data);
   } catch (err) { return transactionError(res, err, 'Checkout could not be reserved. Retry the same checkout.'); }
 });
@@ -292,6 +294,7 @@ router.post('/offline-sync', authGuard, permissionCheck('create_sales'),
     });
     if (error) return transactionError(res, error, 'Saved payment could not be synced. Retry the same payment.');
     for (const prefix of ['/api/sales','/api/products','/api/inventory','/api/ledger','/api/analytics','/api/loyalty','/api/hr']) invalidateCachePrefix(prefix);
+    queueReceipt(req.user.business_id, data?.sale);
     res.json(data);
   });
 
@@ -373,6 +376,7 @@ router.post('/:id/finalize', authGuard, permissionCheck('create_sales'), validat
     if (error) return transactionError(res, error, 'Payment could not be completed. Retry the same payment.');
     invalidateCachePrefix('/api/sales');
     for (const prefix of ['/api/analytics','/api/ledger','/api/loyalty','/api/hr','/api/inventory']) invalidateCachePrefix(prefix);
+    queueReceipt(req.user.business_id, data?.sale); // automatic WhatsApp receipt, if switched on; never awaited
     return res.json(data);
   } catch (err) {
     logger.error({ err }, 'Error finalizing sale');

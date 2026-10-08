@@ -168,6 +168,14 @@ export default function Dpa() {
           Subscription and we will refund fees paid for the unused remainder of the Subscription
           Period.
         </Sub>
+        <Sub n="5.4">
+          A messaging service you connect with your own account and credentials, such as your
+          WhatsApp Business account, or an SMS or email provider set up in the Service with your
+          own keys, is engaged by you, not by us. It processes data under your own agreement with
+          it, we pass messages to it only on your instructions, and it is not our sub-processor.
+          Automatic WhatsApp messages are sent only after you switch them on, and only to customers
+          you have recorded as giving you WhatsApp permission.
+        </Sub>
       </Clause>
 
       <Clause n={6} title="Where the data is held">

@@ -22,7 +22,7 @@ const marketing = z.discriminatedUnion("action", [
     ...common,
     action: z.literal("preference"),
     customer_id: id,
-    channel: z.enum(["sms", "email"]),
+    channel: z.enum(["sms", "email", "whatsapp"]),
     allowed: z.boolean(),
     source: text.min(1).max(1000),
   }),
@@ -238,7 +238,7 @@ router.post(
 const consent = z.object({
   operation_id: id,
   customer_ids: z.array(id).min(1).max(500),
-  channel: z.enum(["sms", "email"]),
+  channel: z.enum(["sms", "email", "whatsapp"]),
   allowed: z.boolean(),
   source: text.min(1).max(1000),
 });
@@ -309,7 +309,7 @@ router.get(
       channel = req.query.channel || "sms";
     if (
       !parsed.success ||
-      !["sms", "email"].includes(channel) ||
+      !["sms", "email", "whatsapp"].includes(channel) ||
       !Number.isInteger(offset) ||
       offset < 0 ||
       offset > 1000000

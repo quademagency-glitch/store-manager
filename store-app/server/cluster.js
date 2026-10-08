@@ -133,12 +133,14 @@ if (cluster.isPrimary) {
   const { initWebhookRetryCron } = require('./services/webhookRetryCron');
   const { initDemoResetCron } = require('./services/demoResetCron');
   const { initPendingSaleCron } = require('./services/pendingSaleCron');
+  const { initWhatsAppCron } = require('./services/whatsappAutomation');
 
   cronTasks.push(
     initSubscriptionCron(),
     initWebhookRetryCron(),
     initDemoResetCron(),
     initPendingSaleCron(),
+    initWhatsAppCron(),
   );
 
   logger.info('📋 Crons initialized in primary process');

@@ -3,7 +3,7 @@ import { api } from "../../lib/api";
 import { useRecordedAction } from "../../hooks/useRecordedAction";
 import { Field, ActionState } from "./WorkSurface";
 
-const CHANNEL = { sms: "SMS", email: "email" };
+const CHANNEL = { sms: "SMS", email: "email", whatsapp: "WhatsApp" };
 const MAX_PER_REQUEST = 500;
 
 /** Phone-like entries from pasted text or a CSV: any cell with 7+ digits. */

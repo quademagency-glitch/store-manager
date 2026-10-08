@@ -59,6 +59,7 @@ const { initSubscriptionCron } = require('./services/subscriptionCron');
 const { initWebhookRetryCron } = require('./services/webhookRetryCron');
 const { initDemoResetCron } = require('./services/demoResetCron');
 const { initPendingSaleCron } = require('./services/pendingSaleCron');
+const { initWhatsAppCron } = require('./services/whatsappAutomation');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -646,6 +647,7 @@ if (require.main === module) {
         initWebhookRetryCron(),
         initDemoResetCron(),
         initPendingSaleCron(),
+        initWhatsAppCron(),
       );
     }
   });

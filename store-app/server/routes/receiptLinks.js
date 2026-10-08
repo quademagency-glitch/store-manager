@@ -23,6 +23,21 @@ const ADMIN = ['Business Admin', 'Platform Admin'];
 const hash = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const canShare = (user) => ADMIN.includes(user.role) || ['view_sales', 'create_sales'].some((p) => user.permissions?.includes(p));
 
+/**
+ * Create a link for a sale already known to belong to the business.
+ * Shared by the staff route and automatic WhatsApp receipts (createdBy null).
+ * @returns {Promise<{ token: string, expires_at: string }>}
+ */
+async function createReceiptLink({ businessId, saleId, createdBy = null }) {
+  const token = crypto.randomBytes(24).toString('base64url');
+  const expiresAt = new Date(Date.now() + LINK_DAYS * 86_400_000).toISOString();
+  const { error } = await db.from('receipt_links').insert({
+    business_id: businessId, sale_id: saleId, token_hash: hash(token), created_by: createdBy, expires_at: expiresAt,
+  });
+  if (error) throw error;
+  return { token, expires_at: expiresAt };
+}
+
 /** The sale, scoped exactly as GET /api/sales/:id scopes it. */
 async function findSale(req, saleId) {
   let query = db.from('sales').select('id,business_id,location_id,status').eq('id', saleId).eq('business_id', req.user.business_id);
@@ -48,13 +63,7 @@ staff.post('/', authGuard, async (req, res) => {
     if (!['completed', 'void_pending'].includes(sale.status)) {
       return res.status(409).json({ error: 'Only a completed sale has a receipt to share.' });
     }
-    const token = crypto.randomBytes(24).toString('base64url');
-    const expiresAt = new Date(Date.now() + LINK_DAYS * 86_400_000).toISOString();
-    const { error } = await db.from('receipt_links').insert({
-      business_id: sale.business_id, sale_id: sale.id, token_hash: hash(token), created_by: req.user.id, expires_at: expiresAt,
-    });
-    if (error) throw error;
-    res.status(201).json({ token, expires_at: expiresAt });
+    res.status(201).json(await createReceiptLink({ businessId: sale.business_id, saleId: sale.id, createdBy: req.user.id }));
   } catch (err) {
     logger.error({ err }, 'receipt link: create failed');
     res.status(500).json({ error: 'The receipt link could not be created. Please try again.' });
@@ -139,4 +148,4 @@ publicReceipts.get('/:token', viewLimiter, async (req, res) => {
   }
 });
 
-module.exports = { staff, publicReceipts };
+module.exports = { staff, publicReceipts, createReceiptLink };

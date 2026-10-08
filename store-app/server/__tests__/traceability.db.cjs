@@ -57,6 +57,11 @@ before(async () => {
   await db.exec(read("db/migrations/091_customer_work_and_settlements.sql"));
   await db.exec(read("db/migrations/092_bulk_customer_consent.sql"));
   await db.exec(read("db/migrations/093_receipt_links.sql"));
+  // 039/040's gateway table, so 094 swaps a real CHECK constraint.
+  await db.exec(
+    "CREATE TABLE communication_gateways(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),business_id uuid,provider text NOT NULL,type text NOT NULL CHECK (type IN ('sms','email','both')),display_name text NOT NULL,api_key text,secret_key text,sender_id text,is_active boolean NOT NULL DEFAULT false,is_default boolean NOT NULL DEFAULT false,config jsonb DEFAULT '{}',created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());",
+  );
+  await db.exec(read("db/migrations/094_whatsapp_automation.sql"));
   await q(
     "INSERT INTO businesses(id,name,slug) VALUES($1,'Retail test','retail-test'),($2,'Other','other-test')",
     [ids.biz, ids.other],
@@ -912,4 +917,32 @@ test("receipt links store only a hash, expire after creation, go with their sale
     assert.equal((await one("SELECT has_table_privilege($1,'receipt_links','SELECT') allowed", [role])).allowed, false);
   await q("DELETE FROM sales WHERE id=$1", [sale]);
   assert.equal((await one("SELECT count(*)::int n FROM receipt_links WHERE sale_id=$1", [sale])).n, 0);
+});
+
+test("WhatsApp automation: new channel and gateway type, a deduplicated queue, a claim, and phone-based audiences", async () => {
+  await q("INSERT INTO communication_gateways(business_id,provider,type,display_name,is_active) VALUES($1,'meta_cloud','whatsapp','Shop WhatsApp',true)", [ids.biz]);
+  await assert.rejects(q("INSERT INTO communication_gateways(business_id,provider,type,display_name) VALUES($1,'x','fax','Fax')", [ids.biz]), /check/i);
+  const customer = uuid();
+  await q("INSERT INTO customers(id,business_id,name,phone) VALUES($1,$2,'WhatsApp customer','+233201112233')", [customer, ids.biz]);
+  const recorded = (await one("SELECT customer_consent_bulk($1,$2,$3) result", [ids.biz, ids.user, JSON.stringify({ operation_id: uuid(), customer_ids: [customer], channel: "whatsapp", allowed: true, source: "Ticked the WhatsApp box at checkout" })])).result;
+  assert.deepEqual(recorded, { recorded: 1, channel: "whatsapp", allowed: true });
+  await assert.rejects(q("INSERT INTO customer_contact_preferences(business_id,customer_id,channel,allowed,source,recorded_by) VALUES($1,$2,'fax',true,'x',$3)", [ids.biz, customer, ids.user]), /check/i);
+
+  const audience = (await one("SELECT customer_segment($1,$2,'whatsapp',0) result", [ids.biz, JSON.stringify({ search: "WhatsApp customer" })])).result;
+  assert.equal(audience.rows[0].preference, "Allowed", "a phone is the WhatsApp contact detail, not an email");
+  assert.equal(audience.eligible, 1);
+
+  const sale = uuid();
+  await q("INSERT INTO whatsapp_messages(business_id,kind,reference_id,customer_id) VALUES($1,'receipt',$2,$3)", [ids.biz, sale, customer]);
+  await q("INSERT INTO whatsapp_messages(business_id,kind,reference_id,customer_id) VALUES($1,'receipt',$2,$3) ON CONFLICT DO NOTHING", [ids.biz, sale, customer]);
+  assert.equal((await one("SELECT count(*)::int n FROM whatsapp_messages WHERE reference_id=$1", [sale])).n, 1, "one message per receipt");
+  const claimed = (await q("SELECT * FROM claim_whatsapp_messages(10)")).rows;
+  assert.equal(claimed.length, 1);
+  assert.equal(claimed[0].status, "sending");
+  assert.equal(claimed[0].attempts, 1);
+  assert.equal((await q("SELECT * FROM claim_whatsapp_messages(10)")).rows.length, 0, "a claimed message is not claimed again");
+  for (const role of ["anon", "authenticated"])
+    assert.equal((await one("SELECT has_table_privilege($1,'whatsapp_messages','SELECT') allowed", [role])).allowed, false);
+  const flags = await one("SELECT whatsapp_receipts, whatsapp_reminders FROM businesses WHERE id=$1", [ids.biz]);
+  assert.deepEqual(flags, { whatsapp_receipts: false, whatsapp_reminders: false }, "both kinds start switched off");
 });

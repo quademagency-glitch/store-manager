@@ -59,6 +59,15 @@ const customers = [
     preference: "Opted out",
   },
 ];
+const whatsapp = {
+  receipts: false,
+  reminders: false,
+  gateway: null,
+  recent: [
+    { id: "wm1", kind: "receipt", status: "accepted", attempts: 1, detail: null, created_at: time, customer: { name: "Adwoa Nyarko" } },
+    { id: "wm2", kind: "reminder", status: "skipped", attempts: 1, detail: "The customer has not given WhatsApp permission.", created_at: time, customer: { name: "Yaw Owusu" } },
+  ],
+};
 const campaigns = [],
   followups = [],
   drafts = [],
@@ -79,7 +88,10 @@ const shipments = [
 ];
 const resultCache = new Map();
 export function resolveOperationsMock(path, method, body = {}, query = {}) {
-  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links")
+  const whatsappPath =
+    path.startsWith("/crm-communications/whatsapp") ||
+    (path.startsWith("/crm-communications/gateways") && method !== "GET" && body?.type === "whatsapp");
+  if (!path.startsWith("/operations/") && !path.startsWith("/traceability/") && path !== "/search" && path !== "/receipt-links" && !whatsappPath)
     return undefined;
   if (
     method !== "GET" &&
@@ -221,6 +233,21 @@ export function resolveOperationsMock(path, method, body = {}, query = {}) {
       };
       labels.push(result);
     }
+  }
+  if (path === "/crm-communications/whatsapp") result = whatsapp;
+  if (path === "/crm-communications/whatsapp/settings") {
+    // Mirrors the server: a kind switches on only with the account and its template.
+    if ((body.receipts || body.reminders) && !whatsapp.gateway)
+      throw Object.assign(new Error("Connect your WhatsApp Business account first."), { status: 409 });
+    for (const [key, template, label] of [["receipts", "receipt_template", "receipt"], ["reminders", "reminder_template", "reminder"]])
+      if (body[key] && !whatsapp.gateway.config?.[template])
+        throw Object.assign(new Error(`Add the approved ${label} template name first.`), { status: 409 });
+    Object.assign(whatsapp, { receipts: body.receipts, reminders: body.reminders });
+    result = { receipts: body.receipts, reminders: body.reminders };
+  }
+  if (path.startsWith("/crm-communications/gateways") && body?.type === "whatsapp") {
+    whatsapp.gateway = { id: "wg1", display_name: body.display_name, sender_id: body.sender_id, is_active: true, config: body.config };
+    result = { ...whatsapp.gateway, api_key: "••••••••" + String(body.api_key || "0000").slice(-4) };
   }
   if (path === "/receipt-links")
     result = method === "DELETE" ? { revoked: 1 } : { token: "MockReceiptLinkToken_0123456789a", expires_at: "2026-11-07T10:42:00Z" };

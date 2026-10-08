@@ -153,6 +153,7 @@ export default function CustomerSegments() {
               >
                 <option value="sms">SMS</option>
                 <option value="email">Email</option>
+                <option value="whatsapp">WhatsApp</option>
               </select>
             </Field>
           </div>
@@ -333,6 +334,12 @@ export default function CustomerSegments() {
         </section>
         <section className="work-panel">
           <h2>Message draft</h2>
+          {channel === "whatsapp" ? (
+            <p className="workspace-status">
+              WhatsApp permission is used for automatic receipts and payment reminders, set up in{" "}
+              <Link to="/crm-communications">Marketing &amp; Comms, WhatsApp tab</Link>. Campaign drafts are for SMS and email.
+            </p>
+          ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -409,6 +416,7 @@ export default function CustomerSegments() {
               {campaign && <Badge>{campaign.status}</Badge>}
             </fieldset>
           </form>
+          )}
         </section>
       </div>
       {followup && (

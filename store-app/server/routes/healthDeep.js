@@ -121,6 +121,8 @@ const CRON_JOBS = {
   'demo-reset': 26 * 60 * 60 * 1000,
   'webhook-retry-sweep': 15 * 60 * 1000,
   'pending-sale-sweep': 15 * 60 * 1000,
+  'whatsapp-queue': 15 * 60 * 1000,
+  'whatsapp-reminders': 26 * 60 * 60 * 1000,
 };
 
 /**

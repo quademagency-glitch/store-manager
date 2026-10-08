@@ -5,6 +5,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import Modal from '../components/Modal';
 import { Tabs, TabPanel } from '../components/ui';
 import { reportError } from '../lib/errorReporting';
+import WhatsAppAutomation from '../features/crm/WhatsAppAutomation';
 
 // High-quality modern SVG icons
 const Icons = {
@@ -228,11 +229,16 @@ export default function CRMCommunications() {
           { id: 'campaign', label: 'Send Campaign', icon: Icons.rocket },
           { id: 'templates', label: 'Templates', icon: Icons.template },
           { id: 'gateways', label: 'Gateways', icon: Icons.settings },
+          { id: 'whatsapp', label: 'WhatsApp', icon: Icons.rocket },
         ]}
         value={activeTab}
         onChange={setActiveTab}
         ariaLabel="Communications sections"
       />
+
+      <TabPanel idPrefix="crm" id="whatsapp" value={activeTab}>
+        {activeTab === 'whatsapp' && <WhatsAppAutomation />}
+      </TabPanel>
 
       {/* --- CAMPAIGN TAB --- */}
       <TabPanel idPrefix="crm" id="campaign" value={activeTab}>

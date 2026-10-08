@@ -110,14 +110,18 @@ export const ENTITY = {
  * a fact, and the whole agreement rests on it.
  */
 export const TERMS_VERSION = '1.0';
-export const PRIVACY_VERSION = '1.1';
-export const DPA_VERSION = '1.1';
+export const PRIVACY_VERSION = '1.2';
+export const DPA_VERSION = '1.2';
 
 export const EFFECTIVE_DATE = '19 August 2026';
 /* 1.1 adds anonymous task timing to the product analytics description and
    states that page addresses are sent without their search text. Same
    purpose, recipient and retention, so not a clause 17.2 change. The Terms
-   did not change and keep EFFECTIVE_DATE. */
+   did not change and keep EFFECTIVE_DATE.
+   1.2 adds DPA 5.4 and Privacy 7.3: messaging accounts a business connects
+   with its own credentials (WhatsApp Business) are the business's, not our
+   sub-processors, and automatic WhatsApp messages need the business's switch
+   and the customer's WhatsApp permission. */
 export const PRIVACY_EFFECTIVE_DATE = '8 October 2026';
 export const DPA_EFFECTIVE_DATE = '8 October 2026';
 

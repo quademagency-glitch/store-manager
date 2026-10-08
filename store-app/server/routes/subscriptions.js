@@ -507,7 +507,7 @@ router.post('/initialize-paystack', authGuard, permissionCheck('manage_billing')
 
     const paystackData = await paystackResponse.json();
     if (!paystackData.status) {
-      logger.warn({ message: paystackData.message }, 'Paystack initialization refused');
+      logger.warn({ paystackMessage: paystackData.message }, 'Paystack initialization refused'); // `message` is swallowed by the log formatter
       return res.status(400).json({ error: 'Paystack could not start the payment. Try again.' });
     }
 

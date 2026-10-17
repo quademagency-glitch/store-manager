@@ -110,8 +110,8 @@ export const ENTITY = {
  * a fact, and the whole agreement rests on it.
  */
 export const TERMS_VERSION = '1.1';
-export const PRIVACY_VERSION = '1.4';
-export const DPA_VERSION = '1.3';
+export const PRIVACY_VERSION = '1.5';
+export const DPA_VERSION = '1.4';
 
 /* Terms 1.1 (8 October 2026): one plan paid before use. No free trial
    (clause 6), a one-time setup fee, a yearly fee per branch with additional
@@ -137,9 +137,14 @@ export const EFFECTIVE_DATE = '8 October 2026';
    sub-processor; DPA 5.3's 30 days' notice had nobody to go to, as there
    were no subscribing businesses yet. The same versions describe Resend
    fully: it also carries CRM email a business sends before connecting its
-   own email account, not only transactional email. */
-export const PRIVACY_EFFECTIVE_DATE = '8 October 2026';
-export const DPA_EFFECTIVE_DATE = '8 October 2026';
+   own email account, not only transactional email.
+   Privacy 1.5 and DPA 1.4 replace Vercel with Cloudflare for hosting and
+   delivering the web application (Privacy 7.1, DPA 5.2), and drop Vercel
+   Speed Insights, which was never switched on. DPA 5.3's 30 days' notice
+   was waived: on 17 October 2026 the only subscribing business was Quadem
+   Digital Enterprise itself. */
+export const PRIVACY_EFFECTIVE_DATE = '17 October 2026';
+export const DPA_EFFECTIVE_DATE = '17 October 2026';
 
 /** Governing law, referenced by all three documents so they cannot diverge. */
 export const JURISDICTION = 'Ghana';

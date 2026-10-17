@@ -1,0 +1,22 @@
+# Response headers for everything Cloudflare serves from dist/ (the app's
+# pages, the single-page fallback, assets). /api/* is answered by
+# worker/index.js, which sets its own. Moved from vercel.json in October 2026;
+# scripts/check-csp-hashes.mjs and check-inline-style.mjs read the policy here.
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-5dgpc0K1KABalF3RHHNLR4Tbo/Eew2RvyMbJ+Gn/aEU=' https://us-assets.i.posthog.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://store-manager-api-production-c330.up.railway.app https://us.i.posthog.com; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp-endpoint
+  Reporting-Endpoints: csp-endpoint="https://app.quaderp.app/api/csp-report"
+
+# Content-hashed build output: a changed file is a different URL.
+/assets/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+# Shared receipt links: never indexed, never leak the address onward.
+/r/*
+  X-Robots-Tag: noindex, nofollow
+  ! Referrer-Policy
+  Referrer-Policy: no-referrer

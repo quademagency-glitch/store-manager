@@ -1,8 +1,8 @@
 /**
  * Turn a resolved URL path into the route pattern that produced it.
  *
- * WHY THIS EXISTS: @vercel/speed-insights sends `window.location.pathname`
- * verbatim when it is not given a `route`. Three routes in this app carry a
+ * WHY THIS EXISTS: product analytics (src/lib/analytics.js) would otherwise
+ * send `window.location.pathname` verbatim. Three routes in this app carry a
  * record id, `/customers/:id`, `/invoice/:id` and `/imports/:entityType`, so
  * the raw path for a real visit is `/customers/9f3c...`, and sending it would
  * put customer and invoice identifiers into a third party's analytics with

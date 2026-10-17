@@ -54,3 +54,8 @@ backups/
 # forever, so committing it once would weigh on every clone from then on.
 # The reports live on the owner's machine; share them directly if needed.
 docs/audits/
+
+# Cloudflare local state, and local build values (never committed)
+.wrangler/
+.dev.vars*
+.env*.local

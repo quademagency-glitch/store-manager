@@ -5,7 +5,6 @@ import { ThemeProvider } from './lib/ThemeContext';
 import { ToastProvider } from './hooks/useToast';
 import { ConfirmProvider } from './hooks/useConfirm';
 import PostHogPageView from './components/PostHogPageView';
-import SpeedInsightsRoute from './components/SpeedInsightsRoute';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 /* Eager, like Login. Both are entry points for people arriving from
@@ -106,7 +105,6 @@ export default function App() {
         <ConfirmProvider>
           <BrowserRouter>
             <PostHogPageView />
-            <SpeedInsightsRoute />
             <AuthProvider>
               <ErrorBoundary>
                 {/* Routes are code-split, so a first visit to one has to wait

@@ -1,7 +1,7 @@
 /**
  * Guards against inline <style> elements while the CSP forbids them.
  *
- * vercel.json sends `style-src 'self'` with no 'unsafe-inline', no nonce and
+ * The policy in public/_headers sends `style-src 'self'` with no 'unsafe-inline', no nonce and
  * no hash, so the browser refuses every <style> ELEMENT the app renders. The
  * companion `style-src-attr 'unsafe-inline'` covers only style="..."
  * ATTRIBUTES, which is why thousands of style={{...}} props keep working and
@@ -13,7 +13,7 @@
  * could not be caught locally, because the Vite dev server sends no CSP at
  * all, and check-csp-hashes.mjs only inspects inline SCRIPTS.
  *
- * The policy is read from vercel.json rather than assumed, so adding
+ * The policy is read from public/_headers rather than assumed, so adding
  * 'unsafe-inline', a nonce or a hash to style-src relaxes this check by
  * itself instead of leaving a stale rule behind.
  *
@@ -23,23 +23,20 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readCspPolicy, HEADERS_PATH } from './csp-policy.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const repoRoot = join(root, '../..');
 const fail = (msg) => { console.error(`\n✗ inline style check: ${msg}\n`); process.exit(1); };
 
 // 1. What does the deployed policy actually allow?
-const vercelPath = join(repoRoot, 'vercel.json');
 let policy;
 try {
-  const config = JSON.parse(readFileSync(vercelPath, 'utf8'));
-  const headers = (config.headers || []).flatMap((h) => h.headers || []);
-  policy = headers.find((h) => h.key.toLowerCase() === 'content-security-policy')?.value;
+  policy = readCspPolicy();
 } catch (err) {
-  fail(`cannot read ${vercelPath}: ${err.message}`);
+  fail(`cannot read ${HEADERS_PATH}: ${err.message}`);
 }
-if (!policy) fail('no Content-Security-Policy header found in vercel.json, so this check cannot prove anything.');
+if (!policy) fail('no Content-Security-Policy header found in public/_headers, so this check cannot prove anything.');
 
 // style-src-elem wins over style-src for <style> elements when it is present.
 const directive = (name) => {

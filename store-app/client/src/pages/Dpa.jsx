@@ -1,6 +1,6 @@
 import LegalLayout, { Clause, Sub } from './LegalLayout';
 import { ENTITY, DPA_VERSION, DPA_EFFECTIVE_DATE, postalLine } from '../legal/entity';
-import { analyticsAllowed, subprocessorAllowed } from '../lib/analyticsGate';
+import { analyticsAllowed } from '../lib/analyticsGate';
 
 /* Clause 5.2 names sub-processors that actually process. Derived from the same
    setting the software runs on, so the list cannot claim a processor that is
@@ -8,14 +8,6 @@ import { analyticsAllowed, subprocessorAllowed } from '../lib/analyticsGate';
 const ANALYTICS_LIVE = analyticsAllowed(
   import.meta.env.VITE_POSTHOG_KEY,
   import.meta.env.VITE_POSTHOG_START,
-);
-
-/* Vercel is already a sub-processor for hosting. Speed Insights adds a second
-   purpose, performance measurement, and clause 5.3's notice is owed for that
-   as much as for a new company. Gated separately so the sentence below stays
-   true either way. */
-const SPEED_INSIGHTS_LIVE = subprocessorAllowed(
-  import.meta.env.VITE_SPEED_INSIGHTS_START,
 );
 
 /**
@@ -156,7 +148,7 @@ export default function Dpa() {
         </Sub>
         <Sub n="5.2">
           Our current sub-processors are Supabase (database, authentication and file storage),
-          Railway (application hosting), Vercel (web application hosting and delivery{SPEED_INSIGHTS_LIVE ? ', and page performance timings recorded against the route visited rather than against you' : ''}),
+          Railway (application hosting), Cloudflare (web application hosting and delivery),
           Arkesel (text messages, in Ghana: the code that confirms a customer’s phone number, and SMS
           you send before connecting an SMS account of your own)
           {ANALYTICS_LIVE ? ', Resend (email: account and service notices, and email you send to your customers before connecting an email account of your own) and PostHog (product analytics, in the United States, which records which screens are opened and how long everyday tasks take, not what is on them)' : ' and Resend (email: account and service notices, and email you send to your customers before connecting an email account of your own)'}.

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "quaderp-app",
+  // Forwards /api/* to the API on Railway. See the top of worker/index.js.
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "assets": {
+    // Built by `npm run build` (Vite) before deploying.
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // React Router owns every other path: unknown ones get index.html.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  }
+}

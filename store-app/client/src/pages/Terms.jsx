@@ -326,7 +326,7 @@ export default function Terms() {
       <Clause n={13} title="Third-party services">
         <Sub n="13.1">
           The Service depends on third parties, currently including Supabase (database, sign-in and
-          file storage), Railway and Vercel (hosting), Paystack (payments) and Resend
+          file storage), Railway and Cloudflare (hosting), Paystack (payments) and Resend
           (transactional email). The current list is kept in the Privacy Policy.
         </Sub>
         <Sub n="13.2">

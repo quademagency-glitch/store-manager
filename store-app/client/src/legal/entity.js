@@ -109,7 +109,7 @@ export const ENTITY = {
  * to. Without that record, "you accepted our terms" is an assertion rather than
  * a fact, and the whole agreement rests on it.
  */
-export const TERMS_VERSION = '1.1';
+export const TERMS_VERSION = '1.2';
 export const PRIVACY_VERSION = '1.5';
 export const DPA_VERSION = '1.4';
 
@@ -117,8 +117,11 @@ export const DPA_VERSION = '1.4';
    (clause 6), a one-time setup fee, a yearly fee per branch with additional
    branches charged in full when added (7.1, 7.6), renewal by paying rather
    than automatically (8.1, 8.2). Effective at once: no business had
-   subscribed, so clause 22's notice had nobody to go to. */
-export const EFFECTIVE_DATE = '8 October 2026';
+   subscribed, so clause 22's notice had nobody to go to.
+   Terms 1.2 (17 October 2026): clause 13.1 names Cloudflare instead of
+   Vercel for hosting, in step with Privacy 1.5 and DPA 1.4. No commercial
+   change; the only subscribing business was Quadem Digital Enterprise. */
+export const EFFECTIVE_DATE = '17 October 2026';
 /* 1.1 adds anonymous task timing to the product analytics description and
    states that page addresses are sent without their search text. Same
    purpose, recipient and retention, so not a clause 17.2 change. The Terms

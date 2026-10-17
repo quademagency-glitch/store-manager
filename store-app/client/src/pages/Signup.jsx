@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../lib/AuthContext';
 import { getPublic, postPublic } from '../lib/api';
+import { BRANDED_SUBDOMAINS } from '../lib/subdomain';
 
 /**
  * How long to disable the resend button after a successful request, in
@@ -462,7 +463,7 @@ export default function Signup() {
                   disabled={submitting}
                 />
               </div>
-              {slugPreview && (
+              {BRANDED_SUBDOMAINS && slugPreview && (
                 <p className="signup-slug-preview">
                   Your team will sign in at <strong>{slugPreview}.app.quaderp.app</strong>
                 </p>

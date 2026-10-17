@@ -15,6 +15,8 @@
  * `/help?article=<id>`, so renaming one breaks those links.
  */
 
+import { BRANDED_SUBDOMAINS } from '../lib/subdomain';
+
 export const HELP_CATEGORIES = [
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'sales-pos', label: 'Sales & POS' },
@@ -24,6 +26,17 @@ export const HELP_CATEGORIES = [
   { id: 'team', label: 'Team & Permissions' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
 ];
+
+/* A business's own sign-in address exists only while branded subdomains are
+   on (lib/subdomain.js); otherwise everyone signs in at the shared address. */
+const TEAM_SIGN_IN = BRANDED_SUBDOMAINS
+  ? `Your business has its own address, shown on the welcome email and under
+**Administration → Organization**. It looks like
+\`your-business.app.quaderp.app\`. Staff who go there see your logo and name on
+the sign-in page, and an account from another business cannot sign in through
+it.`
+  : `Everyone signs in at \`app.quaderp.app\` with the email address their
+account was created with. The welcome email links straight there.`;
 
 export const HELP_ARTICLES = [
   // ── Getting Started ────────────────────────────────────────
@@ -167,11 +180,7 @@ You never need to know or set it for them.
 
 ## Your team's sign-in link
 
-Your business has its own address, shown on the welcome email and under
-**Administration → Organization**. It looks like
-\`your-business.app.quaderp.app\`. Staff who go there see your logo and name on
-the sign-in page, and an account from another business cannot sign in through
-it.
+${TEAM_SIGN_IN}
 
 ## If the welcome email does not arrive
 

@@ -145,8 +145,9 @@ app.use(helmet({
 
   // 2 years, but WITHOUT includeSubDomains, intentionally.
   //
-  // Vercel rewrites /api/* to this server, so these headers reach the browser
-  // under quaderp.app rather than the Railway host. includeSubDomains would
+  // The app.quaderp.app Worker (Cloudflare, Vercel before October 2026)
+  // forwards /api/* to this server, so these headers reach the browser under
+  // quaderp.app rather than the Railway host. includeSubDomains would
   // therefore pin every *.quaderp.app name to HTTPS for two years, in every
   // visitor's browser, with no way to revoke it, including the per-business
   // subdomains that emailService's resolveBusinessLoginUrl generates. Turn it

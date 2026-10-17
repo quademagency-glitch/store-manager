@@ -177,8 +177,21 @@ describe('email templates', () => {
       expect(text).not.toMatch(/\b(we|you) will be charged|charge your card|automatically charged/i);
     });
 
-    it('sends the reader to billing on their own subdomain', () => {
-      expect(html).toContain('https://adom.app.quaderp.app/business-admin/billing');
+    it('sends the reader to billing on the shared app address while branded subdomains are off', () => {
+      expect(html).toContain('https://app.quaderp.app/business-admin/billing');
+      expect(html).not.toContain('adom.app.quaderp.app');
+    });
+
+    it('sends the reader to billing on their own subdomain once branded subdomains are on', () => {
+      const before = process.env.BRANDED_SUBDOMAINS;
+      process.env.BRANDED_SUBDOMAINS = 'on';
+      try {
+        const branded = buildTrialEndingHtml(business, { daysLeft: 3, trialEndsAt: '2026-10-08T00:54:00.000Z' });
+        expect(branded).toContain('https://adom.app.quaderp.app/business-admin/billing');
+      } finally {
+        if (before === undefined) delete process.env.BRANDED_SUBDOMAINS;
+        else process.env.BRANDED_SUBDOMAINS = before;
+      }
     });
 
     it('names no price, which lives on the landing page and has drifted before', () => {

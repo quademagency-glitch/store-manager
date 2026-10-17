@@ -140,14 +140,31 @@ function headerSafe(value, max = 120) {
 }
 
 /**
- * Every business gets its own branded URL at <slug>.<app-host>
- * (e.g. https://acme.app.quaderp.app). Derived from APP_URL so there is a single
- * source of truth, matching the client's subdomain detection (lib/subdomain.js).
- * Falls back to APP_URL when the business has no slug yet, or when APP_URL is a
- * bare host / localhost / IP where wildcard subdomains don't resolve (dev).
+ * Whether businesses are sent to their own branded address at
+ * <slug>.<app-host>. Off unless BRANDED_SUBDOMAINS is 'on'.
+ *
+ * Since the web app moved from Vercel to Cloudflare (October 2026) those
+ * addresses need Cloudflare's Advanced Certificate Manager on quaderp.app, a
+ * proxied *.app DNS record and a Worker route; without them they do not
+ * resolve, and a welcome email pointing there would hand a new owner a dead
+ * link. Every business still gets a slug at signup and the client still
+ * recognises branded hosts, so switching this on needs no data or code
+ * change. The steps are in .env.production.example (BRANDED_SUBDOMAINS), and
+ * the client has a matching VITE_BRANDED_SUBDOMAINS.
+ */
+const brandedSubdomains = () => process.env.BRANDED_SUBDOMAINS === 'on';
+
+/**
+ * The address a business's people sign in at. Its branded URL at
+ * <slug>.<app-host> (e.g. https://acme.app.quaderp.app) when branded
+ * subdomains are on, derived from APP_URL so there is a single source of
+ * truth, matching the client's subdomain detection (lib/subdomain.js).
+ * Otherwise APP_URL, which is also the fallback when the business has no slug
+ * yet, or when APP_URL is a bare host / localhost / IP where wildcard
+ * subdomains don't resolve (dev).
  */
 function resolveBusinessLoginUrl(business) {
-  if (business && business.slug) {
+  if (brandedSubdomains() && business && business.slug) {
     try {
       const u = new URL(APP_URL);
       const host = u.hostname;

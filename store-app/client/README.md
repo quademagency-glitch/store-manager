@@ -1,16 +1,34 @@
-# React + Vite
+# QuadERP web app (app.quaderp.app)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite single-page app. The API it talks to is `store-app/server`, on
+Railway.
 
-Currently, two official plugins are available:
+## Build and deploy
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Hosted on a Cloudflare Worker, `quaderp-app` (Vercel until October 2026).
+Cloudflare Workers Builds deploys every push to `main` that touches
+`store-app/client/`: it runs `npm run build` here, then `npx wrangler deploy`.
 
-## React Compiler
+- `npm run build` runs the guard scripts (privacy claims, inline styles, CSP
+  hashes, PWA update behaviour) around `vite build`. A failing guard stops the
+  deploy.
+- `VITE_` values are build variables in Cloudflare (Worker > Settings >
+  Build). They are compiled into the JavaScript every visitor downloads, so
+  never put a secret in one. The list is in `../../.env.production.example`.
+- `public/_headers` holds the response headers and the Content-Security-Policy
+  for everything served from `dist/`. `scripts/csp-policy.mjs` reads the policy
+  from there for the CSP checks.
+- `worker/index.js` answers `/api/*` only, forwarding it to the API on Railway
+  with the caller's real address in `Forwarded`. Everything else is static,
+  with unknown paths falling back to `index.html` for React Router.
+- `wrangler.jsonc` is the Worker's config, including the app.quaderp.app
+  domain.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+To deploy by hand: `npm run build && npx wrangler deploy`, with the `VITE_`
+values in a `.env.production.local` (git ignores it).
 
-## Expanding the ESLint configuration
+## Branded sign-in addresses
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`<business>.app.quaderp.app` is switched off (`VITE_BRANDED_SUBDOMAINS`, and
+`BRANDED_SUBDOMAINS` on the server). Turning it back on is described under
+`BRANDED_SUBDOMAINS` in `../../.env.production.example`.

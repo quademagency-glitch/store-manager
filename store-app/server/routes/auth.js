@@ -597,6 +597,20 @@ function demoAuditActor(userData) {
   };
 }
 
+/* Browsers that say they are automated are not let into the demo. A link to
+   /login?demo=1 starts it on page load, so anything that follows links opens
+   it: on 2026-10-22, 19 of 21 demo opens were Meta's link checker
+   (HeadlessChrome from Facebook's 69.171.224.0/19), and Applebot and Exa's
+   crawler each opened it too. They inflate the demo numbers and leave their
+   clicks in the sandbox for the next visitor.
+
+   Only a browser that admits what it is can be recognised; one that claims to
+   be Chrome is bounded by the limiters above, and the demo owns nothing worth
+   taking. A missing User-Agent is let through for the same reason: a script
+   can claim anything, so refusing an empty one buys nothing. "bot" must be
+   followed by a version ("Applebot/0.1") so a Cubot phone is not turned away. */
+const AUTOMATED_USER_AGENT = /HeadlessChrome|\w*bot\/\d|crawler|spider|facebookexternalhit|meta-externalagent|Lighthouse|PhantomJS|python-requests|Go-http-client|curl\//i;
+
 /**
  * POST /api/auth/demo-login
  * Sign a visitor straight into the public sandbox, no signup, no email.
@@ -619,6 +633,15 @@ router.post('/demo-login', demoLoginCeiling, demoLoginLimiter, async (req, res) 
       return res.status(404).json({
         error: 'Not found',
         message: 'The demo is not available right now.',
+      });
+    }
+
+    const userAgent = req.get('user-agent') || '';
+    if (AUTOMATED_USER_AGENT.test(userAgent)) {
+      logger.info({ userAgent }, 'Demo refused to an automated browser');
+      return res.status(403).json({
+        error: 'Demo unavailable',
+        message: 'The demo opens in an ordinary web browser.',
       });
     }
 

@@ -173,8 +173,16 @@ router.post('/', authGuard, async (req, res) => {
     }
 
     const customer_code = 'CUST-' + crypto.randomBytes(2).toString('hex').toUpperCase() + Math.floor(Math.random() * 1000);
-    const code = newOtp();
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+
+    /* The demo sends no text. Anyone can open it without an account, so the
+       number here is whatever a stranger typed, anywhere in the world, the
+       message would carry the name they typed, and each one is paid for from
+       our Arkesel account. The customer is marked verified instead, like the
+       seeded ones, so the rest of the demo still works. Resending a code is
+       refused for the demo in middleware/demoGuard.js. */
+    const isDemo = req.user.is_demo === true;
+    const code = isDemo ? null : newOtp();
+    const expiresAt = isDemo ? null : new Date(Date.now() + OTP_TTL_MS).toISOString();
 
     const { data, error } = await supabaseAdmin
       .from('customers')
@@ -186,7 +194,7 @@ router.post('/', authGuard, async (req, res) => {
           customer_code,
           verification_code: code,
           otp_expires_at: expiresAt,
-          is_verified: false
+          is_verified: isDemo
         }
       ])
       .select()
@@ -200,10 +208,18 @@ router.post('/', authGuard, async (req, res) => {
       throw error;
     }
 
+    if (isDemo) {
+      invalidateCachePrefix('/api/customers');
+      return res.status(201).json({
+        message: 'Customer created. Text messages are switched off in the demo, so they are marked verified.',
+        customer: publicCustomer(data),
+      });
+    }
+
     // Fire OTP automatically via SMS
     const arkeselKey = process.env.ARKESEL_API_KEY;
     const arkeselSender = process.env.ARKESEL_SENDER_ID || 'StoreMgr';
-    
+
     if (arkeselKey) {
       // Arkesel wants `233XXXXXXXXX`. The old `replace(/[\s\-+()]/g, '')`
       // stripped punctuation but left the local trunk 0 in place, so a

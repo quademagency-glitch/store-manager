@@ -104,6 +104,32 @@ describe('POST /api/auth/demo-login', () => {
   });
 });
 
+/* The user agents are copied from the demo opens recorded in October 2026.
+   /login?demo=1 starts the demo on page load, so crawlers following the
+   "Try Live Demo" link were opening it: 19 of the 21 on 2026-10-22 were
+   Meta's link checker. */
+describe('POST /api/auth/demo-login, automated browsers', () => {
+  it.each([
+    ["Meta's link checker", 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36'],
+    ['Applebot', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15 (Applebot/0.1; +http://www.apple.com/go/applebot)'],
+    ["Exa's crawler", 'Mozilla/5.0 (compatible; ExaSearchBot/1.0; +https://crawler.exa.ai/)'],
+  ])('turns away %s without signing in', async (_, userAgent) => {
+    const res = await request(app).post('/api/auth/demo-login').set('User-Agent', userAgent).send({});
+    expect(res.status).toBe(403);
+    expect(mockSupabase.auth.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Chrome on Windows', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36'],
+    ['the Google app on an iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) GSA/441.5.989047059 Mobile/15E148 Safari/604.1'],
+    // "bot" without a version after it: a phone brand, not a crawler.
+    ['a Cubot phone', 'Mozilla/5.0 (Linux; Android 10; CUBOT X50) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36'],
+  ])('lets in %s', async (_, userAgent) => {
+    const res = await request(app).post('/api/auth/demo-login').set('User-Agent', userAgent).send({});
+    expect(res.status).toBe(200);
+  });
+});
+
 /**
  * The demo tenant is deleted and rebuilt nightly, and the teardown sweeps
  * `DELETE FROM <table> WHERE business_id = $1` across every table carrying a

@@ -45,7 +45,8 @@ const BLOCKED_MOUNTS = new Set([
 
 /**
  * Paths a demo visitor may not POST to, even on an otherwise-open mount.
- * Matched as a prefix against the path within the router.
+ * A string is matched as a prefix against the path within the router; a
+ * RegExp is tested against it, for paths with an id in the middle.
  */
 const BLOCKED_ACTIONS = [
   { mount: '/api/sales', path: '/void' },
@@ -54,6 +55,11 @@ const BLOCKED_ACTIONS = [
   { mount: '/api/stocktake', path: '/commit' },
   { mount: '/api/imports', path: '/undo' },
   { mount: '/api/businesses', path: '/send-welcome' },
+  // Texts a verification code to the customer's number through our Arkesel
+  // account. In the demo that number is whatever a stranger typed, and the
+  // message carries the name they typed too. Creating a customer in the demo
+  // sends nothing either; see POST /api/customers.
+  { mount: '/api/customers', path: /^\/[^/]+\/send-verification\/?$/ },
 ];
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -81,7 +87,10 @@ function demoWriteRefusal(req) {
   }
 
   for (const action of BLOCKED_ACTIONS) {
-    if (req.baseUrl === action.mount && req.path.startsWith(action.path)) {
+    const matches = typeof action.path === 'string'
+      ? req.path.startsWith(action.path)
+      : action.path.test(req.path);
+    if (req.baseUrl === action.mount && matches) {
       return 'That action is switched off in the demo. Start a free trial to try it for real.';
     }
   }

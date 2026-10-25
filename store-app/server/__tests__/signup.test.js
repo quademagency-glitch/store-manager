@@ -30,6 +30,7 @@ const VALID_BODY = {
   name: 'Ama Mensah',
   email: 'owner@acme.test',
   password: 'a-good-password',
+  phone: '024 123 4567',
 };
 
 /**
@@ -120,7 +121,125 @@ describe('POST /api/auth/signup, validation', () => {
     expect(res.body.details.map((d) => d.field)).toContain('business_name');
   });
 
-  it('treats phone as optional', async () => {
+});
+
+/* Required since 2026-10-25, so every signup can be followed up by a person. */
+describe('POST /api/auth/signup, phone number', () => {
+  it.each([
+    ['missing', undefined],
+    ['blank', '   '],
+  ])('refuses a %s phone number with one message', async (_, phone) => {
+    const res = await postSignup({ ...VALID_BODY, phone });
+    expect(res.status).toBe(400);
+    const phoneIssues = res.body.details.filter((d) => d.field === 'phone');
+    expect(phoneIssues).toHaveLength(1);
+  });
+
+  it.each([
+    ['too few digits to dial', '024 123'],
+    ['too many digits', '0241234567890123'],
+    ['letters', 'call me on whatsapp'],
+  ])('refuses a phone number with %s', async (_, phone) => {
+    const res = await postSignup({ ...VALID_BODY, phone });
+    expect(res.status).toBe(400);
+    expect(res.body.details.map((d) => d.field)).toContain('phone');
+  });
+
+  it.each(['024 123 4567', '0241234567', '+233 24 123 4567', '(024) 123-4567'])(
+    'accepts %s',
+    async (phone) => {
+      const res = await postSignup({ ...VALID_BODY, phone });
+      expect(res.status).toBe(201);
+    },
+  );
+
+  it('stores it on the business as typed and puts it in the alert to us', async () => {
+    const { sendSignupAlert } = require('../services/emailService');
+    sendSignupAlert.mockClear();
+    const fresh = useMock(happyPathOverrides());
+
+    await postSignup({ ...VALID_BODY, phone: '+233 24 123 4567' });
+
+    const insert = fresh.mutations.find((m) => m.table === 'businesses' && m.op === 'insert');
+    const row = Array.isArray(insert.payload) ? insert.payload[0] : insert.payload;
+    expect(row.phone).toBe('+233 24 123 4567');
+    expect(sendSignupAlert.mock.calls[0][1]).toMatchObject({ phone: '+233 24 123 4567' });
+  });
+});
+
+/* The payload from the 38 bot signups on 2026-10-24, verbatim. The bot put
+   its advert in the name so our confirmation email would deliver it to the
+   stranger whose address it had typed. */
+describe('POST /api/auth/signup, links in names', () => {
+  const PAYLOAD = '🎰15.000TL bonusla kasayi bosaltmaya basla! https://bit.ly/3VSCL0u 🎰';
+
+  it('refuses a name carrying a link, before creating anything', async () => {
+    const fresh = useMock(happyPathOverrides());
+    const res = await postSignup({ ...VALID_BODY, name: PAYLOAD });
+
+    expect(res.status).toBe(400);
+    expect(res.body.details.map((d) => d.field)).toContain('name');
+    expect(fresh.mutations.filter((m) => m.table === 'businesses')).toHaveLength(0);
+    expect(mockSupabase.auth.admin.generateLink).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a scheme', 'Visit https://example.test'],
+    ['www.', 'www.example-casino.test'],
+    ['a shortener with no scheme', 'bonus bit.ly/3VSCL0u'],
+  ])('refuses a business name carrying %s', async (_, businessName) => {
+    const res = await postSignup({ ...VALID_BODY, business_name: businessName });
+    expect(res.status).toBe(400);
+    expect(res.body.details.map((d) => d.field)).toContain('business_name');
+  });
+
+  it.each([
+    ['an initial', { name: 'J. Mensah' }],
+    ['a dotted business name with no path', { business_name: 'Shop.com Ltd' }],
+    ['a price with a decimal point', { business_name: 'Everything 1.50 Store' }],
+  ])('still accepts %s', async (_, override) => {
+    const res = await postSignup({ ...VALID_BODY, ...override });
+    expect(res.status).toBe(201);
+  });
+});
+
+/* The per-worker limiter reads 5 an hour and behaves as 40, which is how one
+   address made 38 signups on 2026-10-24. claim_signup_slot (migration 106) is
+   the count every worker shares. */
+describe('POST /api/auth/signup, shared rate limit', () => {
+  it('asks the database for a slot keyed on the caller, with 5 per address', async () => {
+    await postSignup(VALID_BODY);
+
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('claim_signup_slot', expect.objectContaining({
+      p_address_key: expect.any(String),
+      p_per_address: 5,
+      p_global: expect.any(Number),
+    }));
+  });
+
+  it.each(['address', 'global'])('refuses with 429 and creates nothing when the %s limit is reached', async (limit) => {
+    const fresh = useMock(happyPathOverrides());
+    mockSupabase.rpc.mockResolvedValueOnce({ data: limit, error: null });
+
+    const res = await postSignup(VALID_BODY);
+
+    expect(res.status).toBe(429);
+    expect(fresh.mutations.filter((m) => m.table === 'businesses')).toHaveLength(0);
+    expect(mockSupabase.auth.admin.generateLink).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the per-worker limits when the database check fails', async () => {
+    // A deploy landing before migration 106 must not take signup down.
+    mockSupabase.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function public.claim_signup_slot' },
+    });
+    const res = await postSignup(VALID_BODY);
+    expect(res.status).toBe(201);
+  });
+
+  it('falls back when the call throws', async () => {
+    mockSupabase.rpc.mockRejectedValueOnce(new Error('connection reset'));
     const res = await postSignup(VALID_BODY);
     expect(res.status).toBe(201);
   });

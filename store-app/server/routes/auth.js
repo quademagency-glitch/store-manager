@@ -143,6 +143,61 @@ const signupCeiling = rateLimit({
   legacyHeaders: false,
 });
 
+/* The same two limits, counted once for the whole cluster instead of once per
+   worker (claim_signup_slot, migration 106). The pair above stays as a cheap
+   first line and as the fallback if the database check is unavailable.
+
+   This exists because the per-worker counting described above is not a
+   rounding detail. On 2026-10-24 one address made 38 signups in about twenty
+   minutes against a limit that reads 5 an hour, because 5 per worker across 8
+   workers is 40. Here 5 means 5.
+
+   The shared ceiling is far lower than the per-worker one's 100, because it is
+   exact and because it is the only limit that holds against a caller who
+   rotates x-vercel-forwarded-for. Twenty an hour is still far above anything
+   real traffic has done. */
+const SIGNUP_SHARED_PER_ADDRESS_PER_HOUR = 5;
+const SIGNUP_SHARED_CEILING_PER_HOUR = Number(process.env.SIGNUP_SHARED_CEILING_PER_HOUR ?? 20);
+
+/** @returns {Promise<'address'|'global'|null>} which limit refused, or null to proceed */
+async function claimSignupSlot(req) {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('claim_signup_slot', {
+      p_address_key: clientAddressKey(req),
+      p_per_address: SIGNUP_SHARED_PER_ADDRESS_PER_HOUR,
+      p_global: SIGNUP_SHARED_CEILING_PER_HOUR,
+    });
+    if (error) throw error;
+    return data === 'address' || data === 'global' ? data : null;
+  } catch (err) {
+    // Fail open: the per-worker limiters have already run, and a missing
+    // migration must not take signup down with it.
+    logger.error({ err }, 'Signup: shared rate limit unavailable, relying on per-worker limits');
+    return null;
+  }
+}
+
+/* A link in a person's or a business's name is never a name. It is the
+   payload of a bot that signs strangers' addresses up so that our
+   confirmation email carries its advert to them, which is what the 38
+   signups on 2026-10-24 were ("🎰15.000TL bonus... https://bit.ly/..." as the
+   name). Refused here, that bot creates nothing and sends nothing.
+
+   A filter, not the defence: the confirmation email no longer repeats either
+   field (see buildWelcomeHtml), so a payload that slips past this still goes
+   nowhere. Deliberately narrow, a scheme, "www." or a domain followed by a
+   path, so "Shop.com Ltd" and "J. Mensah" still pass. */
+const LINK_IN_TEXT = /[a-z][a-z0-9+.-]*:\/\/|www\.|[a-z0-9-]\.[a-z]{2,}\//i;
+const hasNoLink = (value) => !LINK_IN_TEXT.test(value);
+
+/* Required since 2026-10-25 so that a person can follow every signup up.
+   Checked for shape only: 9 to 15 digits once spaces, dashes, dots, brackets
+   and a leading + are set aside, which takes "024 123 4567" and
+   "+233 24 123 4567" alike. Stored as typed; it becomes the business's
+   contact number, the one printed on its receipts. */
+const looksLikePhone = (value) =>
+  /^\+?[\d\s().-]+$/.test(value) && /^\d{9,15}$/.test(value.replace(/\D/g, ''));
+
 // Looser than signup: starting the demo creates nothing and sends no email,
 // so the only thing worth throttling is somebody hammering Supabase sign-in.
 const demoLoginLimiter = rateLimit({
@@ -248,11 +303,15 @@ const resendConfirmationSchema = z.object({
 const attributionValue = z.string().trim().transform((value) => value.slice(0, 120));
 
 const signupSchema = z.object({
-  name: z.string().trim().min(1, 'Your name is required').max(120),
+  name: z.string().trim().min(1, 'Your name is required').max(120)
+    .refine(hasNoLink, 'Your name cannot contain a web link'),
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(200),
-  business_name: z.string().trim().min(2, 'Business name is required').max(120),
-  phone: z.string().trim().max(40).optional().or(z.literal('')),
+  business_name: z.string().trim().min(2, 'Business name is required').max(120)
+    .refine(hasNoLink, 'Business name cannot contain a web link'),
+  // The empty case is left to min() so a blank field gets one message, not two.
+  phone: z.string().trim().min(1, 'Your phone number is required').max(40)
+    .refine((v) => v === '' || looksLikePhone(v), 'Enter a phone number with all its digits, like 024 123 4567'),
   // The tier chosen on the pricing table. Never trusted as-is, see the
   // resolution step in the handler, so an unknown value is not a 400.
   plan: z.string().trim().max(60).optional().or(z.literal('')),
@@ -331,6 +390,17 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
   };
 
   try {
+    // ── The cluster-wide limit, before anything is read or created ──
+    const refusedBy = await claimSignupSlot(req);
+    if (refusedBy) {
+      logger.warn({ refusedBy }, 'Signup refused by the shared rate limit');
+      return res.status(429).json({
+        error: refusedBy === 'address'
+          ? 'Too many signup attempts from this address. Please try again in an hour.'
+          : 'Signups are temporarily rate limited. Please try again shortly.',
+      });
+    }
+
     // ── Reject duplicates before creating anything ──────────────
     const { data: existingUser } = await supabaseAdmin
       .from('users')
@@ -363,7 +433,7 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
         status: 'unpaid',
         subscription_plan_id: plan ? plan.id : null,
         contact_email: email,
-        phone: phone || null,
+        phone,
         signup_attribution: signupAttribution,
       })
       .select('id, name, slug, status, trial_ends_at, subscription_plan_id')
@@ -469,7 +539,7 @@ router.post('/signup', signupCeiling, signupLimiter, validateBody(signupSchema),
        that already sends one email, and it buys the alert actually being
        sent rather than left floating on a process that may be recycled. */
     try {
-      const alert = await sendSignupAlert(business, { name, email }, {
+      const alert = await sendSignupAlert(business, { name, email, phone }, {
         planName: plan ? plan.name : null,
         attribution: signupAttribution,
       });

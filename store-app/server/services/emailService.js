@@ -113,10 +113,11 @@ function brandBar({ subtitle = '', right = '', compact = false } = {}) {
  *
  * Added for the signup alert, where every field (business name, person's
  * name, email address) is whatever a stranger typed into a public form and
- * the message lands in our own inbox. The older templates above interpolate
- * raw. They are fed by records an admin already created rather than by an
- * open endpoint, which is a weaker defence than it sounds and is worth
- * coming back to, but widening that here would bury this change.
+ * the message lands in our own inbox. Some older templates still interpolate
+ * raw, on the theory that they are fed by records an admin already created.
+ * That theory was wrong for the welcome email: the public signup form fed it
+ * directly, and until 2026-10-24 it sent the typed name unescaped to whatever
+ * address was typed. See buildWelcomeHtml.
  */
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
@@ -509,6 +510,7 @@ function buildSignupAlertHtml(business, admin, { planName, trialEndsAt, attribut
     ['Business', business?.name || 'Unnamed'],
     ['Person', admin?.name || 'Not given'],
     ['Email', admin?.email || 'Not given'],
+    ['Phone', admin?.phone || 'Not given'],
     ['Plan', planName || 'None chosen'],
     // No free trial since 8 October 2026: a signup waits for its first payment.
     trialEndsAt
@@ -589,10 +591,22 @@ function buildSignupAlertHtml(business, admin, { planName, trialEndsAt, attribut
  *   generated for them and must choose their own before they can get in.
  *   Self-service signups (`verify-email`) already chose one during signup, *   what stands between them and the app is confirming they own the address.
  *   Same branded shell either way; only the CTA and the copy around it move.
+ *
+ * verify-email repeats nothing the signup form let someone type: no name, no
+ * business name. It goes to an address nobody has proven yet, chosen by
+ * whoever filled in a public form, so any typed text it echoes turns the form
+ * into a mail relay with our name on it. On 2026-10-24 a bot made 38 signups
+ * with strangers' addresses and a casino advert as the "name", and each
+ * stranger got "Hi <advert>" from QuadERP. The login URL stays: its slug is
+ * derived from the business name but can only hold [a-z0-9-], so it cannot
+ * carry a link, and it is not rendered as one in this mode anyway.
  */
 function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, loginUrl, planName, ctaMode = 'set-password', trialEndsAt = null }) {
-  const greeting = adminName && adminName !== 'Business Admin' ? adminName : business.name;
   const verifying = ctaMode === 'verify-email';
+  const greeting = verifying
+    ? 'there'
+    : escapeHtml(adminName && adminName !== 'Business Admin' ? adminName : business.name);
+  const businessName = escapeHtml(business.name);
 
   const trialLine = trialEndsAt
     ? new Date(trialEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -601,13 +615,13 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
   const cta = verifying
     ? {
         intro: trialEndsAt
-          ? `Good to have <strong>${business.name}</strong> with us. Your free trial is set up and waiting. The only thing left is to confirm this email address, and then you're in.`
-          : `Good to have <strong>${business.name}</strong> with us. Your account is set up. Confirm this email address, then sign in and pay the one-time setup fee and your first year under Billing, and you're in.`,
+          ? `Thanks for signing up for ${PLATFORM_NAME}. Your free trial is set up and waiting. The only thing left is to confirm this email address, and then you're in.`
+          : `Thanks for signing up for ${PLATFORM_NAME}. Your account is set up. Confirm this email address, then sign in and pay the one-time setup fee and your first year under Billing, and you're in.`,
         withLink: { label: 'Confirm your email', note: 'The link is good for about an hour. If it runs out, sign in and we’ll send you a fresh one.' },
         withoutLink: { label: `Go to ${PLATFORM_NAME}`, note: 'Head to the sign-in page and use the password you chose during signup.' },
       }
     : {
-        intro: `Good to have <strong>${business.name}</strong> with us. Your account is ready to go. The only thing left is to choose a password, and then you're in.`,
+        intro: `Good to have <strong>${businessName}</strong> with us. Your account is ready to go. The only thing left is to choose a password, and then you're in.`,
         withLink: { label: 'Choose your password', note: 'The link is good for about an hour. If it runs out, tap “Forgot password” on the sign-in page and we’ll send you a fresh one.' },
         withoutLink: { label: `Go to ${PLATFORM_NAME}`, note: 'Head to the sign-in page and tap “Forgot password” to set yours.' },
       };
@@ -661,6 +675,9 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
                 ${cta.withLink.label}
               </a>
               <p style="margin:12px 0 0;color:#94a3b8;font-size:12px;">${cta.withLink.note}</p>
+              ${verifying ? `
+              <p style="margin:8px 0 0;color:#94a3b8;font-size:12px;">Didn’t sign up for ${PLATFORM_NAME}? You can ignore this email. The account can’t be used until this address is confirmed.</p>
+              ` : ''}
               ` : `
               <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:12px;font-size:16px;font-weight:600;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
                 ${cta.withoutLink.label}
@@ -706,7 +723,7 @@ function buildWelcomeHtml(business, adminName, adminEmail, { setPasswordUrl, log
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Your login email</p>
-                    <p style="margin:4px 0 12px;color:#0f172a;font-size:15px;font-weight:600;">${adminEmail}</p>
+                    <p style="margin:4px 0 12px;color:#0f172a;font-size:15px;font-weight:600;">${escapeHtml(adminEmail)}</p>
                     <p style="margin:0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Sign in at</p>
                     ${ctaMode === 'verify-email' ? `
                     <p style="margin:4px 0 0;color:#0f172a;font-size:15px;font-weight:600;">${loginUrl}</p>
@@ -1075,7 +1092,11 @@ async function sendBusinessWelcomeEmail(business, admin, opts = {}) {
     ctaMode: opts.ctaMode,
     trialEndsAt: opts.trialEndsAt,
   });
-  const subject = `${business.name} is ready to go on ${PLATFORM_NAME}`;
+  // Nothing typed into the signup form goes in a verify-email subject either,
+  // for the reason given on buildWelcomeHtml.
+  const subject = opts.ctaMode === 'verify-email'
+    ? `Confirm your email for ${PLATFORM_NAME}`
+    : `${headerSafe(business.name)} is ready to go on ${PLATFORM_NAME}`;
 
   const client = getResendClient();
   if (!client) {

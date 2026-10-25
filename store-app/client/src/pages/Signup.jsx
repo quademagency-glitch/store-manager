@@ -223,8 +223,14 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
-    if (!form.business_name.trim() || !form.name.trim() || !form.email.trim() || !form.password) {
-      setError('Please fill in your business name, your name, email and a password.');
+    if (!form.business_name.trim() || !form.name.trim() || !form.phone.trim() || !form.email.trim() || !form.password) {
+      setError('Please fill in your business name, your name, phone number, email and a password.');
+      return;
+    }
+    // The server's rule, mirrored so a typo is caught before the round trip.
+    const phoneDigits = form.phone.replace(/\D/g, '').length;
+    if (!/^\+?[\d\s().-]+$/.test(form.phone.trim()) || phoneDigits < 9 || phoneDigits > 15) {
+      setError('Enter a phone number with all its digits, like 024 123 4567.');
       return;
     }
     if (form.password.length < 8) {
@@ -492,9 +498,7 @@ export default function Signup() {
               </div>
 
               <div className="login-field">
-                <label htmlFor="signup-phone" className="login-label">
-                  Phone <span className="signup-optional">optional</span>
-                </label>
+                <label htmlFor="signup-phone" className="login-label">Phone</label>
                 <div className="login-input-wrapper">
                   <svg className="login-input-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <path d="M3 4.5C3 3.67 3.67 3 4.5 3H6L7.5 6.75L6 7.875C6.64 9.2 7.8 10.36 9.125 11L10.25 9.5L14 11V12.5C14 13.33 13.33 14 12.5 14C7.253 14 3 9.747 3 4.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />

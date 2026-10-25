@@ -132,6 +132,11 @@ describe('email templates', () => {
       expect(html).toContain('/pos-system-ghana/');
     });
 
+    it('carries the phone number, which is what the follow-up uses', () => {
+      const html = buildSignupAlertHtml(business, { name: 'Kofi', email: 'k@e.com', phone: '024 123 4567' }, {});
+      expect(html).toContain('024 123 4567');
+    });
+
     it('says so plainly when it does not know where they came from', () => {
       const html = buildSignupAlertHtml(business, { name: 'Kofi', email: 'k@e.com' }, {});
       expect(html).toMatch(/Nothing recorded/i);
@@ -284,6 +289,43 @@ describe('welcome email, verify-email mode', () => {
     // Still tells them where they will be signing in, just does not invite a
     // click on it before the address is confirmed.
     expect(html).toContain(opts.loginUrl);
+  });
+
+  /* On 2026-10-24 a bot made 38 signups with strangers' addresses and this as
+     the name, and each stranger received "Hi <advert>" from QuadERP. A
+     confirmation goes to an address nobody has proven, so it must not repeat
+     anything the form let someone type. */
+  it('repeats neither the name nor the business name that was typed', () => {
+    const advert = '🎰15.000TL bonusla kasayi bosaltmaya basla! https://bit.ly/3VSCL0u 🎰';
+    const html = buildWelcomeHtml(
+      { name: `${advert} <a href="https://evil.example">claim</a>`, slug: 'go2345678e' },
+      advert,
+      'stranger@example.com',
+      { ...opts, ctaMode: 'verify-email' },
+    );
+
+    expect(html).not.toContain('bit.ly');
+    expect(html).not.toContain('15.000TL');
+    expect(html).not.toContain('evil.example');
+    expect(html).toContain('Hi <strong>there</strong>');
+    // The stranger is told what to do about an email they did not ask for.
+    expect(html).toMatch(/Didn’t sign up/);
+  });
+
+  it('escapes the name and business name when it does show them', () => {
+    // set-password is for operator-provisioned staff, but a typed value is
+    // still a typed value.
+    const html = buildWelcomeHtml(
+      { name: 'Shop <img src=x>', slug: 'shop' },
+      'Kofi <a href="https://evil.example">x</a>',
+      'kofi@example.com',
+      { ...opts, ctaMode: 'set-password' },
+    );
+
+    expect(html).not.toContain('<img src=x>');
+    expect(html).not.toContain('href="https://evil.example"');
+    expect(html).toContain('Shop &lt;img src=x&gt;');
+    expect(html).toContain('Kofi &lt;a href=');
   });
 
   it('still links the sign in URL when the email is not a confirmation', () => {

@@ -174,14 +174,6 @@
   gap: var(--space-md);
 }
 
-.signup-optional {
-  font-weight: 400;
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
 .signup-slug-preview {
   margin: var(--space-xs) 0 0;
   font-size: 0.72rem;
